@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { Cpu6502Handler } from "../cpu/cpu6502.class";
-import { Logger } from "../logger";
-import { Assembler } from "../polyasm";
-import type { FileHandler, SegmentDefinition } from "../polyasm.types";
+import { Cpu6502Handler } from "../src/cpu/cpu6502.class";
+import { Logger } from "../src/logger";
+import { Assembler } from "../src/polyasm";
+import type { FileHandler, SegmentDefinition } from "../src/polyasm.types";
 
 const DEFAULT_SEGMENTS: SegmentDefinition[] = [{ name: "CODE", start: 0x1000, size: 0, resizable: true }];
 

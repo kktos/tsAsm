@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { Logger } from "../logger";
-import { Assembler } from "../polyasm";
-import type { FileHandler } from "../polyasm.types";
+import { Logger } from "../src/logger";
+import { Assembler } from "../src/polyasm";
+import type { FileHandler } from "../src/polyasm.types";
 
 // Minimal fake CPU handler
 const fakeCPU = {
