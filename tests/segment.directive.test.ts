@@ -13,16 +13,16 @@ describe("Polymer Assembler - Segments", () => {
 		const cpu = new Cpu6502Handler();
 		const assembler = new Assembler(cpu, mockFileHandler);
 		const source = `
-      .SEGMENT CODE { start: 0x8000, end: 0x8FFF }
-      .SEGMENT "VECTORS" { start: 0xFFFA, end: 0xFFFF, pad: 0xEA }
+		.SEGMENT CODE { start: 0x8000, end: 0x8FFF }
+		.SEGMENT "VECTORS" { start: 0xFFFA, end: 0xFFFF, pad: 0xEA }
 
-      .SEGMENT "CODE"
-      LDA #$42
-      JMP $1234
+		.SEGMENT "CODE"
+		LDA #$42
+		JMP $1234
 
-      .SEGMENT "VECTORS"
-      .WORD $8000
-    `;
+		.SEGMENT "VECTORS"
+		.WORD $8000
+		`;
 
 		const segments = assembler.assemble(source);
 
@@ -51,7 +51,7 @@ describe("Polymer Assembler - Segments", () => {
 		const source = `
       .SEGMENT "INCOMPLETE" { start: 0x1000 }
     `;
-		expect(() => assembler.assemble(source)).toThrow("ERROR on line 2: .SEGMENT definition requires 'start' and 'end' parameters.");
+		expect(() => assembler.assemble(source)).toThrow("ERROR on line 2: .SEGMENT definition requires 'start','end' or 'start','size' parameters.");
 	});
 
 	it("should throw an error for invalid end address", () => {
@@ -83,5 +83,25 @@ describe("Polymer Assembler - Segments", () => {
 		expect(seg?.padValue).toBe(16);
 		expect(seg?.data.slice(0, 2)).toEqual([0xca, 0xfe]);
 		expect(seg?.data[2]).toBe(16);
+	});
+
+	it("should handle end or size expressions in segment definitions", () => {
+		const cpu = new Cpu6502Handler();
+		const assembler = new Assembler(cpu, mockFileHandler);
+		const source = `
+		  .SEGMENT END_SEG { start: $800, end: $8FF }
+		  .SEGMENT SIZE_SEG { start: $A00, size: $100 }
+		`;
+
+		const segments = assembler.assemble(source);
+		let seg = segments.find((s) => s.name === "END_SEG");
+		expect(seg).toBeDefined();
+		expect(seg?.start).toBe(0x0800);
+		expect(seg?.size).toBe(256);
+
+		seg = segments.find((s) => s.name === "SIZE_SEG");
+		expect(seg).toBeDefined();
+		expect(seg?.start).toBe(0x0a00);
+		expect(seg?.size).toBe(256);
 	});
 });

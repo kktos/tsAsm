@@ -3,6 +3,13 @@ import type { Assembler } from "../polyasm";
 import type { SymbolValue } from "../symbol.class";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
+type SegmentDef = {
+	start: number;
+	end?: number;
+	size?: number;
+	pad?: number;
+};
+
 export class SegmentDirective implements IDirective {
 	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
 		let name: SymbolValue;
@@ -21,11 +28,11 @@ export class SegmentDirective implements IDirective {
 		if (assembler.parser.peekToken()?.type === "LBRACE") {
 			const params = this.parseBlockParameters(assembler, context, directive.line);
 
-			if (params.start === undefined || params.end === undefined)
-				throw new Error(`ERROR on line ${directive.line}: .SEGMENT definition requires 'start' and 'end' parameters.`);
+			if (params.start === undefined || (params.end === undefined && params.size === undefined))
+				throw new Error(`ERROR on line ${directive.line}: .SEGMENT definition requires 'start','end' or 'start','size' parameters.`);
 
 			const start = params.start;
-			const end = params.end;
+			const end = params.end !== undefined ? params.end : start + (params.size ?? 0) - 1;
 			const pad = params.pad;
 
 			const size = end - start + 1;
@@ -60,20 +67,19 @@ export class SegmentDirective implements IDirective {
 		assembler.logger.log(`[PASS 2] Using segment: ${name}`);
 	}
 
-	private parseBlockParameters(assembler: Assembler, context: DirectiveContext, line: number | string): { start: number; end?: number; pad?: number } {
-		const params: { start: number; end?: number; pad?: number } = { start: 0 };
+	private parseBlockParameters(assembler: Assembler, context: DirectiveContext, line: number | string): SegmentDef {
+		const params: SegmentDef = { start: 0 };
 
 		assembler.parser.consume();
 
 		while (true) {
 			const token = assembler.parser.nextToken();
-			if (!token) break;
-			if (token.type === "RBRACE") break;
-
+			if (!token || token.type === "RBRACE") break;
 			if (token.type !== "LABEL") throw new Error(`.SEGMENT definition syntax error on line ${line}: key:value`);
 
 			const key = token.value.toLowerCase();
-			if (key !== "start" && key !== "end" && key !== "pad") throw new Error(`.SEGMENT definition syntax error on line ${line}: unknown property ${key}`);
+			if (key !== "start" && key !== "end" && key !== "pad" && key !== "size")
+				throw new Error(`.SEGMENT definition syntax error on line ${line}: unknown property ${key}`);
 
 			const valueTokens = assembler.parser.getExpressionTokens();
 			params[key] = assembler.expressionEvaluator.evaluateAsNumber(valueTokens, context);
