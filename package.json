@@ -1,17 +1,17 @@
 {
-	"name": "jsasm6502",
-	"version": "1.7.0",
+	"name": "tsasm",
+	"version": "2.0.0",
 	"type": "module",
 	"author": "kktos",
-	"description": "6502/65C02 assembler in typescript. Either as a CLI or a library.",
+	"description": "Multi CPU assembler in typescript. Either as a CLI or a library.",
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/kktos/jsasm6502.git"
+		"url": "git+https://github.com/kktos/tsasm.git"
 	},
-	"main": "libasm6502.js",
+	"main": "tsasm.js",
 	"bin": {
-		"asm6502": "asm6502.js"
+		"asm6502": "tsasm.js"
 	},
 	"scripts": {
 		"prebuild": "rimraf ./dist",
