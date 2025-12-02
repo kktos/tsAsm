@@ -1,3 +1,4 @@
+import type * as EventEmitter from "node:events";
 import type { SymbolValue } from "../symbol.class";
 
 export type TokenType =
@@ -83,12 +84,12 @@ export class AssemblyLexer {
 	private streamStack: Stream[] = [];
 	private currentStream: Stream;
 
-	constructor(options?: { localLabelStyle?: string }) {
+	constructor(private emitter: EventEmitter) {
 		this.currentStream = { source: "", pos: 0, line: 1, column: 1, length: 0, lastToken: null, tokenBuffer: [] };
 
-		if (options?.localLabelStyle) {
-			this.localLabelChar = options.localLabelStyle;
-		}
+		this.emitter.on("option:local_label_char", (value: string) => {
+			this.localLabelChar = value;
+		});
 	}
 
 	public tokenize(source: string): Token[] {
@@ -106,6 +107,11 @@ export class AssemblyLexer {
 		return this.currentStream.tokenBuffer.slice();
 	}
 
+	public reset() {
+		this.streamStack = [];
+		this.currentStream = { source: "", pos: 0, line: 1, column: 1, length: 0, lastToken: null, tokenBuffer: [] };
+	}
+
 	/** Initializes the lexer for incremental/token-stream consumption. */
 	public startStream(source: string) {
 		this.currentStream = {
@@ -119,10 +125,6 @@ export class AssemblyLexer {
 		};
 		this.streamStack.push(this.currentStream);
 	}
-
-	// private resetStream(): void {
-	// 	this.tokenBuffer = [];
-	// }
 
 	public setEndMarker(endMarker: string | undefined): void {
 		this.endMarker = endMarker;
@@ -556,9 +558,8 @@ export class AssemblyLexer {
 		if (this.isAlpha(nextChar)) {
 			// Named local label like ':loop'
 			const start = this.currentStream.pos;
-			while (this.isIdentifierPart(this.peek())) {
-				this.advance();
-			}
+			while (this.isIdentifierPart(this.peek())) this.advance();
+
 			const value = this.currentStream.source.slice(start, this.currentStream.pos);
 			return this.makeToken("LOCAL_LABEL", value.toUpperCase(), line, column);
 		}
@@ -575,9 +576,8 @@ export class AssemblyLexer {
 			// Check for an optional numeric count like ':-3'
 			if (this.isDigit(this.peek())) {
 				const numStart = this.currentStream.pos;
-				while (this.isDigit(this.peek())) {
-					this.advance();
-				}
+				while (this.isDigit(this.peek())) this.advance();
+
 				const numStr = this.currentStream.source.slice(numStart, this.currentStream.pos);
 				count = Number.parseInt(numStr, 10);
 			}

@@ -1,11 +1,14 @@
+import { EventEmitter } from "node:events";
 import { beforeEach, describe, expect, it, test } from "vitest";
 import { AssemblyLexer, type Token } from "./lexer.class";
 
 describe("AssemblyLexer", () => {
 	let lexer: AssemblyLexer;
+	let emitter: EventEmitter;
 
 	beforeEach(() => {
-		lexer = new AssemblyLexer();
+		emitter = new EventEmitter();
+		lexer = new AssemblyLexer(emitter);
 	});
 
 	// Helper to strip location info for simpler snapshot comparisons

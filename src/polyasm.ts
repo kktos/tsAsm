@@ -29,7 +29,7 @@ export class Assembler {
 	public anonymousLabels: number[] = [];
 
 	public macroDefinitions: Map<string, MacroDefinition> = new Map();
-	public options: Map<string, string> = new Map();
+	private options: Map<string, string> = new Map();
 
 	public logger: Logger;
 	public parser: Parser;
@@ -55,8 +55,8 @@ export class Assembler {
 		this.expressionEvaluator = new ExpressionEvaluator(this, this.logger);
 		this.directiveHandler = new DirectiveHandler(this, this.logger);
 		this.macroHandler = new MacroHandler(this, this.logger);
-		this.lexer = new AssemblyLexer();
 		this.emitter = new EventEmitter();
+		this.lexer = new AssemblyLexer(this.emitter);
 		this.parser = new Parser(this.lexer, this.emitter);
 
 		this.pass = -1;
@@ -91,18 +91,24 @@ export class Assembler {
 		return this.rawDataProcessors?.get(name);
 	}
 
+	public setOption(name: string, value: string) {
+		this.options.set(name, value);
+		const key = `option:${name}`;
+		this.emitter.emit(key, value);
+		this.logger.log(`setOption: ${key} = ${value}`);
+	}
+
+	public getOption(name: string) {
+		return this.options.get(name);
+	}
+
 	public assemble(source: string): Segment[] {
-		// Pre-scan for lexer-affecting options
-		const optionMatch = /^\s*\.OPTION\s+local_label_style\s+"(.)"/im.exec(source);
-		const localLabelStyle = optionMatch ? optionMatch[1] : ":";
+		this.setOption("local_label_char", ":");
 
 		// Initialize or re-initialize the lexer with the found option.
-		this.lexer = new AssemblyLexer({ localLabelStyle });
+		this.lexer.reset();
 		this.parser.lexer = this.lexer;
 		this.parser.start(source);
-
-		// Set assembler options from the pre-scan so they are available in Pass 1
-		if (localLabelStyle) this.options.set("local_label_style", localLabelStyle);
 
 		this.passOne();
 

@@ -35,10 +35,10 @@ describe(".OPTION Directive", () => {
 	it("should set a valid option during pass one", () => {
 		const assembler = createAssembler();
 		const source = `
-            .OPTION local_label_style "@"
+            .OPTION local_label_char "@"
         `;
 		assembler.assemble(source);
-		expect(assembler.options.get("local_label_style")).toBe("@");
+		expect(assembler.getOption("local_label_char")).toBe("@");
 	});
 
 	it("should log a warning for an unknown option", () => {
@@ -55,7 +55,7 @@ describe(".OPTION Directive", () => {
 	it("should throw an error for invalid syntax (not enough arguments)", () => {
 		const assembler = createAssembler();
 		const source = `
-            .OPTION local_label_style
+            .OPTION local_label_char
         `;
 		expect(() => assembler.assemble(source)).toThrow("Invalid .OPTION syntax on line 2. Expected: .OPTION <name> <value>");
 	});
@@ -63,17 +63,17 @@ describe(".OPTION Directive", () => {
 	it("should throw an error for an invalid value type", () => {
 		const assembler = createAssembler();
 		const source = `
-            .OPTION local_label_style 123
+            .OPTION local_label_char 123
         `;
-		expect(() => assembler.assemble(source)).toThrow("Value for 'local_label_style' must be a single character string on line 2.");
+		expect(() => assembler.assemble(source)).toThrow("Value for 'local_label_char' must be a single character string on line 2.");
 	});
 
 	it("should throw an error for an invalid value length", () => {
 		const assembler = createAssembler();
 		const source = `
-            .OPTION local_label_style "@@"
+            .OPTION local_label_char "@@"
         `;
-		expect(() => assembler.assemble(source)).toThrow("Value for 'local_label_style' must be a single character string on line 2.");
+		expect(() => assembler.assemble(source)).toThrow("Value for 'local_label_char' must be a single character string on line 2.");
 	});
 
 	// it("should not process the option in pass two", () => {

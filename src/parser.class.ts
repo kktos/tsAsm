@@ -3,17 +3,15 @@ import type { AssemblyLexer, IdentifierToken, Token } from "./lexer/lexer.class"
 import type { PushTokenStreamParams, StreamState } from "./polyasm.types";
 
 export class Parser {
-	public lexer: AssemblyLexer;
 	public activeTokens: Token[] = [];
 	public tokenStreamStack: StreamState[] = [];
 	private streamIdCounter = 0;
 	private tokenStreamCache: Map<string, StreamState> = new Map();
-	public emitter: EventEmitter;
 
-	constructor(lexer: AssemblyLexer, emitter: EventEmitter) {
-		this.lexer = lexer;
-		this.emitter = emitter;
-	}
+	constructor(
+		public lexer: AssemblyLexer,
+		private emitter: EventEmitter,
+	) {}
 
 	public start(source: string): void {
 		// Start streaming tokens instead of tokenizing the entire source.

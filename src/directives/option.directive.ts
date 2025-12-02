@@ -1,16 +1,13 @@
 import type { ScalarToken } from "../lexer/lexer.class";
 import type { Assembler } from "../polyasm";
-import { ADVANCE_TO_NEXT_LINE, type DirectiveContext, type IDirective } from "./directive.interface";
+import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class OptionDirective implements IDirective {
-	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): number {
+	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
 		this.setOption(directive, assembler, context);
-		return ADVANCE_TO_NEXT_LINE;
 	}
 
-	public handlePassTwo(_directive: ScalarToken, _assembler: Assembler, _context: DirectiveContext): number {
-		return ADVANCE_TO_NEXT_LINE;
-	}
+	public handlePassTwo(_directive: ScalarToken, _assembler: Assembler, _context: DirectiveContext) {}
 
 	private setOption(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void {
 		const argTokens = assembler.parser.getInstructionTokens();
@@ -23,11 +20,11 @@ export class OptionDirective implements IDirective {
 		const optionValue = assembler.expressionEvaluator.evaluate(argTokens.slice(1), context);
 
 		switch (optionName) {
-			case "local_label_style":
-				if (typeof optionValue !== "string" || optionValue.length !== 1) {
-					throw new Error(`Value for 'local_label_style' must be a single character string on line ${directive.line}.`);
-				}
-				assembler.options.set("local_label_style", optionValue);
+			case "local_label_char":
+				if (typeof optionValue !== "string" || optionValue.length !== 1)
+					throw new Error(`Value for 'local_label_char' must be a single character string on line ${directive.line}.`);
+
+				assembler.setOption("local_label_char", optionValue);
 				assembler.logger.log(`[OPTION] Set local label character to: '${optionValue}'`);
 				break;
 			default:

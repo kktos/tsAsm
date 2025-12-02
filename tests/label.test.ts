@@ -95,21 +95,6 @@ describe("Label References", () => {
 		});
 	});
 
-	describe("Local Labels with different prefixes", () => {
-		it("should resolve nameless label with a custom prefix from .OPTION", () => {
-			const { assembler } = setup();
-			const source = `
-				.OPTION local_label_style ":"
-				.ORG $1000
-				: ; Anonymous label at $1000
-				LDA :-
-			`;
-			assembler.assemble(source);
-			const machineCode = assembler.link();
-			expect(machineCode).toEqual([0xad, 0x00, 0x10]); // JMP $1000
-		});
-	});
-
 	describe("Named Local Labels", () => {
 		it("should resolve a named local label within its scope", () => {
 			const { assembler } = setup();
@@ -164,6 +149,43 @@ describe("Label References", () => {
 				0x10, // JMP $1007 (Scope2::local)
 				0xea, // NOP
 			]);
+		});
+	});
+
+	describe("Local Labels with different prefixes", () => {
+		it("should resolve nameless label with a custom prefix from .OPTION", () => {
+			const { assembler } = setup();
+			const source = `
+				.OPTION local_label_style ":"
+				.ORG $1000
+				: ; Anonymous label at $1000
+				LDA :-
+			`;
+			assembler.assemble(source);
+			const machineCode = assembler.link();
+			expect(machineCode).toEqual([0xad, 0x00, 0x10]); // JMP $1000
+		});
+
+		it("should resolve label with a custom prefix from .OPTION", () => {
+			const { assembler } = setup();
+			const source = `
+				.OPTION local_label_char ":"
+
+				.ORG $1000
+				start:
+
+				:loop
+				LDA :loop
+
+				.OPTION local_label_char "!"
+				secondstart:
+
+				!loop
+				LDA !loop
+			`;
+			assembler.assemble(source);
+			const machineCode = assembler.link();
+			expect(machineCode).toEqual([0xad, 0x00, 0x10, 0xad, 0x03, 0x10]);
 		});
 	});
 });
