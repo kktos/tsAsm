@@ -16,29 +16,29 @@ describe("Linker", () => {
 		it("should add a new segment", () => {
 			linker.addSegment("CODE", 0x100, 0x10);
 			expect(linker.segments.length).toBe(1);
-			expect(linker.segments[0].name).toBe("CODE");
-			expect(linker.segments[0].start).toBe(0x100);
-			expect(linker.segments[0].size).toBe(0x10);
-			expect(linker.segments[0].data.length).toBe(0x10);
-			expect(linker.segments[0].data.every((v) => v === 0)).toBe(true);
+			expect(linker.segments[0]?.name).toBe("CODE");
+			expect(linker.segments[0]?.start).toBe(0x100);
+			expect(linker.segments[0]?.size).toBe(0x10);
+			expect(linker.segments[0]?.data.length).toBe(0x10);
+			expect(linker.segments[0]?.data.every((v) => v === 0)).toBe(true);
 		});
 
 		it("should add a segment with a pad value", () => {
 			linker.addSegment("DATA", 0x200, 0x8, 0xff);
 			expect(linker.segments.length).toBe(1);
-			expect(linker.segments[0].name).toBe("DATA");
-			expect(linker.segments[0].padValue).toBe(0xff);
-			expect(linker.segments[0].data.every((v) => v === 0xff)).toBe(true);
+			expect(linker.segments[0]?.name).toBe("DATA");
+			expect(linker.segments[0]?.padValue).toBe(0xff);
+			expect(linker.segments[0]?.data.every((v) => v === 0xff)).toBe(true);
 		});
 
 		it("should add a resizable segment with zero size", () => {
 			linker.addSegment("BSS", 0x300, 0, 0, true);
 			expect(linker.segments.length).toBe(1);
 			const seg = linker.segments[0];
-			expect(seg.name).toBe("BSS");
-			expect(seg.resizable).toBe(true);
-			expect(seg.size).toBe(0);
-			expect(seg.data.length).toBe(0);
+			expect(seg?.name).toBe("BSS");
+			expect(seg?.resizable).toBe(true);
+			expect(seg?.size).toBe(0);
+			expect(seg?.data.length).toBe(0);
 		});
 	});
 

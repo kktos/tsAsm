@@ -28,7 +28,7 @@ export class Parser {
 			tokens: this.activeTokens,
 			index: 0,
 		});
-		this.activeTokens = this.tokenStreamStack[this.tokenStreamStack.length - 1].tokens;
+		this.activeTokens = (this.tokenStreamStack[this.tokenStreamStack.length - 1] as StreamState).tokens;
 	}
 
 	public restart(): void {
@@ -39,7 +39,7 @@ export class Parser {
 			tokens: this.activeTokens,
 			index: 0,
 		});
-		this.activeTokens = this.tokenStreamStack[this.tokenStreamStack.length - 1].tokens;
+		this.activeTokens = (this.tokenStreamStack[this.tokenStreamStack.length - 1] as StreamState).tokens;
 	}
 
 	/** Ensures a token at `index` is buffered and returns it. */
@@ -59,13 +59,13 @@ export class Parser {
 	/** Get current stream position (internal index). */
 	public getPosition(): number {
 		if (this.tokenStreamStack.length === 0) return 0;
-		return this.tokenStreamStack[this.tokenStreamStack.length - 1].index;
+		return (this.tokenStreamStack[this.tokenStreamStack.length - 1] as StreamState).index;
 	}
 
 	/** Set current stream position (internal index). */
 	public setPosition(pos: number): void {
 		if (this.tokenStreamStack.length === 0) return;
-		this.tokenStreamStack[this.tokenStreamStack.length - 1].index = pos;
+		(this.tokenStreamStack[this.tokenStreamStack.length - 1] as StreamState).index = pos;
 	}
 
 	/** Peek relative to the current token pointer (0 == current). */
@@ -156,7 +156,7 @@ export class Parser {
 	/** Pushes the current stream state and activates a new stream (macro/loop body). */
 	public pushTokenStream({ newTokens, macroArgs, streamId, cacheName }: PushTokenStreamParams): number {
 		// Save current position and arguments
-		if (this.tokenStreamStack.length > 0) this.tokenStreamStack[this.tokenStreamStack.length - 1].index = this.getPosition();
+		if (this.tokenStreamStack.length > 0) (this.tokenStreamStack[this.tokenStreamStack.length - 1] as StreamState).index = this.getPosition();
 
 		if (cacheName) {
 			const cachedStream = this.tokenStreamCache.get(cacheName);
@@ -194,7 +194,7 @@ export class Parser {
 		if (poppedStream?.cacheName) this.tokenStreamCache.set(poppedStream.cacheName, poppedStream);
 
 		if (this.tokenStreamStack.length > 0) {
-			const previousState = this.tokenStreamStack[this.tokenStreamStack.length - 1];
+			const previousState = this.tokenStreamStack[this.tokenStreamStack.length - 1] as StreamState;
 			this.activeTokens = previousState.tokens;
 			this.setPosition(previousState.index);
 		}

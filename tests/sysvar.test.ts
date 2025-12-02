@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { EvaluationContext } from "../src/expression";
 import { Logger } from "../src/logger";
 import { Assembler } from "../src/polyasm";
 import type { FileHandler } from "../src/polyasm.types";
@@ -53,21 +54,24 @@ describe("System Variables", () => {
 	it("should evaluate .NAMESPACE to the current namespace", () => {
 		const { assembler, evaluator, tokenize } = setup();
 		const tokens = tokenize(".NAMESPACE");
-		const result = evaluator.evaluate(tokens, { pc: 0, pass: 1, segment: assembler.linker.currentSegment });
+		const context = { pc: 0, pass: 1, segment: assembler.linker.currentSegment };
+		const result = evaluator.evaluate(tokens, context as Omit<EvaluationContext, "symbolTable">);
 		expect(result).toBe("global");
 	});
 
 	it("should evaluate .NS as an alias for .NAMESPACE", () => {
 		const { assembler, evaluator, tokenize } = setup();
 		const tokens = tokenize(".NS");
-		const result = evaluator.evaluate(tokens, { pc: 0, segment: assembler.linker.currentSegment });
+		const context = { pc: 0, segment: assembler.linker.currentSegment };
+		const result = evaluator.evaluate(tokens, context as Omit<EvaluationContext, "symbolTable">);
 		expect(result).toBe("global");
 	});
 
 	it("should evaluate .PC to the current Program Counter", () => {
 		const { assembler, evaluator, tokenize } = setup();
 		const tokens = tokenize(".PC");
-		const result = evaluator.evaluate(tokens, { pc: 1000, segment: assembler.linker.currentSegment });
+		const context = { pc: 1000, segment: assembler.linker.currentSegment };
+		const result = evaluator.evaluate(tokens, context as Omit<EvaluationContext, "symbolTable">);
 		expect(result).toBe(1000);
 	});
 
@@ -75,10 +79,12 @@ describe("System Variables", () => {
 		const { assembler, evaluator, tokenize } = setup();
 		const tokens = tokenize(".PASS");
 		assembler.pass = 1;
-		const result1 = evaluator.evaluate(tokens, { pc: 0, pass: 1, segment: assembler.linker.currentSegment });
+		let context = { pc: 0, pass: 1, segment: assembler.linker.currentSegment };
+		const result1 = evaluator.evaluate(tokens, context as Omit<EvaluationContext, "symbolTable">);
 		expect(result1).toBe(1);
 		assembler.pass = 2;
-		const result2 = evaluator.evaluate(tokens, { pc: 0, pass: 2, segment: assembler.linker.currentSegment });
+		context = { pc: 0, pass: 1, segment: assembler.linker.currentSegment };
+		const result2 = evaluator.evaluate(tokens, context as Omit<EvaluationContext, "symbolTable">);
 		expect(result2).toBe(2);
 	});
 });

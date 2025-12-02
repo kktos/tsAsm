@@ -26,7 +26,7 @@ export class ListDirective implements IDirective {
 			return;
 		}
 
-		const mode = argsToken[0].value;
+		const mode = argsToken[0]?.value;
 
 		switch (mode) {
 			case "ON":

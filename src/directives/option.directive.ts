@@ -17,7 +17,7 @@ export class OptionDirective implements IDirective {
 
 		if (argTokens.length < 2) throw new Error(`Invalid .OPTION syntax on line ${directive.line}. Expected: .OPTION <name> <value>`);
 
-		if (argTokens[0].type !== "IDENTIFIER") throw new Error(`Option name must be an identifier on line ${directive.line}.`);
+		if (argTokens[0]?.type !== "IDENTIFIER") throw new Error(`Option name must be an identifier on line ${directive.line}.`);
 
 		const optionName = argTokens[0].value.toLowerCase();
 		const optionValue = assembler.expressionEvaluator.evaluate(argTokens.slice(1), context);

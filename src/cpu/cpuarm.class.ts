@@ -103,10 +103,10 @@ export class CpuArmRiscHandler implements CPUHandler {
 		// 1. Handle MOV Rdest, #Immediate (Data Processing)
 		if (baseMnemonic === "MOV") {
 			// ... (MOV logic remains the same) ...
-			if (operandTokens.length >= 3 && operandTokens[1].value === ",") {
-				const Rd = this.getRegisterIndex(operandTokens[0]);
+			if (operandTokens.length >= 3 && operandTokens[1]?.value === ",") {
+				const Rd = this.getRegisterIndex(operandTokens[0] as OperatorStackToken);
 
-				if (operandTokens[2].value === "#") {
+				if (operandTokens[2]?.value === "#") {
 					// Immediate
 					resolvedAddress = resolveValue(operandTokens.slice(3));
 					mode = this.ARM_MODES.DATA_PROC;
@@ -148,7 +148,7 @@ export class CpuArmRiscHandler implements CPUHandler {
 		},
 	): number[] {
 		// We switch on the ARM specific mode strings
-		const mnemonic = tokens[0].value.toUpperCase();
+		const mnemonic = tokens[0]?.value.toUpperCase();
 
 		if (modeInfo.mode === this.ARM_MODES.BRANCH) {
 			const targetAddress = modeInfo.resolvedAddress;

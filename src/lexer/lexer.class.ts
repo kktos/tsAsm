@@ -84,7 +84,8 @@ export class AssemblyLexer {
 	private currentStream: Stream;
 
 	constructor(options?: { localLabelStyle?: string }) {
-		this.currentStream = this.streamStack[0];
+		this.currentStream = { source: "", pos: 0, line: 1, column: 1, length: 0, lastToken: null, tokenBuffer: [] };
+
 		if (options?.localLabelStyle) {
 			this.localLabelChar = options.localLabelStyle;
 		}
@@ -137,7 +138,7 @@ export class AssemblyLexer {
 			// If we've already consumed the whole source, stop
 			if (this.currentStream.pos >= this.currentStream.length) {
 				// If EOF not yet buffered, push it
-				if (this.currentStream.tokenBuffer.length === 0 || this.currentStream.tokenBuffer[this.currentStream.tokenBuffer.length - 1].type !== "EOF") {
+				if (this.currentStream.tokenBuffer.length === 0 || this.currentStream.tokenBuffer[this.currentStream.tokenBuffer.length - 1]?.type !== "EOF") {
 					const eof = this.makeToken("EOF", "", this.currentStream.line, this.currentStream.column);
 					this.currentStream.tokenBuffer.push(eof);
 				}
@@ -155,7 +156,7 @@ export class AssemblyLexer {
 		if (!token) return null;
 		if (token.type === "EOF" && this.streamStack.length > 1) {
 			this.streamStack.pop();
-			this.currentStream = this.streamStack[this.streamStack.length - 1];
+			this.currentStream = this.streamStack[this.streamStack.length - 1] as Stream;
 		}
 		return token;
 	}
@@ -170,7 +171,7 @@ export class AssemblyLexer {
 		this.currentStream.line = pos.line;
 		this.currentStream.column = pos.column;
 		this.currentStream.pos = pos.pos;
-		this.currentStream.lastToken = this.currentStream.tokenBuffer[this.currentStream.tokenBuffer.length - 1];
+		this.currentStream.lastToken = this.currentStream.tokenBuffer[this.currentStream.tokenBuffer.length - 1] as Token;
 	}
 
 	/** Consume and return the next token from the stream (or null at EOF). */
@@ -198,7 +199,7 @@ export class AssemblyLexer {
 
 		if (options?.endMarker) return this.scanRawTextBlock(this.currentStream.line, this.currentStream.column, options.endMarker);
 
-		const ch = this.currentStream.source[this.currentStream.pos];
+		const ch = this.currentStream.source[this.currentStream.pos] as string;
 		const startLine = this.currentStream.line;
 		const startColumn = this.currentStream.column;
 
@@ -647,7 +648,7 @@ export class AssemblyLexer {
 				this.advance(); // consume ':'
 
 				start = this.currentStream.pos;
-				const ch = this.currentStream.source[this.currentStream.pos];
+				const ch = this.currentStream.source[this.currentStream.pos] as string;
 				if (this.isIdentifierStart(ch)) while (this.isIdentifierPart(this.peek())) this.advance();
 				const symbolName = this.currentStream.source.slice(start, this.currentStream.pos);
 
@@ -704,12 +705,12 @@ export class AssemblyLexer {
 
 	// Hot path methods - inline candidates
 	private peek(): string {
-		return this.currentStream.pos < this.currentStream.length ? this.currentStream.source[this.currentStream.pos] : "";
+		return this.currentStream.pos < this.currentStream.length ? (this.currentStream.source[this.currentStream.pos] as string) : "";
 	}
 
 	private peekAhead(offset: number): string {
 		const pos = this.currentStream.pos + offset;
-		return pos < this.currentStream.length ? this.currentStream.source[pos] : "";
+		return pos < this.currentStream.length ? (this.currentStream.source[pos] as string) : "";
 	}
 	private advance(): void {
 		this.currentStream.pos++;

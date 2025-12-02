@@ -135,18 +135,18 @@ export class ExpressionEvaluator {
 	/** Handles comma tokens, used as separators in function arguments. */
 	private handleComma(token: Token, outputQueue: Token[], operatorStack: Token[]): void {
 		// A comma separates arguments, so we evaluate the expression for the current argument.
-		while (operatorStack.length > 0 && operatorStack[operatorStack.length - 1].value !== "(") {
+		while (operatorStack.length > 0 && operatorStack[operatorStack.length - 1]?.value !== "(") {
 			outputQueue.push(operatorStack.pop() as Token);
 		}
 
 		// Ensure the comma is inside a function call.
 		let foundParen = false;
 		for (let k = operatorStack.length - 1; k >= 0; k--) {
-			if (operatorStack[k].value === "(") {
+			if (operatorStack[k]?.value === "(") {
 				foundParen = true;
 				// Increment argument count of the function, which is right before the '('.
-				if (k > 0 && operatorStack[k - 1].type === "FUNCTION") {
-					const funcToken = operatorStack[k - 1];
+				if (k > 0 && operatorStack[k - 1]?.type === "FUNCTION") {
+					const funcToken = operatorStack[k - 1] as Token;
 					// Safely increment argCount
 					funcToken.argCount = (funcToken.argCount ?? 0) + 1;
 				}
@@ -262,7 +262,7 @@ export class ExpressionEvaluator {
 		const currentPrecedence = PRECEDENCE[token.value] ?? 0;
 
 		while (operatorStack.length > 0) {
-			const topOp = operatorStack[operatorStack.length - 1];
+			const topOp = operatorStack[operatorStack.length - 1] as OperatorStackToken;
 			if (topOp.value === "(") break;
 
 			const topPrecedence = PRECEDENCE[topOp.value] ?? 0;
@@ -299,13 +299,13 @@ export class ExpressionEvaluator {
 					lastToken.type === "ARRAY" ||
 					lastToken.value === ")"); // closing parenthesis of a sub-expression or array access
 
-			if (processedToken.value === "[" && !isPrecededByOperand) {
+			if (processedToken?.value === "[" && !isPrecededByOperand) {
 				// Array literal detection
 				let balance = 1;
 				let j = index + 1;
 				for (; j < tokens.length; j++) {
-					if (tokens[j].value === "[") balance++;
-					if (tokens[j].value === "]") balance--;
+					if (tokens[j]?.value === "[") balance++;
+					if (tokens[j]?.value === "]") balance--;
 					if (balance === 0) break;
 				}
 
@@ -325,7 +325,7 @@ export class ExpressionEvaluator {
 				continue;
 			}
 
-			switch (processedToken.type) {
+			switch (processedToken?.type) {
 				case "IDENTIFIER": {
 					// An operand should not follow another operand without an operator in between.
 					if (lastToken && lastToken.type !== "OPERATOR" && lastToken.type !== "COMMA" && lastToken.value !== "(")
@@ -466,7 +466,7 @@ export class ExpressionEvaluator {
 
 					const property = token.value;
 					if (property && property in obj) {
-						stack.push(obj[property]);
+						stack.push(obj[property] as SymbolValue);
 						break;
 					}
 
@@ -486,12 +486,12 @@ export class ExpressionEvaluator {
 		if (stack.length !== 1) {
 			// This can happen with expressions like "5 5" which is not a valid single expression.
 			// It might also indicate an issue with string literals not being part of a valid expression.
-			if (rpnTokens.length === 1 && (rpnTokens[0].type === "STRING" || rpnTokens[0].type === "IDENTIFIER")) return stack[0];
+			if (rpnTokens.length === 1 && (rpnTokens[0]?.type === "STRING" || rpnTokens[0]?.type === "IDENTIFIER")) return stack[0] as SymbolValue;
 
 			throw new Error("Invalid expression format.");
 		}
 
-		return stack[0];
+		return stack[0] as SymbolValue;
 	}
 
 	private handleUnaryOperator(token: OperatorToken, right: SymbolValue | undefined, stack: SymbolValue[]): boolean {
@@ -517,7 +517,7 @@ export class ExpressionEvaluator {
 
 			if (right < 0 || right >= array.length) throw new Error(`Array index ${right} out of bounds for array of length ${array.length} on line ${token.line}.`);
 
-			stack.push(array[right]);
+			stack.push(array[right] as SymbolValue);
 			return true;
 		}
 		return false;
@@ -670,10 +670,9 @@ export class ExpressionEvaluator {
 				if (direction === -1) {
 					// Backward reference: Find the last label defined *before* the current PC.
 					const relevantLabels = labels.filter((pc) => pc <= context.pc);
-					if (relevantLabels.length < count) {
-						throw new Error(`Not enough preceding anonymous labels to satisfy '${token.value}' on line ${token.line}.`);
-					}
-					return relevantLabels[relevantLabels.length - count];
+					if (relevantLabels.length < count) throw new Error(`Not enough preceding anonymous labels to satisfy '${token.value}' on line ${token.line}.`);
+
+					return relevantLabels[relevantLabels.length - count] as SymbolValue;
 				}
 				// Forward reference: Find the first label defined *at or after* the current PC.
 				const relevantLabels = labels.filter((pc) => pc >= context.pc);
@@ -681,7 +680,7 @@ export class ExpressionEvaluator {
 					// During pass 2, this is a fatal error.
 					throw new Error(`Not enough succeeding anonymous labels to satisfy '${token.value}' on line ${token.line}.`);
 
-				return relevantLabels[count - 1];
+				return relevantLabels[count - 1] as SymbolValue;
 			}
 
 			default:

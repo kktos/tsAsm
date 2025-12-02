@@ -154,7 +154,7 @@ export class LoopDirective implements IDirective {
 
 			// Handle .FOR specific item value
 			if (state.items && state.itemIterator) {
-				const currentItem = state.items[currentIndex];
+				const currentItem = state.items[currentIndex] as SymbolValue;
 				assembler.symbolTable.define(state.itemIterator.value, currentItem, false);
 			}
 

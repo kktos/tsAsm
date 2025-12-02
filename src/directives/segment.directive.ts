@@ -5,13 +5,18 @@ import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class SegmentDirective implements IDirective {
 	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
-		const tokens = assembler.parser.getInstructionTokens();
-		if (tokens.length === 0) throw new Error(`ERROR on line ${directive.line}: .SEGMENT requires a name expression.`);
-
 		let name: SymbolValue;
-		if (tokens.length === 1 && tokens[0].type === "IDENTIFIER") name = tokens[0].value;
-		else name = assembler.expressionEvaluator.evaluate(tokens, context);
-		if (typeof name !== "string") throw new Error(`ERROR on line ${directive.line}: .SEGMENT name must evaluate to a string.`);
+
+		const token = assembler.parser.peekToken();
+		if (token?.type === "IDENTIFIER") {
+			name = token.value;
+			assembler.parser.consume();
+		} else {
+			const tokens = assembler.parser.getInstructionTokens();
+			if (tokens.length === 0) throw new Error(`ERROR on line ${directive.line}: .SEGMENT requires a name expression.`);
+			name = assembler.expressionEvaluator.evaluate(tokens, context);
+			if (typeof name !== "string") throw new Error(`ERROR on line ${directive.line}: .SEGMENT name must evaluate to a string.`);
+		}
 
 		if (assembler.parser.peekToken()?.type === "LBRACE") {
 			const params = this.parseBlockParameters(assembler, context, directive.line);
@@ -32,13 +37,18 @@ export class SegmentDirective implements IDirective {
 	}
 
 	public handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
-		const tokens = assembler.parser.getInstructionTokens();
-		if (tokens.length === 0) throw new Error(`ERROR on line ${directive.line}: .SEGMENT requires a name expression.`);
-
 		let name: SymbolValue;
-		if (tokens.length === 1 && tokens[0].type === "IDENTIFIER") name = tokens[0].value;
-		else name = assembler.expressionEvaluator.evaluate(tokens, context);
-		if (typeof name !== "string") throw new Error(`ERROR on line ${directive.line}: .SEGMENT name must evaluate to a string.`);
+
+		const token = assembler.parser.peekToken();
+		if (token?.type === "IDENTIFIER") {
+			name = token.value;
+			assembler.parser.consume();
+		} else {
+			const tokens = assembler.parser.getInstructionTokens();
+			if (tokens.length === 0) throw new Error(`ERROR on line ${directive.line}: .SEGMENT requires a name expression.`);
+			name = assembler.expressionEvaluator.evaluate(tokens, context);
+			if (typeof name !== "string") throw new Error(`ERROR on line ${directive.line}: .SEGMENT name must evaluate to a string.`);
+		}
 
 		// If it was a definition, the segment was already added in pass one.
 		if (assembler.parser.peekToken()?.type === "LBRACE") {

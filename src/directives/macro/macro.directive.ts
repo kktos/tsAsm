@@ -94,14 +94,14 @@ export class MacroDirective implements IDirective {
 		const parameterTokens = assembler.parser.getInstructionTokens(directive);
 		if (parameterTokens.length > 0) {
 			let paramIndex = 0;
-			const hasParentheses = parameterTokens[0].value === "(";
+			const hasParentheses = parameterTokens[0]?.value === "(";
 			if (hasParentheses) paramIndex++;
 
 			while (paramIndex < parameterTokens.length) {
 				const token = parameterTokens[paramIndex];
-				if (hasParentheses && token.value === ")") break;
+				if (hasParentheses && token?.value === ")") break;
 
-				if (token.type === "REST_OPERATOR") {
+				if (token?.type === "REST_OPERATOR") {
 					paramIndex++;
 					const restToken = parameterTokens[paramIndex];
 					if (restToken?.type !== "IDENTIFIER") throw `[PASS 1] ERROR: Expected identifier after '...' in macro definition on line ${directive.line}.`;
@@ -117,9 +117,9 @@ export class MacroDirective implements IDirective {
 					break; // End of parameters
 				}
 
-				if (token.type === "IDENTIFIER") {
+				if (token?.type === "IDENTIFIER") {
 					parameters.push(token.value);
-				} else if (token.type !== "COMMA") {
+				} else if (token?.type !== "COMMA") {
 					throw `[PASS 1] SYNTAX ERROR: Unexpected token in macro parameter list on line ${directive.line}.`;
 				}
 

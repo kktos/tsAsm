@@ -177,7 +177,7 @@ export class MacroHandler {
 
 		// If the original tokens were empty, or if the only argument found is empty,
 		// it means there were no actual arguments.
-		if (argsArray.length === 1 && argsArray[0].length === 0) return [];
+		if (argsArray.length === 1 && argsArray[0]?.length === 0) return [];
 
 		return argsArray;
 	}

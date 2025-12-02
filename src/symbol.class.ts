@@ -82,13 +82,13 @@ export class PASymbolTable {
 
 	/** Retrieves the current active namespace. */
 	getCurrentNamespace(): string {
-		const current = this.scopeStack[this.scopeStack.length - 1];
+		const current = this.scopeStack[this.scopeStack.length - 1] as string;
 		if (current === INTERNAL_GLOBAL) return "global";
 		return current;
 	}
 
 	getCurrentScope() {
-		const current = this.scopeStack[this.scopeStack.length - 1];
+		const current = this.scopeStack[this.scopeStack.length - 1] as string;
 		return this.symbols.get(current);
 	}
 
@@ -100,7 +100,7 @@ export class PASymbolTable {
 	addSymbol(symbolName: string, value: SymbolValue): void {
 		const name = symbolName.toUpperCase();
 
-		const namespaceKey = this.scopeStack[this.scopeStack.length - 1];
+		const namespaceKey = this.scopeStack[this.scopeStack.length - 1] as string;
 		const namespace = this.getCurrentNamespace();
 
 		// Local labels start with a dot (e.g., '.loop')
@@ -134,7 +134,7 @@ export class PASymbolTable {
 	define(symbolName: string, value: SymbolValue, isGlobal = false): void {
 		const name = symbolName.toUpperCase();
 
-		const scopeKey = this.scopeStack[this.scopeStack.length - 1];
+		const scopeKey = this.scopeStack[this.scopeStack.length - 1] as string;
 		const scope = this.symbols.get(scopeKey);
 		if (!scope) throw new Error(`[SymbolTable] ERROR: Current scope '${this.getCurrentNamespace()}' does not exist.`);
 
@@ -146,7 +146,7 @@ export class PASymbolTable {
 
 		// Search up the scope stack to find the symbol.
 		for (let i = this.scopeStack.length - 1; i >= 0; i--) {
-			const scopeName = this.scopeStack[i];
+			const scopeName = this.scopeStack[i] as string;
 			const scope = this.symbols.get(scopeName);
 			const symbol = scope?.get(name);
 			if (symbol) {
@@ -168,14 +168,14 @@ export class PASymbolTable {
 
 		// 1. Search from the current scope up to the global scope.
 		for (let i = this.scopeStack.length - 1; i >= 0; i--) {
-			const scopeName = this.scopeStack[i];
+			const scopeName = this.scopeStack[i] as string;
 			const scope = this.symbols.get(scopeName);
 			if (scope?.has(name)) return scope.get(name)?.value;
 		}
 
 		// 2. Handle namespaced lookup (TOTO::LABEL)
 		if (name.includes("::")) {
-			const [ns, symName] = name.split("::");
+			const [ns, symName] = name.split("::") as [string, string];
 			const targetScope = ns.toLowerCase() === "global" ? this.symbols.get(INTERNAL_GLOBAL) : this.symbols.get(ns);
 			if (targetScope?.has(symName)) return targetScope.get(symName)?.value;
 		}

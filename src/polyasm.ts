@@ -8,7 +8,7 @@ import { AssemblyLexer, type OperatorStackToken, type ScalarToken, type Token } 
 import { Linker, type Segment } from "./linker.class";
 import { Logger } from "./logger";
 import { Parser } from "./parser.class";
-import type { AssemblerOptions, DataProcessor, FileHandler } from "./polyasm.types";
+import type { AssemblerOptions, DataProcessor, FileHandler, StreamState } from "./polyasm.types";
 import { PASymbolTable } from "./symbol.class";
 import { getHex } from "./utils/hex.util";
 
@@ -63,7 +63,7 @@ export class Assembler {
 
 		if (options?.segments) {
 			for (const seg of options.segments) this.linker.addSegment(seg.name, seg.start, seg.size, seg.padValue, seg.resizable);
-			this.linker.useSegment(options.segments[0].name);
+			if (options.segments[0]) this.linker.useSegment(options.segments[0].name);
 		}
 	}
 	/** Convenience: add a segment via the embedded linker. */
@@ -140,7 +140,7 @@ export class Assembler {
 		this.anonymousLabels = [];
 		this.lastGlobalLabel = null;
 
-		if (this.linker.segments.length) this.currentPC = this.linker.segments.length ? this.linker.segments[0].start : DEFAULT_PC;
+		if (this.linker.segments.length) this.currentPC = this.linker.segments[0] ? this.linker.segments[0].start : DEFAULT_PC;
 
 		while (this.parser.tokenStreamStack.length > 0) {
 			const token = this.parser.nextToken();
@@ -165,7 +165,7 @@ export class Assembler {
 						allowForwardRef: true,
 						currentGlobalLabel: this.lastGlobalLabel,
 						options: this.options,
-						macroArgs: this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1].macroArgs,
+						macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
 					};
 
 					this.directiveHandler.handlePassOneDirective(directiveToken, directiveContext);
@@ -234,7 +234,7 @@ export class Assembler {
 	private passTwo(): void {
 		this.logger.log(`\n--- Starting Pass 2: Code Generation (${this.cpuHandler.cpuType}) ---`);
 		this.pass = 2;
-		if (this.linker.segments.length) this.currentPC = this.linker.segments.length ? this.linker.segments[0].start : DEFAULT_PC;
+		if (this.linker.segments.length) this.currentPC = this.linker.segments[0] ? this.linker.segments[0].start : DEFAULT_PC;
 
 		// this.symbolTable.setSymbol("*", this.currentPC);
 		this.anonymousLabels = [];
@@ -297,7 +297,7 @@ export class Assembler {
 					const streamBefore = this.parser.tokenStreamStack.length;
 					const directiveContext = {
 						pc: this.currentPC,
-						macroArgs: this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1].macroArgs,
+						macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
 						currentGlobalLabel: this.lastGlobalLabel,
 						options: this.options,
 					};
@@ -336,7 +336,7 @@ export class Assembler {
 			allowForwardRef: true,
 			currentGlobalLabel: this.lastGlobalLabel, // Added for .EQU
 			options: this.options,
-			macroArgs: this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1].macroArgs,
+			macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
 		});
 
 		if (Array.isArray(value)) this.logger.log(`Defined array symbol ${labelToken} with ${value.length} elements.`);
@@ -359,7 +359,7 @@ export class Assembler {
 				allowForwardRef: false, // now require resolution
 				currentGlobalLabel: this.lastGlobalLabel,
 				options: this.options,
-				macroArgs: this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1].macroArgs,
+				macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
 				assembler: this,
 			});
 
@@ -396,7 +396,7 @@ export class Assembler {
 	private handleInstructionPassOne(mnemonicToken: ScalarToken): void {
 		let operandTokens = this.parser.getInstructionTokens(mnemonicToken) as OperatorStackToken[];
 
-		const currentStream = this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1];
+		const currentStream = this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState;
 		if (currentStream.macroArgs) operandTokens = this.substituteTokens(operandTokens, currentStream.macroArgs) as OperatorStackToken[];
 
 		// It's an instruction. Resolve its size and advance the PC.
@@ -423,7 +423,7 @@ export class Assembler {
 			// It's an instruction.
 			let operandTokens = this.parser.getInstructionTokens(mnemonicToken) as OperatorStackToken[];
 
-			const currentStream = this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1];
+			const currentStream = this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState;
 			if (currentStream.macroArgs) operandTokens = this.substituteTokens(operandTokens, currentStream.macroArgs) as OperatorStackToken[];
 
 			if (this.isAssembling) {
@@ -432,7 +432,7 @@ export class Assembler {
 					const modeInfo = this.cpuHandler.resolveAddressingMode(mnemonicToken.value, operandTokens, (exprTokens) =>
 						this.expressionEvaluator.evaluateAsNumber(exprTokens, {
 							pc: this.currentPC,
-							macroArgs: this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1].macroArgs,
+							macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
 							assembler: this,
 							currentGlobalLabel: this.lastGlobalLabel,
 							options: this.options,
@@ -474,7 +474,7 @@ export class Assembler {
 			const sizeInfo = this.cpuHandler.resolveAddressingMode(mnemonicToken.value, operandTokens, (exprTokens) =>
 				this.expressionEvaluator.evaluateAsNumber(exprTokens, {
 					pc: this.currentPC,
-					macroArgs: this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1].macroArgs,
+					macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
 					currentGlobalLabel: this.lastGlobalLabel, // Added for instruction size evaluation
 					options: this.options,
 				}),
@@ -513,7 +513,7 @@ export class Assembler {
 	private substituteTokens(tokens: Token[], macroArgs: Map<string, Token[]>): Token[] {
 		const result: Token[] = [];
 		for (let i = 0; i < tokens.length; i++) {
-			const token = tokens[i];
+			const token = tokens[i] as Token;
 
 			if (token.type !== "IDENTIFIER" || !macroArgs.has(token.value)) {
 				result.push(token);
@@ -523,24 +523,24 @@ export class Assembler {
 			// Token is a macro argument.
 
 			// Check for array access like `parms[0]`
-			if (i + 1 < tokens.length && tokens[i + 1].value === "[") {
+			if (i + 1 < tokens.length && tokens[i + 1]?.value === "[") {
 				let j = i + 2;
 				let parenDepth = 0;
-				const indexTokens = [];
+				const indexTokens: Token[] = [];
 
 				// Find closing ']' and gather index tokens
 				while (j < tokens.length) {
-					if (tokens[j].value === "[") parenDepth++;
-					else if (tokens[j].value === "]") {
+					if (tokens[j]?.value === "[") parenDepth++;
+					else if (tokens[j]?.value === "]") {
 						if (parenDepth === 0) break;
 						parenDepth--;
 					}
-					indexTokens.push(tokens[j]);
+					indexTokens.push(tokens[j] as Token);
 					j++;
 				}
 
 				// If we found a complete `[...]` expression
-				if (j < tokens.length && tokens[j].value === "]") {
+				if (j < tokens.length && tokens[j]?.value === "]") {
 					const indexValue = this.expressionEvaluator.evaluateAsNumber(indexTokens, {
 						pc: this.currentPC,
 						macroArgs: macroArgs, // Pass current macro args for evaluation context
@@ -554,13 +554,13 @@ export class Assembler {
 					const argTokens = macroArgs.get(token.value) ?? [];
 
 					// if(expressions[0].type==="ARRAY") expressions = expressions[0].value;
-					const expressions = argTokens[0].value as Token[][];
+					const expressions = argTokens[0]?.value as Token[][];
 
 					if (indexValue < 0 || indexValue >= expressions.length)
 						throw new Error(`Macro argument index ${indexValue} out of bounds for argument '${token.value}' on line ${token.line}.`);
 
 					// result.push(...expressions[indexValue]);
-					result.push(...expressions[indexValue]);
+					result.push(...(expressions[indexValue] as Token[]));
 					i = j; // Advance main loop past `]`
 					continue;
 				}

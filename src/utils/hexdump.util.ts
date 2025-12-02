@@ -15,7 +15,7 @@ export function hexDump(address: number, bytes: number[]): string {
 
 		for (let i = 0; i < bytesPerLine; i++) {
 			if (i < lineBytes.length) {
-				const byte = lineBytes[i];
+				const byte = lineBytes[i] as number;
 				hexParts.push(byte.toString(16).toUpperCase().padStart(2, "0"));
 				asciiParts.push(byte >= 32 && byte <= 126 ? String.fromCharCode(byte) : ".");
 			} else {
