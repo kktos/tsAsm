@@ -148,10 +148,7 @@ export class Assembler {
 			if (!token || token.type === "EOF") {
 				const poppedStream = this.parser.popTokenStream(false); // Don't emit event yet
 				if (this.parser.tokenStreamStack.length === 0) break;
-				if (poppedStream) {
-					this.emitter.emit(`endOfStream:${poppedStream.id}`);
-					// if (this.symbolTable.getCurrentNamespace().startsWith("__MACRO_")) this.symbolTable.popScope();
-				}
+				if (poppedStream) this.emitter.emit(`endOfStream:${poppedStream.id}`);
 				continue;
 			}
 
@@ -188,14 +185,11 @@ export class Assembler {
 				case "IDENTIFIER": {
 					// PRIORITY 1: MACRO
 					if (this.macroHandler.isMacro(token.value)) {
-						// this.setPosition(this.skipToEndOfLine(this.getPosition()));
 						this.macroHandler.expandMacro(token);
 						break;
 					}
 
-					// PRIORITY 2: CPU INSTRUCTION OR ...
-					// A mnemonic must be a string. If it's an array, it's an error.
-					// if (typeof token.value !== "string") throw new Error("Invalid instruction: Mnemonic cannot be an array.");
+					// PRIORITY 2: CPU INSTRUCTION ...
 
 					// Check if the mnemonic is a known instruction for the current CPU.
 					if (this.cpuHandler.isInstruction(token.value)) {
@@ -236,21 +230,16 @@ export class Assembler {
 		this.pass = 2;
 		if (this.linker.segments.length) this.currentPC = this.linker.segments[0] ? this.linker.segments[0].start : DEFAULT_PC;
 
-		// this.symbolTable.setSymbol("*", this.currentPC);
 		this.anonymousLabels = [];
 		this.lastGlobalLabel = null;
 
 		while (this.parser.tokenStreamStack.length > 0) {
-			// const token = this.peekToken(0);
 			const token = this.parser.nextToken();
 			// If no token or EOF, pop the active stream
 			if (!token || token.type === "EOF") {
 				const poppedStream = this.parser.popTokenStream(false); // Don't emit event yet
 				if (this.parser.tokenStreamStack.length === 0) break;
-				if (poppedStream) {
-					this.emitter.emit(`endOfStream:${poppedStream.id}`);
-					// if (this.symbolTable.getCurrentNamespace().startsWith("__MACRO_")) this.symbolTable.popScope();
-				}
+				if (poppedStream) this.emitter.emit(`endOfStream:${poppedStream.id}`);
 				continue;
 			}
 
@@ -280,13 +269,6 @@ export class Assembler {
 					}
 
 					this.lastGlobalLabel = token.value;
-					// if (this.symbolTable.lookupSymbol(token.value) !== undefined) {
-					// It's a label definition (e.g., MyLoop:).
-					// Consume only the label token, and let the loop handle the instruction on the next iteration.
-					// 	this.lastGlobalLabel = token.value;
-					// 	break;
-					// }
-
 					break;
 				}
 
@@ -353,44 +335,36 @@ export class Assembler {
 
 		const expressionTokens = this.parser.getExpressionTokens(token);
 
-		try {
-			const value = this.expressionEvaluator.evaluate(expressionTokens, {
-				pc: this.currentPC,
-				allowForwardRef: false, // now require resolution
-				currentGlobalLabel: this.lastGlobalLabel,
-				options: this.options,
-				macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
-				assembler: this,
-			});
+		const value = this.expressionEvaluator.evaluate(expressionTokens, {
+			pc: this.currentPC,
+			allowForwardRef: false, // now require resolution
+			currentGlobalLabel: this.lastGlobalLabel,
+			options: this.options,
+			macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
+			assembler: this,
+		});
 
-			// If evaluation produced undefined, treat as an error in Pass 2
-			if (value === undefined) {
-				this.logger.error(`ERROR defining .EQU for ${label}: unresolved expression`);
-				throw new Error(`Pass 2: Unresolved assignment for ${label} on line ${token.line}`);
-			}
+		// If evaluation produced undefined, treat as an error in Pass 2
+		if (value === undefined) throw new Error(`Pass 2: Unresolved assignment for ${label} on line ${token.line}`);
 
-			let logLine = `${label}`;
-			switch (typeof value) {
-				case "object":
-					if (Array.isArray(value)) logLine += `= [${value.map((v) => v.value).join(",")}]`;
-					else logLine += `= ${value}`;
-					break;
-				case "number":
-					logLine += `= $${getHex(value)}`;
-					break;
-				case "string":
-					logLine += `= "${value}"`;
-					break;
-			}
-			this.logger.log(logLine);
-
-			// If symbol exists already, update it; otherwise add it as a constant.
-			if (this.symbolTable.lookupSymbol(label) !== undefined) this.symbolTable.setSymbol(label, value);
-			else this.symbolTable.addSymbol(label, value);
-		} catch (e) {
-			this.logger.error(`ERROR defining .EQU for ${label}: ${e}`);
-			throw e instanceof Error ? e : new Error(String(e));
+		let logLine = `${label}`;
+		switch (typeof value) {
+			case "object":
+				if (Array.isArray(value)) logLine += `= [${value.map((v) => v.value).join(",")}]`;
+				else logLine += `= ${value}`;
+				break;
+			case "number":
+				logLine += `= $${getHex(value)}`;
+				break;
+			case "string":
+				logLine += `= "${value}"`;
+				break;
 		}
+		this.logger.log(logLine);
+
+		// If symbol exists already, update it; otherwise add it as a constant.
+		if (this.symbolTable.lookupSymbol(label) !== undefined) this.symbolTable.setSymbol(label, value);
+		else this.symbolTable.addSymbol(label, value);
 	}
 
 	private handleInstructionPassOne(mnemonicToken: ScalarToken): void {
@@ -455,8 +429,7 @@ export class Assembler {
 					this.currentPC += encodedBytes.length;
 				} catch (e) {
 					const errorMessage = e instanceof Error ? e.message : String(e);
-					this.logger.error(`\nFATAL ERROR on line ${mnemonicToken.line}: Invalid instruction syntax or unresolved symbol. Error: ${errorMessage}`);
-					throw new Error(`Assembly failed on line ${mnemonicToken.line}: ${errorMessage}`);
+					throw new Error(`ERROR on line ${mnemonicToken.line}: Invalid instruction syntax or unresolved symbol. Error: ${errorMessage}`);
 				}
 			} else {
 				// Not assembling: just advance PC
@@ -484,31 +457,6 @@ export class Assembler {
 			return this.cpuHandler.cpuType === "ARM_RISC" ? 4 : 3; // Robust default based on CPU type
 		}
 	}
-
-	// private extractExpressionArrayTokens(tokens: Token[]) {
-	// 	const result: Token[][] = [];
-	// 	let current: Token[] = [];
-	// 	let parenDepth = 0;
-
-	// 	if (tokens.length < 2) return result;
-	// 	if (tokens[0].value !== "[" || tokens[tokens.length - 1].value !== "]") return result;
-
-	// 	// for (const token of tokens) {
-	// 	for (let idx = 1; idx < tokens.length - 1; idx++) {
-	// 		const token = tokens[idx];
-	// 		if (token.type === "OPERATOR" && token.value === "(") parenDepth++;
-	// 		if (token.type === "OPERATOR" && token.value === ")") parenDepth--;
-	// 		if (token.type === "COMMA" && parenDepth === 0) {
-	// 			result.push(current);
-	// 			current = [];
-	// 		} else {
-	// 			current.push(token);
-	// 		}
-	// 	}
-	// 	if (current.length > 0) result.push(current);
-
-	// 	return result;
-	// }
 
 	private substituteTokens(tokens: Token[], macroArgs: Map<string, Token[]>): Token[] {
 		const result: Token[] = [];
