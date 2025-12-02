@@ -74,7 +74,6 @@ export interface EvaluationContext {
 	macroArgs?: Map<string, Token[]>;
 	allowForwardRef?: boolean;
 	currentGlobalLabel?: string | null;
-	options?: Map<string, string>;
 }
 
 export class ExpressionEvaluator {

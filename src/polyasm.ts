@@ -323,7 +323,6 @@ export class Assembler {
 			pc: this.currentPC,
 			allowForwardRef: true,
 			currentGlobalLabel: this.lastGlobalLabel, // Added for .EQU
-			options: this.options,
 			macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
 		});
 
@@ -345,7 +344,6 @@ export class Assembler {
 			pc: this.currentPC,
 			allowForwardRef: false, // now require resolution
 			currentGlobalLabel: this.lastGlobalLabel,
-			options: this.options,
 			macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
 			assembler: this,
 		});
@@ -386,7 +384,6 @@ export class Assembler {
 					pc: this.currentPC,
 					allowForwardRef: true,
 					currentGlobalLabel: this.lastGlobalLabel,
-					options: this.options,
 					assembler: this,
 				}),
 			);
@@ -415,7 +412,6 @@ export class Assembler {
 							macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
 							assembler: this,
 							currentGlobalLabel: this.lastGlobalLabel,
-							options: this.options,
 						}),
 					);
 
@@ -455,7 +451,6 @@ export class Assembler {
 					pc: this.currentPC,
 					macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
 					currentGlobalLabel: this.lastGlobalLabel, // Added for instruction size evaluation
-					options: this.options,
 				}),
 			);
 			return sizeInfo.bytes;
@@ -500,7 +495,6 @@ export class Assembler {
 						macroArgs: macroArgs, // Pass current macro args for evaluation context
 						assembler: this,
 						currentGlobalLabel: this.lastGlobalLabel,
-						options: this.options,
 					});
 
 					// const argTokens = macroArgs.get(token.value) ?? [];

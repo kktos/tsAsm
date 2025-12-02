@@ -21,7 +21,6 @@ export class IncludeDirective implements IDirective {
 			macroArgs: assembler.parser.tokenStreamStack[assembler.parser.tokenStreamStack.length - 1]?.macroArgs,
 			assembler,
 			currentGlobalLabel: assembler.getLastGlobalLabel?.() ?? undefined,
-			options: assembler.options,
 		};
 
 		const filename = assembler.expressionEvaluator.evaluate(expressionTokens, evaluationContext);
@@ -50,7 +49,6 @@ export class IncludeDirective implements IDirective {
 			macroArgs: assembler.parser.tokenStreamStack[assembler.parser.tokenStreamStack.length - 1]?.macroArgs,
 			assembler,
 			currentGlobalLabel: assembler.getLastGlobalLabel?.() ?? undefined,
-			options: assembler.options,
 		};
 
 		const filename = assembler.expressionEvaluator.evaluate(expressionTokens, evaluationContext);

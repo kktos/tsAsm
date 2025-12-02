@@ -56,7 +56,6 @@ export class LoopDirective implements IDirective {
 			macroArgs: assembler.parser.tokenStreamStack[assembler.parser.tokenStreamStack.length - 1]?.macroArgs,
 			assembler,
 			currentGlobalLabel: assembler.getLastGlobalLabel?.() ?? undefined,
-			options: assembler.options,
 		};
 
 		const arrayValue = assembler.expressionEvaluator.evaluate(expressionTokens, evaluationContext);
@@ -108,7 +107,6 @@ export class LoopDirective implements IDirective {
 			macroArgs: assembler.parser.tokenStreamStack[assembler.parser.tokenStreamStack.length - 1]?.macroArgs,
 			assembler,
 			currentGlobalLabel: assembler.getLastGlobalLabel?.() ?? undefined,
-			options: assembler.options,
 		};
 
 		const count = assembler.expressionEvaluator.evaluateAsNumber(exprTokens, evaluationContext);

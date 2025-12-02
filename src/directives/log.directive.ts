@@ -66,7 +66,6 @@ export class LogDirective implements IDirective {
 				allowForwardRef: context.allowForwardRef ?? false,
 				macroArgs: context.macroArgs,
 				currentGlobalLabel: context.currentGlobalLabel,
-				options: context.options,
 			});
 
 			outputs.push(this.formatValue(value));
