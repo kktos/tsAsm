@@ -137,5 +137,33 @@ describe("Label References", () => {
 				0x60, // RTS
 			]);
 		});
+
+		it("should resolve named local labels with the same name in different scopes", () => {
+			const { assembler } = setup();
+			const source = `
+				.ORG $1000
+				Scope1:
+					JMP :local
+				:local
+					NOP
+
+				Scope2:
+					JMP :local
+				:local
+					NOP
+			`;
+			assembler.assemble(source);
+			const machineCode = assembler.link();
+			expect(machineCode).toEqual([
+				0x4c,
+				0x03,
+				0x10, // JMP $1003 (Scope1::local)
+				0xea, // NOP
+				0x4c,
+				0x07,
+				0x10, // JMP $1007 (Scope2::local)
+				0xea, // NOP
+			]);
+		});
 	});
 });
