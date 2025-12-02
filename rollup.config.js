@@ -1,15 +1,17 @@
 // rollup.config.js
-import { defineConfig } from 'rollup';
-import typescript from '@rollup/plugin-typescript';
-import json from '@rollup/plugin-json';
-import terser from '@rollup/plugin-terser';
+
+import json from "@rollup/plugin-json";
+import terser from "@rollup/plugin-terser";
+import typescript from "@rollup/plugin-typescript";
+import { defineConfig } from "rollup";
 
 export default defineConfig([
 	{
 		output: {
-			dir: 'dist',
-			format: 'esm',
+			dir: "dist",
+			format: "esm",
+			sourcemap: true,
 		},
-		plugins: [typescript(), json(), terser()]
-	}
+		plugins: [typescript(), json(), terser()],
+	},
 ]);

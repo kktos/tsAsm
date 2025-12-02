@@ -14,11 +14,9 @@
 		"asm6502": "tsasm.js"
 	},
 	"scripts": {
-		"prebuild": "rimraf ./dist",
 		"check": "tsc --noEmit",
-		"build": "rollup -c rollup.config.js tsasm=src/polyasm.ts",
+		"build": "rimraf ./dist && rollup -c rollup.config.js tsasm=src/polyasm.ts",
 		"build.old": "rollup -c rollup.config.js libasm6502=src/lib/assembler.ts asm6502=src/cli/main.ts",
-		"postbuild": "node tools/postbuild.js",
 		"test": "vitest",
 		"generate-test-data": "ts-node --esm test/generate-test-data.ts",
 		"lint:ci": "biome ci ./src",
