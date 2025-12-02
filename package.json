@@ -49,6 +49,9 @@
 		"onlyBuiltDependencies": [
 			"@biomejs/biome",
 			"rollup"
+		],
+		"ignoredBuiltDependencies": [
+			"esbuild"
 		]
 	}
 }
