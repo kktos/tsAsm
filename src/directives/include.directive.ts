@@ -27,8 +27,7 @@ export class IncludeDirective implements IDirective {
 		if (typeof filename !== "string") throw new Error(`ERROR: .INCLUDE requires a string argument on line ${directive.line}.`);
 
 		try {
-			const rawContent = assembler.fileHandler.readSourceFile(filename);
-			assembler.lexer.startStream(rawContent);
+			assembler.startNewStream(filename);
 			assembler.parser.pushTokenStream({ newTokens: assembler.lexer.getBufferedTokens(), cacheName: filename });
 
 			assembler.logger.log(`Included source file: ${filename}.`);
@@ -39,15 +38,16 @@ export class IncludeDirective implements IDirective {
 
 	public handlePassTwo(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
 		const expressionTokens = assembler.parser.getInstructionTokens();
+
 		const evaluationContext = {
 			pc: assembler.currentPC,
 			macroArgs: assembler.parser.tokenStreamStack[assembler.parser.tokenStreamStack.length - 1]?.macroArgs,
 			assembler,
 			currentGlobalLabel: assembler.getLastGlobalLabel?.() ?? undefined,
 		};
-
 		const filename = assembler.expressionEvaluator.evaluate(expressionTokens, evaluationContext);
 		if (typeof filename !== "string") throw new Error(`ERROR: .INCLUDE requires a string argument on line ${directive.line}.`);
+
 		assembler.parser.pushTokenStream({ cacheName: filename, newTokens: [] });
 	}
 }

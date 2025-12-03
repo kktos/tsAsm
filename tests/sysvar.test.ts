@@ -87,4 +87,13 @@ describe("System Variables", () => {
 		const result2 = evaluator.evaluate(tokens, context as Omit<EvaluationContext, "symbolTable">);
 		expect(result2).toBe(2);
 	});
+
+	it("should evaluate .FILENAME to the current Filename", () => {
+		const { assembler, evaluator, tokenize } = setup();
+		const tokens = tokenize(".FILENAME");
+		const context = { pc: 1000, segment: assembler.linker.currentSegment };
+		assembler.currentFilename = "test.asm";
+		const result = evaluator.evaluate(tokens, context as Omit<EvaluationContext, "symbolTable">);
+		expect(result).toBe("test.asm");
+	});
 });

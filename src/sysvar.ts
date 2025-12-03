@@ -8,6 +8,7 @@ export interface SysVarContext {
 	symbolTable: PASymbolTable;
 	pass: number;
 	segment: Segment;
+	filename: string;
 }
 
 /**
@@ -32,6 +33,9 @@ export function resolveSysVar(token: Token, context: SysVarContext): SymbolValue
 
 		case "SEGMENT":
 			return context.segment;
+
+		case "FILENAME":
+			return context.filename;
 
 		default:
 			throw new Error(`Unknown system variable: ${name} on line ${token.line}.`);

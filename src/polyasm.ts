@@ -25,6 +25,7 @@ export class Assembler {
 	public symbolTable: PASymbolTable;
 	public currentPC: number;
 	public isAssembling = true;
+	public currentFilename = "";
 
 	private lastGlobalLabel: string | null = null;
 	public anonymousLabels: number[] = [];
@@ -102,10 +103,16 @@ export class Assembler {
 		return this.options.get(name);
 	}
 
+	public startNewStream(filename: string) {
+		this.currentFilename = filename;
+		const rawContent = this.fileHandler.readSourceFile(filename);
+		this.lexer.startStream(rawContent);
+	}
+
 	public assemble(source: string): Segment[] {
 		this.setOption("local_label_char", ":");
 
-		// Initialize or re-initialize the lexer with the found option.
+		// Initialize or re-initialize the lexer
 		this.lexer.reset();
 		this.parser.lexer = this.lexer;
 		this.parser.start(source);

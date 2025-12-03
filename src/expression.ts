@@ -447,6 +447,7 @@ export class ExpressionEvaluator {
 						symbolTable: this.assembler.symbolTable,
 						pass: this.assembler.pass,
 						segment: this.assembler.linker.currentSegment as Segment,
+						filename: this.assembler.currentFilename,
 					});
 					stack.push(val);
 					break;
