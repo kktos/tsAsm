@@ -16,18 +16,13 @@ export class NamespaceDirective implements IDirective {
 		// If no argument provided, reset to GLOBAL namespace (behave like `.NAMESPACE GLOBAL`)
 		if (tokens.length === 0) {
 			assembler.symbolTable.setNamespace("global");
-			assembler.logger.log(`[PASS] Switched namespace to: ${assembler.symbolTable.getCurrentNamespace()}`);
 			return;
 		}
 
 		const token = tokens[0] as IdentifierToken;
-		if (token.type !== "IDENTIFIER") {
-			assembler.logger.error(`ERROR on line ${directive.line}: .NAMESPACE directive requires an identifier.`);
-			return;
-		}
+		if (token.type !== "IDENTIFIER") throw `ERROR on line ${directive.line}: .NAMESPACE directive requires an identifier.`;
 
 		const ns = token.value;
 		assembler.symbolTable.pushNamespace(ns);
-		assembler.logger.log(`Entered namespace: ${ns}`);
 	}
 }

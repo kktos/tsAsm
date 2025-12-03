@@ -1,4 +1,5 @@
 import type { Token } from "./lexer/lexer.class";
+import { getHex } from "./utils/hex.util";
 
 // Internal unique key for the global namespace to avoid collisions with user namespaces
 const INTERNAL_GLOBAL = "@@GLOBAL";
@@ -44,8 +45,11 @@ export class PASymbolTable {
 
 		if (!this.symbols.has(INTERNAL_GLOBAL)) this.symbols.set(INTERNAL_GLOBAL, new Map());
 
-		const nsRaw = name || "global";
-		if (nsRaw.toLowerCase() === "global") return;
+		const nsRaw = name.toLowerCase() || "global";
+
+		console.log(`Set namespace: ${nsRaw}`);
+
+		if (nsRaw === "global") return;
 
 		if (!this.symbols.has(nsRaw)) this.symbols.set(nsRaw, new Map());
 		this.scopeStack.push(nsRaw);
@@ -62,6 +66,7 @@ export class PASymbolTable {
 		}
 		if (!this.symbols.has(name)) this.symbols.set(name, new Map());
 		this.scopeStack.push(name);
+		console.log(`Set namespace: ${name}`);
 	}
 
 	/**
@@ -78,6 +83,7 @@ export class PASymbolTable {
 		}
 		// Safe to pop named namespace (do not delete its symbol map so it remains addressable)
 		this.scopeStack.pop();
+		console.log(`Set namespace: ${this.getCurrentNamespace()}`);
 	}
 
 	/** Retrieves the current active namespace. */
@@ -216,6 +222,53 @@ export class PASymbolTable {
 		suggestions.sort((a, b) => a.distance - b.distance);
 
 		return suggestions.map((s) => s.name);
+	}
+
+	public getDict() {
+		//return this.symbols;
+
+		const dict: Record<string, Record<string, SymbolValue>> = {};
+
+		for (const [namespace, symbolDict] of this.symbols.entries()) {
+			let nsDict = dict[namespace];
+			if (!nsDict) nsDict = {};
+
+			for (const symbol of symbolDict.values()) {
+				if (symbol.name === "*") continue;
+				let value = "";
+				switch (typeof symbol.value) {
+					case "number":
+						value = `number = $${getHex(symbol.value)}`;
+						break;
+					case "string":
+						value = `string = "${symbol.value}"`;
+						break;
+					case "object":
+						if (Array.isArray(symbol.value)) value = `array = ${JSON.stringify(symbol.value)}`;
+						else value = `object = ${JSON.stringify(symbol.value)}`;
+						break;
+					case "undefined":
+						value = "undefined";
+						break;
+				}
+				nsDict[symbol.name] = value;
+			}
+			dict[namespace] = nsDict;
+		}
+
+		// const dict: Record<string, SymbolValue[]> = {};
+		// for (const scope of this.symbols.values()) {
+		// 	for (const symbol of scope.values()) {
+		// 		if (symbol.name === "*") continue;
+		// 		const key = getHex(symbol.value);
+		// 		const currentEntry = dict[symbol.name];
+		// 		let ns = symbol.namespace;
+		// 		if (ns === INTERNAL_GLOBAL) ns = "global";
+		// 		if (currentEntry) currentEntry.push(`${ns}::${symbol.value}`);
+		// 		else dict[symbol.name] = [`${ns}::${symbol.value}`];
+		// 	}
+		// }
+		return dict;
 	}
 }
 

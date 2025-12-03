@@ -1,6 +1,7 @@
 import type { ScalarToken } from "../lexer/lexer.class";
 import type { Assembler } from "../polyasm";
 import type { SymbolValue } from "../symbol.class";
+import { getHex } from "../utils/hex.util";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
 type SegmentDef = {
@@ -39,7 +40,7 @@ export class SegmentDirective implements IDirective {
 			if (size <= 0) throw new Error(`ERROR on line ${directive.line}: .SEGMENT 'end' address must be greater than or equal to 'start' address.`);
 
 			assembler.addSegment(name, start, size, pad);
-			assembler.logger.log(`Defined segment: ${name} from $${start.toString(16)} to $${end.toString(16)}`);
+			assembler.logger.log(`Defined segment: ${name} from $${getHex(start)} to $${getHex(end)}`);
 		}
 	}
 

@@ -119,9 +119,6 @@ export class Assembler {
 
 		this.passOne();
 
-		// Ensure we start Pass 2 in the GLOBAL namespace (reset any .NAMESPACE from Pass 1)
-		this.symbolTable.setNamespace("global");
-
 		// this.currentPC = (this.symbolTable.lookupSymbol("*") as number) || 0x0000;
 		// Ensure there's at least one segment: if none defined, create a default growable segment starting at 0
 		if (!this.linker.segments || this.linker.segments.length === 0) {
@@ -147,6 +144,8 @@ export class Assembler {
 
 	private passOne(): void {
 		this.logger.log(`\n--- Starting Pass 1: PASymbol Definition & PC Calculation (${this.cpuHandler.cpuType}) ---`);
+
+		this.symbolTable.setNamespace("global");
 
 		this.pass = 1;
 		this.parser.setPosition(0);
@@ -242,6 +241,8 @@ export class Assembler {
 		this.logger.log(`\n--- Starting Pass 2: Code Generation (${this.cpuHandler.cpuType}) ---`);
 		this.pass = 2;
 		if (this.linker.segments.length) this.currentPC = this.linker.segments[0] ? this.linker.segments[0].start : DEFAULT_PC;
+
+		this.symbolTable.setNamespace("global");
 
 		this.anonymousLabels = [];
 		this.lastGlobalLabel = null;
@@ -345,7 +346,7 @@ export class Assembler {
 		// Re-evaluate symbol assignment in Pass 2 so forward-references
 		// that were unresolved in Pass 1 can be resolved now.
 
-		const expressionTokens = this.parser.getExpressionTokens(token);
+		const expressionTokens = this.parser.getInstructionTokens(token);
 
 		const value = this.expressionEvaluator.evaluate(expressionTokens, {
 			pc: this.currentPC,
