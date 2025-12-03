@@ -39,7 +39,7 @@ export class SegmentDirective implements IDirective {
 			if (size <= 0) throw new Error(`ERROR on line ${directive.line}: .SEGMENT 'end' address must be greater than or equal to 'start' address.`);
 
 			assembler.addSegment(name, start, size, pad);
-			assembler.logger.log(`[PASS 1] Defined segment: ${name} from $${start.toString(16)} to $${end.toString(16)}`);
+			assembler.logger.log(`Defined segment: ${name} from $${start.toString(16)} to $${end.toString(16)}`);
 		}
 	}
 
@@ -64,7 +64,7 @@ export class SegmentDirective implements IDirective {
 		}
 
 		assembler.useSegment(name);
-		assembler.logger.log(`[PASS 2] Using segment: ${name}`);
+		assembler.logger.log(`Using segment: ${name}`);
 	}
 
 	private parseBlockParameters(assembler: Assembler, context: DirectiveContext, line: number | string): SegmentDef {

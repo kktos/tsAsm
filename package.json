@@ -15,10 +15,8 @@
 	},
 	"scripts": {
 		"check": "tsc --noEmit",
-		"build": "rimraf ./dist && rollup -c rollup.config.js tsasm=src/polyasm.ts",
-		"build.old": "rollup -c rollup.config.js libasm6502=src/lib/assembler.ts asm6502=src/cli/main.ts",
+		"build": "rimraf ./dist && rollup -c rollup.config.js",
 		"test": "vitest",
-		"generate-test-data": "ts-node --esm test/generate-test-data.ts",
 		"lint:ci": "biome ci ./src",
 		"lint:fix": "biome check --write --unsafe ./src",
 		"format:fix": "biome format --write ./src",
@@ -31,7 +29,6 @@
 		"@rollup/plugin-typescript": "^12.3.0",
 		"@types/js-yaml": "^4.0.9",
 		"@types/node": "^24.10.1",
-		"@types/yargs": "^17.0.35",
 		"@vitest/ui": "^4.0.13",
 		"rimraf": "^6.1.2",
 		"rollup": "^4.53.3",
@@ -40,8 +37,7 @@
 		"vitest": "^4.0.13"
 	},
 	"dependencies": {
-		"js-yaml": "^4.1.1",
-		"yargs": "^18.0.0"
+		"js-yaml": "^4.1.1"
 	},
 	"pnpm": {
 		"onlyBuiltDependencies": [

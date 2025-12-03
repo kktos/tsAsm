@@ -15,14 +15,15 @@ import { getHex } from "./utils/hex.util";
 const DEFAULT_PC = 0x1000;
 
 export class Assembler {
+	public logger: Logger;
 	public lexer: AssemblyLexer;
-	private cpuHandler: CPUHandler;
-	public symbolTable: PASymbolTable;
-	public fileHandler: FileHandler;
-	public currentPC: number;
-
-	/** Linker responsible for segments and final linking. */
+	public parser: Parser;
 	public linker: Linker;
+	private cpuHandler: CPUHandler;
+	public fileHandler: FileHandler;
+
+	public symbolTable: PASymbolTable;
+	public currentPC: number;
 	public isAssembling = true;
 
 	private lastGlobalLabel: string | null = null;
@@ -30,9 +31,6 @@ export class Assembler {
 
 	public macroDefinitions: Map<string, MacroDefinition> = new Map();
 	private options: Map<string, string> = new Map();
-
-	public logger: Logger;
-	public parser: Parser;
 
 	public pass: number;
 
@@ -48,6 +46,7 @@ export class Assembler {
 		this.logger = options?.logger ?? new Logger();
 		this.linker = new Linker();
 		this.rawDataProcessors = options?.rawDataProcessors;
+
 		this.currentPC = DEFAULT_PC;
 		this.symbolTable = new PASymbolTable();
 		this.symbolTable.addSymbol("*", this.currentPC);
@@ -55,6 +54,7 @@ export class Assembler {
 		this.expressionEvaluator = new ExpressionEvaluator(this, this.logger);
 		this.directiveHandler = new DirectiveHandler(this, this.logger);
 		this.macroHandler = new MacroHandler(this, this.logger);
+
 		this.emitter = new EventEmitter();
 		this.lexer = new AssemblyLexer(this.emitter);
 		this.parser = new Parser(this.lexer, this.emitter);
@@ -118,7 +118,7 @@ export class Assembler {
 		// this.currentPC = (this.symbolTable.lookupSymbol("*") as number) || 0x0000;
 		// Ensure there's at least one segment: if none defined, create a default growable segment starting at 0
 		if (!this.linker.segments || this.linker.segments.length === 0) {
-			this.linker.addSegment("CODE", 0x1000, 0xefff);
+			this.linker.addSegment("CODE", 0x1000, 0xf000);
 			this.linker.useSegment("CODE");
 		}
 

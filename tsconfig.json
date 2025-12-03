@@ -39,6 +39,7 @@
 
 		"esModuleInterop": false,
 		"forceConsistentCasingInFileNames": true,
+		"resolveJsonModule": true,
 
 		// Recommended Options
 		"strict": true,

@@ -28,11 +28,6 @@ export class IncludeDirective implements IDirective {
 
 		try {
 			const rawContent = assembler.fileHandler.readSourceFile(filename);
-			// const newTokens = assembler.lexer.tokenize(rawContent);
-			// Push the included tokens as a new stream so they are processed immediately.
-			// assembler.pushTokenStream(newTokens);
-			// assembler.logger.log(`Included and tokenized source file: ${filename}. ${newTokens.length} tokens pushed as stream.`);
-
 			assembler.lexer.startStream(rawContent);
 			assembler.parser.pushTokenStream({ newTokens: assembler.lexer.getBufferedTokens(), cacheName: filename });
 

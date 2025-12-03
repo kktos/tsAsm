@@ -7,8 +7,21 @@ import { defineConfig } from "rollup";
 
 export default defineConfig([
 	{
+		// Configuration for the 'tsasm' CLI executable
+		input: "src/cli/main.ts",
 		output: {
-			dir: "dist",
+			file: "dist/tsasm",
+			banner: "#!/usr/bin/env node",
+			format: "esm",
+			sourcemap: false,
+		},
+		plugins: [typescript(), json(), terser()],
+	},
+	{
+		// Configuration for the 'libtsasm' library
+		input: "src/polyasm.ts",
+		output: {
+			file: "dist/libtsasm.js",
 			format: "esm",
 			sourcemap: true,
 		},
