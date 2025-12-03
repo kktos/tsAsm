@@ -1,5 +1,4 @@
 import type { OperatorStackToken, Token } from "../lexer/lexer.class";
-import type { Logger } from "../logger";
 import type { AddressingMode, CPUHandler } from "./cpuhandler.class";
 export class CpuArmRiscHandler implements CPUHandler {
 	cpuType = "ARM_RISC" as const;
@@ -47,11 +46,6 @@ export class CpuArmRiscHandler implements CPUHandler {
 		return 32;
 	}
 
-	private logger: Logger;
-
-	constructor(logger: Logger) {
-		this.logger = logger;
-	}
 	handleCPUSpecificDirective(_directive: string, _args: Token[]): void {}
 
 	isInstruction(mnemonic: string): boolean {
@@ -139,7 +133,7 @@ export class CpuArmRiscHandler implements CPUHandler {
 	 * @param modeInfo Contains the pre-calculated 32-bit opcode or target address.
 	 */
 	encodeInstruction(
-		tokens: OperatorStackToken[],
+		_tokens: OperatorStackToken[],
 		modeInfo: {
 			mode: AddressingMode;
 			resolvedAddress: number;
@@ -148,7 +142,7 @@ export class CpuArmRiscHandler implements CPUHandler {
 		},
 	): number[] {
 		// We switch on the ARM specific mode strings
-		const mnemonic = tokens[0]?.value.toUpperCase();
+		// const mnemonic = tokens[0]?.value.toUpperCase();
 
 		if (modeInfo.mode === this.ARM_MODES.BRANCH) {
 			const targetAddress = modeInfo.resolvedAddress;
@@ -156,7 +150,7 @@ export class CpuArmRiscHandler implements CPUHandler {
 			const offset = (targetAddress - (pc + 8)) >> 2;
 			const opcode = (this.instructionBases.get("B") as number) | (offset & 0x00ffffff);
 
-			this.logger.log(`[PASS 2 - ARM] Encoded ${mnemonic} (Offset: ${offset})`);
+			// this.logger.log(`[PASS 2 - ARM] Encoded ${mnemonic} (Offset: ${offset})`);
 			return this.u32ToBytes(opcode);
 		}
 		if (modeInfo.mode === this.ARM_MODES.DATA_PROC) {

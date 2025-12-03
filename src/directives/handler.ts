@@ -11,6 +11,7 @@ import type { Assembler } from "../polyasm";
 import { AlignDirective } from "./align.directive";
 import { AssignDirective } from "./assign.directive";
 import { ConditionalDirective } from "./conditional.directive";
+import { CpuDirective } from "./cpu.directive";
 import { DataDirective } from "./data.directive";
 import { DefineDirective } from "./define.directive";
 import type { DirectiveContext, IDirective } from "./directive.interface";
@@ -99,6 +100,11 @@ export class DirectiveHandler {
 		this.register("ALIGN", new AlignDirective());
 
 		this.register("SEGMENT", new SegmentDirective());
+
+		const cpuDirective = new CpuDirective();
+		this.register("CPU", cpuDirective);
+		this.register("SETCPU", cpuDirective);
+		this.register("PROCESSOR", cpuDirective);
 	}
 
 	private register(name: string, handler: IDirective): void {
@@ -107,6 +113,9 @@ export class DirectiveHandler {
 
 	public handlePassOneDirective(directive: ScalarToken, context: DirectiveContext) {
 		const handler = this.directiveMap.get(directive.value);
+		// if (directive.value === "CPU" && context.macroArgs)
+		// 	throw new Error(`ERROR on line ${directive.line}: The .CPU directive cannot be used inside a macro. Please set the CPU outside of macro definitions.`);
+
 		if (handler) handler.handlePassOne(directive, this.assembler, context);
 	}
 

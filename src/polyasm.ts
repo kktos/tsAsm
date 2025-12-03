@@ -109,6 +109,14 @@ export class Assembler {
 		this.lexer.startStream(rawContent);
 	}
 
+	public setCPUHandler(handler: CPUHandler) {
+		this.cpuHandler = handler;
+	}
+
+	public getCPUHandler(): CPUHandler {
+		return this.cpuHandler;
+	}
+
 	public assemble(source: string): Segment[] {
 		this.setOption("local_label_char", ":");
 
@@ -233,6 +241,8 @@ export class Assembler {
 					this.anonymousLabels.push(this.currentPC);
 					break;
 				}
+				default:
+					throw new Error(`Syntax error in line ${token.line}`);
 			}
 		}
 	}

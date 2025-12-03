@@ -8,7 +8,7 @@ const mockFileHandler: FileHandler = {
 	readBinaryFile: (_filename: string) => [],
 };
 
-describe("Polymer Assembler - 6502 Opcodes", () => {
+describe("6502 Opcodes", () => {
 	const assembleAndGetCode = (source: string): number[] => {
 		const cpu = new Cpu6502Handler();
 		const assembler = new Assembler(cpu, mockFileHandler, {
@@ -124,6 +124,108 @@ describe("Polymer Assembler - 6502 Opcodes", () => {
 			0xf2, // BNE
 			0xf0,
 			0xf0, // BEQ
+		]);
+	});
+
+	it("should assemble LDA instructions", () => {
+		const source = `
+            LDA #$10
+            LDA $20
+            LDA $30,X
+            LDA $1234
+            LDA $1234,X
+            LDA $1234,Y
+            LDA ($40,X)
+            LDA ($50),Y
+        `;
+		const data = assembleAndGetCode(source);
+		expect(data).toEqual([
+			0xa9,
+			0x10, // IMMEDIATE
+			0xa5,
+			0x20, // ZEROPAGE
+			0xb5,
+			0x30, // ZEROPAGE_X
+			0xad,
+			0x34,
+			0x12, // ABSOLUTE
+			0xbd,
+			0x34,
+			0x12, // ABSOLUTE_X
+			0xb9,
+			0x34,
+			0x12, // ABSOLUTE_Y
+			0xa1,
+			0x40, // INDIRECT_X
+			0xb1,
+			0x50, // INDIRECT_Y
+		]);
+	});
+
+	it("should assemble STA instructions", () => {
+		const source = `
+            STA $20
+            STA $30,X
+            STA $1234
+            STA $1234,X
+            STA $1234,Y
+            STA ($40,X)
+            STA ($50),Y
+        `;
+		const data = assembleAndGetCode(source);
+		expect(data).toEqual([
+			0x85,
+			0x20, // ZEROPAGE
+			0x95,
+			0x30, // ZEROPAGE_X
+			0x8d,
+			0x34,
+			0x12, // ABSOLUTE
+			0x9d,
+			0x34,
+			0x12, // ABSOLUTE_X
+			0x99,
+			0x34,
+			0x12, // ABSOLUTE_Y
+			0x81,
+			0x40, // INDIRECT_X
+			0x91,
+			0x50, // INDIRECT_Y
+		]);
+	});
+
+	it("should assemble SBC instructions", () => {
+		const source = `
+            SBC #$10
+            SBC $20
+            SBC $30,X
+            SBC $1234
+            SBC $1234,X
+            SBC $1234,Y
+            SBC ($40,X)
+            SBC ($50),Y
+        `;
+		const data = assembleAndGetCode(source);
+		expect(data).toEqual([
+			0xe9,
+			0x10, // IMMEDIATE
+			0xe5,
+			0x20, // ZEROPAGE
+			0xf5,
+			0x30, // ZEROPAGE_X
+			0xed,
+			0x34,
+			0x12, // ABSOLUTE
+			0xfd,
+			0x34,
+			0x12, // ABSOLUTE_X
+			0xf9,
+			0x34,
+			0x12, // ABSOLUTE_Y
+			0xe1,
+			0x40, // INDIRECT_X
+			0xf1,
+			0x50, // INDIRECT_Y
 		]);
 	});
 });
