@@ -40,7 +40,8 @@ export class SegmentDirective implements IDirective {
 			if (size <= 0) throw new Error(`ERROR on line ${directive.line}: .SEGMENT 'end' address must be greater than or equal to 'start' address.`);
 
 			assembler.addSegment(name, start, size, pad);
-			assembler.logger.log(`Defined segment: ${name} from $${getHex(start)} to $${getHex(end)}`);
+
+			assembler.lister.directive(directive, `${name.padEnd(16)} { start: $${getHex(start)}, end: $${getHex(end)}, pad: $${getHex(pad ?? 0)} }`);
 		}
 	}
 
@@ -65,7 +66,8 @@ export class SegmentDirective implements IDirective {
 		}
 
 		assembler.useSegment(name);
-		assembler.logger.log(`Using segment: ${name}`);
+		// assembler.logger.log(`Using segment: ${name}`);
+		assembler.lister.directive(directive, name);
 	}
 
 	private parseBlockParameters(assembler: Assembler, context: DirectiveContext, line: number | string): SegmentDef {

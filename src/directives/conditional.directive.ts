@@ -83,13 +83,22 @@ export class ConditionalDirective implements IDirective {
 
 			case "END": {
 				const next = assembler.parser.peekToken(0);
-				if (next && next.type === "IDENTIFIER" && String(next.value).toUpperCase() === "NAMESPACE") {
-					assembler.parser.consume(1);
-					// try {
-					assembler.symbolTable.popNamespace();
-					// } catch (e) {
-					// 	assembler.logger.error(`Error popping namespace on line ${directive.line}: ${e}`);
-					// }
+				if (next && next.type === "IDENTIFIER") {
+					if (next.value === "NAMESPACE") {
+						assembler.parser.consume(1);
+						// try {
+						assembler.symbolTable.popNamespace();
+						// } catch (e) {
+						// 	assembler.logger.error(`Error popping namespace on line ${directive.line}: ${e}`);
+						// }
+						break;
+					}
+					if (next.value === "FILE") {
+						assembler.parser.consume(1);
+						const pos = assembler.parser.getPosition();
+						assembler.parser.activeTokens[pos] = { type: "EOF", value: "", line: "", column: 0 } as Token;
+						break;
+					}
 				}
 				if (this.conditionalStack.length > 0) {
 					// const topIf = this.conditionalStack[this.conditionalStack.length - 1];

@@ -1,3 +1,4 @@
+import type { ScalarToken } from "./lexer/lexer.class";
 import type { Logger } from "./logger.class";
 import type { SymbolValue } from "./symbol.class";
 import { getHex } from "./utils/hex.util";
@@ -38,6 +39,10 @@ export class Lister {
 
 	public symbol(label: string, value: SymbolValue) {
 		this.logger.log(`${"".padStart(LABEL_START_COL)}${label.padEnd(LABEL_PAD)} = ${asString(value)}`);
+	}
+
+	public directive(pragma: ScalarToken, ...params: SymbolValue[]) {
+		this.logger.log(`${"".padStart(LABEL_START_COL)}.${pragma.value.toLowerCase()} ${params.join(", ")}`);
 	}
 }
 

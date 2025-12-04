@@ -400,7 +400,7 @@ export class Assembler {
 		});
 
 		// If evaluation produced undefined, treat as an error in Pass 2
-		if (value === undefined) throw new Error(`Pass 2: Unresolved assignment for ${label} on line ${token.line}`);
+		if (value === undefined) throw new Error(`line ${token.line}: Unresolved assignment for ${label}`);
 
 		this.lister.symbol(label, value);
 
@@ -428,7 +428,7 @@ export class Assembler {
 			this.currentPC += sizeInfo.bytes;
 		} catch (e) {
 			const errorMessage = e instanceof Error ? e.message : String(e);
-			throw `ERROR on line ${mnemonicToken.line}: Could not determine size of instruction '${mnemonicToken.value}'. ${errorMessage}`;
+			throw `line ${mnemonicToken.line}: Could not determine size of instruction '${mnemonicToken.value}'. ${errorMessage}`;
 		}
 	}
 
@@ -476,7 +476,7 @@ export class Assembler {
 					this.currentPC += encodedBytes.length;
 				} catch (e) {
 					const errorMessage = e instanceof Error ? e.message : String(e);
-					throw new Error(`ERROR on line ${mnemonicToken.line}: Invalid instruction syntax or unresolved symbol. Error: ${errorMessage}`);
+					throw new Error(`line ${mnemonicToken.line}: Invalid instruction syntax or unresolved symbol. Error: ${errorMessage}`);
 				}
 			} else {
 				// Not assembling: just advance PC
@@ -550,7 +550,7 @@ export class Assembler {
 					const expressions = argTokens[0]?.value as Token[][];
 
 					if (indexValue < 0 || indexValue >= expressions.length)
-						throw new Error(`Macro argument index ${indexValue} out of bounds for argument '${token.value}' on line ${token.line}.`);
+						throw new Error(`line ${token.line}: Macro argument index ${indexValue} out of bounds for argument '${token.value}'.`);
 
 					// result.push(...expressions[indexValue]);
 					result.push(...(expressions[indexValue] as Token[]));

@@ -46,12 +46,15 @@ const segments = (conf.segments as SegmentDefinition[]) ?? undefined;
 try {
 	const assembler = new Assembler(new Cpu6502Handler(), fileHandler, { logger, segments });
 	const sourceFile = fileHandler.readSourceFile(conf.src as string);
-	const segmentList = assembler.assemble(sourceFile);
 
-	for (const segment of segmentList) {
-		logger.log(segment.name);
-		// logger.log(hexDump(segment.start, segment.data));
-	}
+	chdir(dirname(conf.src as string));
+
+	const _segmentList = assembler.assemble(sourceFile);
+
+	// for (const segment of segmentList) {
+	// 	logger.log(segment.name);
+	// 	logger.log(hexDump(segment.start, segment.data));
+	// }
 
 	const objFile = assembler.link();
 

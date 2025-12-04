@@ -4,8 +4,6 @@ import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class IncludeDirective implements IDirective {
 	public handlePassOne(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
-		// const startIndex = assembler.getPosition();
-
 		// Find expression tokens on the header line after 'OF', optionally followed by 'AS'
 		const expressionTokens = assembler.parser.getInstructionTokens();
 		// let asIndex = exprHeader.findIndex((t) => t.type === "IDENTIFIER" && t.value === "AS");
@@ -30,7 +28,7 @@ export class IncludeDirective implements IDirective {
 			assembler.startNewStream(filename);
 			assembler.parser.pushTokenStream({ newTokens: assembler.lexer.getBufferedTokens(), cacheName: filename });
 
-			assembler.logger.log(`Included source file: ${filename}.`);
+			assembler.lister.directive(directive, filename);
 		} catch (e) {
 			throw `ERROR including file ${filename} on line ${directive.line}: ${e}`;
 		}
