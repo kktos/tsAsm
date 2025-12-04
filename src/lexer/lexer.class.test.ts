@@ -30,7 +30,7 @@ describe("AssemblyLexer", () => {
 		const source = "LOOP: NOP ; comment\n  LDA.W VALUE";
 		const tokens = lexer.tokenize(source);
 		expect(stripLocation(tokens)).toEqual([
-			{ type: "LABEL", value: "LOOP", raw: undefined },
+			{ type: "LABEL", value: "LOOP", raw: "LOOP" },
 			{ type: "IDENTIFIER", value: "NOP", raw: "NOP" },
 			{ type: "IDENTIFIER", value: "LDA", raw: "LDA" },
 			{ type: "DOT", value: ".", raw: undefined },
@@ -114,7 +114,7 @@ describe("AssemblyLexer", () => {
 			{ type: "IDENTIFIER", value: "LDA", raw: "LDA" },
 			{ type: "OPERATOR", value: "#", raw: undefined },
 			{ type: "NUMBER", value: "10", raw: "10" },
-			{ type: "LABEL", value: "FIN", raw: undefined },
+			{ type: "LABEL", value: "FIN", raw: "FIN" },
 			{ type: "EOF", value: "", raw: undefined },
 		]);
 	});
@@ -134,11 +134,11 @@ describe("AssemblyLexer", () => {
 			{ type: "ANONYMOUS_LABEL_DEF", value: ":", raw: undefined },
 			{ type: "IDENTIFIER", value: "BNE", raw: "BNE" },
 			{ type: "ANONYMOUS_LABEL_REF", value: "-1", raw: undefined },
-			{ type: "LOCAL_LABEL", value: "LOOP", raw: undefined },
+			{ type: "LOCAL_LABEL", value: "LOOP", raw: "loop" },
 			{ type: "IDENTIFIER", value: "INC", raw: "INC" },
 			{ type: "IDENTIFIER", value: "A", raw: "A" },
 			{ type: "IDENTIFIER", value: "JMP", raw: "JMP" },
-			{ type: "LOCAL_LABEL", value: "LOOP", raw: undefined },
+			{ type: "LOCAL_LABEL", value: "LOOP", raw: "loop" },
 			{ type: "IDENTIFIER", value: "BEQ", raw: "BEQ" },
 			{ type: "ANONYMOUS_LABEL_REF", value: "+1", raw: undefined },
 			{ type: "ANONYMOUS_LABEL_DEF", value: ":", raw: undefined },
