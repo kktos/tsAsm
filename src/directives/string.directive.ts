@@ -16,17 +16,26 @@ export class StringDirective implements IDirective {
 	}
 
 	public handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
-		if (assembler.isAssembling) {
-			const bytes = this.encodeData(directive, assembler, context);
-			assembler.writeBytes(bytes);
-		} else {
-			// If not assembling, just advance PC
+		// If not assembling, just advance PC
+		if (!assembler.isAssembling) {
 			assembler.currentPC += this.calculateSize(directive, assembler, context);
+			return;
 		}
+
+		const strings = this.getStrings(directive, assembler, context);
+		const bytes = this.encodeData(directive, strings);
+
+		assembler.lister.bytes({
+			addr: assembler.currentPC,
+			bytes,
+			text: `.${directive.value} ${strings.map((s) => `"${s}"`).join(" ")}`,
+			hasText: true,
+		});
+
+		assembler.writeBytes(bytes);
 	}
 
 	private getStrings(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): string[] {
-		// const startIndex = typeof context.tokenIndex === "number" ? context.tokenIndex : assembler.getPosition();
 		const argTokens = assembler.parser.getInstructionTokens();
 		const strings: string[] = [];
 		let currentExpression: Token[] = [];
@@ -42,12 +51,10 @@ export class StringDirective implements IDirective {
 		};
 
 		for (const token of argTokens) {
-			if (token.type === "COMMA") {
-				evaluateAndPush();
-			} else {
-				currentExpression.push(token);
-			}
+			if (token.type === "COMMA") evaluateAndPush();
+			else currentExpression.push(token);
 		}
+
 		evaluateAndPush();
 		return strings;
 	}
@@ -75,8 +82,7 @@ export class StringDirective implements IDirective {
 		return totalSize;
 	}
 
-	private encodeData(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): number[] {
-		const strings = this.getStrings(directive, assembler, context);
+	private encodeData(directive: ScalarToken, strings: string[]): number[] {
 		const outputBytes: number[] = [];
 
 		for (const str of strings) {

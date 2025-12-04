@@ -1,5 +1,5 @@
 import type { ScalarToken, Token } from "../../lexer/lexer.class";
-import type { Logger } from "../../logger";
+import type { Logger } from "../../logger.class";
 import type { Assembler } from "../../polyasm";
 
 export class MacroHandler {

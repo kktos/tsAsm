@@ -7,7 +7,7 @@
 import { functionDispatcher } from "./functions/dispatcher";
 import type { FunctionToken, OperatorStackToken, OperatorToken, ScalarToken, Token } from "./lexer/lexer.class";
 import type { Segment } from "./linker.class";
-import type { Logger } from "./logger";
+import type { Logger } from "./logger.class";
 import type { Assembler } from "./polyasm";
 import type { PASymbolTable, SymbolValue } from "./symbol.class";
 import { resolveSysVar } from "./sysvar";

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { EvaluationContext } from "../expression";
-import { Logger } from "../logger";
+import { Logger } from "../logger.class";
 import { Assembler } from "../polyasm";
 import type { FileHandler } from "../polyasm.types";
 

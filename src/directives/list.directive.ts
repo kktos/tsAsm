@@ -1,5 +1,5 @@
 import type { ScalarToken } from "../lexer/lexer.class";
-import type { Logger } from "../logger";
+import type { Logger } from "../logger.class";
 import type { Assembler } from "../polyasm";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 

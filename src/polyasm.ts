@@ -6,7 +6,8 @@ import type { MacroDefinition } from "./directives/macro/macro.interface";
 import { ExpressionEvaluator } from "./expression";
 import { AssemblyLexer, type OperatorStackToken, type ScalarToken, type Token } from "./lexer/lexer.class";
 import { Linker, type Segment } from "./linker.class";
-import { Logger } from "./logger";
+import { Lister } from "./lister.class";
+import { Logger } from "./logger.class";
 import { Parser } from "./parser.class";
 import type { AssemblerOptions, DataProcessor, FileHandler, StreamState } from "./polyasm.types";
 import { PASymbolTable } from "./symbol.class";
@@ -16,6 +17,7 @@ const DEFAULT_PC = 0x1000;
 
 export class Assembler {
 	public logger: Logger;
+	public lister: Lister;
 	public lexer: AssemblyLexer;
 	public parser: Parser;
 	public linker: Linker;
@@ -32,7 +34,6 @@ export class Assembler {
 
 	public macroDefinitions: Map<string, MacroDefinition> = new Map();
 	private options: Map<string, string> = new Map();
-	// private scopeStack: string[] = [];
 
 	public pass: number;
 
@@ -46,6 +47,7 @@ export class Assembler {
 		this.cpuHandler = handler;
 		this.fileHandler = fileHandler;
 		this.logger = options?.logger ?? new Logger();
+		this.lister = new Lister(this.logger);
 		this.linker = new Linker();
 		this.rawDataProcessors = options?.rawDataProcessors;
 
@@ -242,7 +244,8 @@ export class Assembler {
 				case "LABEL": {
 					this.lastGlobalLabel = token.value;
 					this.symbolTable.addSymbol(token.value, this.currentPC);
-					this.logger.log(`Defined label ${token.value} @ $${getHex(this.currentPC)}`);
+
+					this.lister.label(token.raw ?? token.value);
 					break;
 				}
 
@@ -270,8 +273,7 @@ export class Assembler {
 					throw new Error(`Syntax error in line ${token.line} : ${token.type} ${token.value}`);
 			}
 		}
-		if(blockDepth !== 0)
-			throw new Error(`Syntax error : Unbalanced braces. Depth: ${blockDepth}`);
+		if (blockDepth !== 0) throw new Error(`Syntax error : Unbalanced braces. Depth: ${blockDepth}`);
 	}
 
 	private passTwo(): void {
@@ -350,7 +352,9 @@ export class Assembler {
 					// In functions, the scope is lost between the passes
 					if (this.symbolTable.isDefined(token.value)) this.symbolTable.setSymbol(token.value, this.currentPC);
 					else this.symbolTable.addSymbol(token.value, this.currentPC);
-					this.logger.log(`Defined label ${token.value} @ $${getHex(this.currentPC)}`);
+
+					this.lister.label(token.raw ?? token.value);
+
 					break;
 
 				// case "LOCAL_LABEL":
@@ -373,8 +377,8 @@ export class Assembler {
 			macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
 		});
 
-		if (Array.isArray(value)) this.logger.log(`Defined array symbol ${labelToken} with ${value.length} elements.`);
-		else this.logger.log(`Defined symbol ${labelToken} = $${value.toString(16).toUpperCase()}`);
+		// this.logger.log(`${labelToken}${asString(value)}`);
+		this.lister.symbol(labelToken, value);
 
 		// if (this.symbolTable.lookupSymbol(labelToken) !== undefined) this.symbolTable.setSymbol(labelToken, value);
 		if (this.symbolTable.isDefined(labelToken)) this.symbolTable.setSymbol(labelToken, value);
@@ -398,20 +402,7 @@ export class Assembler {
 		// If evaluation produced undefined, treat as an error in Pass 2
 		if (value === undefined) throw new Error(`Pass 2: Unresolved assignment for ${label} on line ${token.line}`);
 
-		let logLine = `${label}`;
-		switch (typeof value) {
-			case "object":
-				if (Array.isArray(value)) logLine += `= [${value.map((v) => v.value).join(",")}]`;
-				else logLine += `= ${value}`;
-				break;
-			case "number":
-				logLine += `= $${getHex(value)}`;
-				break;
-			case "string":
-				logLine += `= "${value}"`;
-				break;
-		}
-		this.logger.log(logLine);
+		this.lister.symbol(label, value);
 
 		// If symbol exists already, update it; otherwise add it as a constant.
 		if (this.symbolTable.lookupSymbol(label) !== undefined) this.symbolTable.setSymbol(label, value);
@@ -469,10 +460,17 @@ export class Assembler {
 					});
 
 					// 3. LOGGING (New location)
-					const hexBytes = encodedBytes.map((b) => getHex(b)).join(" ");
-					const addressHex = instructionPC.toString(16).padStart(4, "0").toUpperCase();
 					const operandString = operandTokens.map((t) => (t.type === "NUMBER" ? `$${getHex(Number(t.value))}` : t.value)).join("");
-					this.logger.log(`${addressHex}: ${hexBytes.padEnd(8)} | ${mnemonicToken.value} ${operandString} ; Line ${mnemonicToken.line}`);
+					this.lister.bytes({
+						addr: instructionPC,
+						bytes: encodedBytes,
+						text: `${mnemonicToken.value} ${operandString}`,
+					});
+
+					// const hexBytes = encodedBytes.map((b) => getHex(b)).join(" ");
+					// const addressHex = instructionPC.toString(16).padStart(4, "0").toUpperCase();
+					// const operandString = operandTokens.map((t) => (t.type === "NUMBER" ? `$${getHex(Number(t.value))}` : t.value)).join("");
+					// this.logger.log(`${addressHex}: ${hexBytes.padEnd(8)} | ${mnemonicToken.value} ${operandString} ; Line ${mnemonicToken.line}`);
 
 					this.linker.writeBytes(this.currentPC, encodedBytes);
 					this.currentPC += encodedBytes.length;

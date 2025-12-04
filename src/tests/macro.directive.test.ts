@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Cpu6502Handler } from "../cpu/cpu6502.class";
 import type { Token } from "../lexer/lexer.class";
-import { Logger } from "../logger";
+import { Logger } from "../logger.class";
 import { Assembler } from "../polyasm";
 import type { FileHandler, SegmentDefinition } from "../polyasm.types";
 

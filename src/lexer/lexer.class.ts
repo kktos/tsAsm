@@ -410,9 +410,7 @@ export class AssemblyLexer {
 
 		// Skip comment starter (either ';' or '//')
 		this.advance();
-		if (this.currentStream.source[this.currentStream.pos - 1] === "/" && this.peek() === "/") {
-			this.advance(); // skip second '/'
-		}
+		if (this.currentStream.source[this.currentStream.pos - 1] === "/" && this.peek() === "/") this.advance(); // skip second '/'
 
 		// Fast scan to end of line using indexOf
 		let end = this.currentStream.source.indexOf("\n", this.currentStream.pos);
@@ -506,9 +504,7 @@ export class AssemblyLexer {
 			}
 		}
 
-		if (this.peek() === '"') {
-			this.advance(); // skip closing "
-		}
+		if (this.peek() === '"') this.advance(); // skip closing "
 
 		return this.makeToken("STRING", value, line, column);
 	}
@@ -559,7 +555,7 @@ export class AssemblyLexer {
 			while (this.isIdentifierPart(this.peek())) this.advance();
 
 			const value = this.currentStream.source.slice(start, this.currentStream.pos);
-			return this.makeToken("LOCAL_LABEL", value.toUpperCase(), line, column);
+			return this.makeToken("LOCAL_LABEL", value.toUpperCase(), line, column, value);
 		}
 		if (nextChar === "+" || nextChar === "-") {
 			// Nameless reference like ':-' or ':++' or ':+3'
@@ -633,13 +629,11 @@ export class AssemblyLexer {
 		// Scan identifier: letters, digits, underscore, and dot (for addressing modes like LDA.W)
 		while (this.isIdentifierPart(this.peek())) this.advance();
 
-		let value = this.currentStream.source.slice(start, this.currentStream.pos);
+		const value = this.currentStream.source.slice(start, this.currentStream.pos);
 
 		// Check if followed by : - that makes it a label
 		if (this.peek() === ":") {
 			this.advance(); // consume ':'
-
-			value = value.toUpperCase();
 
 			// Check if followed by :: - that makes it a namespace::symbol
 			if (this.peek() === ":") {
@@ -650,10 +644,10 @@ export class AssemblyLexer {
 				if (this.isIdentifierStart(ch)) while (this.isIdentifierPart(this.peek())) this.advance();
 				const symbolName = this.currentStream.source.slice(start, this.currentStream.pos);
 
-				return this.makeToken("IDENTIFIER", `${value}::${symbolName.toUpperCase()}`, line, column, symbolName);
+				return this.makeToken("IDENTIFIER", `${value.toUpperCase()}::${symbolName.toUpperCase()}`, line, column, symbolName);
 			}
 
-			return this.makeToken("LABEL", value, line, column);
+			return this.makeToken("LABEL", value.toUpperCase(), line, column, value);
 		}
 
 		// Otherwise it's just an identifier (could be instruction, symbol, macro name, etc.)

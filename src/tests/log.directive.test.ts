@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Logger } from "../logger";
+import { Logger } from "../logger.class";
 import { Assembler } from "../polyasm";
 
 // Minimal fake CPU handler

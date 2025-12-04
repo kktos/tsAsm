@@ -3,7 +3,7 @@ Start
 	.segment main { start: 0x1000, size: 0x0100, pad: 0xFF }
 	.segment main
 
-	name = "test"
+	name = "DEADCAFE"
 
 	FillMemory:
 		LDX #$00
@@ -25,4 +25,4 @@ Start
 		BNE :loop
 		RTS
 
-	.text name
+	.text name, "Welcome to Assembly"

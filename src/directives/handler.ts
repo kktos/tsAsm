@@ -6,7 +6,7 @@
  */
 
 import type { ScalarToken } from "../lexer/lexer.class";
-import type { Logger } from "../logger";
+import type { Logger } from "../logger.class";
 import type { Assembler } from "../polyasm";
 import { AlignDirective } from "./align.directive";
 import { AssignDirective } from "./assign.directive";

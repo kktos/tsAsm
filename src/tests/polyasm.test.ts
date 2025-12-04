@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Cpu6502Handler } from "../cpu/cpu6502.class";
-import { Logger } from "../logger";
+import { Logger } from "../logger.class";
 import { Assembler } from "../polyasm";
 import type { FileHandler } from "../polyasm.types";
 
