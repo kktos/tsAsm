@@ -152,7 +152,7 @@ export class Parser {
 	}
 
 	/** Pushes the current stream state and activates a new stream (macro/loop body). */
-	public pushTokenStream({ newTokens, macroArgs, streamId, cacheName }: PushTokenStreamParams): number {
+	public pushTokenStream({ newTokens, macroArgs, cacheName, onEndOfStream }: PushTokenStreamParams): number {
 		// Save current position and arguments
 		if (this.tokenStreamStack.length > 0) (this.tokenStreamStack[this.tokenStreamStack.length - 1] as StreamState).index = this.getPosition();
 
@@ -166,8 +166,9 @@ export class Parser {
 			}
 		}
 
-		const newStreamId = streamId ?? ++this.streamIdCounter;
-		if (streamId) this.streamIdCounter = Math.max(this.streamIdCounter, streamId);
+		const newStreamId = ++this.streamIdCounter;
+
+		if (onEndOfStream) this.emitter.once(`endOfStream:${newStreamId}`, onEndOfStream);
 
 		// Push new context onto the stack
 		this.tokenStreamStack.push({

@@ -156,17 +156,11 @@ export class LoopDirective implements IDirective {
 				assembler.symbolTable.define(state.itemIterator.value, currentItem, false);
 			}
 
-			this.pushLoopBody(assembler, loopId, state.body);
+			assembler.parser.pushTokenStream({ newTokens: state.body, onEndOfStream: () => this.runNextLoopIteration(assembler, loopId) });
 		} else {
 			// No iterations left, end the loop.
 			this.endLoop(assembler, loopId);
 		}
-	}
-
-	private pushLoopBody(assembler: Assembler, loopId: string, body: Token[]): void {
-		const streamId = assembler.parser.getNextStreamId();
-		assembler.emitter.once(`endOfStream:${streamId}`, () => this.runNextLoopIteration(assembler, loopId));
-		assembler.parser.pushTokenStream({ newTokens: body, streamId });
 	}
 
 	private endLoop(assembler: Assembler, loopId: string): void {

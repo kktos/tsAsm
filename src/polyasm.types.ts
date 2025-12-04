@@ -34,8 +34,8 @@ export type DataProcessor = (rawData: string, context: DirectiveContext) => Symb
 export interface PushTokenStreamParams {
 	newTokens: Token[];
 	macroArgs?: Map<string, Token[]>;
-	streamId?: number;
 	cacheName?: string;
+	onEndOfStream?: () => void;
 }
 
 export interface AssemblerOptions {

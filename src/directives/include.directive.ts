@@ -11,7 +11,7 @@ export class IncludeDirective implements IDirective {
 		// const expressionTokens = exprHeader.slice(0, asIndex);
 		// const indexIteratorToken = asIndex < exprHeader.length ? (exprHeader[asIndex + 1] as IdentifierToken) : undefined;
 
-		if (expressionTokens.length === 0) throw new Error(`ERROR: .INCLUDE requires a string argument on line ${directive.line}.`);
+		if (expressionTokens.length === 0) throw new Error(`.INCLUDE requires a string argument on line ${directive.line}.`);
 
 		// 2. Resolve the array from the symbol table
 		const evaluationContext = {
@@ -22,7 +22,7 @@ export class IncludeDirective implements IDirective {
 		};
 
 		const filename = assembler.expressionEvaluator.evaluate(expressionTokens, evaluationContext);
-		if (typeof filename !== "string") throw new Error(`ERROR: .INCLUDE requires a string argument on line ${directive.line}.`);
+		if (typeof filename !== "string") throw new Error(`.INCLUDE requires a string argument on line ${directive.line}.`);
 
 		try {
 			assembler.startNewStream(filename);
@@ -30,7 +30,7 @@ export class IncludeDirective implements IDirective {
 
 			assembler.lister.directive(directive, filename);
 		} catch (e) {
-			throw `ERROR including file ${filename} on line ${directive.line}: ${e}`;
+			throw `including file ${filename} on line ${directive.line}: ${e}`;
 		}
 	}
 
@@ -44,7 +44,7 @@ export class IncludeDirective implements IDirective {
 			currentGlobalLabel: assembler.getLastGlobalLabel?.() ?? undefined,
 		};
 		const filename = assembler.expressionEvaluator.evaluate(expressionTokens, evaluationContext);
-		if (typeof filename !== "string") throw new Error(`ERROR: .INCLUDE requires a string argument on line ${directive.line}.`);
+		if (typeof filename !== "string") throw new Error(`.INCLUDE requires a string argument on line ${directive.line}.`);
 
 		assembler.parser.pushTokenStream({ cacheName: filename, newTokens: [] });
 	}

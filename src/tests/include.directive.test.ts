@@ -51,14 +51,14 @@ describe("File Directives (.INCLUDE, .INCBIN)", () => {
 				throw new Error("File not found");
 			});
 
-			expect(() => assembler.assemble(source)).toThrow("ERROR including file nonexistent.asm on line 1: Error: File not found");
+			expect(() => assembler.assemble(source)).toThrow("including file nonexistent.asm on line 1: Error: File not found");
 		});
 
 		it("should log an error if .INCLUDE is missing a filename argument", () => {
 			const { assembler } = createAssembler();
 			const source = ".INCLUDE";
 
-			expect(() => assembler.assemble(source)).toThrow("ERROR: .INCLUDE requires a string argument on line 1.");
+			expect(() => assembler.assemble(source)).toThrow(".INCLUDE requires a string argument on line 1.");
 		});
 	});
 

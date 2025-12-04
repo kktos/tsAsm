@@ -479,8 +479,7 @@ export class ExpressionEvaluator {
 
 				case "PROPERTY_ACCESS": {
 					const obj = stack.pop() as Record<string, SymbolValue>;
-					if (typeof obj !== "object" || obj === null || Array.isArray(obj))
-						throw new Error(`Invalid property access on a non-object value on line ${token.line}.`);
+					if (typeof obj !== "object" || obj === null || Array.isArray(obj)) throw new Error("Invalid property access on a non-object value.");
 
 					const property = token.value;
 					if (property && property in obj) {

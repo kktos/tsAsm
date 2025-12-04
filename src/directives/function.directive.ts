@@ -20,12 +20,7 @@ export class FunctionDirective implements IDirective {
 
 		const body = assembler.parser.getDirectiveBlockTokens(directive.value);
 
-		const streamId = assembler.parser.getNextStreamId();
-		assembler.emitter.once(`endOfStream:${streamId}`, () => {
-			assembler.symbolTable.popScope();
-		});
-
-		assembler.parser.pushTokenStream({ newTokens: body, streamId });
+		assembler.parser.pushTokenStream({ newTokens: body, onEndOfStream: () => assembler.symbolTable.popScope() });
 	}
 
 	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void {

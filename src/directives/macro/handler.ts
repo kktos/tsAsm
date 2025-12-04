@@ -25,7 +25,7 @@ export class MacroHandler {
 		this.logger.log(`Expanding macro: ${macroName}`);
 
 		const passedArgsArray = this.parseMacroArguments(macroToken.line);
-		const argMap = new Map<string, Token[]>();
+		const macroArgs = new Map<string, Token[]>();
 
 		const scopeName = `__MACRO_${macroName}_${macroToken.line}__`;
 		this.assembler.symbolTable.pushScope(scopeName);
@@ -40,39 +40,11 @@ export class MacroHandler {
 			// Map regular parameters
 			definition.parameters.forEach((param, index) => {
 				const argTokens = passedArgsArray[index] || [];
-				argMap.set(param.toUpperCase(), argTokens);
+				macroArgs.set(param.toUpperCase(), argTokens);
 			});
 
 			// Map rest parameter
 			const restArgs = passedArgsArray.slice(definition.parameters.length);
-			// const restTokens: Token[] = [
-			// 	{
-			// 		type: "OPERATOR",
-			// 		value: "[",
-			// 		line: macroToken.line,
-			// 		column: macroToken.column,
-			// 	},
-			// ];
-
-			// restArgs.forEach((arg, index) => {
-			// 	restTokens.push(...arg);
-			// 	if (index < restArgs.length - 1) {
-			// 		restTokens.push({
-			// 			type: "COMMA",
-			// 			value: ",",
-			// 			line: macroToken.line,
-			// 			column: macroToken.column,
-			// 		});
-			// 	}
-			// });
-
-			// restTokens.push({
-			// 	type: "OPERATOR",
-			// 	value: "]",
-			// 	line: macroToken.line,
-			// 	column: macroToken.column,
-			// });
-			// argMap.set(definition.restParameter.toUpperCase(), restTokens);
 
 			const arrayToken: Token = {
 				type: "ARRAY",
@@ -81,7 +53,7 @@ export class MacroHandler {
 				value: restArgs,
 			};
 
-			argMap.set(definition.restParameter, [arrayToken]);
+			macroArgs.set(definition.restParameter, [arrayToken]);
 		} else {
 			// Original logic for fixed arguments
 			if (passedArgsArray.length > definition.parameters.length)
@@ -91,23 +63,17 @@ export class MacroHandler {
 
 			definition.parameters.forEach((param, index) => {
 				const argTokens = passedArgsArray[index] || [];
-				argMap.set(param.toUpperCase(), argTokens);
+				macroArgs.set(param.toUpperCase(), argTokens);
 			});
 		}
 
 		// Create a clean copy of the body tokens with updated line numbers.
-		const expandedTokens = definition.body.map((bodyToken) => ({
+		const newTokens = definition.body.map((bodyToken) => ({
 			...bodyToken,
 			line: `${macroToken.line}.${bodyToken.line}`,
 		}));
 
-		// Advance the current stream past the macro call line and push the new stream.
-		const streamId = this.assembler.parser.getNextStreamId();
-		this.assembler.emitter.once(`endOfStream:${streamId}`, () => {
-			this.assembler.symbolTable.popScope();
-		});
-
-		this.assembler.parser.pushTokenStream({ newTokens: expandedTokens, macroArgs: argMap, streamId });
+		this.assembler.parser.pushTokenStream({ newTokens, macroArgs, onEndOfStream: () => this.assembler.symbolTable.popScope() });
 	}
 
 	/**
