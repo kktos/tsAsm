@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { Logger } from "../src/logger";
-import { Assembler } from "../src/polyasm";
-import type { FileHandler, SegmentDefinition } from "../src/polyasm.types";
+import { Cpu6502Handler } from "../cpu/cpu6502.class";
+import { Logger } from "../logger";
+import { Assembler } from "../polyasm";
+import type { FileHandler, SegmentDefinition } from "../polyasm.types";
 
 class MockFileHandler implements FileHandler {
 	readSourceFile(filename: string): string {
@@ -12,20 +13,6 @@ class MockFileHandler implements FileHandler {
 		throw new Error(`Mock bin file not found: ${filename}`);
 	}
 }
-
-// Minimal fake CPU handler
-const fakeCPU = {
-	cpuType: "6502" as const,
-	isInstruction: () => false,
-	resolveAddressingMode: () => ({
-		mode: "",
-		opcode: 0,
-		bytes: 0,
-		resolvedAddress: 0,
-	}),
-	encodeInstruction: () => [],
-	getPCSize: () => 8,
-};
 
 class CaptureLogger extends Logger {
 	public lines: string[] = [];
@@ -49,7 +36,7 @@ describe(".NAMESPACE Directive", () => {
 	const createAssembler = (segments: SegmentDefinition[] = DEFAULT_SEGMENTS) => {
 		const mockFileHandler = new MockFileHandler();
 		const logger = new CaptureLogger();
-		const assembler = new Assembler(fakeCPU, mockFileHandler, { segments, logger });
+		const assembler = new Assembler(new Cpu6502Handler(), mockFileHandler, { segments, logger });
 		return { assembler, logger };
 	};
 	it("should switch current namespace when given an identifier", () => {
@@ -126,5 +113,22 @@ describe(".NAMESPACE Directive", () => {
 		assembler.assemble(source);
 
 		expect(logger.lines.filter((l) => l.startsWith(">>"))).toEqual([">>	45	56", ">>	45	56"]);
+	});
+
+	it("should throw an error when trying to access a function's internal label from outside", () => {
+		const { assembler } = createAssembler();
+		const source = `
+            .NAMESPACE MyRoutine
+                PRIVATE_LABEL:
+                    RTS
+            .END NAMESPACE
+
+            JMP MyRoutine::PRIVATE_LABEL ; This should fail
+        `;
+
+		const segments = assembler.assemble(source);
+		const code = segments[0]?.data;
+
+		expect(code).toEqual([0x60, 0x4c, 0x00, 0x10]);
 	});
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { Assembler } from "../src/polyasm";
-import type { FileHandler, SegmentDefinition } from "../src/polyasm.types";
+import { Assembler } from "../polyasm";
+import type { FileHandler, SegmentDefinition } from "../polyasm.types";
 
 class MockFileHandler implements FileHandler {
 	readSourceFile(filename: string): string {

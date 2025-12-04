@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { Cpu6502Handler } from "../src/cpu/cpu6502.class";
-import { Logger } from "../src/logger";
-import { Assembler } from "../src/polyasm";
-import type { FileHandler, SegmentDefinition } from "../src/polyasm.types";
+import { Cpu6502Handler } from "../cpu/cpu6502.class";
+import { Logger } from "../logger";
+import { Assembler } from "../polyasm";
+import type { FileHandler, SegmentDefinition } from "../polyasm.types";
 
 class MockFileHandler implements FileHandler {
 	readSourceFile(filename: string): string {
@@ -31,7 +31,7 @@ describe("File Directives (.INCLUDE, .INCBIN)", () => {
 			const includedCode = "LDA #$10\nSTA $0200";
 			const source = `
 				.INCLUDE "included.asm" ; include this file
-				test = 0
+				test = 99
 			`;
 
 			const readSourceFileSpy = vi.spyOn(mockFileHandler, "readSourceFile").mockReturnValue(includedCode);

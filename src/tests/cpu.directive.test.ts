@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { Cpu65C02Handler } from "../src/cpu/cpu65c02.class";
-import { Cpu6502Handler } from "../src/cpu/cpu6502.class";
-import { Assembler } from "../src/polyasm";
-import type { FileHandler, SegmentDefinition } from "../src/polyasm.types";
+import { Cpu65C02Handler } from "../cpu/cpu65c02.class";
+import { Cpu6502Handler } from "../cpu/cpu6502.class";
+import { Assembler } from "../polyasm";
+import type { FileHandler, SegmentDefinition } from "../polyasm.types";
 
 // A simple mock for the FileHandler so we don't need to interact with the filesystem.
 class MockFileHandler implements FileHandler {

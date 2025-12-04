@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import type { DirectiveContext } from "../src/directives/directive.interface";
-import { Assembler } from "../src/polyasm";
-import type { FileHandler, SegmentDefinition } from "../src/polyasm.types";
-import type { SymbolValue } from "../src/symbol.class";
+import type { DirectiveContext } from "../directives/directive.interface";
+import { Assembler } from "../polyasm";
+import type { FileHandler, SegmentDefinition } from "../polyasm.types";
+import type { SymbolValue } from "../symbol.class";
 
 class MockFileHandler implements FileHandler {
 	readSourceFile(filename: string): string {
