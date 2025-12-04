@@ -14,10 +14,10 @@ export interface StreamState {
 
 export interface FileHandler {
 	/** Reads raw source content and returns the string content for .INCLUDE. */
-	readSourceFile(filename: string): string;
+	readSourceFile(filename: string, from?: string): string;
 
 	/** Reads raw file content and returns the byte array for .INCBIN. */
-	readBinaryFile(filename: string): number[];
+	readBinaryFile(filename: string, from?: string): number[];
 }
 /** Defines a segment for the linker. */
 

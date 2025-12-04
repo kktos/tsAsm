@@ -26,7 +26,14 @@ export class IncludeDirective implements IDirective {
 
 		try {
 			assembler.startNewStream(filename);
-			assembler.parser.pushTokenStream({ newTokens: assembler.lexer.getBufferedTokens(), cacheName: filename });
+			assembler.parser.pushTokenStream({
+				newTokens: assembler.lexer.getBufferedTokens(),
+				cacheName: filename,
+				onEndOfStream: () => {
+					assembler.endCurrentStream();
+					assembler.lister.directive({ ...directive, value: "--------------- end of INCLUDE ---------------" }, filename);
+				},
+			});
 
 			assembler.lister.directive(directive, filename);
 		} catch (e) {
@@ -46,6 +53,12 @@ export class IncludeDirective implements IDirective {
 		const filename = assembler.expressionEvaluator.evaluate(expressionTokens, evaluationContext);
 		if (typeof filename !== "string") throw new Error(`.INCLUDE requires a string argument on line ${directive.line}.`);
 
-		assembler.parser.pushTokenStream({ cacheName: filename, newTokens: [] });
+		assembler.parser.pushTokenStream({
+			cacheName: filename,
+			newTokens: [],
+			onEndOfStream: () => {
+				assembler.lister.directive({ ...directive, value: "END INCLUDE" }, filename);
+			},
+		});
 	}
 }

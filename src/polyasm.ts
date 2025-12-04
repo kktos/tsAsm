@@ -27,7 +27,9 @@ export class Assembler {
 	public symbolTable: PASymbolTable;
 	public currentPC: number;
 	public isAssembling = true;
+
 	public currentFilename = "";
+	private filenameStack: string[] = [];
 
 	private lastGlobalLabel: string | null = null;
 	public anonymousLabels: number[] = [];
@@ -99,7 +101,7 @@ export class Assembler {
 		this.options.set(name, value);
 		const key = `option:${name}`;
 		this.emitter.emit(key, value);
-		this.logger.log(`setOption: ${key} = ${value}`);
+		this.lister.directive("option", `${name} = "${value}"`);
 	}
 
 	public getOption(name: string) {
@@ -107,9 +109,14 @@ export class Assembler {
 	}
 
 	public startNewStream(filename: string) {
+		this.filenameStack.push(this.currentFilename);
+		const rawContent = this.fileHandler.readSourceFile(filename, this.currentFilename);
 		this.currentFilename = filename;
-		const rawContent = this.fileHandler.readSourceFile(filename);
 		this.lexer.startStream(rawContent);
+	}
+
+	public endCurrentStream() {
+		this.currentFilename = this.filenameStack.pop() ?? "";
 	}
 
 	public setCPUHandler(handler: CPUHandler) {
@@ -119,20 +126,6 @@ export class Assembler {
 	public getCPUHandler(): CPUHandler {
 		return this.cpuHandler;
 	}
-
-	// public pushScope(name: string) {
-	// 	this.scopeStack.push(name);
-	// 	const namespace = this.scopeStack.join(".");
-	// 	this.symbolTable.setNamespace(namespace);
-	// 	this.logger.log(`Entering scope, new namespace: '${namespace}'`);
-	// }
-
-	// public popScope() {
-	// 	this.scopeStack.pop();
-	// 	const namespace = this.scopeStack.length > 0 ? this.scopeStack.join(".") : "global";
-	// 	this.symbolTable.setNamespace(namespace);
-	// 	this.logger.log(`Exiting scope, restored namespace to: '${namespace}'`);
-	// }
 
 	public assemble(source: string): Segment[] {
 		this.setOption("local_label_char", ":");
@@ -283,7 +276,9 @@ export class Assembler {
 
 		this.symbolTable.setNamespace("global");
 
-		this.anonymousLabels = [];
+		// this.anonymousLabels = [];
+		const anonymousLabelCounter = 0;
+
 		this.lastGlobalLabel = null;
 
 		while (this.parser.tokenStreamStack.length > 0) {
@@ -357,11 +352,8 @@ export class Assembler {
 
 					break;
 
-				// case "LOCAL_LABEL":
-				// 	this.currentTokenIndex++;
-				// 	break;
 				case "ANONYMOUS_LABEL_DEF":
-					this.anonymousLabels.push(this.currentPC);
+					this.anonymousLabels[anonymousLabelCounter] = this.currentPC;
 					break;
 			}
 		}

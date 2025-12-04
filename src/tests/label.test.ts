@@ -187,5 +187,26 @@ describe("Label References", () => {
 			const machineCode = assembler.link();
 			expect(machineCode).toEqual([0xad, 0x00, 0x10, 0xad, 0x03, 0x10]);
 		});
+
+		it("should resolve label for PREAD - bug fix", () => {
+			const { assembler } = setup();
+			const source = `
+				.OPTION local_label_char "!"
+
+				lda  $C070		 		; TRIGGER PADDLES
+				ldy  #$00 				; INIT COUNT
+				nop         			; COMPENSATE FOR 1ST COUNT
+				nop
+		!		lda  $C064,x 			;  COUNT Y-REG EVERY
+				bpl  !+  				; 12 uSec [actually 11]
+				iny
+				bne  !-       			;EXIT AT 255 MAX
+				dey
+		!		rts
+			`;
+			assembler.assemble(source);
+			const machineCode = assembler.link();
+			expect(machineCode).toEqual([0xad, 0x70, 0xc0, 0xa0, 0x00, 0xea, 0xea, 0xbd, 0x64, 0xc0, 0x10, 0x04, 0xc8, 0xd0, 0xf8, 0x88, 0x60]);
+		});
 	});
 });

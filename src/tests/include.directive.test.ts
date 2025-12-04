@@ -39,7 +39,7 @@ describe("File Directives (.INCLUDE, .INCBIN)", () => {
 			assembler.assemble(source);
 			const result = assembler.link();
 
-			expect(readSourceFileSpy).toHaveBeenCalledWith("included.asm");
+			expect(readSourceFileSpy).toHaveBeenCalledWith("included.asm", "");
 			expect(result).toEqual([0xa9, 0x10, 0x8d, 0x00, 0x02]);
 		});
 

@@ -25,7 +25,6 @@ export class OptionDirective implements IDirective {
 					throw new Error(`Value for 'local_label_char' must be a single character string on line ${directive.line}.`);
 
 				assembler.setOption("local_label_char", optionValue);
-				assembler.logger.log(`[OPTION] Set local label character to: '${optionValue}'`);
 				break;
 			default:
 				assembler.logger.warn(`[OPTION] Unknown option '${optionName}' on line ${directive.line}.`);

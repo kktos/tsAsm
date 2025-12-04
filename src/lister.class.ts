@@ -41,8 +41,8 @@ export class Lister {
 		this.logger.log(`${"".padStart(LABEL_START_COL)}${label.padEnd(LABEL_PAD)} = ${asString(value)}`);
 	}
 
-	public directive(pragma: ScalarToken, ...params: SymbolValue[]) {
-		this.logger.log(`${"".padStart(LABEL_START_COL)}.${pragma.value.toLowerCase()} ${params.join(", ")}`);
+	public directive(pragma: ScalarToken | string, ...params: SymbolValue[]) {
+		this.logger.log(`${"".padStart(LABEL_START_COL)}.${(typeof pragma === "string" ? pragma : pragma.value).toLowerCase()} ${params.join(", ")}`);
 	}
 }
 

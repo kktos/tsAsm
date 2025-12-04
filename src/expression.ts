@@ -703,9 +703,13 @@ export class ExpressionEvaluator {
 				}
 				// Forward reference: Find the first label defined *at or after* the current PC.
 				const relevantLabels = labels.filter((pc) => pc >= context.pc);
-				if (relevantLabels.length < count)
+				if (relevantLabels.length < count) {
+					// Pass 1: Assume 0 for forward references.
+					if (context.allowForwardRef) return 0;
+
 					// During pass 2, this is a fatal error.
 					throw new Error(`Not enough succeeding anonymous labels to satisfy '${token.value}' on line ${token.line}.`);
+				}
 
 				return relevantLabels[count - 1] as SymbolValue;
 			}
