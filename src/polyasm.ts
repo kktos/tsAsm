@@ -32,6 +32,7 @@ export class Assembler {
 
 	public macroDefinitions: Map<string, MacroDefinition> = new Map();
 	private options: Map<string, string> = new Map();
+	// private scopeStack: string[] = [];
 
 	public pass: number;
 
@@ -116,6 +117,20 @@ export class Assembler {
 	public getCPUHandler(): CPUHandler {
 		return this.cpuHandler;
 	}
+
+	// public pushScope(name: string) {
+	// 	this.scopeStack.push(name);
+	// 	const namespace = this.scopeStack.join(".");
+	// 	this.symbolTable.setNamespace(namespace);
+	// 	this.logger.log(`Entering scope, new namespace: '${namespace}'`);
+	// }
+
+	// public popScope() {
+	// 	this.scopeStack.pop();
+	// 	const namespace = this.scopeStack.length > 0 ? this.scopeStack.join(".") : "global";
+	// 	this.symbolTable.setNamespace(namespace);
+	// 	this.logger.log(`Exiting scope, restored namespace to: '${namespace}'`);
+	// }
 
 	public assemble(source: string): Segment[] {
 		this.setOption("local_label_char", ":");
@@ -242,7 +257,7 @@ export class Assembler {
 					break;
 				}
 				default:
-					throw new Error(`Syntax error in line ${token.line}`);
+					throw new Error(`Syntax error in line ${token.line} : ${token.type} ${token.value}`);
 			}
 		}
 	}
@@ -320,7 +335,9 @@ export class Assembler {
 
 				case "LABEL":
 					this.lastGlobalLabel = token.value;
-					this.symbolTable.setSymbol(token.value, this.currentPC);
+					// In functions, the scope is lost between the passes
+					if (this.symbolTable.isDefined(token.value)) this.symbolTable.setSymbol(token.value, this.currentPC);
+					else this.symbolTable.addSymbol(token.value, this.currentPC);
 					this.logger.log(`Defined label ${token.value} @ $${getHex(this.currentPC)}`);
 					break;
 

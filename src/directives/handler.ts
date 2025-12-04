@@ -16,6 +16,7 @@ import { DataDirective } from "./data.directive";
 import { DefineDirective } from "./define.directive";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 import { FillDirective } from "./fill.directive";
+import { FunctionDirective } from "./function.directive";
 import { HexDirective } from "./hex.directive";
 import { IncbinDirective } from "./incbin.directive";
 import { IncludeDirective } from "./include.directive"; // Not in context, but assumed to exist
@@ -43,6 +44,9 @@ export class DirectiveHandler {
 		this.register("NAMESPACE", new NamespaceDirective());
 		this.register("MACRO", new MacroDirective());
 		this.register("DEFINE", new DefineDirective());
+
+		const functionDirective = new FunctionDirective();
+		this.register("FUNCTION", functionDirective);
 
 		this.register("EQU", new AssignDirective());
 

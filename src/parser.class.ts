@@ -260,7 +260,7 @@ export class Parser {
 
 	public getDirectiveBlockTokens(startDirective: string) {
 		const tokens: Token[] = [];
-		const blockDirectives = new Set(["MACRO", "IF", "FOR", "REPEAT", "NAMESPACE", "SEGMENT", "WHILE", "PROC", "SCOPE"]);
+		const blockDirectives = new Set(["MACRO", "IF", "FOR", "REPEAT", "NAMESPACE", "SEGMENT", "WHILE", "PROC", "FUNCTION"]);
 		let token = this.peekToken(0);
 		let depth = token?.value === "{" ? 0 : 1;
 
