@@ -72,31 +72,6 @@ describe("Macro Handling", () => {
 			expect(symbolTable.lookupSymbol("arg2")).toBeUndefined();
 		});
 
-		it("should perform a full argument substitution", () => {
-			const { assembler, symbolTable } = setup();
-
-			// Define a simple macro
-			assembler.assemble(`
-				.MACRO MY_MACRO arg1, arg2
-					LDA arg1
-					STA $2000
-					LDA arg2
-					STA $2001
-				.END
-			`);
-
-			// Now, use the macro
-			const source = "MY_MACRO #$10, $300";
-			assembler.assemble(source);
-
-			const machineCode6502 = assembler.link();
-			expect(machineCode6502).toEqual([0xa9, 0x10, 0x8d, 0x00, 0x20, 0xad, 0x0, 0x3, 0x8d, 0x01, 0x20]);
-
-			// Check if the symbols are defined correctly after macro expansion
-			expect(symbolTable.lookupSymbol("arg1")).toBeUndefined(); // Macro arguments should not leak into the symbol table
-			expect(symbolTable.lookupSymbol("arg2")).toBeUndefined();
-		});
-
 		it("tests a c-like macro with no parameters", () => {
 			const { assembler } = setup();
 			const src = `
@@ -148,6 +123,70 @@ describe("Macro Handling", () => {
 			const machineCode6502 = assembler.link();
 
 			expect(machineCode6502).toEqual([0x42, 0xff, 0x41, 0x42, 0x43, 0x44, 0x00, 0x01, 0x00, 0x10]);
+		});
+	});
+
+	describe("Macro Argument Substitution", () => {
+		it("should perform a full argument substitution", () => {
+			const { assembler, symbolTable } = setup();
+
+			// Define a simple macro
+			assembler.assemble(`
+				.MACRO MY_MACRO arg1, arg2
+					LDA arg1
+					STA $2000
+					LDA arg2
+					STA $2001
+				.END
+			`);
+
+			// Now, use the macro
+			const source = "MY_MACRO #$10, $300";
+			assembler.assemble(source);
+
+			const machineCode6502 = assembler.link();
+			expect(machineCode6502).toEqual([0xa9, 0x10, 0x8d, 0x00, 0x20, 0xad, 0x0, 0x3, 0x8d, 0x01, 0x20]);
+
+			// Check if the symbols are defined correctly after macro expansion
+			expect(symbolTable.lookupSymbol("arg1")).toBeUndefined(); // Macro arguments should not leak into the symbol table
+			expect(symbolTable.lookupSymbol("arg2")).toBeUndefined();
+		});
+
+		it("should work with indexed addressing mode", () => {
+			const { assembler, symbolTable } = setup();
+
+			// Define a simple macro
+			assembler.assemble(`
+				.MACRO save arg1, arg2
+					LDA arg1
+					STA $2000
+					LDA arg2
+					STA $2001
+				.END
+			`);
+
+			// Now, use the macro
+			const source = `
+				.org $1000
+				save <data,x>, #10 ; Call macro with '<data,x>' and '#10'
+
+				data: .db 0,1,2,3,4,5,6,7,8,9
+			`;
+			assembler.assemble(source);
+
+			const machineCode6502 = assembler.link();
+			// The macro expands to:
+			// LDA data,x  ; BD 0C 10 (data is at 0x100C after the macro expansion)
+			// STA $2000   ; 8D 00 20
+			// LDA #10     ; A9 0A
+			// STA $2001   ; 8D 01 20
+			// The test below assumes 'data' is at address $1000, so LDA data,x becomes BD 00 10
+			// Corrected expectation: The macro itself takes up 12 bytes. The default start is 0x1000. So 'data' will be at 0x100C.
+			expect(machineCode6502).toEqual([0xbd, 0x0a, 0x10, 0x8d, 0x00, 0x20, 0xa9, 0x0a, 0x8d, 0x01, 0x20, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+
+			// Check if the symbols are defined correctly after macro expansion
+			expect(symbolTable.lookupSymbol("arg1")).toBeUndefined(); // Macro arguments should not leak into the symbol table
+			expect(symbolTable.lookupSymbol("arg2")).toBeUndefined();
 		});
 	});
 

@@ -39,7 +39,6 @@ export class MacroDirective implements IDirective {
 			endPosition,
 		});
 
-		// assembler.logger.log(`Macro: ${macroName} with ${parameters.length} params${restParameter ? " and a rest parameter." : "."}`);
 		assembler.lister.directive(
 			directive,
 			`${nameToken.raw}(${parameters.join(", ")}${restParameter ? `${parameters.length ? ", " : ""}...${restParameter}` : ""})`,

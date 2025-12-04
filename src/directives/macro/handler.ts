@@ -88,7 +88,7 @@ export class MacroHandler {
 
 		const firstPeek = this.assembler.parser.peekToken();
 		if (!firstPeek || firstPeek.type === "EOF") return [];
-		const hasParens = firstPeek.value === "(";
+		const hasParens = firstPeek.type === "OPERATOR" && firstPeek.value === "(";
 		const callLineNum = callLine ?? firstPeek.line;
 
 		if (hasParens) {
@@ -100,13 +100,13 @@ export class MacroHandler {
 				if (!token || token.type === "EOF") break;
 				this.assembler.parser.consume(1);
 
-				if (token.value === "(") {
+				if (token.type === "OPERATOR" && token.value === "(") {
 					parenDepth++;
 					currentArgTokens.push(token);
 					continue;
 				}
 
-				if (token.value === ")") {
+				if (token.type === "OPERATOR" && token.value === ")") {
 					parenDepth--;
 					if (parenDepth === 0) {
 						argsArray.push(currentArgTokens);
@@ -130,12 +130,34 @@ export class MacroHandler {
 			while (true) {
 				const token = this.assembler.parser.peekToken();
 				if (!token || token.type === "EOF" || token.line !== callLineNum) break;
-				this.assembler.parser.consume(1);
-				if (token.type === "COMMA") {
-					argsArray.push(currentArgTokens);
-					currentArgTokens = [];
+
+				// Handle angle-bracketed arguments
+				if (token.type === "OPERATOR" && token.value === "<") {
+					this.assembler.parser.consume(1); // consume '<'
+					let bracketDepth = 1;
+					while (bracketDepth > 0) {
+						const innerToken = this.assembler.parser.peekToken();
+						if (!innerToken || innerToken.type === "EOF" || innerToken.line !== callLineNum) {
+							throw new Error(`Unmatched '<' in macro arguments on line ${callLineNum}.`);
+						}
+						this.assembler.parser.consume(1);
+						if (innerToken.type === "OPERATOR") {
+							if (innerToken.value === "<") bracketDepth++;
+							if (innerToken.value === ">") bracketDepth--;
+						}
+
+						if (bracketDepth > 0) {
+							currentArgTokens.push(innerToken);
+						}
+					}
 				} else {
-					currentArgTokens.push(token);
+					this.assembler.parser.consume(1);
+					if (token.type === "COMMA") {
+						argsArray.push(currentArgTokens);
+						currentArgTokens = [];
+					} else {
+						currentArgTokens.push(token);
+					}
 				}
 			}
 			if (currentArgTokens.length > 0) argsArray.push(currentArgTokens);
