@@ -47,7 +47,7 @@ export class Parser {
 		if (this.activeTokens === lexerBuffer) {
 			const t = this.lexer.ensureBuffered(index);
 			// refresh reference in case lexer expanded the buffer
-			this.activeTokens = this.lexer.getBufferedTokens();
+			// this.activeTokens = this.lexer.getBufferedTokens();
 			return t;
 		}
 		// Otherwise we're operating on a pushed token stream (macro/block) that's an array.

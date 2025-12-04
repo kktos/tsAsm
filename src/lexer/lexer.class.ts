@@ -532,9 +532,7 @@ export class AssemblyLexer {
 		}
 
 		const start = this.currentStream.pos;
-		while (this.isValidDigitForRadix(this.peek(), radix) || this.peek() === "_") {
-			this.advance();
-		}
+		while (this.isValidDigitForRadix(this.peek(), radix) || this.peek() === "_") this.advance();
 
 		const numberString = this.currentStream.source.slice(start, this.currentStream.pos).replace(/_/g, "");
 		if (numberString === "") {

@@ -175,6 +175,8 @@ export class Assembler {
 		this.anonymousLabels = [];
 		this.lastGlobalLabel = null;
 
+		let blockDepth = 0;
+
 		if (this.linker.segments.length) this.currentPC = this.linker.segments[0] ? this.linker.segments[0].start : DEFAULT_PC;
 
 		while (this.parser.tokenStreamStack.length > 0) {
@@ -256,10 +258,20 @@ export class Assembler {
 					this.anonymousLabels.push(this.currentPC);
 					break;
 				}
+
+				case "LBRACE":
+					blockDepth++;
+					break;
+				case "RBRACE":
+					blockDepth--;
+					break;
+
 				default:
 					throw new Error(`Syntax error in line ${token.line} : ${token.type} ${token.value}`);
 			}
 		}
+		if(blockDepth !== 0)
+			throw new Error(`Syntax error : Unbalanced braces. Depth: ${blockDepth}`);
 	}
 
 	private passTwo(): void {
