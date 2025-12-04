@@ -220,6 +220,24 @@ export class ExpressionEvaluator {
 				this.pushOperatorWithPrecedence(token, outputQueue, operatorStack);
 				break;
 
+			case "<":
+				if (isUnary) {
+					const unaryToken: OperatorToken = { ...token, value: "UNARY_LSB" };
+					this.pushOperatorWithPrecedence(unaryToken, outputQueue, operatorStack);
+					break;
+				}
+				this.pushOperatorWithPrecedence(token, outputQueue, operatorStack);
+				break;
+
+			case ">":
+				if (isUnary) {
+					const unaryToken: OperatorToken = { ...token, value: "UNARY_MSB" };
+					this.pushOperatorWithPrecedence(unaryToken, outputQueue, operatorStack);
+					break;
+				}
+				this.pushOperatorWithPrecedence(token, outputQueue, operatorStack);
+				break;
+
 			case "(":
 				operatorStack.push(token);
 				break;
@@ -503,6 +521,16 @@ export class ExpressionEvaluator {
 		if (token.value === "!") {
 			if (typeof right !== "number") throw new Error("Unary operator '!' requires a numeric operand.");
 			stack.push(right === 0 ? 1 : 0);
+			return true;
+		}
+		if (token.value === "UNARY_LSB") {
+			if (typeof right !== "number") throw new Error("Unary operator '<' (LSB) requires a numeric operand.");
+			stack.push(right & 0xff);
+			return true;
+		}
+		if (token.value === "UNARY_MSB") {
+			if (typeof right !== "number") throw new Error("Unary operator '>' (MSB) requires a numeric operand.");
+			stack.push((right >> 8) & 0xff);
 			return true;
 		}
 		return false;

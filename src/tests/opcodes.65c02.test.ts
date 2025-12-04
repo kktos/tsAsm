@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
+import { Cpu65C02Handler } from "../cpu/cpu65c02.class";
 import { Assembler } from "../polyasm";
 import type { FileHandler } from "../polyasm.types";
-import { Cpu65C02Handler } from "./cpu65c02.class";
 
 const mockFileHandler: FileHandler = {
-	readSourceFile: (_filename: string) => "",
-	readBinaryFile: (_filename: string) => [],
+	readSourceFile: (filename: string) => {
+		throw new Error(`Mock file not found: "${filename}"`);
+	},
+	readBinaryFile: (filename: string) => {
+		throw new Error(`Mock bin file not found: ${filename}`);
+	},
 };
 
 describe("65C02 Opcodes", () => {

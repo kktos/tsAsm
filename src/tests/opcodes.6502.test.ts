@@ -4,20 +4,24 @@ import { Assembler } from "../polyasm";
 import type { FileHandler } from "../polyasm.types";
 
 const mockFileHandler: FileHandler = {
-	readSourceFile: (_filename: string) => "",
-	readBinaryFile: (_filename: string) => [],
+	readSourceFile: (filename: string) => {
+		throw new Error(`Mock file not found: "${filename}"`);
+	},
+	readBinaryFile: (filename: string) => {
+		throw new Error(`Mock bin file not found: ${filename}`);
+	},
 };
 
 describe("6502 Opcodes", () => {
 	const assembleAndGetCode = (source: string): number[] => {
 		const cpu = new Cpu6502Handler();
 		const assembler = new Assembler(cpu, mockFileHandler, {
-			segments: [{ name: "CODE", start: 0x8000, size: 0x1000, padValue: 0 }],
+			segments: [{ name: "CODE", start: 0x8000, size: 0, resizable: true }],
 		});
 		const segments = assembler.assemble(source);
 		const codeSegment = segments.find((s) => s.name === "CODE");
 		// Only return the part of the data that has been written to
-		return codeSegment?.data.slice(0, assembler.currentPC - codeSegment.start) ?? [];
+		return codeSegment?.data ?? [];
 	};
 
 	it("should assemble ADC instructions", () => {
@@ -226,6 +230,49 @@ describe("6502 Opcodes", () => {
 			0x40, // INDIRECT_X
 			0xf1,
 			0x50, // INDIRECT_Y
+		]);
+	});
+
+	it("should assemble Hi and Lo byte", () => {
+		const source = `
+			.if $45 > <text
+            	lda #<text
+				pha
+			.end
+
+            lda #>text
+			pha
+			jsr $D000
+			rts
+
+			.org $8010
+			text:
+				.db "ABCDE", 0
+        `;
+		const data = assembleAndGetCode(source);
+		expect(data).toEqual([
+			0xa9, // lda
+			0x10,
+			0x48, // pha
+			0xa9, // lda
+			0x80,
+			0x48, // pha
+			0x20, //
+			0x00,
+			0xd0,
+			0x60, // rts
+			0x00, // align
+			0x00,
+			0x00,
+			0x00,
+			0x00,
+			0x00,
+			0x41, //
+			0x42,
+			0x43,
+			0x44,
+			0x45,
+			0x00,
 		]);
 	});
 });
