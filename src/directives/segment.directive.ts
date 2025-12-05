@@ -27,22 +27,12 @@ export class SegmentDirective implements IDirective {
 		}
 
 		if (assembler.parser.peekToken()?.type === "LBRACE") {
-			const params = this.parseBlockParameters(assembler, context, directive.line);
-
-			if (params.start === undefined || (params.end === undefined && params.size === undefined))
-				throw new Error(`ERROR on line ${directive.line}: .SEGMENT definition requires 'start','end' or 'start','size' parameters.`);
-
-			const start = params.start;
-			const end = params.end !== undefined ? params.end : start + (params.size ?? 0) - 1;
-			const pad = params.pad;
-
-			const size = end - start + 1;
-			if (size <= 0) throw new Error(`ERROR on line ${directive.line}: .SEGMENT 'end' address must be greater than or equal to 'start' address.`);
-
-			assembler.addSegment(name, start, size, pad);
-
-			assembler.lister.directive(directive, `${name.padEnd(16)} { start: $${getHex(start)}, end: $${getHex(end)}, pad: $${getHex(pad ?? 0)} }`);
+			this.defineSegment(name, directive, assembler, context);
+			return;
 		}
+
+		assembler.useSegment(name);
+		assembler.lister.directive(directive, name);
 	}
 
 	public handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
@@ -66,8 +56,25 @@ export class SegmentDirective implements IDirective {
 		}
 
 		assembler.useSegment(name);
-		// assembler.logger.log(`Using segment: ${name}`);
 		assembler.lister.directive(directive, name);
+	}
+
+	private defineSegment(name: string, directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
+		const params = this.parseBlockParameters(assembler, context, directive.line);
+
+		if (params.start === undefined || (params.end === undefined && params.size === undefined))
+			throw new Error(`ERROR on line ${directive.line}: .SEGMENT definition requires 'start','end' or 'start','size' parameters.`);
+
+		const start = params.start;
+		const end = params.end !== undefined ? params.end : start + (params.size ?? 0) - 1;
+		const pad = params.pad;
+
+		const size = end - start + 1;
+		if (size <= 0) throw new Error(`ERROR on line ${directive.line}: .SEGMENT 'end' address must be greater than or equal to 'start' address.`);
+
+		assembler.addSegment(name, start, size, pad);
+
+		assembler.lister.directive(directive, `${name.padEnd(16)} { start: $${getHex(start)}, end: $${getHex(end)}, pad: $${getHex(pad ?? 0)} }`);
 	}
 
 	private parseBlockParameters(assembler: Assembler, context: DirectiveContext, line: number | string): SegmentDef {
