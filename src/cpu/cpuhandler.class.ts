@@ -7,7 +7,7 @@ import type { OperatorStackToken } from "../lexer/lexer.class";
 export type AddressingMode = string;
 
 export interface CPUHandler {
-	cpuType: string; //"6502" | "65816" | "6809" | "ARM_RISC";
+	cpuType: string;
 
 	/** * Core method to determine the specific addressing mode, opcode, and size
 	 * based on the mnemonic and the structure of the operand tokens.
@@ -16,7 +16,7 @@ export interface CPUHandler {
 	resolveAddressingMode(
 		mnemonic: string,
 		operandTokens: OperatorStackToken[],
-		resolveValue: (tokens: OperatorStackToken[]) => number,
+		resolveValue: (tokens: OperatorStackToken[], numberMax?: number) => number,
 	): {
 		mode: AddressingMode;
 		opcode: number;
@@ -40,5 +40,4 @@ export interface CPUHandler {
 	): number[];
 
 	getPCSize(): number;
-	//constructor(logger: Logger); // Constructor signature for CPU handlers
 }

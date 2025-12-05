@@ -74,6 +74,7 @@ export interface EvaluationContext {
 	macroArgs?: Map<string, Token[]>;
 	allowForwardRef?: boolean;
 	currentGlobalLabel?: string | null;
+	numberMax?: number;
 }
 
 export class ExpressionEvaluator {
@@ -98,7 +99,20 @@ export class ExpressionEvaluator {
 	 * Throws an error if the expression evaluates to a string or array.
 	 */
 	public evaluateAsNumber(tokens: Token[], context: Omit<EvaluationContext, "symbolTable">): number {
-		const result = this.evaluate(tokens, context);
+		let result = this.evaluate(tokens, context);
+
+		if (context.numberMax && typeof result === "string") {
+			const maxLen = context.numberMax / 256;
+			if (result.length <= maxLen) {
+				let num = 0;
+				for (let idx = result.length - 1; idx >= 0; idx--) {
+					const charCode = result.charCodeAt(idx);
+					num = (num << 8) + charCode;
+				}
+				result = num;
+			}
+		}
+
 		if (typeof result !== "number") throw new Error("Expression did not evaluate to a number as expected.");
 
 		return result;
@@ -436,9 +450,12 @@ export class ExpressionEvaluator {
 
 		for (const token of rpnTokens) {
 			switch (token.type) {
-				case "NUMBER":
-					stack.push(Number.parseInt(token.value, 10));
+				case "NUMBER": {
+					const num = Number.parseInt(token.value, 10);
+					if (context.numberMax && num > context.numberMax) throw new Error(`Number Overflow '${num}'>${context.numberMax}' .`);
+					stack.push(num);
 					break;
+				}
 
 				case "STRING":
 					stack.push(token.value);

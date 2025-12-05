@@ -394,7 +394,7 @@ export class Cpu65C02Handler implements CPUHandler {
 	resolveAddressingMode(
 		mnemonic: string,
 		operandTokens: OperatorStackToken[],
-		resolveValue: (tokens: OperatorStackToken[]) => number,
+		resolveValue: (tokens: OperatorStackToken[], numberSize?: number) => number,
 	): {
 		mode: AddressingMode;
 		opcode: number;
@@ -444,7 +444,7 @@ export class Cpu65C02Handler implements CPUHandler {
 		// 2. Immediate Mode (e.g., LDA #$42)
 		if (operandTokens[0]?.value === "#") {
 			const expressionTokens = operandTokens.slice(1);
-			const resolvedAddress = resolveValue(expressionTokens);
+			const resolvedAddress = resolveValue(expressionTokens, 256);
 			const [opcode, bytes] = instructionModes.get(this.M65C02_MODES.IMMEDIATE) || [0x00, 2];
 			return {
 				mode: this.M65C02_MODES.IMMEDIATE,
