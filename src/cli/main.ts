@@ -10,25 +10,23 @@ import { yamlparse, yamlstringify } from "./asm-yaml";
 import colors from "./colors";
 
 class NodeFileHandler implements FileHandler {
+	fullpath = "";
 	readSourceFile(filename: string, from?: string): string {
-		let fullpath = filename;
+		this.fullpath = filename;
 		if (from) {
 			const dir = dirname(from);
-			fullpath = `${dir}/${filename}`;
+			this.fullpath = `${dir}/${filename}`;
 		}
-
-		logger.log(colors.blue(`READFILE ${fullpath} FROM ${from}`));
-
-		return readFileSync(fullpath, "utf-8");
+		// logger.log(colors.blue(`READFILE ${this.fullpath} FROM ${from}`));
+		return readFileSync(this.fullpath, "utf-8");
 	}
 	readBinaryFile(filename: string, from?: string): number[] {
-		let fullpath = filename;
+		this.fullpath = filename;
 		if (from) {
 			const dir = dirname(from);
-			fullpath = `${dir}/${filename}`;
+			this.fullpath = `${dir}/${filename}`;
 		}
-
-		const buffer = readFileSync(fullpath);
+		const buffer = readFileSync(this.fullpath);
 		return Array.from(buffer);
 	}
 }

@@ -34,7 +34,7 @@ class CaptureLogger extends Logger {
 
 function makeAssembler() {
 	const logger = new CaptureLogger();
-	const asm = new Assembler(fakeCPU, { readSourceFile: () => "", readBinaryFile: () => [] }, { logger });
+	const asm = new Assembler(fakeCPU, { fullpath: "", readSourceFile: () => "", readBinaryFile: () => [] }, { logger });
 	return { asm, logger };
 }
 

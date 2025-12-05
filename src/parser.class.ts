@@ -267,7 +267,7 @@ export class Parser {
 
 		while (true) {
 			token = this.peekToken(0);
-			if (!token || token.type === "EOF") throw new Error(`[Assembler] Unterminated '${startDirective}' block.`);
+			if (!token || token.type === "EOF") throw new Error(`line ${token?.line} : Unterminated '${startDirective}' block.`);
 
 			tokens.push(token);
 			this.consume(1);

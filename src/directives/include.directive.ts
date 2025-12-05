@@ -31,7 +31,7 @@ export class IncludeDirective implements IDirective {
 				cacheName: filename,
 				onEndOfStream: () => {
 					assembler.endCurrentStream();
-					assembler.lister.directive({ ...directive, value: "--------------- end of INCLUDE ---------------" }, filename);
+					// assembler.lister.directive({ ...directive, value: "--------------- end of INCLUDE ---------------" }, filename);
 				},
 			});
 

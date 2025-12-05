@@ -111,7 +111,7 @@ export class Assembler {
 	public startNewStream(filename: string) {
 		this.filenameStack.push(this.currentFilename);
 		const rawContent = this.fileHandler.readSourceFile(filename, this.currentFilename);
-		this.currentFilename = filename;
+		this.currentFilename = this.fileHandler.fullpath;
 		this.lexer.startStream(rawContent);
 	}
 
@@ -409,12 +409,13 @@ export class Assembler {
 
 		// It's an instruction. Resolve its size and advance the PC.
 		try {
-			const sizeInfo = this.cpuHandler.resolveAddressingMode(mnemonicToken.value, operandTokens, (exprTokens) =>
+			const sizeInfo = this.cpuHandler.resolveAddressingMode(mnemonicToken.value, operandTokens, (exprTokens, numberMax = 0) =>
 				this.expressionEvaluator.evaluateAsNumber(exprTokens, {
 					pc: this.currentPC,
 					allowForwardRef: true,
 					currentGlobalLabel: this.lastGlobalLabel,
 					assembler: this,
+					numberMax,
 				}),
 			);
 			this.currentPC += sizeInfo.bytes;
@@ -436,12 +437,13 @@ export class Assembler {
 			if (this.isAssembling) {
 				try {
 					// 1. Resolve Mode & Address
-					const modeInfo = this.cpuHandler.resolveAddressingMode(mnemonicToken.value, operandTokens, (exprTokens) =>
+					const modeInfo = this.cpuHandler.resolveAddressingMode(mnemonicToken.value, operandTokens, (exprTokens, numberMax = 0) =>
 						this.expressionEvaluator.evaluateAsNumber(exprTokens, {
 							pc: this.currentPC,
 							macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
 							assembler: this,
 							currentGlobalLabel: this.lastGlobalLabel,
+							numberMax,
 						}),
 					);
 

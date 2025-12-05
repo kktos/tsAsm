@@ -9,6 +9,7 @@ const DEFAULT_SEGMENTS: SegmentDefinition[] = [{ name: "CODE", start: 0x1000, si
 describe("Label References", () => {
 	const setup = () => {
 		class MockFileHandler implements FileHandler {
+			fullpath = "";
 			readSourceFile(filename: string): string {
 				throw new Error(`Mock file not found: "${filename}"`);
 			}

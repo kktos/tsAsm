@@ -1,4 +1,5 @@
 import type { Token } from "../lexer/lexer.class";
+import { getHex } from "../utils/hex.util";
 import type { EvaluationStack, FunctionHandler } from "./types";
 
 export const hex: FunctionHandler = (stack: EvaluationStack, token: Token, _symbolTable, argCount): void => {
@@ -10,8 +11,7 @@ export const hex: FunctionHandler = (stack: EvaluationStack, token: Token, _symb
 	if (minDigitsArg !== undefined && typeof minDigitsArg !== "number")
 		throw new Error(`Second argument to .HEX() (minDigits) must be a number on line ${token.line}.`);
 
-	let hexString = valueArg.toString(16).toUpperCase();
-	if (minDigitsArg !== undefined) hexString = hexString.padStart(minDigitsArg, "0");
+	console.log("valueArg:", valueArg, "minDigitsArg:", minDigitsArg);
 
-	stack.push(`$${hexString}`);
+	stack.push(`$${getHex(valueArg, minDigitsArg)}`);
 };

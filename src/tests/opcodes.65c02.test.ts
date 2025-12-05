@@ -4,6 +4,7 @@ import { Assembler } from "../polyasm";
 import type { FileHandler } from "../polyasm.types";
 
 const mockFileHandler: FileHandler = {
+	fullpath: "",
 	readSourceFile: (filename: string) => {
 		throw new Error(`Mock file not found: "${filename}"`);
 	},

@@ -37,6 +37,7 @@ class CaptureLogger extends Logger {
 describe("System Variables", () => {
 	const setup = () => {
 		class MockFileHandler implements FileHandler {
+			fullpath = "";
 			readSourceFile(filename: string): string {
 				throw new Error(`Mock file not found: "${filename}"`);
 			}

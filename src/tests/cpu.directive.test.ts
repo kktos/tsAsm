@@ -6,6 +6,7 @@ import type { FileHandler, SegmentDefinition } from "../polyasm.types";
 
 // A simple mock for the FileHandler so we don't need to interact with the filesystem.
 class MockFileHandler implements FileHandler {
+	fullpath = "";
 	readSourceFile(_filename: string): string {
 		return ""; // Not used in these tests
 	}

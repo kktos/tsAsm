@@ -5,6 +5,7 @@ import type { FileHandler, SegmentDefinition } from "../polyasm.types";
 import type { SymbolValue } from "../symbol.class";
 
 class MockFileHandler implements FileHandler {
+	fullpath = "";
 	readSourceFile(filename: string): string {
 		throw new Error(`Mock file not found: "${filename}"`);
 	}

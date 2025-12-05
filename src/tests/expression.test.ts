@@ -19,6 +19,7 @@ const fakeCPU = {
 describe("ExpressionEvaluator", () => {
 	const setup = () => {
 		class MockFileHandler implements FileHandler {
+			fullpath = "";
 			readSourceFile(filename: string): string {
 				throw new Error(`Mock file not found: "${filename}"`);
 			}
