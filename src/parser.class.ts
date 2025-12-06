@@ -1,6 +1,8 @@
 import type { EventEmitter } from "node:events";
+import { blockDirectives, rawDirectives } from "./directives/handler";
 import type { AssemblyLexer, IdentifierToken, Token } from "./lexer/lexer.class";
 import type { PushTokenStreamParams, StreamState } from "./polyasm.types";
+import type { SymbolValue } from "./symbol.class";
 
 export class Parser {
 	public activeTokens: Token[] = [];
@@ -67,8 +69,23 @@ export class Parser {
 	}
 
 	/** Peek relative to the current token pointer (0 == current). */
-	public peekToken(offset = 0): Token | null {
+	public peek(offset = 0): Token | null {
 		return this.ensureToken(this.getPosition() + offset);
+	}
+
+	public is(expectedType: Token["type"] | Token["type"][], expectedValue?: SymbolValue | SymbolValue[], offset = 0) {
+		const token = this.ensureToken(this.getPosition() + offset);
+		if (!token) return false;
+
+		const isMatchingType = typeof expectedType === "string" ? token.type === expectedType : new Set(expectedType).has(token.type);
+		const isMatchingValue =
+			expectedValue === undefined ? true : Array.isArray(expectedValue) ? new Set(expectedValue).has(token.value) : token.value === expectedValue;
+
+		return isMatchingType && isMatchingValue;
+	}
+
+	public isIdentifier(expectedValue: SymbolValue | SymbolValue[], offset = 0) {
+		return this.is("IDENTIFIER", expectedValue, offset);
 	}
 
 	public peekTokenUnbuffered(offset = 0): Token | null {
@@ -79,16 +96,15 @@ export class Parser {
 	}
 
 	/** Read and consume the next token from the active stream. */
-	public nextToken(options?: { endMarker?: string }): Token | null {
+	public next(options?: { endMarker?: string }): Token | null {
 		const pos = this.getPosition();
-		if (options?.endMarker) this.lexer.setEndMarker(options.endMarker);
+		this.lexer.setEndMarker(options?.endMarker);
 		const t = this.ensureToken(pos);
-		if (options?.endMarker) this.lexer.setEndMarker(undefined);
 		if (t) this.setPosition(pos + 1);
 		return t;
 	}
 
-	public nextIdentifierToken(identifier?: string): IdentifierToken | null {
+	public nextIdentifier(identifier?: string): IdentifierToken | null {
 		const pos = this.getPosition();
 		const t = this.ensureToken(pos);
 		if (!t || t.type !== "IDENTIFIER" || (identifier && t.value !== identifier)) return null;
@@ -203,7 +219,7 @@ export class Parser {
 	public getInstructionTokens(instructionToken?: Token): Token[] {
 		const tokens: Token[] = [];
 
-		const startToken = this.peekToken();
+		const startToken = this.peek();
 		if (startToken?.type === "EOF") return tokens;
 		if (instructionToken && instructionToken.line !== startToken?.line) return tokens;
 
@@ -214,11 +230,11 @@ export class Parser {
 
 		const startLine = instructionToken ? instructionToken.line : startToken.line;
 		while (true) {
-			let token = this.peekToken();
+			let token = this.peek();
 			if (!token) break;
 			if (token.line !== startLine) break;
 			if (token.type === "LBRACE" || token.type === "RBRACE" || token.type === "EOF") break;
-			token = this.nextToken();
+			token = this.next();
 			if (token) tokens.push(token);
 		}
 		return tokens;
@@ -228,7 +244,7 @@ export class Parser {
 		const tokens: Token[] = [];
 		let parenDepth = 0;
 
-		const startToken = this.peekToken();
+		const startToken = this.peek();
 		if (!startToken || startToken.type === "EOF") return tokens;
 		if (instructionToken && instructionToken.line !== startToken.line) return tokens;
 
@@ -240,7 +256,7 @@ export class Parser {
 
 		const startLine = instructionToken ? instructionToken.line : startToken.line;
 		while (true) {
-			const token = this.peekToken();
+			const token = this.peek();
 			if (!token || token.line !== startLine || token.type === "LBRACE" || token.type === "RBRACE" || token.type === "EOF") {
 				break;
 			}
@@ -259,34 +275,41 @@ export class Parser {
 		return tokens;
 	}
 
-	public getDirectiveBlockTokens(startDirective: string) {
+	public getDirectiveBlockTokens(startDirective: string, endOfBlockDirectives: string[] = ["END"]) {
 		const tokens: Token[] = [];
-		const blockDirectives = new Set(["MACRO", "IF", "FOR", "REPEAT", "NAMESPACE", "SEGMENT", "WHILE", "PROC", "FUNCTION"]);
-		let token = this.peekToken(0);
-		let depth = token?.value === "{" ? 0 : 1;
+		let depth = this.is("LBRACE") ? 0 : 1;
+		const EOBDirectives = new Set(endOfBlockDirectives);
 
 		while (true) {
-			token = this.peekToken(0);
+			const token = this.next();
 			if (!token || token.type === "EOF") throw new Error(`line ${token?.line} : Unterminated '${startDirective}' block.`);
 
 			tokens.push(token);
-			this.consume(1);
 
 			switch (token.type) {
 				case "DOT": {
-					const nextToken = this.peekToken();
+					const nextToken = this.peek();
 					if (nextToken?.type === "IDENTIFIER") {
 						tokens.push(nextToken);
 						this.consume(1);
 						const directiveName = nextToken.value;
+
 						if (blockDirectives.has(directiveName)) {
 							const lineTokens = this.getInstructionTokens(nextToken);
-							const blockToken = this.peekToken();
-							if (blockToken?.type !== "LBRACE") depth++;
+							if (!this.is("LBRACE")) depth++;
 							tokens.push(...lineTokens);
 							continue;
 						}
-						if (directiveName === "END") {
+
+						if (rawDirectives.has(directiveName)) {
+							const lineTokens = this.getInstructionTokens(nextToken);
+							tokens.push(...lineTokens);
+							const block = this.next({ endMarker: ".END" });
+							if (block) tokens.push(block);
+							continue;
+						}
+
+						if (EOBDirectives.has(directiveName)) {
 							depth--;
 							if (depth === 0) return tokens.slice(0, -2);
 						}

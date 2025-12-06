@@ -3,6 +3,7 @@ import { dirname } from "node:path";
 import { chdir } from "node:process";
 import { name, version } from "../../package.json";
 import { Cpu6502Handler } from "../cpu/cpu6502.class";
+import type { DirectiveContext } from "../directives/directive.interface";
 import { Logger } from "../logger.class";
 import { Assembler } from "../polyasm";
 import type { FileHandler, SegmentDefinition } from "../polyasm.types";
@@ -55,8 +56,11 @@ chdir(dirname(confFilename));
 
 const segments = (conf.segments as SegmentDefinition[]) ?? undefined;
 
+const textHandler = (blockContent: string, _context: DirectiveContext) => blockContent;
+const handlers = { default: "TEXT", map: new Map([["TEXT", textHandler]]) };
+
 try {
-	const assembler = new Assembler(new Cpu6502Handler(), fileHandler, { logger, segments });
+	const assembler = new Assembler(new Cpu6502Handler(), fileHandler, { logger, segments, rawDataProcessors: handlers });
 	const sourceFile = fileHandler.readSourceFile(conf.src as string);
 
 	chdir(dirname(conf.src as string));
@@ -76,5 +80,5 @@ try {
 	const index = assembler.symbolTable.getDict();
 	console.log(yamlstringify(index));
 } catch (e) {
-	logger.error(colors.red(`ERROR: ${e}`));
+	logger.error(colors.red(`${e}`));
 }

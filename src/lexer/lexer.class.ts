@@ -147,15 +147,18 @@ export class AssemblyLexer {
 				break;
 			}
 
-			const t = this.nextToken({ endMarker: this.endMarker });
+			const t = this.nextToken();
 			if (!t) continue; // skip null tokens (e.g., newlines)
 			this.currentStream.lastToken = t;
 			this.currentStream.tokenBuffer.push(t);
 			if (t.type === "EOF") break;
 		}
 
+		if (this.endMarker) return this.scanRawTextBlock(this.currentStream.line, this.currentStream.column);
+
 		const token = this.currentStream.tokenBuffer[index];
 		if (!token) return null;
+
 		if (token.type === "EOF" && this.streamStack.length > 1) {
 			this.streamStack.pop();
 			this.currentStream = this.streamStack[this.streamStack.length - 1] as Stream;
@@ -194,12 +197,12 @@ export class AssemblyLexer {
 	}
 
 	// Single-pass token extraction with minimal backtracking
-	public nextToken(options?: { endMarker?: string }): Token | null {
+	public nextToken(): Token | null {
 		this.skipWhitespace();
 
 		if (this.currentStream.pos >= this.currentStream.length) return this.makeToken("EOF", "");
 
-		if (options?.endMarker) return this.scanRawTextBlock(this.currentStream.line, this.currentStream.column, options.endMarker);
+		if (this.endMarker) return this.scanRawTextBlock(this.currentStream.line, this.currentStream.column);
 
 		const ch = this.currentStream.source[this.currentStream.pos] as string;
 		const startLine = this.currentStream.line;
@@ -586,7 +589,11 @@ export class AssemblyLexer {
 		return this.makeToken("ANONYMOUS_LABEL_DEF", ":", line, column);
 	}
 
-	private scanRawTextBlock(line: number, column: number, endMarker: string): Token | null {
+	private scanRawTextBlock(line: number, column: number): Token | null {
+		const endMarker = this.endMarker?.toLowerCase();
+		const endMarkerLen = this.endMarker?.length || 0;
+		this.endMarker = undefined;
+
 		// The raw data starts after the current line.
 		const endOfLine = this.currentStream.source.indexOf("\n", this.currentStream.pos);
 		// No newline after the directive, so no raw data.
@@ -601,13 +608,15 @@ export class AssemblyLexer {
 		do {
 			let lineStart = currentPos + 1;
 			// Skip leading whitespace on the line
-			while (lineStart < this.currentStream.length && (this.currentStream.source[lineStart] === " " || this.currentStream.source[lineStart] === "\t")) {
+			while (lineStart < this.currentStream.length && (this.currentStream.source[lineStart] === " " || this.currentStream.source[lineStart] === "\t"))
 				lineStart++;
-			}
 
-			if (this.currentStream.source.startsWith(endMarker, lineStart)) {
+			const searchSection = this.currentStream.source.slice(lineStart, lineStart + endMarkerLen).toLowerCase();
+
+			// if (this.currentStream.source.startsWith(endMarker, lineStart)) {
+			if (searchSection === endMarker) {
 				endOfRawData = currentPos; // The raw data ends at the newline before the end marker line.
-				this.currentStream.pos = lineStart + endMarker.length; // Move position past the end marker
+				this.currentStream.pos = lineStart + endMarkerLen; // Move position past the end marker
 				break;
 			}
 			currentPos++; // Move to the next character to continue searching
@@ -620,6 +629,7 @@ export class AssemblyLexer {
 		}
 
 		const rawValue = this.currentStream.source.slice(rawDataStart, endOfRawData);
+
 		return this.makeToken("RAW_TEXT", rawValue, line, column);
 	}
 

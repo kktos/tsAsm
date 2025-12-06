@@ -11,7 +11,5 @@ export const hex: FunctionHandler = (stack: EvaluationStack, token: Token, _symb
 	if (minDigitsArg !== undefined && typeof minDigitsArg !== "number")
 		throw new Error(`Second argument to .HEX() (minDigits) must be a number on line ${token.line}.`);
 
-	console.log("valueArg:", valueArg, "minDigitsArg:", minDigitsArg);
-
 	stack.push(`$${getHex(valueArg, minDigitsArg)}`);
 };
