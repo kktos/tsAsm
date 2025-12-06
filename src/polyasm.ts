@@ -43,6 +43,7 @@ export class Assembler {
 	public directiveHandler: DirectiveHandler;
 	public macroHandler: MacroHandler;
 	private rawDataProcessors?: Map<string, DataProcessor>;
+	private defaultRawDataProcessor = "";
 	public emitter: EventEmitter;
 
 	constructor(handler: CPUHandler, fileHandler: FileHandler, options?: AssemblerOptions) {
@@ -51,7 +52,12 @@ export class Assembler {
 		this.logger = options?.logger ?? new Logger();
 		this.lister = new Lister(this.logger);
 		this.linker = new Linker();
-		this.rawDataProcessors = options?.rawDataProcessors;
+
+		if (options?.rawDataProcessors) {
+			this.rawDataProcessors = options.rawDataProcessors.map;
+			this.defaultRawDataProcessor = options.rawDataProcessors.default || "";
+			if (!this.rawDataProcessors.has(this.defaultRawDataProcessor)) throw "Default data processor not found.";
+		}
 
 		this.currentPC = DEFAULT_PC;
 		this.symbolTable = new PASymbolTable();
@@ -93,8 +99,8 @@ export class Assembler {
 		this.currentPC += bytes.length;
 	}
 
-	public getDataProcessor(name: string) {
-		return this.rawDataProcessors?.get(name);
+	public getDataProcessor(name?: string) {
+		return this.rawDataProcessors?.get(name ?? this.defaultRawDataProcessor);
 	}
 
 	public setOption(name: string, value: string) {
@@ -135,19 +141,23 @@ export class Assembler {
 		this.parser.lexer = this.lexer;
 		this.parser.start(source);
 
-		this.passOne();
+		try {
+			this.passOne();
 
-		// this.currentPC = (this.symbolTable.lookupSymbol("*") as number) || 0x0000;
-		// Ensure there's at least one segment: if none defined, create a default growable segment starting at 0
-		if (!this.linker.segments || this.linker.segments.length === 0) {
-			this.linker.addSegment("CODE", 0x1000, 0xf000);
-			this.linker.useSegment("CODE");
+			// this.currentPC = (this.symbolTable.lookupSymbol("*") as number) || 0x0000;
+			// Ensure there's at least one segment: if none defined, create a default growable segment starting at 0
+			if (!this.linker.segments || this.linker.segments.length === 0) {
+				this.linker.addSegment("CODE", 0x1000, 0xf000);
+				this.linker.useSegment("CODE");
+			}
+
+			// Reset stream stack for Pass 2 (fresh position)
+			this.parser.restart();
+
+			this.passTwo();
+		} catch (e) {
+			throw `${e} - file ${this.currentFilename}`;
 		}
-
-		// Reset stream stack for Pass 2 (fresh position)
-		this.parser.restart();
-
-		this.passTwo();
 
 		this.logger.log(`\n--- Assembly Complete (${this.cpuHandler.cpuType}) ---`);
 		this.logger.log(`Final PC location: $${getHex(this.currentPC)}`);
@@ -175,7 +185,7 @@ export class Assembler {
 		if (this.linker.segments.length) this.currentPC = this.linker.segments[0] ? this.linker.segments[0].start : DEFAULT_PC;
 
 		while (this.parser.tokenStreamStack.length > 0) {
-			const token = this.parser.nextToken();
+			const token = this.parser.next();
 			// If no token or EOF, pop the active stream
 			if (!token || token.type === "EOF") {
 				const poppedStream = this.parser.popTokenStream(false); // Don't emit event yet
@@ -186,8 +196,8 @@ export class Assembler {
 
 			switch (token.type) {
 				case "DOT": {
-					const directiveToken = this.parser.nextToken() as ScalarToken;
-					if (directiveToken?.type !== "IDENTIFIER") throw new Error(`Syntax error in line ${token.line}`);
+					const directiveToken = this.parser.next() as ScalarToken;
+					if (directiveToken?.type !== "IDENTIFIER") throw new Error(`Bad directive in line ${token.line} - ${directiveToken.value}`);
 
 					const directiveContext = {
 						pc: this.currentPC,
@@ -211,7 +221,7 @@ export class Assembler {
 						this.handleSymbolInPassOne(token, this.lastGlobalLabel);
 						break;
 					}
-					throw new Error(`Syntax error in line ${token.line}`);
+					throw new Error(`Syntax error in line ${token.line} - Unexpected operator '${token.value}'`);
 				}
 
 				case "IDENTIFIER": {
@@ -282,7 +292,7 @@ export class Assembler {
 		this.lastGlobalLabel = null;
 
 		while (this.parser.tokenStreamStack.length > 0) {
-			const token = this.parser.nextToken();
+			const token = this.parser.next();
 			// If no token or EOF, pop the active stream
 			if (!token || token.type === "EOF") {
 				const poppedStream = this.parser.popTokenStream(false); // Don't emit event yet
@@ -302,7 +312,7 @@ export class Assembler {
 						this.handleSymbolInPassTwo(this.lastGlobalLabel, token);
 						break;
 					}
-					throw new Error(`Syntax error in line ${token.line}`);
+					throw new Error(`Syntax error in line ${token.line} - Unexpected operator '${token.value}'`);
 				}
 
 				case "IDENTIFIER": {
@@ -321,7 +331,7 @@ export class Assembler {
 				}
 
 				case "DOT": {
-					const directiveToken = this.parser.nextToken() as ScalarToken;
+					const directiveToken = this.parser.next() as ScalarToken;
 					if (directiveToken?.type !== "IDENTIFIER") throw new Error(`Syntax error in line ${token.line}`);
 
 					const streamBefore = this.parser.tokenStreamStack.length;
@@ -421,7 +431,7 @@ export class Assembler {
 			this.currentPC += sizeInfo.bytes;
 		} catch (e) {
 			const errorMessage = e instanceof Error ? e.message : String(e);
-			throw `line ${mnemonicToken.line}: Could not determine size of instruction '${mnemonicToken.value}'. ${errorMessage}`;
+			throw `line ${mnemonicToken.line}: Could not determine size of instruction '${mnemonicToken.value}'.\n${JSON.stringify(operandTokens)}\n${errorMessage}`;
 		}
 	}
 

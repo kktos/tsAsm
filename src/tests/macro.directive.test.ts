@@ -103,7 +103,7 @@ describe("Macro Handling", () => {
 				start:
 					nopnopnop 98
 			`;
-			expect(() => assembler.assemble(src)).toThrow("Too many arguments for macro 'NOPNOPNOP' on line 9. Expected 0, but got 1.");
+			expect(() => assembler.assemble(src)).toThrow("line 9 Macro 'NOPNOPNOP' expected 0, but got 1.");
 		});
 
 		it("tests macro with strings", () => {
@@ -251,7 +251,7 @@ describe("Macro Handling", () => {
 
 			expect(() => assembler.assemble(src)).toThrow("[ERROR] Missing game interface fields	 	[ONE, TWO]");
 		});
-		it("should works too;)", () => {
+		it("should works too ;)", () => {
 			const { assembler } = setup();
 			const src2 = `
 				.macro ifx ...parms {
@@ -264,13 +264,17 @@ describe("Macro Handling", () => {
 
 					parmIdx= 0
 
-					.if len=4
-						ldx parms[parmIdx]
-						parmIdx= parmIdx + 1
-					.end
+	.echo "len=4",len=4
+
+	.if len=4
+		.echo "LDX",parms[parmIdx]
+		ldx parms[parmIdx]
+		parmIdx= parmIdx + 1
+	.else
+		.echo "len != 4 !!"
+	.end
 
 					op= parms[parmIdx]
-					value= parms[parmIdx+1]
 					goto= parms[parmIdx+2]
 
 					isValidOp= 0
@@ -321,6 +325,19 @@ describe("Macro Handling", () => {
 			const machineCode6502 = assembler.link();
 
 			expect(machineCode6502).toEqual([0xae, 0x00, 0x03, 0xe0, 0x0a, 0x90, 0x01, 0xea, 0x60]);
+		});
+
+		it("should error on old syntax", () => {
+			const { assembler } = setup();
+			const src2 = `
+				.macro drawSprite(one,two,three) {
+				}
+
+				start:
+					drawSprite #$54:#$2e:#$10
+			`;
+
+			expect(() => assembler.assemble(src2)).toThrow(/line 6 Macro 'DRAWSPRITE' expected 3, but got 1./);
 		});
 	});
 });

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { Cpu6502Handler } from "../cpu/cpu6502.class";
+import type { DirectiveContext } from "../directives/directive.interface";
 import { Logger } from "../logger.class";
 import { Assembler } from "../polyasm";
 import type { FileHandler, SegmentDefinition } from "../polyasm.types";
@@ -22,7 +23,10 @@ describe("File Directives (.INCLUDE, .INCBIN)", () => {
 		const mockFileHandler = new MockFileHandler();
 		const logger = new Logger(true);
 		const cpuHandler = new Cpu6502Handler();
-		const assembler = new Assembler(cpuHandler, mockFileHandler, { logger, segments });
+		const textHandler = vi.fn((blockContent: string, _context: DirectiveContext) => blockContent);
+		const handlers = { default: "TEXT", map: new Map([["TEXT", textHandler]]) };
+
+		const assembler = new Assembler(cpuHandler, mockFileHandler, { logger, segments, rawDataProcessors: handlers });
 		return { assembler, mockFileHandler, logger };
 	};
 
@@ -60,6 +64,39 @@ describe("File Directives (.INCLUDE, .INCBIN)", () => {
 			const source = ".INCLUDE";
 
 			expect(() => assembler.assemble(source)).toThrow(".INCLUDE requires a string argument on line 1.");
+		});
+
+		it("should .INCLUDE file with a .FUNCTION holding a .DEFINE - bug fix", () => {
+			const { assembler, mockFileHandler } = createAssembler();
+			const includedCode = `
+			.function displayHelpObj {
+				.define spriteList
+				- { id: $55, x: $0d, y: $30, name:"text key"}
+				- { id: $27, x: 15, y: 60, name:"img key"}
+				- { id: $57, x: $31, y: $27, name:"text locked door"}
+				- { id: $5C, x: $3A, y: $3C, name:"img locked door"}
+				- { id: $58, x: $59, y: $27, name:"text unlocked door"}
+				- { id: $5d, x: $67, y: $3C, name:"img unlocked door"}
+				- { id: $59, x: $25, y: $64, name:"text gem"}
+				- { id: $28, x: $28, y: $6e, name:"img gem"}
+				- { id: $5a, x: $53, y: $5b, name:"text gem holder"}
+				- { id: $56, x: $5b, y: $6d, name:"img gem holder"}
+				- { id: $5b, x: $2e, y: $88, name:"text extra sword"}
+				- { id: $1e, x: $40, y: $9b, name:"img extra sword"}
+				.end
+			}
+			`;
+			const source = `
+				.INCLUDE "included.asm" ; include this file
+				test = 99
+			`;
+
+			vi.spyOn(mockFileHandler, "readSourceFile").mockReturnValue(includedCode);
+
+			assembler.assemble(source);
+
+			expect(assembler.symbolTable.lookupSymbol("spriteList")).toBeTypeOf("string");
+			expect(assembler.symbolTable.lookupSymbol("spriteList")).toEqual("");
 		});
 	});
 
