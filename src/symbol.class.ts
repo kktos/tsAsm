@@ -189,6 +189,35 @@ export class PASymbolTable {
 		return undefined;
 	}
 
+	/**
+	 * Gets the full path of a symbol, like "namespace::symbol".
+	 * It searches for the symbol in the current scope hierarchy.
+	 * @param symbolName The name of the symbol to find.
+	 * @returns The full path of the symbol as a string.
+	 */
+	public getSymbolFullPath(symbolName: string): string {
+		const name = symbolName.toUpperCase();
+
+		// Search from the current scope up to the global scope.
+		for (let i = this.scopeStack.length - 1; i >= 0; i--) {
+			const scopeName = this.scopeStack[i] as string;
+			const scope = this.symbols.get(scopeName);
+			if (scope?.has(name)) {
+				// Found the symbol. The namespace is part of the symbol definition.
+				const symbol = scope.get(name);
+				if (symbol) {
+					const namespace = symbol.namespace === INTERNAL_GLOBAL ? "global" : symbol.namespace;
+
+					// It's an ephemeral/local symbol, just return its name.
+					if (namespace.startsWith("__")) return symbol.name;
+
+					return `${namespace}::${symbol.name}`;
+				}
+			}
+		}
+		return "";
+	}
+
 	// test is a symbol is defined in the current NS
 	isDefined(symbolName: string) {
 		const currentScope = this.getCurrentScope();
