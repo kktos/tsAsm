@@ -12,10 +12,13 @@ type SegmentDef = {
 };
 
 export class SegmentDirective implements IDirective {
+	public isBlockDirective = true;
+	public isRawDirective = false;
+
 	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
 		let name: SymbolValue;
 
-		const token = assembler.parser.peekToken();
+		const token = assembler.parser.peek();
 		if (token?.type === "IDENTIFIER") {
 			name = token.value;
 			assembler.parser.consume();
@@ -26,19 +29,19 @@ export class SegmentDirective implements IDirective {
 			if (typeof name !== "string") throw new Error(`ERROR on line ${directive.line}: .SEGMENT name must evaluate to a string.`);
 		}
 
-		if (assembler.parser.peekToken()?.type === "LBRACE") {
+		if (assembler.parser.peek()?.type === "LBRACE") {
 			this.defineSegment(name, directive, assembler, context);
 			return;
 		}
 
 		assembler.useSegment(name);
-		assembler.lister.directive(directive, name);
+		assembler.lister.directive(directive, name, `ORG $${getHex(assembler.currentPC)}`);
 	}
 
 	public handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
 		let name: SymbolValue;
 
-		const token = assembler.parser.peekToken();
+		const token = assembler.parser.peek();
 		if (token?.type === "IDENTIFIER") {
 			name = token.value;
 			assembler.parser.consume();
@@ -50,7 +53,7 @@ export class SegmentDirective implements IDirective {
 		}
 
 		// If it was a definition, the segment was already added in pass one.
-		if (assembler.parser.peekToken()?.type === "LBRACE") {
+		if (assembler.parser.peek()?.type === "LBRACE") {
 			assembler.parser.getDirectiveBlockTokens("");
 			return;
 		}
@@ -83,7 +86,7 @@ export class SegmentDirective implements IDirective {
 		assembler.parser.consume();
 
 		while (true) {
-			const token = assembler.parser.nextToken();
+			const token = assembler.parser.next();
 			if (!token || token.type === "RBRACE") break;
 			if (token.type !== "LABEL") throw new Error(`.SEGMENT definition syntax error on line ${line}: key:value`);
 
@@ -94,7 +97,7 @@ export class SegmentDirective implements IDirective {
 			const valueTokens = assembler.parser.getExpressionTokens();
 			params[key] = assembler.expressionEvaluator.evaluateAsNumber(valueTokens, context);
 
-			if (assembler.parser.peekToken()?.type === "COMMA") assembler.parser.consume();
+			if (assembler.parser.peek()?.type === "COMMA") assembler.parser.consume();
 		}
 
 		return params;

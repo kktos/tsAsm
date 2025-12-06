@@ -3,12 +3,15 @@ import type { Assembler } from "../../polyasm";
 import type { DirectiveContext, IDirective } from "../directive.interface";
 
 export class MacroDirective implements IDirective {
+	public isBlockDirective = true;
+	public isRawDirective = false;
+
 	public handlePassOne(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
 		this.handleMacroDefinition(directive, assembler);
 	}
 
 	public handlePassTwo(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
-		const nameToken = assembler.parser.nextIdentifierToken();
+		const nameToken = assembler.parser.nextIdentifier();
 		if (!nameToken) throw `ERROR: Macro needs a name on line ${directive.line}.`;
 
 		const definition = assembler.macroDefinitions.get(nameToken.value);
@@ -19,7 +22,7 @@ export class MacroDirective implements IDirective {
 
 	/** Pass 1: Parses and stores a macro definition. */
 	private handleMacroDefinition(directive: ScalarToken, assembler: Assembler) {
-		const nameToken = assembler.parser.nextIdentifierToken();
+		const nameToken = assembler.parser.nextIdentifier();
 		if (!nameToken) throw `ERROR: Macro needs a name on line ${directive.line}.`;
 
 		const macroName = nameToken.value;

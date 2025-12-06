@@ -56,10 +56,8 @@ export class MacroHandler {
 			macroArgs.set(definition.restParameter, [arrayToken]);
 		} else {
 			// Original logic for fixed arguments
-			if (passedArgsArray.length > definition.parameters.length)
-				throw new Error(
-					`Too many arguments for macro '${macroName}' on line ${macroToken.line}. Expected ${definition.parameters.length}, but got ${passedArgsArray.length}.`,
-				);
+			if (passedArgsArray.length !== definition.parameters.length)
+				throw new Error(`line ${macroToken.line} Macro '${macroName}' expected ${definition.parameters.length}, but got ${passedArgsArray.length}.`);
 
 			definition.parameters.forEach((param, index) => {
 				const argTokens = passedArgsArray[index] || [];
@@ -86,7 +84,7 @@ export class MacroHandler {
 		let currentArgTokens: Token[] = [];
 		let parenDepth = 0;
 
-		const firstPeek = this.assembler.parser.peekToken();
+		const firstPeek = this.assembler.parser.peek();
 		if (!firstPeek || firstPeek.type === "EOF") return [];
 		const hasParens = firstPeek.type === "OPERATOR" && firstPeek.value === "(";
 		const callLineNum = callLine ?? firstPeek.line;
@@ -96,7 +94,7 @@ export class MacroHandler {
 			this.assembler.parser.consume(1);
 			parenDepth = 1;
 			while (true) {
-				const token = this.assembler.parser.peekToken();
+				const token = this.assembler.parser.peek();
 				if (!token || token.type === "EOF") break;
 				this.assembler.parser.consume(1);
 
@@ -128,7 +126,7 @@ export class MacroHandler {
 		} else {
 			// No parentheses: only take tokens on the same line as the macro call
 			while (true) {
-				const token = this.assembler.parser.peekToken();
+				const token = this.assembler.parser.peek();
 				if (!token || token.type === "EOF" || token.line !== callLineNum) break;
 
 				// Handle angle-bracketed arguments
@@ -136,7 +134,7 @@ export class MacroHandler {
 					this.assembler.parser.consume(1); // consume '<'
 					let bracketDepth = 1;
 					while (bracketDepth > 0) {
-						const innerToken = this.assembler.parser.peekToken();
+						const innerToken = this.assembler.parser.peek();
 						if (!innerToken || innerToken.type === "EOF" || innerToken.line !== callLineNum) {
 							throw new Error(`Unmatched '<' in macro arguments on line ${callLineNum}.`);
 						}

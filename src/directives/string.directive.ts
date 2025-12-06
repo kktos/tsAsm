@@ -5,11 +5,10 @@ import type { DirectiveContext, IDirective } from "./directive.interface";
 export type StringFormat = "TEXT" | "CSTR" | "PSTR" | "PSTRL";
 
 export class StringDirective implements IDirective {
-	private readonly format: StringFormat;
+	public isBlockDirective = false;
+	public isRawDirective = false;
 
-	constructor(format: StringFormat) {
-		this.format = format;
-	}
+	constructor(private readonly format: StringFormat) {}
 
 	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
 		assembler.currentPC += this.calculateSize(directive, assembler, context);

@@ -9,11 +9,9 @@ export type DirectiveContext = Omit<EvaluationContext, "symbolTable">;
  * Each directive will have a class that implements this interface.
  */
 export interface IDirective {
-	/** Handles the processing of the directive during Pass 1. */
-	handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void;
+	isBlockDirective: boolean;
+	isRawDirective: boolean;
 
-	/**
-	 * Handles the processing of the directive during Pass 2 (code generation).
-	 */
+	handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void;
 	handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void;
 }

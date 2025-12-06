@@ -4,11 +4,10 @@ import type { Assembler } from "../polyasm";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class ListDirective implements IDirective {
-	private readonly logger: Logger;
+	public isBlockDirective = false;
+	public isRawDirective = false;
 
-	constructor(logger: Logger) {
-		this.logger = logger;
-	}
+	constructor(private readonly logger: Logger) {}
 
 	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
 		this.setListing(directive, assembler, context);

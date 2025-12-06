@@ -4,6 +4,9 @@ import type { Assembler } from "../polyasm";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class CpuDirective implements IDirective {
+	public isBlockDirective = false;
+	public isRawDirective = false;
+
 	private setCpu(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
 		const tokens = assembler.parser.getInstructionTokens();
 		const cpuName = assembler.expressionEvaluator.evaluate(tokens, context);

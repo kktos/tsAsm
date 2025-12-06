@@ -3,6 +3,9 @@ import type { Assembler } from "../polyasm";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class LogDirective implements IDirective {
+	public isBlockDirective = false;
+	public isRawDirective = false;
+
 	constructor(private mode: "LOG" | "ERR" | "WARN" = "LOG") {}
 
 	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void {

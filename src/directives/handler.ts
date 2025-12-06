@@ -30,6 +30,9 @@ import { OrgDirective } from "./org.directive";
 import { SegmentDirective } from "./segment.directive";
 import { StringDirective } from "./string.directive";
 
+export const blockDirectives: Set<string> = new Set();
+export const rawDirectives: Set<string> = new Set();
+
 export class DirectiveHandler {
 	private readonly directiveMap: Map<string, IDirective>;
 
@@ -112,6 +115,11 @@ export class DirectiveHandler {
 	}
 
 	private register(name: string, handler: IDirective): void {
+		if (name !== "END") {
+			if (handler.isBlockDirective) blockDirectives.add(name);
+			if (handler.isRawDirective) rawDirectives.add(name);
+		}
+
 		this.directiveMap.set(name, handler);
 	}
 

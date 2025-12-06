@@ -3,6 +3,9 @@ import type { Assembler } from "../polyasm";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class NamespaceDirective implements IDirective {
+	public isBlockDirective = true;
+	public isRawDirective = false;
+
 	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void {
 		this.setNamespace(directive, assembler, context);
 	}

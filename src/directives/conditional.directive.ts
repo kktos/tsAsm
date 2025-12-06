@@ -9,6 +9,9 @@ interface ConditionalBlock {
 }
 
 export class ConditionalDirective implements IDirective {
+	public isBlockDirective = true;
+	public isRawDirective = false;
+
 	private conditionalStack: ConditionalBlock[] = [];
 
 	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
@@ -82,7 +85,7 @@ export class ConditionalDirective implements IDirective {
 			}
 
 			case "END": {
-				const next = assembler.parser.peekToken(0);
+				const next = assembler.parser.peek(0);
 				if (next && next.type === "IDENTIFIER") {
 					if (next.value === "NAMESPACE") {
 						assembler.parser.consume(1);
@@ -116,11 +119,11 @@ export class ConditionalDirective implements IDirective {
 		let depth = 0;
 
 		while (true) {
-			const token = assembler.parser.peekToken(0);
+			const token = assembler.parser.peek(0);
 			if (!token || token.type === "EOF") break;
 
 			if (token.type === "DOT") {
-				const nextToken = assembler.parser.peekToken(1);
+				const nextToken = assembler.parser.peek(1);
 				if (nextToken?.type === "IDENTIFIER") {
 					const directiveName = nextToken.value;
 

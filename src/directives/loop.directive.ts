@@ -15,6 +15,9 @@ interface LoopState {
 }
 
 export class LoopDirective implements IDirective {
+	public isBlockDirective = true;
+	public isRawDirective = false;
+
 	// A map to store the state of active loops between iterations. Key: A unique identifier for the loop.
 	private loopStates: Map<string, LoopState> = new Map();
 
@@ -37,9 +40,9 @@ export class LoopDirective implements IDirective {
 	}
 
 	private handleForLoop(directive: ScalarToken, assembler: Assembler): void {
-		// 1. Parse the .for <iterator> of <array> syntax using buffered access
-		const itemIteratorToken = assembler.parser.nextIdentifierToken();
-		const ofToken = assembler.parser.nextIdentifierToken("OF");
+		// Parse the .for <iterator> of <array> syntax using buffered access
+		const itemIteratorToken = assembler.parser.nextIdentifier();
+		const ofToken = assembler.parser.nextIdentifier("OF");
 
 		if (!itemIteratorToken || !ofToken) throw new Error(`Invalid .FOR loop syntax on line ${directive.line}. Expected: .for <iterator> of <array>`);
 
@@ -50,7 +53,7 @@ export class LoopDirective implements IDirective {
 		const expressionTokens = exprHeader.slice(0, asIndex);
 		const indexIteratorToken = asIndex < exprHeader.length ? (exprHeader[asIndex + 1] as IdentifierToken) : undefined;
 
-		// 2. Resolve the array from the symbol table
+		// Resolve the array from the symbol table
 		const evaluationContext = {
 			pc: assembler.currentPC,
 			macroArgs: assembler.parser.tokenStreamStack[assembler.parser.tokenStreamStack.length - 1]?.macroArgs,
@@ -61,16 +64,16 @@ export class LoopDirective implements IDirective {
 		const arrayValue = assembler.expressionEvaluator.evaluate(expressionTokens, evaluationContext);
 		if (!Array.isArray(arrayValue)) throw new Error(`The expression in the .FOR loop on line ${directive.line} did not evaluate to an array.`);
 
-		// 3. Find the loop body
+		// Find the loop body
 		const bodyTokens = assembler.parser.getDirectiveBlockTokens(directive.value);
 
-		// Empty array, advance past block
+		// nothing to loop for then leave
 		if (arrayValue.length === 0) return;
 
-		// 4. Create a local scope for the entire loop's duration.
+		// Create a local scope for the entire loop's duration.
 		assembler.symbolTable.pushScope(`__FOR_${directive.line}_`);
 
-		// 5. Store the complete state for the loop.
+		// Store the complete state for the loop.
 		const loopId = `${directive.line}`; // Use line number as a unique ID for the loop.
 		this.loopStates.set(loopId, {
 			itemIterator: itemIteratorToken,
@@ -81,21 +84,13 @@ export class LoopDirective implements IDirective {
 			body: bodyTokens,
 		});
 
-		// 6. Advance main stream past the .for...end block.
-		// const nextIndex = endTokenIndex + 1;
-		// assembler.setPosition(nextIndex);
-
-		// 7. Kick off the first iteration.
+		// Kick off the first iteration.
 		this.runNextLoopIteration(assembler, loopId);
-
-		// Handler manages position itself (void return)
 	}
 
 	private handleRepeatLoop(directive: ScalarToken, assembler: Assembler): void {
-		// Parse count expression tokens on the header line
-		// const headerTokens = assembler.getInstructionTokens();
 		const countExpressionTokens = assembler.parser.getInstructionTokens();
-		// const countExpressionTokens = headerTokens.slice(1);
+
 		// If there is an 'AS' clause, split it
 		const asPos = countExpressionTokens.findIndex((t) => t.type === "IDENTIFIER" && t.value === "AS");
 		let iteratorToken: IdentifierToken | undefined;
@@ -112,13 +107,10 @@ export class LoopDirective implements IDirective {
 		const count = assembler.expressionEvaluator.evaluateAsNumber(exprTokens, evaluationContext);
 		if (count <= 0) throw new Error("Repeat count must be a positive integer.");
 
-		// 2. Find loop body
-		// const startIndex = assembler.getPosition();
-		// const endTokenIndex = assembler.skipToDirectiveEnd(directive.value);
-		// const bodyTokens = assembler.sliceTokens(startIndex, endTokenIndex);
+		// Find loop body
 		const bodyTokens = assembler.parser.getDirectiveBlockTokens(directive.value);
 
-		// 3. Setup scope and state
+		// Setup scope and state
 		assembler.symbolTable.pushScope();
 		const loopId = `${directive.line}`;
 		this.loopStates.set(loopId, {
@@ -128,9 +120,7 @@ export class LoopDirective implements IDirective {
 			body: bodyTokens,
 		});
 
-		// 4. Advance main stream and kick off iteration
-		// const nextIndex = endTokenIndex + 1;
-		// assembler.setPosition(nextIndex);
+		// kick off iteration
 		this.runNextLoopIteration(assembler, loopId);
 	}
 

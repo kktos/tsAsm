@@ -3,11 +3,10 @@ import type { Assembler } from "../polyasm";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class DataDirective implements IDirective {
-	private readonly bytesPerElement: number;
+	public isBlockDirective = false;
+	public isRawDirective = false;
 
-	constructor(bytesPerElement: number) {
-		this.bytesPerElement = bytesPerElement;
-	}
+	constructor(private readonly bytesPerElement: number) {}
 
 	public handlePassOne(_directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
 		if (assembler.isAssembling) assembler.currentPC += this.calculateDirectiveSize(assembler);

@@ -3,10 +3,11 @@ import type { Assembler } from "../polyasm";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class FunctionDirective implements IDirective {
-	private static functionIdCounter = 0;
+	public isBlockDirective = true;
+	public isRawDirective = false;
 
 	private defineAndScope(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
-		const nameToken = assembler.parser.nextToken() as ScalarToken;
+		const nameToken = assembler.parser.next() as ScalarToken;
 		if (nameToken?.type !== "IDENTIFIER") throw new Error(`line ${directive.line}: Expected function name after .FUNCTION directive.`);
 
 		// Define the function name as a label in the current scope.
@@ -16,12 +17,11 @@ export class FunctionDirective implements IDirective {
 		// assembler.logger.log(`Defined function label '${nameToken.value}' @ $${context.pc.toString(16)}`);
 		assembler.lister.directive(directive, nameToken.raw as string);
 
-		const scopeId = `function_${nameToken.value}_${FunctionDirective.functionIdCounter++}`;
+		const scopeId = `@@function_${assembler.symbolTable.getSymbolFullPath(nameToken.value)}`;
 		assembler.symbolTable.pushScope(scopeId);
 
-		const body = assembler.parser.getDirectiveBlockTokens(directive.value);
-
-		assembler.parser.pushTokenStream({ newTokens: body, onEndOfStream: () => assembler.symbolTable.popScope() });
+		const body = assembler.pass === 1 ? assembler.parser.getDirectiveBlockTokens(directive.value) : [];
+		assembler.parser.pushTokenStream({ cacheName: scopeId, newTokens: body, onEndOfStream: () => assembler.symbolTable.popScope() });
 	}
 
 	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void {

@@ -3,6 +3,9 @@ import type { Assembler } from "../polyasm";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class IncludeDirective implements IDirective {
+	public isBlockDirective = false;
+	public isRawDirective = false;
+
 	public handlePassOne(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
 		// Find expression tokens on the header line after 'OF', optionally followed by 'AS'
 		const expressionTokens = assembler.parser.getInstructionTokens();
@@ -28,14 +31,15 @@ export class IncludeDirective implements IDirective {
 			assembler.startNewStream(filename);
 			assembler.parser.pushTokenStream({
 				newTokens: assembler.lexer.getBufferedTokens(),
-				cacheName: filename,
+				// cacheName: filename,
+				cacheName: assembler.fileHandler.fullpath,
 				onEndOfStream: () => {
 					assembler.endCurrentStream();
 					// assembler.lister.directive({ ...directive, value: "--------------- end of INCLUDE ---------------" }, filename);
 				},
 			});
 
-			assembler.lister.directive(directive, filename);
+			assembler.lister.directive(directive, assembler.fileHandler.fullpath);
 		} catch (e) {
 			throw `including file ${filename} on line ${directive.line}: ${e}`;
 		}
@@ -53,8 +57,12 @@ export class IncludeDirective implements IDirective {
 		const filename = assembler.expressionEvaluator.evaluate(expressionTokens, evaluationContext);
 		if (typeof filename !== "string") throw new Error(`.INCLUDE requires a string argument on line ${directive.line}.`);
 
+		assembler.fileHandler.readSourceFile(filename, filename);
+		const fullpath = assembler.fileHandler.fullpath;
+
 		assembler.parser.pushTokenStream({
-			cacheName: filename,
+			// cacheName: filename,
+			cacheName: fullpath,
 			newTokens: [],
 			onEndOfStream: () => {
 				assembler.lister.directive({ ...directive, value: "END INCLUDE" }, filename);

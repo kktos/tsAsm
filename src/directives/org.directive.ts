@@ -3,6 +3,9 @@ import type { Assembler } from "../polyasm";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class OrgDirective implements IDirective {
+	public isBlockDirective = false;
+	public isRawDirective = false;
+
 	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
 		const orgExpressionTokens = assembler.parser.getInstructionTokens();
 

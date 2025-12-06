@@ -1,54 +1,67 @@
 import type { ScalarToken } from "../lexer/lexer.class";
 import type { Assembler } from "../polyasm";
-import type { DataProcessor } from "../polyasm.types";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class DefineDirective implements IDirective {
+	public isBlockDirective = false;
+	public isRawDirective = true;
+
 	public handlePassOne(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
-		const symbolNameToken = assembler.parser.nextIdentifierToken();
+		const symbolNameToken = assembler.parser.nextIdentifier();
 		if (!symbolNameToken) throw new Error(`'.DEFINE' directive on line ${directive.line} requires a symbol name.`);
+
+		let processorName: string | undefined;
 
 		let token = assembler.parser.peekTokenUnbuffered();
 		if (token?.type === "IDENTIFIER" && token.value === "AS") {
 			assembler.parser.consume();
-			token = assembler.parser.nextIdentifierToken();
+			token = assembler.parser.nextIdentifier();
 			if (!token) throw new Error(`'.DEFINE' directive on line ${directive.line} requires a Data Processor name.`);
-			const processor = assembler.getDataProcessor(token?.value);
-			if (!processor) throw new Error(`'.DEFINE' directive on line ${directive.line}; unknown Data Processor '${token.value}'.`);
+			processorName = token.value;
 		}
+
+		const processor = assembler.getDataProcessor(processorName);
+		if (!processor) throw new Error(`'.DEFINE' directive on line ${directive.line}; unknown Data Processor '${processorName}'.`);
 
 		assembler.symbolTable.addSymbol(symbolNameToken.value, 0);
 
-		assembler.parser.nextToken({ endMarker: ".END" });
+		assembler.lister.directive(directive, symbolNameToken.value);
+
+		assembler.parser.next({ endMarker: ".END" });
 	}
 
 	public handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
 		// Parse the directive arguments: .DEFINE <symbolName> <handlerName>
-		const symbolNameToken = assembler.parser.nextIdentifierToken();
+		const symbolNameToken = assembler.parser.nextIdentifier();
 		if (!symbolNameToken) throw new Error(`'.DEFINE' directive on line ${directive.line} requires a symbol name.`);
 
-		let processor: DataProcessor | undefined;
+		let processorName: string | undefined;
+
 		let token = assembler.parser.peekTokenUnbuffered();
 		if (token?.type === "IDENTIFIER" && token.value === "AS") {
 			assembler.parser.consume();
-			token = assembler.parser.nextIdentifierToken();
+			token = assembler.parser.nextIdentifier();
 			if (!token) throw new Error(`'.DEFINE' directive on line ${directive.line} requires a Data Processor name.`);
-			processor = assembler.getDataProcessor(token?.value);
-			if (!processor) throw new Error(`'.DEFINE' directive on line ${directive.line}; unknown Data Processor '${token.value}'.`);
+			processorName = token.value;
 		}
 
-		// Extract the raw block content
-		const blockToken = assembler.parser.nextToken({ endMarker: ".END" });
+		const processor = assembler.getDataProcessor(processorName);
+		if (!processor) throw new Error(`'.DEFINE' directive on line ${directive.line}; unknown Data Processor '${processorName}'.`);
+
+		// Extract the raw block content from lexer or from token if included file
+		token = assembler.parser.peekTokenUnbuffered();
+		const blockToken = token?.type === "RAW_TEXT" ? token : assembler.parser.next({ endMarker: ".END" });
 
 		// Join the raw text of the tokens inside the block.
 		const blockContent = (blockToken?.value as string) ?? "";
 
 		// Call the external handler function with the block content
-
 		const value = processor ? processor(blockContent, context) : blockContent;
 
 		// Set the symbol's value to the result
-		assembler.symbolTable.setSymbol(symbolNameToken.value, value);
+		// assembler.symbolTable.setSymbol(symbolNameToken.value, value);
+		if (assembler.symbolTable.isDefined(symbolNameToken.value)) assembler.symbolTable.setSymbol(symbolNameToken.value, value);
+		else assembler.symbolTable.addSymbol(symbolNameToken.value, value);
 
 		// assembler.logger.log(`[PASS 2] Defined symbol ${symbolNameToken.value} via .DEFINE handler '${handlerNameToken.value}'.`);
 	}

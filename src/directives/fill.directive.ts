@@ -3,6 +3,9 @@ import type { Assembler } from "../polyasm";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class FillDirective implements IDirective {
+	public isBlockDirective = false;
+	public isRawDirective = false;
+
 	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void {
 		const argTokens = assembler.parser.getInstructionTokens();
 
