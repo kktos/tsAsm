@@ -10,16 +10,18 @@ import type { Logger } from "../logger.class";
 import type { Assembler } from "../polyasm";
 import { AlignDirective } from "./align.directive";
 import { AssignDirective } from "./assign.directive";
-import { ConditionalDirective } from "./conditional.directive";
 import { CpuDirective } from "./cpu.directive";
 import { DataDirective } from "./data.directive";
 import { DefineDirective } from "./define.directive";
 import type { DirectiveContext, IDirective } from "./directive.interface";
+import { EndDirective } from "./end.directive";
 import { FillDirective } from "./fill.directive";
 import { FunctionDirective } from "./function.directive";
 import { HexDirective } from "./hex.directive";
+import { IfDirective } from "./if.directive";
 import { IncbinDirective } from "./incbin.directive";
 import { IncludeDirective } from "./include.directive"; // Not in context, but assumed to exist
+import { LetDirective } from "./let.directive";
 import { ListDirective } from "./list.directive";
 import { LogDirective } from "./log.directive";
 import { LoopDirective } from "./loop.directive";
@@ -35,7 +37,6 @@ export const rawDirectives: Set<string> = new Set();
 
 export class DirectiveHandler {
 	private readonly directiveMap: Map<string, IDirective>;
-
 	constructor(
 		private readonly assembler: Assembler,
 		readonly logger: Logger,
@@ -52,6 +53,7 @@ export class DirectiveHandler {
 		this.register("FUNCTION", functionDirective);
 
 		this.register("EQU", new AssignDirective());
+		this.register("LET", new LetDirective());
 
 		this.register("OPTION", new OptionDirective());
 
@@ -73,12 +75,6 @@ export class DirectiveHandler {
 		this.register("ASCIIZ", cstrHandler);
 		this.register("PSTR", new StringDirective("PSTR"));
 		this.register("PSTRL", new StringDirective("PSTRL"));
-
-		const conditionalHandler = new ConditionalDirective();
-		this.register("IF", conditionalHandler);
-		this.register("ELSEIF", conditionalHandler);
-		this.register("ELSE", conditionalHandler);
-		this.register("END", conditionalHandler);
 
 		const loopHandler = new LoopDirective();
 		this.register("FOR", loopHandler);
@@ -112,13 +108,14 @@ export class DirectiveHandler {
 		this.register("CPU", cpuDirective);
 		this.register("SETCPU", cpuDirective);
 		this.register("PROCESSOR", cpuDirective);
+
+		this.register("IF", new IfDirective());
+		this.register("END", new EndDirective());
 	}
 
-	private register(name: string, handler: IDirective): void {
-		if (name !== "END") {
-			if (handler.isBlockDirective) blockDirectives.add(name);
-			if (handler.isRawDirective) rawDirectives.add(name);
-		}
+	public register(name: string, handler: IDirective): void {
+		if (handler.isBlockDirective) blockDirectives.add(name);
+		if (handler.isRawDirective) rawDirectives.add(name);
 
 		this.directiveMap.set(name, handler);
 	}
@@ -127,8 +124,9 @@ export class DirectiveHandler {
 		const handler = this.directiveMap.get(directive.value);
 		// if (directive.value === "CPU" && context.macroArgs)
 		// 	throw new Error(`ERROR on line ${directive.line}: The .CPU directive cannot be used inside a macro. Please set the CPU outside of macro definitions.`);
-
-		if (handler) handler.handlePassOne(directive, this.assembler, context);
+		if (!handler) return false;
+		handler.handlePassOne(directive, this.assembler, context);
+		return true;
 	}
 
 	public handlePassTwoDirective(directive: ScalarToken, context: DirectiveContext) {
