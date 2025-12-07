@@ -12,7 +12,7 @@ export class OrgDirective implements IDirective {
 		try {
 			assembler.currentPC = assembler.expressionEvaluator.evaluateAsNumber(orgExpressionTokens, context);
 		} catch (e) {
-			assembler.logger.warn(`[PASS 1] Warning on line ${directive.line}: Failed to evaluate .ORG expression. Assuming 0x0000. Error: ${e}`);
+			assembler.logger.warn(`Warning on line ${directive.line}: Failed to evaluate .ORG expression. Assuming 0x0000. Error: ${e}`);
 			assembler.currentPC = 0x0000;
 		}
 	}
@@ -22,7 +22,7 @@ export class OrgDirective implements IDirective {
 		try {
 			assembler.currentPC = assembler.expressionEvaluator.evaluateAsNumber(orgExpressionTokens, context);
 		} catch (e) {
-			assembler.logger.error(`ERROR on line ${directive.line}: Failed to evaluate .ORG expression. ${e}`);
+			throw `line ${directive.line}: Failed to evaluate .ORG expression. ${e}`;
 		}
 	}
 }

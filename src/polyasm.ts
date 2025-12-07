@@ -118,7 +118,7 @@ export class Assembler {
 		this.filenameStack.push(this.currentFilename);
 		const rawContent = this.fileHandler.readSourceFile(filename, this.currentFilename);
 		this.currentFilename = this.fileHandler.fullpath;
-		this.lexer.startStream(rawContent);
+		if (this.pass === 1) this.lexer.startStream(rawContent);
 	}
 
 	public endCurrentStream() {
@@ -156,7 +156,7 @@ export class Assembler {
 
 			this.passTwo();
 		} catch (e) {
-			throw `${e} - file ${this.currentFilename}`;
+			throw `${e} - pass ${this.pass} - file ${this.currentFilename}`;
 		}
 
 		this.logger.log(`\n--- Assembly Complete (${this.cpuHandler.cpuType}) ---`);
@@ -207,7 +207,8 @@ export class Assembler {
 						macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
 					};
 
-					this.directiveHandler.handlePassOneDirective(directiveToken, directiveContext);
+					if (!this.directiveHandler.handlePassOneDirective(directiveToken, directiveContext))
+						throw new Error(`Syntax error in line ${token.line} - Unexpected directive '${directiveToken.value}'`);
 					break;
 				}
 
@@ -218,7 +219,7 @@ export class Assembler {
 					}
 
 					if (token.value === "=" && this.lastGlobalLabel) {
-						this.handleSymbolInPassOne(token, this.lastGlobalLabel);
+						this.handleSymbolInPassOne(this.lastGlobalLabel, token);
 						break;
 					}
 					throw new Error(`Syntax error in line ${token.line} - Unexpected operator '${token.value}'`);
@@ -355,7 +356,7 @@ export class Assembler {
 				case "LABEL":
 					this.lastGlobalLabel = token.value;
 					// In functions, the scope is lost between the passes
-					if (this.symbolTable.isDefined(token.value)) this.symbolTable.setSymbol(token.value, this.currentPC);
+					if (this.symbolTable.isDefined(token.value)) this.symbolTable.updateSymbol(token.value, this.currentPC);
 					else this.symbolTable.addSymbol(token.value, this.currentPC);
 
 					this.lister.label(token.raw ?? token.value);
@@ -369,22 +370,28 @@ export class Assembler {
 		}
 	}
 
-	public handleSymbolInPassOne(_nextToken: Token, labelToken: string) {
+	public handleSymbolInPassOne(label: string, token: ScalarToken) {
 		const expressionTokens = this.parser.getInstructionTokens();
 
-		const value = this.expressionEvaluator.evaluate(expressionTokens, {
+		let value = this.expressionEvaluator.evaluate(expressionTokens, {
 			pc: this.currentPC,
 			allowForwardRef: true,
 			currentGlobalLabel: this.lastGlobalLabel, // Added for .EQU
 			macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
 		});
 
-		// this.logger.log(`${labelToken}${asString(value)}`);
-		this.lister.symbol(labelToken, value);
+		this.lister.symbol(label, value);
 
-		// if (this.symbolTable.lookupSymbol(labelToken) !== undefined) this.symbolTable.setSymbol(labelToken, value);
-		if (this.symbolTable.isDefined(labelToken)) this.symbolTable.setSymbol(labelToken, value);
-		else this.symbolTable.addSymbol(labelToken, value);
+		if (label === "*") {
+			if (typeof value !== "number") {
+				value = 0;
+				this.logger.warn(`Warning on line ${token.line}: Failed to evaluate .ORG expression. Assuming 0x0000.`);
+			}
+			this.currentPC = value;
+			return;
+		}
+
+		this.symbolTable.addSymbol(label, value);
 	}
 
 	public handleSymbolInPassTwo(label: string, token: ScalarToken) {
@@ -406,8 +413,16 @@ export class Assembler {
 
 		this.lister.symbol(label, value);
 
+		if (label === "*") {
+			if (typeof value === "number") {
+				this.currentPC = value;
+				return;
+			}
+			throw `line ${token.line}: Failed to evaluate .ORG expression.`;
+		}
+
 		// If symbol exists already, update it; otherwise add it as a constant.
-		if (this.symbolTable.lookupSymbol(label) !== undefined) this.symbolTable.setSymbol(label, value);
+		if (this.symbolTable.lookupSymbol(label) !== undefined) this.symbolTable.updateSymbol(label, value);
 		else this.symbolTable.addSymbol(label, value);
 	}
 
