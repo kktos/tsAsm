@@ -216,7 +216,7 @@ export class AssemblyLexer {
 
 		// Check for // or /* comments
 		if (ch === "/") {
-			const next = this.peekAhead(1); // look ahead one char
+			const next = this.peek(1); // look ahead one char
 			if (next === "/") return this.scanComment(startLine, startColumn);
 			if (next === "*") return this.scanMultiLineComment(startLine, startColumn);
 
@@ -227,49 +227,49 @@ export class AssemblyLexer {
 		}
 
 		// Multi-character operators
-		if (ch === "<" && this.peekAhead(1) === "<") {
+		if (ch === "<" && this.peek(1) === "<") {
 			this.advance();
 			this.advance();
 			return this.makeToken("OPERATOR", "<<", startLine, startColumn);
 		}
-		if (ch === ">" && this.peekAhead(1) === ">") {
+		if (ch === ">" && this.peek(1) === ">") {
 			this.advance();
 			this.advance();
 			return this.makeToken("OPERATOR", ">>", startLine, startColumn);
 		}
 
-		if (ch === "&" && this.peekAhead(1) === "&") {
+		if (ch === "&" && this.peek(1) === "&") {
 			this.advance();
 			this.advance();
 			return this.makeToken("OPERATOR", "&&", startLine, startColumn);
 		}
-		if (ch === "|" && this.peekAhead(1) === "|") {
+		if (ch === "|" && this.peek(1) === "|") {
 			this.advance();
 			this.advance();
 			return this.makeToken("OPERATOR", "||", startLine, startColumn);
 		}
-		if (ch === "=" && this.peekAhead(1) === "=") {
+		if (ch === "=" && this.peek(1) === "=") {
 			this.advance();
 			this.advance();
 			return this.makeToken("OPERATOR", "==", startLine, startColumn);
 		}
-		if (ch === "!" && this.peekAhead(1) === "=") {
+		if (ch === "!" && this.peek(1) === "=") {
 			this.advance();
 			this.advance();
 			return this.makeToken("OPERATOR", "!=", startLine, startColumn);
 		}
-		if (ch === "<" && this.peekAhead(1) === "=") {
+		if (ch === "<" && this.peek(1) === "=") {
 			this.advance();
 			this.advance();
 			return this.makeToken("OPERATOR", "<=", startLine, startColumn);
 		}
-		if (ch === ">" && this.peekAhead(1) === "=") {
+		if (ch === ">" && this.peek(1) === "=") {
 			this.advance();
 			this.advance();
 			return this.makeToken("OPERATOR", ">=", startLine, startColumn);
 		}
 
-		if (ch === "." && this.peekAhead(1) === "." && this.peekAhead(2) === ".") {
+		if (ch === "." && this.peek(1) === "." && this.peek(2) === ".") {
 			this.advance();
 			this.advance();
 			this.advance();
@@ -383,7 +383,7 @@ export class AssemblyLexer {
 
 		// Handle ambiguity of '%' (binary prefix vs. modulo operator)
 		if (ch === "%") {
-			const next = this.peekAhead(1);
+			const next = this.peek(1);
 			if (next === "0" || next === "1") {
 				return this.scanNumber(startLine, startColumn);
 			}
@@ -434,7 +434,7 @@ export class AssemblyLexer {
 
 		// Scan until we find '*/'
 		while (this.currentStream.pos < this.currentStream.length - 1) {
-			if (this.peek() === "*" && this.peekAhead(1) === "/") {
+			if (this.peek() === "*" && this.peek(1) === "/") {
 				this.advance(); // skip '*'
 				this.advance(); // skip '/'
 				break;
@@ -514,7 +514,7 @@ export class AssemblyLexer {
 
 	private scanNumber(line: number, column: number, negative = false): Token {
 		const firstChar = this.peek();
-		const secondChar = this.peekAhead(1).toLowerCase();
+		const secondChar = this.peek(1).toLowerCase();
 		let radix: number;
 
 		// Determine radix and skip prefix
@@ -522,7 +522,7 @@ export class AssemblyLexer {
 			radix = 16;
 			this.advance();
 			if (firstChar === "0") this.advance(); // skip 'x'
-		} else if (firstChar === "%" || (firstChar === "0" && secondChar === "b" && (this.peekAhead(2) === "0" || this.peekAhead(2) === "1"))) {
+		} else if (firstChar === "%" || (firstChar === "0" && secondChar === "b" && (this.peek(2) === "0" || this.peek(2) === "1"))) {
 			radix = 2;
 			this.advance();
 			if (firstChar === "0") this.advance(); // skip 'b'
@@ -696,6 +696,13 @@ export class AssemblyLexer {
 		return this.isAlphaNumeric(ch) || ch === "_";
 	}
 
+	public isValidIdentifier(name: string): boolean {
+		if (name.length === 0) return false;
+		if (!this.isIdentifierStart(name[0] as string)) return false;
+		for (let i = 1; i < name.length; i++) if (!this.isIdentifierPart(name[i] as string)) return false;
+		return true;
+	}
+
 	private skipWhitespace(): void {
 		// V8 optimizes simple loops with bounds checks
 		while (this.currentStream.pos < this.currentStream.length) {
@@ -705,12 +712,7 @@ export class AssemblyLexer {
 		}
 	}
 
-	// Hot path methods - inline candidates
-	private peek(): string {
-		return this.currentStream.pos < this.currentStream.length ? (this.currentStream.source[this.currentStream.pos] as string) : "";
-	}
-
-	private peekAhead(offset: number): string {
+	private peek(offset = 0): string {
 		const pos = this.currentStream.pos + offset;
 		return pos < this.currentStream.length ? (this.currentStream.source[pos] as string) : "";
 	}
