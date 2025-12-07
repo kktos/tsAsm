@@ -1,10 +1,12 @@
 import type { EventEmitter } from "node:events";
-import { blockDirectives, rawDirectives } from "./directives/handler";
-import type { AssemblyLexer, IdentifierToken, Token } from "./lexer/lexer.class";
+import { rawDirectives } from "./directives/handler";
+import type { AssemblyLexer, IdentifierToken, ScalarToken, Token } from "./lexer/lexer.class";
 import type { PushTokenStreamParams, StreamState } from "./polyasm.types";
 import type { SymbolValue } from "./symbol.class";
 
 export class Parser {
+	static readonly EOF = "@@EOF";
+
 	public activeTokens: Token[] = [];
 	public tokenStreamStack: StreamState[] = [];
 	private streamIdCounter = 0;
@@ -73,6 +75,11 @@ export class Parser {
 		return this.ensureToken(this.getPosition() + offset);
 	}
 
+	public isEOS(offset = 0) {
+		const token = this.ensureToken(this.getPosition() + offset);
+		return !token || token.type === "EOF";
+	}
+
 	public is(expectedType: Token["type"] | Token["type"][], expectedValue?: SymbolValue | SymbolValue[], offset = 0) {
 		const token = this.ensureToken(this.getPosition() + offset);
 		if (!token) return false;
@@ -84,8 +91,35 @@ export class Parser {
 		return isMatchingType && isMatchingValue;
 	}
 
-	public isIdentifier(expectedValue: SymbolValue | SymbolValue[], offset = 0) {
+	public isIdentifier(expectedValue?: SymbolValue | SymbolValue[], offset = 0) {
 		return this.is("IDENTIFIER", expectedValue, offset);
+	}
+
+	public identifier(expectedIdentifier?: string) {
+		const token = this.next();
+		if (!token || token.type !== "IDENTIFIER" || (expectedIdentifier && token.value !== expectedIdentifier))
+			throw `Syntax error - Expecting an identifer ${expectedIdentifier}`;
+		return token as IdentifierToken;
+	}
+
+	public operator(expectedOperator?: string) {
+		const token = this.next();
+		if (!token || token.type !== "OPERATOR" || (expectedOperator && token.value !== expectedOperator))
+			throw `Syntax error - Expecting an Operator ${expectedOperator}`;
+		return token as IdentifierToken;
+	}
+
+	public isDirective(expectedValue?: SymbolValue | SymbolValue[], offset = 0) {
+		return this.is("DOT", undefined, offset) && this.isIdentifier(expectedValue, offset + 1);
+	}
+
+	public directive(expectedValue?: SymbolValue | SymbolValue[]) {
+		try {
+			if (this.next()?.type !== "DOT") throw "";
+			return this.identifier(expectedValue as string);
+		} catch (_e) {
+			throw `Syntax error - Expecting a directive ${expectedValue}`;
+		}
 	}
 
 	public peekTokenUnbuffered(offset = 0): Token | null {
@@ -102,14 +136,6 @@ export class Parser {
 		const t = this.ensureToken(pos);
 		if (t) this.setPosition(pos + 1);
 		return t;
-	}
-
-	public nextIdentifier(identifier?: string): IdentifierToken | null {
-		const pos = this.getPosition();
-		const t = this.ensureToken(pos);
-		if (!t || t.type !== "IDENTIFIER" || (identifier && t.value !== identifier)) return null;
-		this.setPosition(pos + 1);
-		return t as IdentifierToken;
 	}
 
 	/** Advance the current token pointer by `n`. */
@@ -178,6 +204,7 @@ export class Parser {
 				this.tokenStreamStack.push(cachedStream);
 				this.activeTokens = cachedStream.tokens;
 				this.setPosition(0);
+				if (onEndOfStream) this.emitter.once(`endOfStream:${cachedStream.id}`, onEndOfStream);
 				return cachedStream.id;
 			}
 		}
@@ -275,59 +302,253 @@ export class Parser {
 		return tokens;
 	}
 
-	public getDirectiveBlockTokens(startDirective: string, endOfBlockDirectives: string[] = ["END"]) {
+	public getDirectiveBlockTokens(startDirective: string, terminators: string[] = ["END"]): Token[] {
+		if (this.is("LBRACE")) return this.getBracedBlock();
+		return this.getKeywordBlock(startDirective, terminators);
+	}
+
+	private getBracedBlock(): Token[] {
 		const tokens: Token[] = [];
-		let depth = this.is("LBRACE") ? 0 : 1;
-		const EOBDirectives = new Set(endOfBlockDirectives);
 
-		while (true) {
-			const token = this.next();
-			if (!token || token.type === "EOF") throw new Error(`line ${token?.line} : Unterminated '${startDirective}' block.`);
+		// Consume opening brace
+		if (!this.is("LBRACE")) throw new Error("Expected '{' to start block");
 
-			tokens.push(token);
+		this.consume(); // consume '{'
 
-			switch (token.type) {
+		let braceDepth = 1;
+
+		loop: while (!this.isEOS() && braceDepth > 0) {
+			const current = this.peek() as Token;
+
+			switch (current.type) {
+				case "LBRACE":
+					braceDepth++;
+					tokens.push(current);
+					this.consume();
+					break;
+
+				case "RBRACE":
+					braceDepth--;
+					if (braceDepth === 0) {
+						this.consume();
+						break loop; // Found matching closing brace
+					}
+					tokens.push(current);
+					this.consume();
+					break;
+
 				case "DOT": {
-					const nextToken = this.peek();
-					if (nextToken?.type === "IDENTIFIER") {
-						tokens.push(nextToken);
-						this.consume(1);
-						const directiveName = nextToken.value;
+					tokens.push(current);
+					this.consume();
 
-						if (blockDirectives.has(directiveName)) {
-							const lineTokens = this.getInstructionTokens(nextToken);
-							if (!this.is("LBRACE")) depth++;
-							tokens.push(...lineTokens);
-							continue;
-						}
+					const directive = this.next() as Token;
+					tokens.push(directive);
 
-						if (rawDirectives.has(directiveName)) {
-							const lineTokens = this.getInstructionTokens(nextToken);
-							tokens.push(...lineTokens);
-							const block = this.next({ endMarker: ".END" });
-							if (block) tokens.push(block);
-							continue;
-						}
-
-						if (EOBDirectives.has(directiveName)) {
-							depth--;
-							if (depth === 0) return tokens.slice(0, -2);
-						}
-						continue;
+					const directiveName = directive.value as string;
+					if (rawDirectives.has(directiveName)) {
+						const lineTokens = this.getInstructionTokens(directive);
+						tokens.push(...lineTokens);
+						const block = this.next({ endMarker: ".END" });
+						if (block) tokens.push(block);
 					}
 					break;
 				}
 
-				case "LBRACE":
-					if (depth === 0) tokens.pop();
-					depth++;
-					break;
-				case "RBRACE":
-					depth--;
-					if (depth === 0) return tokens.slice(0, -1);
+				default:
+					tokens.push(current);
+					this.consume();
 					break;
 			}
+
+			// if (current.type === "LBRACE") {
+			// 	braceDepth++;
+			// 	tokens.push(current);
+			// 	this.consume();
+			// } else if (current.type === "RBRACE") {
+			// 	braceDepth--;
+			// 	if (braceDepth === 0) {
+			// 		this.consume();
+			// 		break; // Found matching closing brace
+			// 	}
+			// 	tokens.push(current);
+			// 	this.consume();
+			// } else {
+			// 	tokens.push(current);
+			// 	this.consume();
+			// }
 		}
+
+		if (braceDepth !== 0) throw new Error("Unmatched braces in block");
+
+		return tokens;
+	}
+
+	private getKeywordBlock(startDirective: string, terminators: string[]): Token[] {
+		const tokens: Token[] = [];
+		let nestingDepth = 0;
+		let braceDepth = 0;
+
+		if (!terminators.includes("END")) terminators.push("END");
+
+		while (!this.isEOS()) {
+			const current = this.peek() as Token;
+
+			// Track braces - directives inside braces don't count
+			if (current.type === "LBRACE") {
+				braceDepth++;
+				tokens.push(current);
+				this.consume();
+				continue;
+			}
+
+			if (current.type === "RBRACE") {
+				braceDepth--;
+				tokens.push(current);
+				this.consume();
+				continue;
+			}
+
+			// Only check directives when not inside braces
+			if (braceDepth === 0 && this.isDirective()) {
+				const directive = this.peek(1) as Token;
+				const directiveName = directive.value as string;
+
+				if (rawDirectives.has(directiveName)) {
+					const lineTokens = this.getInstructionTokens(directive);
+					tokens.push(...lineTokens);
+					const block = this.next({ endMarker: ".END" });
+					if (block) tokens.push(block);
+					continue;
+				}
+
+				// Entering a nested block of same type
+				if (directiveName === startDirective) {
+					nestingDepth++;
+
+					// tokens.push(this.advance());
+					tokens.push(current);
+					tokens.push(directive);
+					this.consume(2);
+
+					continue;
+				}
+
+				// Only consider terminators at OUR level (depth 0)
+				if (nestingDepth === 0 && terminators.includes(directiveName)) {
+					this.consume(2);
+					break;
+				}
+
+				// Exiting a nested block
+				if (directiveName === "END") {
+					// tokens.push(this.advance());
+					this.consume(2);
+
+					if (nestingDepth > 0) {
+						nestingDepth--;
+					} else {
+						// This END belongs to us - we're done, but we consumed it
+						break;
+					}
+					tokens.push(current);
+					tokens.push(directive);
+					continue;
+				}
+			}
+
+			// tokens.push(this.advance());
+			tokens.push(current);
+			this.consume();
+		}
+
+		return tokens;
+	}
+
+	public _getDirectiveBlockTokens(startDirective: string, terminators: string[] = ["END"]) {
+		const terminatorsSet = new Set(terminators);
+		// const isEOFallowed = terminatorsSet.has(Parser.EOF);
+		const tokens: Token[] = [];
+		// const depth = this.is("LBRACE") ? 0 : 1;
+		let braceDepth = 0;
+		let nestingDepth = 0;
+
+		while (!this.isEOS()) {
+			const isDirective = this.isDirective();
+
+			let token = this.next() as Token;
+			tokens.push(token);
+
+			// Track braces
+			if (token.type === "LBRACE") braceDepth++;
+			if (token.type === "RBRACE") braceDepth--;
+
+			// Only check directives when not inside braces
+			if (braceDepth === 0 && isDirective) {
+				token = this.next() as ScalarToken;
+				tokens.push(token);
+
+				const directiveName = token.value;
+
+				if (directiveName === startDirective) {
+					nestingDepth++;
+				} else if (nestingDepth === 0 && terminatorsSet.has(directiveName)) {
+					// break;
+					return tokens.slice(0, -2);
+				} else if (directiveName === "END" && nestingDepth > 0) {
+					nestingDepth--;
+				}
+			}
+
+			// this.consume();
+			// tokens.push(token);
+
+			// case "LBRACE":
+			// 	if (depth === 0) tokens.pop();
+			// 	depth++;
+			// 	break;
+			// case "RBRACE":
+			// 	depth--;
+			// 	if (depth === 0) return tokens.slice(0, -1);
+			// 	break;
+
+			// switch (token.type) {
+			// 	case "DOT": {
+			// 		const nextToken = this.peek();
+			// 		if (nextToken?.type === "IDENTIFIER") {
+			// 			tokens.push(nextToken);
+			// 			this.consume(1);
+			// 			const directiveName = nextToken.value;
+
+			// 			if (blockDirectives.has(directiveName)) {
+			// 				const lineTokens = this.getInstructionTokens(nextToken);
+			// 				if (!this.is("LBRACE")) depth++;
+			// 				tokens.push(...lineTokens);
+			// 				continue;
+			// 			}
+
+			// 			if (rawDirectives.has(directiveName)) {
+			// 				const lineTokens = this.getInstructionTokens(nextToken);
+			// 				tokens.push(...lineTokens);
+			// 				const block = this.next({ endMarker: ".END" });
+			// 				if (block) tokens.push(block);
+			// 				continue;
+			// 			}
+
+			// 			if (terminatorsSet.has(directiveName)) {
+			// 				depth--;
+			// 				if (depth === 0) return tokens.slice(0, -2);
+			// 			}
+			// 			continue;
+			// 		}
+			// 		break;
+			// 	}
+			// }
+		}
+
+		return tokens;
+
+		// if (isEOFallowed) return tokens;
+		// throw new Error(`line ${token?.line} : Unterminated '${startDirective}' block.`);
 	}
 
 	public skipToEndOfLine(startIndex?: number): number {
