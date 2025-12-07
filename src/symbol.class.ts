@@ -147,7 +147,7 @@ export class PASymbolTable {
 		scope.set(name, { name, value, isGlobal, namespace: scopeKey });
 	}
 
-	setSymbol(symbolName: string, value: SymbolValue): void {
+	updateSymbol(symbolName: string, value: SymbolValue): void {
 		const name = symbolName.toUpperCase();
 
 		// Search up the scope stack to find the symbol.
@@ -164,6 +164,17 @@ export class PASymbolTable {
 		// If we get here, the symbol was not found in any active scope.
 		const currentScope = this.getCurrentNamespace();
 		throw new Error(`[SymbolTable] Attempted to set value for undefined symbol '${name}' in scope '${currentScope}'.`);
+	}
+
+	// test is a symbol is defined in the current NS or a specific one
+	isDefined(symbolName: string) {
+		if (symbolName.includes("::")) {
+			const [ns, symName] = symbolName.split("::") as [string, string];
+			const targetScope = ns.toLowerCase() === "global" ? this.symbols.get(INTERNAL_GLOBAL) : this.symbols.get(ns);
+			return targetScope?.has(symName);
+		}
+		const currentScope = this.getCurrentScope();
+		return currentScope?.has(symbolName.toUpperCase());
 	}
 
 	/**
@@ -218,11 +229,6 @@ export class PASymbolTable {
 		return "";
 	}
 
-	// test is a symbol is defined in the current NS
-	isDefined(symbolName: string) {
-		const currentScope = this.getCurrentScope();
-		return currentScope?.has(symbolName.toUpperCase());
-	}
 	/**
 	 * Gathers all unique symbol names from all scopes.
 	 * @returns An array of all defined symbol names.
