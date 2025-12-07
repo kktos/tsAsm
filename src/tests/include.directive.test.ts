@@ -8,7 +8,7 @@ import type { FileHandler, SegmentDefinition } from "../polyasm.types";
 class MockFileHandler implements FileHandler {
 	fullpath = "";
 	readSourceFile(filename: string): string {
-		throw new Error(`Mock file not found: "${filename}"`);
+		throw new Error(`Mock file not found: ${filename}`);
 	}
 
 	readBinaryFile(filename: string): number[] {
@@ -18,7 +18,7 @@ class MockFileHandler implements FileHandler {
 
 const DEFAULT_SEGMENTS: SegmentDefinition[] = [{ name: "CODE", start: 0x1000, size: 0, resizable: true }];
 
-describe("File Directives (.INCLUDE, .INCBIN)", () => {
+describe("File Directive .INCLUDE", () => {
 	const createAssembler = (segments: SegmentDefinition[] = DEFAULT_SEGMENTS) => {
 		const mockFileHandler = new MockFileHandler();
 		const logger = new Logger(true);
@@ -30,45 +30,52 @@ describe("File Directives (.INCLUDE, .INCBIN)", () => {
 		return { assembler, mockFileHandler, logger };
 	};
 
-	describe(".INCLUDE Directive", () => {
-		it("should include and assemble a source file", () => {
-			const { assembler, mockFileHandler } = createAssembler();
-			const includedCode = "LDA #$10\nSTA $0200";
-			const source = `
+	it("should include and assemble a source file", () => {
+		const { assembler, mockFileHandler } = createAssembler();
+		const includedCode = "LDA #$10\nSTA $0200";
+		const source = `
 				.INCLUDE "included.asm" ; include this file
 				test = 99
 			`;
 
-			const readSourceFileSpy = vi.spyOn(mockFileHandler, "readSourceFile").mockReturnValue(includedCode);
-
-			assembler.assemble(source);
-			const result = assembler.link();
-
-			expect(readSourceFileSpy).toHaveBeenCalledWith("included.asm", "");
-			expect(result).toEqual([0xa9, 0x10, 0x8d, 0x00, 0x02]);
+		const mockReadSource = vi.fn(function (
+			this: MockFileHandler, // Use 'any' or a more specific vitest mock type
+			filename: string,
+		): string {
+			this.fullpath = filename;
+			return includedCode;
 		});
 
-		it("should log an error if the file to include is not found", () => {
-			const { assembler, mockFileHandler } = createAssembler();
-			const source = `.INCLUDE "nonexistent.asm"`;
+		const readSourceFileSpy = vi.spyOn(mockFileHandler, "readSourceFile").mockImplementation(mockReadSource);
 
-			vi.spyOn(mockFileHandler, "readSourceFile").mockImplementation(() => {
-				throw new Error("File not found");
-			});
+		assembler.assemble(source);
+		const result = assembler.link();
 
-			expect(() => assembler.assemble(source)).toThrow("including file nonexistent.asm on line 1: Error: File not found");
+		expect(readSourceFileSpy).toHaveBeenCalledWith("included.asm", "");
+		expect(result).toEqual([0xa9, 0x10, 0x8d, 0x00, 0x02]);
+	});
+
+	it("should log an error if the file to include is not found", () => {
+		const { assembler, mockFileHandler } = createAssembler();
+		const source = `.INCLUDE "nonexistent.asm"`;
+
+		vi.spyOn(mockFileHandler, "readSourceFile").mockImplementation(() => {
+			throw new Error("File not found");
 		});
 
-		it("should log an error if .INCLUDE is missing a filename argument", () => {
-			const { assembler } = createAssembler();
-			const source = ".INCLUDE";
+		expect(() => assembler.assemble(source)).toThrow("including file nonexistent.asm on line 1: Error: File not found");
+	});
 
-			expect(() => assembler.assemble(source)).toThrow(".INCLUDE requires a string argument on line 1.");
-		});
+	it("should log an error if .INCLUDE is missing a filename argument", () => {
+		const { assembler } = createAssembler();
+		const source = ".INCLUDE";
 
-		it("should .INCLUDE file with a .FUNCTION holding a .DEFINE - bug fix", () => {
-			const { assembler, mockFileHandler } = createAssembler();
-			const includedCode = `
+		expect(() => assembler.assemble(source)).toThrow(".INCLUDE requires a string argument on line 1.");
+	});
+
+	it("should .INCLUDE file with a .FUNCTION holding a .DEFINE - bug fix", () => {
+		const { assembler, mockFileHandler } = createAssembler();
+		const includedCode = `
 			.function displayHelpObj {
 				.define spriteList
 				- { id: $55, x: $0d, y: $30, name:"text key"}
@@ -84,57 +91,25 @@ describe("File Directives (.INCLUDE, .INCBIN)", () => {
 				- { id: $5b, x: $2e, y: $88, name:"text extra sword"}
 				- { id: $1e, x: $40, y: $9b, name:"img extra sword"}
 				.end
+				.echo spriteList
 			}
 			`;
-			const source = `
+		const source = `
 				.INCLUDE "included.asm" ; include this file
 				test = 99
 			`;
 
-			vi.spyOn(mockFileHandler, "readSourceFile").mockReturnValue(includedCode);
-
-			assembler.assemble(source);
-
-			expect(assembler.symbolTable.lookupSymbol("spriteList")).toBeTypeOf("string");
-			expect(assembler.symbolTable.lookupSymbol("spriteList")).toEqual("");
+		const mockReadSource = vi.fn(function (
+			this: MockFileHandler, // Use 'any' or a more specific vitest mock type
+			filename: string,
+		): string {
+			this.fullpath = filename;
+			return includedCode;
 		});
-	});
+		vi.spyOn(mockFileHandler, "readSourceFile").mockImplementation(mockReadSource);
 
-	describe(".INCBIN Directive", () => {
-		it("should include a binary file", () => {
-			const { assembler, mockFileHandler } = createAssembler();
-			const binaryData = [0x01, 0x02, 0x03, 0x04];
-			const source = `
-				* = $c000
-				.INCBIN "data.bin"
-			`;
-
-			const readBinaryFileSpy = vi.spyOn(mockFileHandler, "readBinaryFile").mockReturnValue(binaryData);
-
-			assembler.assemble(source);
-			const result = assembler.link();
-
-			expect(readBinaryFileSpy).toHaveBeenCalledWith("data.bin");
-			expect(result).toEqual(binaryData);
-		});
-
-		it("should throw an error if the binary file is not found", () => {
-			const { assembler, mockFileHandler } = createAssembler();
-			const source = `.INCBIN "nonexistent.bin"`;
-
-			const readBinaryFileSpy = vi.spyOn(mockFileHandler, "readBinaryFile").mockImplementation(() => {
-				throw new Error("File not found");
-			});
-
-			expect(() => assembler.assemble(source)).toThrow("Assembly failed on line 1: Binary include failed.");
-			expect(readBinaryFileSpy).toHaveBeenCalledWith("nonexistent.bin");
-		});
-
-		it("should log an error if .INCBIN is missing a filename argument", () => {
-			const { assembler } = createAssembler();
-			const source = ".INCBIN";
-
-			expect(() => assembler.assemble(source)).toThrow("[PASS 1] ERROR: .INCBIN requires a string argument on line 1.");
-		});
+		assembler.assemble(source);
+		const code = assembler.link();
+		expect(code).toEqual([]);
 	});
 });

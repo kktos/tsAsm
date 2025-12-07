@@ -9,7 +9,7 @@ const mockFileHandler: FileHandler = {
 	readBinaryFile: (_filename: string) => [],
 };
 
-describe("Polymer Assembler - Segments", () => {
+describe("Segments", () => {
 	it("should define and use a new segment", () => {
 		const cpu = new Cpu6502Handler();
 		const assembler = new Assembler(cpu, mockFileHandler);

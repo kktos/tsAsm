@@ -98,7 +98,7 @@ describe(".NAMESPACE Directive", () => {
 		]);
 	});
 
-	it("should update namespace on successive directives", () => {
+	it("should allow access to symbols in a namespace", () => {
 		const { assembler, logger } = createAssembler();
 		const source = `
 			.NAMESPACE vars

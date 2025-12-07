@@ -157,4 +157,17 @@ describe("String Directives", () => {
 		const expected = expectedString.split("").map((c) => c.charCodeAt(0));
 		expect(machineCode).toEqual(expected);
 	});
+
+	it("should handle symbols as string", () => {
+		const assembler = createAssembler();
+		const source = `
+			mystring = "hello"
+            .TEXT mystring
+        `;
+		assembler.assemble(source);
+		const machineCode = assembler.link();
+		const expectedString = "hello";
+		const expected = expectedString.split("").map((c) => c.charCodeAt(0));
+		expect(machineCode).toEqual(expected);
+	});
 });
