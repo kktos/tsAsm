@@ -1,4 +1,4 @@
-import type { ScalarToken } from "../lexer/lexer.class";
+import type { ScalarToken, Token } from "../lexer/lexer.class";
 import type { Assembler } from "../polyasm";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
@@ -48,8 +48,14 @@ export class DefineDirective implements IDirective {
 		if (!processor) throw new Error(`'.DEFINE' directive on line ${directive.line}; unknown Data Processor '${processorName}'.`);
 
 		// Extract the raw block content from lexer or from token if included file
+		let blockToken: Token | null;
 		const token = assembler.parser.peek();
-		const blockToken = token?.type === "RAW_TEXT" ? token : assembler.parser.next({ endMarker: ".END" });
+		if (token?.type === "RAW_TEXT") {
+			assembler.parser.consume();
+			blockToken = token;
+		} else {
+			blockToken = assembler.parser.next({ endMarker: ".END" });
+		}
 
 		// Join the raw text of the tokens inside the block.
 		const blockContent = (blockToken?.value as string) ?? "";
@@ -59,7 +65,7 @@ export class DefineDirective implements IDirective {
 
 		// Set the symbol's value to the result
 		// assembler.symbolTable.setSymbol(symbolNameToken.value, value);
-		if (assembler.symbolTable.isDefined(symbolNameToken.value)) assembler.symbolTable.setSymbol(symbolNameToken.value, value);
+		if (assembler.symbolTable.isDefined(symbolNameToken.value)) assembler.symbolTable.updateSymbol(symbolNameToken.value, value);
 		else assembler.symbolTable.addSymbol(symbolNameToken.value, value);
 
 		// assembler.logger.log(`[PASS 2] Defined symbol ${symbolNameToken.value} via .DEFINE handler '${handlerNameToken.value}'.`);
