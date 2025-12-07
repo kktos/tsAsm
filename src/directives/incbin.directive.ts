@@ -52,7 +52,7 @@ export class IncbinDirective implements IDirective {
 
 			assembler.writeBytes(rawBytes);
 			// assembler.currentPC is advanced by writeBytes
-			assembler.symbolTable.setSymbol("*", assembler.currentPC);
+			assembler.symbolTable.updateSymbol("*", assembler.currentPC);
 
 			const bytesStr =
 				rawBytes

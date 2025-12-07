@@ -57,12 +57,10 @@ export class IncludeDirective implements IDirective {
 		const filename = assembler.expressionEvaluator.evaluate(expressionTokens, evaluationContext);
 		if (typeof filename !== "string") throw new Error(`.INCLUDE requires a string argument on line ${directive.line}.`);
 
-		assembler.fileHandler.readSourceFile(filename, filename);
-		const fullpath = assembler.fileHandler.fullpath;
-
+		assembler.startNewStream(filename);
 		assembler.parser.pushTokenStream({
 			// cacheName: filename,
-			cacheName: fullpath,
+			cacheName: assembler.currentFilename,
 			newTokens: [],
 			onEndOfStream: () => {
 				assembler.lister.directive({ ...directive, value: "END INCLUDE" }, filename);
