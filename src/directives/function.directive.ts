@@ -20,8 +20,8 @@ export class FunctionDirective implements IDirective {
 		const scopeId = `@@function_${assembler.symbolTable.getSymbolFullPath(nameToken.value)}`;
 		assembler.symbolTable.pushScope(scopeId);
 
-		const body = assembler.pass === 1 ? assembler.parser.getDirectiveBlockTokens(directive.value) : [];
-		assembler.parser.pushTokenStream({ cacheName: scopeId, newTokens: body, onEndOfStream: () => assembler.symbolTable.popScope() });
+		const body = assembler.parser.getDirectiveBlockTokens(directive.value);
+		assembler.parser.pushTokenStream({ cacheName: scopeId, newTokens: assembler.pass === 1 ? body : [], onEndOfStream: () => assembler.symbolTable.popScope() });
 	}
 
 	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void {
