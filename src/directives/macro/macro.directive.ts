@@ -11,7 +11,7 @@ export class MacroDirective implements IDirective {
 	}
 
 	public handlePassTwo(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
-		const nameToken = assembler.parser.nextIdentifier();
+		const nameToken = assembler.parser.identifier();
 		if (!nameToken) throw `ERROR: Macro needs a name on line ${directive.line}.`;
 
 		const definition = assembler.macroDefinitions.get(nameToken.value);
@@ -22,7 +22,7 @@ export class MacroDirective implements IDirective {
 
 	/** Pass 1: Parses and stores a macro definition. */
 	private handleMacroDefinition(directive: ScalarToken, assembler: Assembler) {
-		const nameToken = assembler.parser.nextIdentifier();
+		const nameToken = assembler.parser.identifier();
 		if (!nameToken) throw `ERROR: Macro needs a name on line ${directive.line}.`;
 
 		const macroName = nameToken.value;

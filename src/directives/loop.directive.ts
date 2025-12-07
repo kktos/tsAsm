@@ -41,8 +41,8 @@ export class LoopDirective implements IDirective {
 
 	private handleForLoop(directive: ScalarToken, assembler: Assembler): void {
 		// Parse the .for <iterator> of <array> syntax using buffered access
-		const itemIteratorToken = assembler.parser.nextIdentifier();
-		const ofToken = assembler.parser.nextIdentifier("OF");
+		const itemIteratorToken = assembler.parser.identifier();
+		const ofToken = assembler.parser.identifier("OF");
 
 		if (!itemIteratorToken || !ofToken) throw new Error(`Invalid .FOR loop syntax on line ${directive.line}. Expected: .for <iterator> of <array>`);
 

@@ -7,7 +7,7 @@ export class DefineDirective implements IDirective {
 	public isRawDirective = true;
 
 	public handlePassOne(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
-		const symbolNameToken = assembler.parser.nextIdentifier();
+		const symbolNameToken = assembler.parser.identifier();
 		if (!symbolNameToken) throw new Error(`'.DEFINE' directive on line ${directive.line} requires a symbol name.`);
 
 		let processorName: string | undefined;
@@ -15,7 +15,7 @@ export class DefineDirective implements IDirective {
 		let token = assembler.parser.peekTokenUnbuffered();
 		if (token?.type === "IDENTIFIER" && token.value === "AS") {
 			assembler.parser.consume();
-			token = assembler.parser.nextIdentifier();
+			token = assembler.parser.identifier();
 			if (!token) throw new Error(`'.DEFINE' directive on line ${directive.line} requires a Data Processor name.`);
 			processorName = token.value;
 		}
@@ -32,24 +32,23 @@ export class DefineDirective implements IDirective {
 
 	public handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
 		// Parse the directive arguments: .DEFINE <symbolName> <handlerName>
-		const symbolNameToken = assembler.parser.nextIdentifier();
+		const symbolNameToken = assembler.parser.identifier();
 		if (!symbolNameToken) throw new Error(`'.DEFINE' directive on line ${directive.line} requires a symbol name.`);
 
 		let processorName: string | undefined;
 
-		let token = assembler.parser.peekTokenUnbuffered();
-		if (token?.type === "IDENTIFIER" && token.value === "AS") {
+		if (assembler.parser.isIdentifier("AS")) {
 			assembler.parser.consume();
-			token = assembler.parser.nextIdentifier();
-			if (!token) throw new Error(`'.DEFINE' directive on line ${directive.line} requires a Data Processor name.`);
-			processorName = token.value;
+			const nameToken = assembler.parser.identifier();
+			if (!nameToken) throw new Error(`'.DEFINE' directive on line ${directive.line} requires a Data Processor name.`);
+			processorName = nameToken.value;
 		}
 
 		const processor = assembler.getDataProcessor(processorName);
 		if (!processor) throw new Error(`'.DEFINE' directive on line ${directive.line}; unknown Data Processor '${processorName}'.`);
 
 		// Extract the raw block content from lexer or from token if included file
-		token = assembler.parser.peekTokenUnbuffered();
+		const token = assembler.parser.peek();
 		const blockToken = token?.type === "RAW_TEXT" ? token : assembler.parser.next({ endMarker: ".END" });
 
 		// Join the raw text of the tokens inside the block.
