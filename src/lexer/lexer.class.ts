@@ -172,11 +172,14 @@ export class AssemblyLexer {
 	}
 
 	public rewind(offset: number, pos: { line: number; column: number; pos: number }) {
-		this.currentStream.tokenBuffer.length -= offset;
-		this.currentStream.line = pos.line;
-		this.currentStream.column = pos.column;
-		this.currentStream.pos = pos.pos;
-		this.currentStream.lastToken = this.currentStream.tokenBuffer[this.currentStream.tokenBuffer.length - 1] as Token;
+		const stream = this.currentStream;
+		const isAlreadyOn = pos.line === stream.line && pos.column === stream.column && pos.pos === stream.pos;
+		if (isAlreadyOn) return;
+		stream.tokenBuffer.length -= offset;
+		stream.line = pos.line;
+		stream.column = pos.column;
+		stream.pos = pos.pos;
+		stream.lastToken = stream.tokenBuffer[stream.tokenBuffer.length - 1] as Token;
 	}
 
 	/** Consume and return the next token from the stream (or null at EOF). */
