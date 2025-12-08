@@ -42,9 +42,7 @@ export class IfDirective implements IDirective {
 
 		if (nextIsElse) {
 			// If the terminator was a brace, we need to consume the .ELSE we peeked at
-			if (terminatorToken?.type === "RBRACE") {
-				parser.consume(2);
-			}
+			if (terminatorToken?.type === "RBRACE") parser.consume(2);
 
 			if (!activeBranchFound) {
 				activeBranchFound = true;
@@ -55,9 +53,7 @@ export class IfDirective implements IDirective {
 		}
 
 		// --- Push the collected tokens for the active branch ---
-		if (tokensToPush.length > 0) {
-			parser.pushTokenStream({ newTokens: tokensToPush });
-		}
+		if (tokensToPush.length > 0) parser.pushTokenStream({ newTokens: tokensToPush, macroArgs: context.macroArgs });
 	}
 
 	handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void {
