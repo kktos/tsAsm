@@ -27,7 +27,7 @@ export class MacroHandler {
 		const passedArgsArray = this.parseMacroArguments(macroToken.line);
 		const macroArgs = new Map<string, Token[]>();
 
-		const scopeName = `__MACRO_${macroName}_${macroToken.line}__`;
+		const scopeName = `@@macro_${macroName}_${macroToken.line}__`;
 		this.assembler.symbolTable.pushScope(scopeName);
 
 		// Argument validation and mapping
