@@ -31,7 +31,7 @@ export class LetDirective implements IDirective {
 			name = assembler.expressionEvaluator.evaluate(nameTokens, {
 				pc: assembler.currentPC,
 				allowForwardRef: assembler.pass === 1,
-				currentGlobalLabel: assembler.getLastGlobalLabel(),
+				currentGlobalLabel: assembler.lastGlobalLabel,
 				macroArgs: (assembler.parser.tokenStreamStack[assembler.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
 			});
 		if (typeof name !== "string") throw "Expected a string for symbol name";
@@ -42,13 +42,13 @@ export class LetDirective implements IDirective {
 		const value = assembler.expressionEvaluator.evaluate(expressionTokens, {
 			pc: assembler.currentPC,
 			allowForwardRef: assembler.pass === 1,
-			currentGlobalLabel: assembler.getLastGlobalLabel(),
+			currentGlobalLabel: assembler.lastGlobalLabel,
 			macroArgs: (assembler.parser.tokenStreamStack[assembler.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
 		});
 
 		assembler.lister.symbol(name, value);
 
-		if (assembler.pass === 1) assembler.symbolTable.addSymbol(name, value);
-		else assembler.symbolTable.setSymbol(name, value);
+		if (assembler.pass === 1) assembler.symbolTable.assignVariable(name, value);
+		else assembler.symbolTable.updateSymbol(name, value);
 	}
 }

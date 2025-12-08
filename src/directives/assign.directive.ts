@@ -10,11 +10,12 @@ export class AssignDirective implements IDirective {
 	public handlePassOne(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext): void {
 		const labelToken = assembler.parser.ensureToken(assembler.parser.getPosition() - 2);
 
-		if (!labelToken || labelToken.type !== "IDENTIFIER" || labelToken.line !== directive.line)
-			throw new Error(`Syntax error in line ${directive.line} - Missing symbol name before =`);
+		const isOnSameLine = labelToken?.line === directive.line;
+		const isValidType = labelToken?.type === "IDENTIFIER" || (labelToken?.type === "OPERATOR" && labelToken.value === "*");
+		if (!isOnSameLine || !isValidType) throw `Syntax error in line ${directive.line} - Missing symbol name before =`;
 
 		const label = assembler.lastGlobalLabel;
-		if (!label) throw new Error(`Syntax error in line ${directive.line} - Missing symbol name before =`);
+		if (!label) throw `Syntax error in line ${directive.line} - Missing symbol name before =`;
 
 		assembler.lastGlobalLabel = null;
 
@@ -29,7 +30,13 @@ export class AssignDirective implements IDirective {
 
 		assembler.lister.symbol(label, value);
 
-		assembler.symbolTable.assignVariable(label, value);
+		if (label === "*") {
+			if (typeof value !== "number") throw `line ${directive.line} - Invalid value for */ORG ${value}`;
+			assembler.currentPC = value;
+			return;
+		}
+
+		assembler.symbolTable.defineVariable(label, value);
 	}
 
 	public handlePassTwo(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext): void {
@@ -51,6 +58,13 @@ export class AssignDirective implements IDirective {
 
 		assembler.lister.symbol(label, value);
 
-		assembler.symbolTable.updateSymbol(label, value);
+		if (label === "*") {
+			if (typeof value !== "number") throw `line ${directive.line} - Invalid value for */ORG ${value}`;
+			assembler.currentPC = value;
+			return;
+		}
+
+		// In functions & Macros, the scope is lost between the passes
+		assembler.symbolTable.assignVariable(label, value);
 	}
 }

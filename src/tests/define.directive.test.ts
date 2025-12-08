@@ -62,7 +62,7 @@ describe(".DEFINE Directive", () => {
                 that the handler will process.`);
 	});
 
-	it("should throw an error for a duplicate symbol definition", () => {
+	it("should throw an error for a duplicate define", () => {
 		// 1. Create a mock handler function
 		const textHandler = vi.fn((blockContent: string, _context: DirectiveContext) => blockContent);
 		const handlers = { default: "text", map: new Map([["text", textHandler]]) };
@@ -74,7 +74,35 @@ describe(".DEFINE Directive", () => {
 			.DEFINE MY_SYMBOL
 			.END
 		`;
-		expect(() => assembler.assemble(source)).toThrow("ERROR: PASymbol global::MY_SYMBOL redefined.");
+		expect(() => assembler.assemble(source)).toThrow(/Cannot redefine symbol 'MY_SYMBOL'/);
+	});
+
+	it("should throw an error for an already defined variable", () => {
+		// 1. Create a mock handler function
+		const textHandler = vi.fn((blockContent: string, _context: DirectiveContext) => blockContent);
+		const handlers = { default: "text", map: new Map([["text", textHandler]]) };
+
+		const assembler = createAssembler(handlers);
+		const source = `
+			MY_SYMBOL = 0
+			.DEFINE MY_SYMBOL
+			.END
+		`;
+		expect(() => assembler.assemble(source)).toThrow(/Cannot redefine symbol 'MY_SYMBOL'/);
+	});
+
+	it("should throw an error for an already defined constant", () => {
+		// 1. Create a mock handler function
+		const textHandler = vi.fn((blockContent: string, _context: DirectiveContext) => blockContent);
+		const handlers = { default: "text", map: new Map([["text", textHandler]]) };
+
+		const assembler = createAssembler(handlers);
+		const source = `
+			MY_SYMBOL .EQU 0
+			.DEFINE MY_SYMBOL
+			.END
+		`;
+		expect(() => assembler.assemble(source)).toThrow(/Cannot redefine symbol 'MY_SYMBOL'/);
 	});
 
 	it("should throw an error for an unknown handler", () => {
@@ -124,7 +152,7 @@ describe(".DEFINE Directive", () => {
 		expect(symbolValue).toEqual({ name: "tata" });
 	});
 
-	it("should return an object with a JSON processor", () => {
+	it("should return an object with a JSON processor 2", () => {
 		const jsonHandler = vi.fn((blockContent: string, _context: DirectiveContext) => JSON.parse(blockContent));
 		const handlers = { default: "JSON", map: new Map([["JSON", jsonHandler]]) };
 		const assembler = createAssembler(handlers);

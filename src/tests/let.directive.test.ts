@@ -44,19 +44,30 @@ describe(".LET directive", () => {
 		it("should throw an error when re-defining a constant with .LET", () => {
 			const { asm } = makeAssembler();
 			const src = `
+			foo .EQU 10
+			.LET foo = 20
+		`;
+			expect(() => asm.assemble(src)).toThrow(/Can't redefine constant symbol global::FOO./);
+		});
+
+		it("should allow re-defining a variable with .LET", () => {
+			const { asm } = makeAssembler();
+			const src = `
 			foo = 10
 			.LET foo = 20
 		`;
-			expect(() => asm.assemble(src)).toThrow(/ERROR: PASymbol global::FOO redefined./);
+			asm.assemble(src);
+			const symbolBar = asm.symbolTable.lookupSymbol("foo");
+			expect(symbolBar).toBe(20);
 		});
 
 		it("should throw an error when re-defining a .LET variable as a constant", () => {
 			const { asm } = makeAssembler();
 			const src = `
 			.LET foo = 10
-			foo = 20
+			foo .EQU 20
 		`;
-			expect(() => asm.assemble(src)).toThrow(/ERROR: PASymbol global::FOO redefined./);
+			expect(() => asm.assemble(src)).toThrow(/PASymbol global::FOO redefined./);
 		});
 
 		it("should handle complex expressions", () => {

@@ -2,14 +2,14 @@ import type { Token } from "./lexer/lexer.class";
 import { getHex } from "./utils/hex.util";
 
 // Internal unique key for the global namespace to avoid collisions with user namespaces
-const INTERNAL_GLOBAL = "@@GLOBAL";
+const INTERNAL_GLOBAL = "%%GLOBAL";
 
 export type SymbolValue = number | string | object | Token[] | SymbolValue[];
 
 interface PASymbol {
 	name: string;
 	value: SymbolValue;
-	isGlobal: boolean;
+	isConstant: boolean | undefined;
 	namespace: string;
 }
 
@@ -25,7 +25,7 @@ export class PASymbolTable {
 
 	/** Pushes a new scope onto the stack, making it the current scope. */
 	pushScope(name?: string): void {
-		const newScopeName = name || `__LOCAL_${this.scopeCounter++}__`;
+		const newScopeName = name || `@@LOCAL_${this.scopeCounter++}__`;
 		this.scopeStack.push(newScopeName);
 		if (!this.symbols.has(newScopeName)) this.symbols.set(newScopeName, new Map());
 	}
@@ -77,10 +77,9 @@ export class PASymbolTable {
 		// Don't pop GLOBAL. Also avoid popping ephemeral local/macro scopes via this call.
 		const currentRaw = this.scopeStack[this.scopeStack.length - 1];
 		if (currentRaw === INTERNAL_GLOBAL) return;
-		if (typeof currentRaw === "string" && (currentRaw.startsWith("__LOCAL_") || currentRaw.startsWith("__MACRO_"))) {
-			// It's a local/macro scope; do not pop it via namespace pop.
-			return;
-		}
+		// It's a local scope; do not pop it via namespace pop.
+		if (currentRaw?.startsWith("@@")) return;
+
 		// Safe to pop named namespace (do not delete its symbol map so it remains addressable)
 		this.scopeStack.pop();
 		console.log(`Set namespace: ${this.getCurrentNamespace()}`);
@@ -98,76 +97,126 @@ export class PASymbolTable {
 		return this.symbols.get(current);
 	}
 
-	/**
-	 * Adds a symbol (label or constant). Handles local labels starting with '.'
-	 * @param name The symbol name.
-	 * @param value The resolved address or value.
-	 */
-	addSymbol(symbolName: string, value: SymbolValue): void {
+	findSymbol(symbolName: string) {
 		const name = symbolName.toUpperCase();
 
-		const namespaceKey = this.scopeStack[this.scopeStack.length - 1] as string;
-		const namespace = this.getCurrentNamespace();
-
-		// Local labels start with a dot (e.g., '.loop')
-		const isLocal = name.startsWith(".");
-		if (isLocal) {
-			// Local labels are scoped to the current active global/named scope
-			// For simplicity, we'll store them under the current namespace.
-			// A more complex assembler would track the last global label for local scope.
+		// Handle namespaced lookup (TOTO::LABEL)
+		if (name.includes("::")) {
+			const [ns, symName] = name.split("::") as [string, string];
+			const targetScope = ns.toLowerCase() === "global" ? this.symbols.get(INTERNAL_GLOBAL) : this.symbols.get(ns);
+			if (targetScope?.has(symName)) return { scope: targetScope, symbol: targetScope.get(symName) as PASymbol };
 		}
 
-		const scope = this.symbols.get(namespaceKey);
+		// Search from the local scopes up to the current scope.
+		for (let i = this.scopeStack.length - 1; i >= 0; i--) {
+			const scopeName = this.scopeStack[i] as string;
+			const scope = this.symbols.get(scopeName);
+			if (scope?.has(name)) return { scope: scope, symbol: scope.get(name) as PASymbol };
+			if (!scopeName.startsWith("@@")) break;
+		}
 
-		if (!scope) throw `ERROR: PASymbol ${namespace} doesn't exist.`;
-		if (scope.has(name)) throw `ERROR: PASymbol ${namespace}::${name} redefined.`;
+		return undefined;
+	}
+
+	defineConstant(constantName: string, value: SymbolValue) {
+		const namespaceKey = this.scopeStack[this.scopeStack.length - 1] as string;
+		const scope = this.symbols.get(namespaceKey);
+		if (!scope) throw `PASymbol ${this.getCurrentNamespace()} doesn't exist.`;
+
+		const name = constantName.toUpperCase();
+		if (scope.has(name)) throw `PASymbol ${this.getCurrentNamespace()}::${name} redefined.`;
 
 		scope.set(name, {
 			name,
 			value,
-			isGlobal: !isLocal,
+			isConstant: true,
 			namespace: namespaceKey,
 		});
 	}
 
-	/**
-	 * Defines or updates a symbol in the *current* scope.
-	 * This is ideal for loop iterators or re-assignable variables.
-	 * @param name The symbol name.
-	 * @param value The value to assign.
-	 * @param isGlobal In the context of a local scope, this is always false.
-	 */
-	define(symbolName: string, value: SymbolValue, isGlobal = false): void {
-		const name = symbolName.toUpperCase();
+	defineVariable(variableName: string, value: SymbolValue) {
+		const namespaceKey = this.scopeStack[this.scopeStack.length - 1] as string;
+		const scope = this.symbols.get(namespaceKey);
+		if (!scope) throw `PASymbol ${this.getCurrentNamespace()} doesn't exist.`;
 
-		const scopeKey = this.scopeStack[this.scopeStack.length - 1] as string;
-		const scope = this.symbols.get(scopeKey);
-		if (!scope) throw new Error(`[SymbolTable] ERROR: Current scope '${this.getCurrentNamespace()}' does not exist.`);
+		const name = variableName.toUpperCase();
 
-		scope.set(name, { name, value, isGlobal, namespace: scopeKey });
+		const symbol = scope.get(name);
+		if (symbol?.isConstant) throw `Can't redefine constant symbol ${this.getCurrentNamespace()}::${variableName}.`;
+
+		scope.set(name, {
+			name,
+			value,
+			isConstant: false,
+			namespace: namespaceKey,
+		});
 	}
 
-	updateSymbol(symbolName: string, value: SymbolValue): void {
-		const name = symbolName.toUpperCase();
+	assignVariable(variableName: string, value: SymbolValue) {
+		const symbolData = this.findSymbol(variableName);
 
-		// Search up the scope stack to find the symbol.
-		for (let i = this.scopeStack.length - 1; i >= 0; i--) {
-			const scopeName = this.scopeStack[i] as string;
-			const scope = this.symbols.get(scopeName);
-			const symbol = scope?.get(name);
-			if (symbol) {
-				symbol.value = value;
-				return;
-			}
+		let scope: Map<string, PASymbol> | undefined;
+		let name = "";
+		let symbol: PASymbol | undefined;
+		let namespaceKey = "";
+
+		if (symbolData) {
+			scope = symbolData.scope;
+			name = symbolData.symbol.name;
+			symbol = symbolData.symbol;
+			namespaceKey = symbol.namespace;
+		} else {
+			namespaceKey = this.scopeStack[this.scopeStack.length - 1] as string;
+			scope = this.symbols.get(namespaceKey);
+			if (!scope) throw `PASymbol ${this.getCurrentNamespace()} doesn't exist.`;
+			name = variableName.toUpperCase();
+			symbol = scope.get(name);
 		}
 
-		// If we get here, the symbol was not found in any active scope.
-		const currentScope = this.getCurrentNamespace();
-		throw new Error(`[SymbolTable] Attempted to set value for undefined symbol '${name}' in scope '${currentScope}'.`);
+		if (symbol?.isConstant) throw `Can't redefine constant symbol ${this.getCurrentNamespace()}::${variableName}.`;
+
+		scope.set(name, {
+			name,
+			value,
+			isConstant: false,
+			namespace: namespaceKey,
+		});
+	}
+
+	updateSymbol(symbolName: string, value: SymbolValue) {
+		const scopeKey = this.scopeStack[this.scopeStack.length - 1] as string;
+		const scope = this.symbols.get(scopeKey);
+		if (!scope) throw `[SymbolTable] Current scope '${this.getCurrentNamespace()}' does not exist.`;
+
+		const name = symbolName.toUpperCase();
+		const symbol = scope.get(name);
+		if (!symbol) throw `Unknown symbol "${this.getCurrentNamespace()}::${name}".`;
+
+		scope.set(name, { name, value, isConstant: symbol.isConstant, namespace: scopeKey });
+	}
+
+	lookupSymbolInScope(symbolName: string) {
+		let scope: Map<string, PASymbol> | undefined;
+
+		let name = symbolName.toUpperCase();
+		let ns = "";
+
+		if (name.includes("::")) {
+			[ns, name] = name.split("::") as [string, string];
+			scope = ns.toLowerCase() === "global" ? this.symbols.get(INTERNAL_GLOBAL) : this.symbols.get(ns);
+		} else {
+			ns = this.getCurrentNamespace();
+			const namespaceKey = this.scopeStack[this.scopeStack.length - 1] as string;
+			scope = this.symbols.get(namespaceKey);
+		}
+
+		if (!scope) throw `ERROR: PASymbol ${ns} doesn't exist.`;
+
+		return scope.get(name);
 	}
 
 	// test is a symbol is defined in the current NS or a specific one
-	isDefined(symbolName: string) {
+	hasSymbolInScope(symbolName: string) {
 		if (symbolName.includes("::")) {
 			const [ns, symName] = symbolName.split("::") as [string, string];
 			const targetScope = ns.toLowerCase() === "global" ? this.symbols.get(INTERNAL_GLOBAL) : this.symbols.get(ns);
@@ -177,24 +226,22 @@ export class PASymbolTable {
 		return currentScope?.has(symbolName.toUpperCase());
 	}
 
-	/**
-	 * Attempts to look up a symbol. Searches current namespace first, then the whole stack up to global.
-	 */
-	lookupSymbol(symbolName: string): SymbolValue | undefined {
+	lookupSymbol(symbolName: string) {
 		const name = symbolName.toUpperCase();
 
-		// 1. Search from the current scope up to the global scope.
-		for (let i = this.scopeStack.length - 1; i >= 0; i--) {
-			const scopeName = this.scopeStack[i] as string;
-			const scope = this.symbols.get(scopeName);
-			if (scope?.has(name)) return scope.get(name)?.value;
-		}
-
-		// 2. Handle namespaced lookup (TOTO::LABEL)
+		// Handle namespaced lookup (TOTO::LABEL)
 		if (name.includes("::")) {
 			const [ns, symName] = name.split("::") as [string, string];
 			const targetScope = ns.toLowerCase() === "global" ? this.symbols.get(INTERNAL_GLOBAL) : this.symbols.get(ns);
 			if (targetScope?.has(symName)) return targetScope.get(symName)?.value;
+		}
+
+		// Search from the local scopes up to the current scope.
+		for (let i = this.scopeStack.length - 1; i >= 0; i--) {
+			const scopeName = this.scopeStack[i] as string;
+			const scope = this.symbols.get(scopeName);
+			if (scope?.has(name)) return scope.get(name)?.value;
+			// if (!scopeName.startsWith("@@")) break;
 		}
 
 		return undefined;

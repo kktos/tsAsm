@@ -31,7 +31,7 @@ export class Assembler {
 	public currentFilename = "";
 	private filenameStack: string[] = [];
 
-	private lastGlobalLabel: string | null = null;
+	public lastGlobalLabel: string | null = null;
 	public anonymousLabels: number[] = [];
 
 	public macroDefinitions: Map<string, MacroDefinition> = new Map();
@@ -61,7 +61,7 @@ export class Assembler {
 
 		this.currentPC = DEFAULT_PC;
 		this.symbolTable = new PASymbolTable();
-		this.symbolTable.addSymbol("*", this.currentPC);
+		this.symbolTable.assignVariable("*", this.currentPC);
 
 		this.expressionEvaluator = new ExpressionEvaluator(this, this.logger);
 		this.directiveHandler = new DirectiveHandler(this, this.logger);
@@ -166,10 +166,6 @@ export class Assembler {
 		return this.linker.segments;
 	}
 
-	public getLastGlobalLabel(): string | null {
-		return this.lastGlobalLabel;
-	}
-
 	private passOne(): void {
 		this.logger.log(`\n--- Starting Pass 1: PASymbol Definition & PC Calculation (${this.cpuHandler.cpuType}) ---`);
 
@@ -193,6 +189,8 @@ export class Assembler {
 				if (poppedStream) this.emitter.emit(`endOfStream:${poppedStream.id}`);
 				continue;
 			}
+
+			// console.log("previousPosition", this.previousPosition, this.parser.ensureToken(this.previousPosition));
 
 			switch (token.type) {
 				case "DOT": {
@@ -219,9 +217,18 @@ export class Assembler {
 					}
 
 					if (token.value === "=" && this.lastGlobalLabel) {
-						this.handleSymbolInPassOne(this.lastGlobalLabel, token);
+						const directiveContext = {
+							pc: this.currentPC,
+							allowForwardRef: true,
+							currentGlobalLabel: this.lastGlobalLabel,
+							options: this.options,
+							macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
+						};
+						if (!this.directiveHandler.handlePassOneDirective(token, directiveContext))
+							throw new Error(`Syntax error in line ${token.line} - Unexpected directive '${token.value}'`);
 						break;
 					}
+
 					throw new Error(`Syntax error in line ${token.line} - Unexpected operator '${token.value}'`);
 				}
 
@@ -247,7 +254,7 @@ export class Assembler {
 				}
 				case "LABEL": {
 					this.lastGlobalLabel = token.value;
-					this.symbolTable.addSymbol(token.value, this.currentPC);
+					this.symbolTable.defineConstant(token.value, this.currentPC);
 
 					this.lister.label(token.raw ?? token.value);
 					break;
@@ -257,7 +264,7 @@ export class Assembler {
 					if (!this.lastGlobalLabel) throw `ERROR on line ${token.line}: Local label ':${token.value}' defined without a preceding global label.`;
 
 					const qualifiedName = `${this.lastGlobalLabel}.${token.value}`;
-					this.symbolTable.addSymbol(qualifiedName, this.currentPC);
+					this.symbolTable.defineConstant(qualifiedName, this.currentPC);
 					break;
 				}
 
@@ -310,9 +317,17 @@ export class Assembler {
 					}
 
 					if (token.value === "=" && this.lastGlobalLabel) {
-						this.handleSymbolInPassTwo(this.lastGlobalLabel, token);
+						const directiveContext = {
+							pc: this.currentPC,
+							macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
+							currentGlobalLabel: this.lastGlobalLabel,
+							options: this.options,
+						};
+
+						this.directiveHandler.handlePassTwoDirective(token, directiveContext);
 						break;
 					}
+
 					throw new Error(`Syntax error in line ${token.line} - Unexpected operator '${token.value}'`);
 				}
 
@@ -353,15 +368,16 @@ export class Assembler {
 					break;
 				}
 
-				case "LABEL":
+				case "LABEL": {
 					this.lastGlobalLabel = token.value;
 					// In functions, the scope is lost between the passes
-					if (this.symbolTable.isDefined(token.value)) this.symbolTable.updateSymbol(token.value, this.currentPC);
-					else this.symbolTable.addSymbol(token.value, this.currentPC);
+					if (this.symbolTable.hasSymbolInScope(token.value)) this.symbolTable.updateSymbol(token.value, this.currentPC);
+					else this.symbolTable.defineConstant(token.value, this.currentPC);
 
 					this.lister.label(token.raw ?? token.value);
 
 					break;
+				}
 
 				case "ANONYMOUS_LABEL_DEF":
 					this.anonymousLabels[anonymousLabelCounter] = this.currentPC;
@@ -369,7 +385,7 @@ export class Assembler {
 			}
 		}
 	}
-
+	/*
 	public handleSymbolInPassOne(label: string, token: ScalarToken) {
 		const expressionTokens = this.parser.getInstructionTokens();
 
@@ -422,10 +438,10 @@ export class Assembler {
 		}
 
 		// If symbol exists already, update it; otherwise add it as a constant.
-		if (this.symbolTable.lookupSymbol(label) !== undefined) this.symbolTable.updateSymbol(label, value);
+		if (this.symbolTable.lookupSymbol(label) !== undefined) this.symbolTable.lookupAndUpdateSymbol(label, value);
 		else this.symbolTable.addSymbol(label, value);
 	}
-
+*/
 	private handleInstructionPassOne(mnemonicToken: ScalarToken): void {
 		let operandTokens = this.parser.getInstructionTokens(mnemonicToken) as OperatorStackToken[];
 

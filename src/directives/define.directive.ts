@@ -23,7 +23,9 @@ export class DefineDirective implements IDirective {
 		const processor = assembler.getDataProcessor(processorName);
 		if (!processor) throw new Error(`'.DEFINE' directive on line ${directive.line}; unknown Data Processor '${processorName}'.`);
 
-		assembler.symbolTable.addSymbol(symbolNameToken.value, 0);
+		if (assembler.symbolTable.hasSymbolInScope(symbolNameToken.value)) throw `line ${directive.line}; Cannot redefine symbol '${symbolNameToken.value}'.`;
+
+		assembler.symbolTable.assignVariable(symbolNameToken.value, 0);
 
 		assembler.lister.directive(directive, symbolNameToken.value);
 
@@ -63,11 +65,7 @@ export class DefineDirective implements IDirective {
 		// Call the external handler function with the block content
 		const value = processor ? processor(blockContent, context) : blockContent;
 
-		// Set the symbol's value to the result
-		// assembler.symbolTable.setSymbol(symbolNameToken.value, value);
-		if (assembler.symbolTable.isDefined(symbolNameToken.value)) assembler.symbolTable.updateSymbol(symbolNameToken.value, value);
-		else assembler.symbolTable.addSymbol(symbolNameToken.value, value);
-
-		// assembler.logger.log(`[PASS 2] Defined symbol ${symbolNameToken.value} via .DEFINE handler '${handlerNameToken.value}'.`);
+		// In functions, the scope is lost between the passes
+		assembler.symbolTable.assignVariable(symbolNameToken.value, value);
 	}
 }
