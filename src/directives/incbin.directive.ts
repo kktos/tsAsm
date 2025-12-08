@@ -15,7 +15,7 @@ export class IncbinDirective implements IDirective {
 			pc: assembler.currentPC,
 			macroArgs: assembler.parser.tokenStreamStack[assembler.parser.tokenStreamStack.length - 1]?.macroArgs,
 			assembler,
-			currentGlobalLabel: assembler.getLastGlobalLabel?.() ?? undefined,
+			currentGlobalLabel: assembler.lastGlobalLabel ?? undefined,
 		};
 
 		const filename = assembler.expressionEvaluator.evaluate(expressionTokens, evaluationContext);
@@ -41,7 +41,7 @@ export class IncbinDirective implements IDirective {
 			pc: assembler.currentPC,
 			macroArgs: assembler.parser.tokenStreamStack[assembler.parser.tokenStreamStack.length - 1]?.macroArgs,
 			assembler,
-			currentGlobalLabel: assembler.getLastGlobalLabel?.() ?? undefined,
+			currentGlobalLabel: assembler.lastGlobalLabel ?? undefined,
 		};
 
 		const filename = assembler.expressionEvaluator.evaluate(expressionTokens, evaluationContext);
@@ -52,7 +52,7 @@ export class IncbinDirective implements IDirective {
 
 			assembler.writeBytes(rawBytes);
 			// assembler.currentPC is advanced by writeBytes
-			assembler.symbolTable.updateSymbol("*", assembler.currentPC);
+			// assembler.symbolTable.lookupAndUpdateSymbol("*", assembler.currentPC);
 
 			const bytesStr =
 				rawBytes

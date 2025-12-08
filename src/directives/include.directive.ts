@@ -21,7 +21,7 @@ export class IncludeDirective implements IDirective {
 			pc: assembler.currentPC,
 			macroArgs: assembler.parser.tokenStreamStack[assembler.parser.tokenStreamStack.length - 1]?.macroArgs,
 			assembler,
-			currentGlobalLabel: assembler.getLastGlobalLabel?.() ?? undefined,
+			currentGlobalLabel: assembler.lastGlobalLabel ?? undefined,
 		};
 
 		const filename = assembler.expressionEvaluator.evaluate(expressionTokens, evaluationContext);
@@ -52,7 +52,7 @@ export class IncludeDirective implements IDirective {
 			pc: assembler.currentPC,
 			macroArgs: assembler.parser.tokenStreamStack[assembler.parser.tokenStreamStack.length - 1]?.macroArgs,
 			assembler,
-			currentGlobalLabel: assembler.getLastGlobalLabel?.() ?? undefined,
+			currentGlobalLabel: assembler.lastGlobalLabel ?? undefined,
 		};
 		const filename = assembler.expressionEvaluator.evaluate(expressionTokens, evaluationContext);
 		if (typeof filename !== "string") throw new Error(`.INCLUDE requires a string argument on line ${directive.line}.`);
