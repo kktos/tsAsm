@@ -26,20 +26,20 @@ export class LoopDirective implements IDirective {
 		assembler.parser.skipToDirectiveEnd(directive.value);
 	}
 
-	public handlePassTwo(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
+	public handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
 		switch (directive.value) {
 			case "FOR":
-				this.handleForLoop(directive, assembler);
+				this.handleForLoop(directive, assembler, context);
 				return;
 			case "REPEAT":
-				this.handleRepeatLoop(directive, assembler);
+				this.handleRepeatLoop(directive, assembler, context);
 				return;
 			default:
 				throw new Error(`Invalid directive ${directive.value} on line ${directive.line}.`);
 		}
 	}
 
-	private handleForLoop(directive: ScalarToken, assembler: Assembler): void {
+	private handleForLoop(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void {
 		// Parse the .for <iterator> of <array> syntax using buffered access
 		const itemIteratorToken = assembler.parser.identifier();
 		const ofToken = assembler.parser.identifier("OF");
@@ -58,7 +58,7 @@ export class LoopDirective implements IDirective {
 			pc: assembler.currentPC,
 			macroArgs: assembler.parser.tokenStreamStack[assembler.parser.tokenStreamStack.length - 1]?.macroArgs,
 			assembler,
-			currentGlobalLabel: assembler.getLastGlobalLabel?.() ?? undefined,
+			currentGlobalLabel: assembler.lastGlobalLabel ?? undefined,
 		};
 
 		const arrayValue = assembler.expressionEvaluator.evaluate(expressionTokens, evaluationContext);
@@ -71,7 +71,7 @@ export class LoopDirective implements IDirective {
 		if (arrayValue.length === 0) return;
 
 		// Create a local scope for the entire loop's duration.
-		assembler.symbolTable.pushScope(`__FOR_${directive.line}_`);
+		assembler.symbolTable.pushScope(`@@for_${directive.line}_`);
 
 		// Store the complete state for the loop.
 		const loopId = `${directive.line}`; // Use line number as a unique ID for the loop.
@@ -85,10 +85,10 @@ export class LoopDirective implements IDirective {
 		});
 
 		// Kick off the first iteration.
-		this.runNextLoopIteration(assembler, loopId);
+		this.runNextLoopIteration(assembler, loopId, context);
 	}
 
-	private handleRepeatLoop(directive: ScalarToken, assembler: Assembler): void {
+	private handleRepeatLoop(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void {
 		const countExpressionTokens = assembler.parser.getInstructionTokens();
 
 		// If there is an 'AS' clause, split it
@@ -101,7 +101,7 @@ export class LoopDirective implements IDirective {
 			pc: assembler.currentPC,
 			macroArgs: assembler.parser.tokenStreamStack[assembler.parser.tokenStreamStack.length - 1]?.macroArgs,
 			assembler,
-			currentGlobalLabel: assembler.getLastGlobalLabel?.() ?? undefined,
+			currentGlobalLabel: assembler.lastGlobalLabel ?? undefined,
 		};
 
 		const count = assembler.expressionEvaluator.evaluateAsNumber(exprTokens, evaluationContext);
@@ -121,10 +121,10 @@ export class LoopDirective implements IDirective {
 		});
 
 		// kick off iteration
-		this.runNextLoopIteration(assembler, loopId);
+		this.runNextLoopIteration(assembler, loopId, context);
 	}
 
-	private runNextLoopIteration(assembler: Assembler, loopId: string): void {
+	private runNextLoopIteration(assembler: Assembler, loopId: string, context: DirectiveContext): void {
 		const state = this.loopStates.get(loopId);
 		if (!state) return; // Should not happen
 
@@ -137,16 +137,20 @@ export class LoopDirective implements IDirective {
 			// Define the main iterator variable (0-based index for .FOR, 1-based for .REPEAT)
 			if (state.iterator) {
 				const iteratorValue = state.items ? currentIndex : currentIndex + 1;
-				assembler.symbolTable.define(state.iterator.value, iteratorValue, false);
+				assembler.symbolTable.assignVariable(state.iterator.value, iteratorValue);
 			}
 
 			// Handle .FOR specific item value
 			if (state.items && state.itemIterator) {
 				const currentItem = state.items[currentIndex] as SymbolValue;
-				assembler.symbolTable.define(state.itemIterator.value, currentItem, false);
+				assembler.symbolTable.assignVariable(state.itemIterator.value, currentItem);
 			}
 
-			assembler.parser.pushTokenStream({ newTokens: state.body, onEndOfStream: () => this.runNextLoopIteration(assembler, loopId) });
+			assembler.parser.pushTokenStream({
+				newTokens: state.body,
+				macroArgs: context.macroArgs,
+				onEndOfStream: () => this.runNextLoopIteration(assembler, loopId, context),
+			});
 		} else {
 			// No iterations left, end the loop.
 			this.endLoop(assembler, loopId);
