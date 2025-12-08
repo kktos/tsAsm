@@ -16,6 +16,7 @@ import { DefineDirective } from "./define.directive";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 import { EndDirective } from "./end.directive";
 import { EquDirective } from "./equ.directive";
+import { ExportDirective } from "./export.directive";
 import { FillDirective } from "./fill.directive";
 import { FunctionDirective } from "./function.directive";
 import { HexDirective } from "./hex.directive";
@@ -56,6 +57,7 @@ export class DirectiveHandler {
 		this.register("EQU", new EquDirective());
 		this.register("=", new AssignDirective());
 		this.register("LET", new LetDirective());
+		this.register("EXPORT", new ExportDirective());
 
 		this.register("OPTION", new OptionDirective());
 
