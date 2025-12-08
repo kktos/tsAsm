@@ -3,18 +3,18 @@ import type { Assembler } from "../polyasm";
 import type { StreamState } from "../polyasm.types";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
-export class AssignDirective implements IDirective {
+export class EquDirective implements IDirective {
 	public isBlockDirective = false;
 	public isRawDirective = false;
 
 	public handlePassOne(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext): void {
-		const labelToken = assembler.parser.ensureToken(assembler.parser.getPosition() - 2);
+		const labelToken = assembler.parser.ensureToken(assembler.parser.getPosition() - 3);
 
 		if (!labelToken || labelToken.type !== "IDENTIFIER" || labelToken.line !== directive.line)
-			throw new Error(`Syntax error in line ${directive.line} - Missing symbol name before =`);
+			throw new Error(`Syntax error in line ${directive.line} - Missing symbol name before .EQU`);
 
 		const label = assembler.lastGlobalLabel;
-		if (!label) throw new Error(`Syntax error in line ${directive.line} - Missing symbol name before =`);
+		if (!label) throw new Error(`Syntax error in line ${directive.line} - Missing symbol name before .EQU`);
 
 		assembler.lastGlobalLabel = null;
 
@@ -29,7 +29,7 @@ export class AssignDirective implements IDirective {
 
 		assembler.lister.symbol(label, value);
 
-		assembler.symbolTable.assignVariable(label, value);
+		assembler.symbolTable.defineConstant(label, value);
 	}
 
 	public handlePassTwo(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext): void {

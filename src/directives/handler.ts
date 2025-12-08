@@ -15,12 +15,13 @@ import { DataDirective } from "./data.directive";
 import { DefineDirective } from "./define.directive";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 import { EndDirective } from "./end.directive";
+import { EquDirective } from "./equ.directive";
 import { FillDirective } from "./fill.directive";
 import { FunctionDirective } from "./function.directive";
 import { HexDirective } from "./hex.directive";
 import { IfDirective } from "./if.directive";
 import { IncbinDirective } from "./incbin.directive";
-import { IncludeDirective } from "./include.directive"; // Not in context, but assumed to exist
+import { IncludeDirective } from "./include.directive";
 import { LetDirective } from "./let.directive";
 import { ListDirective } from "./list.directive";
 import { LogDirective } from "./log.directive";
@@ -52,7 +53,8 @@ export class DirectiveHandler {
 		const functionDirective = new FunctionDirective();
 		this.register("FUNCTION", functionDirective);
 
-		this.register("EQU", new AssignDirective());
+		this.register("EQU", new EquDirective());
+		this.register("=", new AssignDirective());
 		this.register("LET", new LetDirective());
 
 		this.register("OPTION", new OptionDirective());
