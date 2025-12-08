@@ -38,7 +38,7 @@ describe("Macro Handling", () => {
 
 		it("should resolve a macro argument that is itself an expression", () => {
 			const { evaluator, tokenize, symbolTable } = setup();
-			symbolTable.define("FIVE", 5);
+			symbolTable.assignVariable("FIVE", 5);
 			const macroArgs = new Map<string, Token[]>();
 			// The argument passed to the macro is "FIVE + 5"
 			macroArgs.set("COMPLEX_ARG", tokenize("FIVE + 5"));
@@ -264,15 +264,19 @@ describe("Macro Handling", () => {
 
 					parmIdx= 0
 
-	.echo "len=4",len=4
+					.echo "len=4",len=4
 
-	.if len=4
-		.echo "LDX",parms[parmIdx]
-		ldx parms[parmIdx]
-		parmIdx= parmIdx + 1
-	.else
-		.echo "len != 4 !!"
-	.end
+					t = parms[parmIdx]
+
+					.echo .type(t)
+
+					.if len=4
+						;.echo "LDX",parms[parmIdx]
+						ldx parms[parmIdx]
+						parmIdx= parmIdx + 1
+					.else
+						.echo "len != 4 !!"
+					.end
 
 					op= parms[parmIdx]
 					goto= parms[parmIdx+2]

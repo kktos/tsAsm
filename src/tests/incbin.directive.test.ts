@@ -34,7 +34,6 @@ describe("File Directive .INCBIN", () => {
 		const { assembler, mockFileHandler } = createAssembler();
 		const binaryData = [0x01, 0x02, 0x03, 0x04];
 		const source = `
-				* = $c000
 				.INCBIN "data.bin"
 			`;
 

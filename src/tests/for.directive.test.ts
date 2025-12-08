@@ -1,17 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { Assembler } from "../polyasm";
-import type { FileHandler, SegmentDefinition } from "../polyasm.types";
-
-class MockFileHandler implements FileHandler {
-	fullpath = "";
-	readSourceFile(filename: string): string {
-		throw new Error(`Mock file not found: "${filename}"`);
-	}
-
-	readBinaryFile(filename: string): number[] {
-		throw new Error(`Mock bin file not found: ${filename}`);
-	}
-}
+import type { SegmentDefinition } from "../polyasm.types";
 
 // Minimal fake CPU handler
 const fakeCPU = {
@@ -30,13 +19,13 @@ const fakeCPU = {
 const DEFAULT_SEGMENTS: SegmentDefinition[] = [{ name: "CODE", start: 0x1000, size: 0, resizable: true }];
 
 describe(".FOR...OF", () => {
-	const createAssembler = (segments: SegmentDefinition[] = DEFAULT_SEGMENTS) => {
-		const mockFileHandler = new MockFileHandler();
-		return new Assembler(fakeCPU, mockFileHandler, { segments });
-	};
+	let assembler: Assembler;
+
+	beforeEach(() => {
+		assembler = new Assembler(fakeCPU, { fullpath: "", readSourceFile: () => "", readBinaryFile: () => [] }, { segments: DEFAULT_SEGMENTS });
+	});
 
 	it("should loop over an array of numbers", () => {
-		const assembler = createAssembler();
 		const source = `
 				.for item of [10,20] {
 					.db item
@@ -49,7 +38,6 @@ describe(".FOR...OF", () => {
 	});
 
 	it("should loop with single line block declaration", () => {
-		const assembler = createAssembler();
 		const source = ".for item of [10,20] { .db item }";
 		assembler.assemble(source);
 		const machineCode = assembler.link();
@@ -58,7 +46,6 @@ describe(".FOR...OF", () => {
 	});
 
 	it("should loop with iterator", () => {
-		const assembler = createAssembler();
 		const source = `
 				.for item of [10,20] as idx {
 					.db idx, item
@@ -71,7 +58,6 @@ describe(".FOR...OF", () => {
 	});
 
 	it("should loop with single line block declaration with iterator", () => {
-		const assembler = createAssembler();
 		const source = ".for item of [10,20] as idx { .db idx, item }";
 		assembler.assemble(source);
 		const machineCode = assembler.link();
@@ -80,7 +66,6 @@ describe(".FOR...OF", () => {
 	});
 
 	it("should declare a local index iterator variable", () => {
-		const assembler = createAssembler();
 		const source = `
 				.for item of [10,20] as idx {
 					.db idx, item
@@ -91,7 +76,6 @@ describe(".FOR...OF", () => {
 	});
 
 	it("should declare a local iterator variable", () => {
-		const assembler = createAssembler();
 		const source = `
 				.for item of [10,20] as idx {
 					.db idx, item

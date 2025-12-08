@@ -43,7 +43,7 @@ describe("ExpressionEvaluator", () => {
 
 		it("should evaluate .LEN() on an array literal", () => {
 			const { evaluator, tokenize, symbolTable } = setup();
-			symbolTable.addSymbol("MyArr", [10, 20, 30]);
+			symbolTable.assignVariable("MyArr", [10, 20, 30]);
 			const tokens = tokenize(".LEN([1, 2, 3])");
 			const result = evaluator.evaluateAsNumber(tokens, { pc: 0 });
 			expect(result).toBe(3);
@@ -51,7 +51,7 @@ describe("ExpressionEvaluator", () => {
 
 		it("should evaluate .DEF() on a defined symbol", () => {
 			const { evaluator, tokenize, symbolTable } = setup();
-			symbolTable.addSymbol("MySymbol", 123);
+			symbolTable.assignVariable("MySymbol", 123);
 			const tokens = tokenize(".DEF(MySymbol)");
 			const result = evaluator.evaluateAsNumber(tokens, { pc: 0 });
 			expect(result).toBe(1);

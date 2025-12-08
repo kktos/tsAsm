@@ -75,6 +75,14 @@ describe("Directive: .ORG / *", () => {
 	});
 
 	describe("*", () => {
+		it("should fail if value is not a number", () => {
+			const source = `
+            * = "test"
+        `;
+			const asm = createAssembler();
+			expect(() => asm.assemble(source)).toThrow(/- Invalid value for \*\/ORG test -/);
+		});
+
 		it("should handle multiple * assign", () => {
 			const source = `
             .cpu "6502"
