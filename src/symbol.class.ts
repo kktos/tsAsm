@@ -119,18 +119,29 @@ export class PASymbolTable {
 	}
 
 	defineConstant(constantName: string, value: SymbolValue) {
-		const namespaceKey = this.scopeStack[this.scopeStack.length - 1] as string;
-		const scope = this.symbols.get(namespaceKey);
-		if (!scope) throw `PASymbol ${this.getCurrentNamespace()} doesn't exist.`;
+		let scope: Map<string, PASymbol> | undefined;
+		let name = "";
+		let ns = "";
 
-		const name = constantName.toUpperCase();
-		if (scope.has(name)) throw `PASymbol ${this.getCurrentNamespace()}::${name} redefined.`;
+		if (constantName.includes("::")) {
+			[ns, name] = constantName.split("::") as [string, string];
+			scope = ns.toLowerCase() === "global" ? this.symbols.get(INTERNAL_GLOBAL) : this.symbols.get(ns);
+		} else {
+			ns = this.scopeStack[this.scopeStack.length - 1] as string;
+			scope = this.symbols.get(ns);
+			name = constantName;
+		}
+
+		if (!scope) throw `PASymbol Namespace "${ns}" doesn't exist.`;
+
+		name = name.toUpperCase();
+		if (scope.has(name)) throw `PASymbol ${ns === INTERNAL_GLOBAL ? "global" : ns}::${name} redefined.`;
 
 		scope.set(name, {
 			name,
 			value,
 			isConstant: true,
-			namespace: namespaceKey,
+			namespace: ns,
 		});
 	}
 
@@ -184,15 +195,27 @@ export class PASymbolTable {
 	}
 
 	updateSymbol(symbolName: string, value: SymbolValue) {
-		const scopeKey = this.scopeStack[this.scopeStack.length - 1] as string;
-		const scope = this.symbols.get(scopeKey);
-		if (!scope) throw `[SymbolTable] Current scope '${this.getCurrentNamespace()}' does not exist.`;
+		let scope: Map<string, PASymbol> | undefined;
+		let name = "";
+		let ns = "";
 
-		const name = symbolName.toUpperCase();
+		if (symbolName.includes("::")) {
+			[ns, name] = symbolName.split("::") as [string, string];
+			scope = ns.toLowerCase() === "global" ? this.symbols.get(INTERNAL_GLOBAL) : this.symbols.get(ns);
+			if (scope?.has(name)) return { scope: scope, symbol: scope.get(name) as PASymbol };
+		} else {
+			ns = this.scopeStack[this.scopeStack.length - 1] as string;
+			scope = this.symbols.get(ns);
+			name = symbolName;
+		}
+
+		if (!scope) throw `PASymbol Namespace "${ns}" doesn't exist.`;
+
+		name = name.toUpperCase();
 		const symbol = scope.get(name);
-		if (!symbol) throw `Unknown symbol "${this.getCurrentNamespace()}::${name}".`;
+		if (!symbol) throw `Unknown symbol "${ns === INTERNAL_GLOBAL ? "global" : ns}::${name}".`;
 
-		scope.set(name, { name, value, isConstant: symbol.isConstant, namespace: scopeKey });
+		scope.set(name, { name, value, isConstant: symbol.isConstant, namespace: ns });
 	}
 
 	lookupSymbolInScope(symbolName: string) {
