@@ -107,7 +107,7 @@ export class Parser {
 	}
 
 	public isDirective(expectedValue?: SymbolValue | SymbolValue[], offset = 0) {
-		return this.is("DOT", undefined, offset) && this.isIdentifier(expectedValue, offset + 1);
+		return this.is("DOT", undefined, offset) && this.isIdentifier(expectedValue, offset + 1) && !this.is("OPERATOR", "(", offset + 2);
 	}
 
 	public directive(expectedValue?: SymbolValue | SymbolValue[]) {
