@@ -194,9 +194,8 @@ export class ExpressionEvaluator {
 				if (!foundParen) throw new Error(`Mismatched brackets: unmatched ']' on line ${token.line}.`);
 
 				const arrayAccessOp = operatorStack.pop();
-				if (arrayAccessOp?.value !== "ARRAY_ACCESS") {
-					throw new Error(`Mismatched brackets: ']' without preceding array access on line ${token.line}.`);
-				}
+				if (arrayAccessOp?.value !== "ARRAY_ACCESS") throw new Error(`Mismatched brackets: ']' without preceding array access on line ${token.line}.`);
+
 				outputQueue.push(arrayAccessOp);
 				break;
 			}
@@ -674,7 +673,6 @@ export class ExpressionEvaluator {
 					// Recursively evaluate the tokens passed as the argument.
 					return this.evaluate(macroArgTokens, context);
 
-				// Look up the symbol in the current scope stack.
 				const value = this.assembler.symbolTable.lookupSymbol(token.value);
 
 				// If the symbol's value is an array of tokens, it's a macro parameter.
@@ -688,7 +686,7 @@ export class ExpressionEvaluator {
 				// If we are here, the symbol is not defined. Let's find suggestions.
 				const suggestions = this.assembler.symbolTable.findSimilarSymbols(token.value);
 				let errorMessage = `Undefined symbol '${token.value}' on line ${token.line}.`;
-				if (suggestions.length > 0) errorMessage += ` Did you mean '${suggestions[0]}'?`;
+				if (suggestions.length > 0 && suggestions[0] !== token.value) errorMessage += ` Did you mean '${suggestions[0]}'?`;
 
 				throw new Error(errorMessage);
 			}

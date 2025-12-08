@@ -1,12 +1,10 @@
 import type { EventEmitter } from "node:events";
-import { rawDirectives } from "./directives/handler";
-import type { AssemblyLexer, IdentifierToken, ScalarToken, Token } from "./lexer/lexer.class";
+import { blockDirectives, rawDirectives } from "./directives/handler";
+import type { AssemblyLexer, IdentifierToken, Token } from "./lexer/lexer.class";
 import type { PushTokenStreamParams, StreamState } from "./polyasm.types";
 import type { SymbolValue } from "./symbol.class";
 
 export class Parser {
-	static readonly EOF = "@@EOF";
-
 	public activeTokens: Token[] = [];
 	public tokenStreamStack: StreamState[] = [];
 	private streamIdCounter = 0;
@@ -48,14 +46,13 @@ export class Parser {
 	public ensureToken(index: number): Token | null {
 		// If the current activeTokens is the lexer's buffer, request buffering from lexer.
 		const lexerBuffer = this.lexer.getBufferedTokens();
-		if (this.activeTokens === lexerBuffer) {
-			const t = this.lexer.ensureBuffered(index);
-			// refresh reference in case lexer expanded the buffer
-			// this.activeTokens = this.lexer.getBufferedTokens();
-			return t;
-		}
+
+		let t: Token | null;
+		if (this.activeTokens === lexerBuffer) t = this.lexer.ensureBuffered(index);
 		// Otherwise we're operating on a pushed token stream (macro/block) that's an array.
-		return this.activeTokens[index] ?? null;
+		else t = this.activeTokens[index] ?? null;
+
+		return t;
 	}
 
 	/** Get current stream position (internal index). */
@@ -359,23 +356,6 @@ export class Parser {
 					this.consume();
 					break;
 			}
-
-			// if (current.type === "LBRACE") {
-			// 	braceDepth++;
-			// 	tokens.push(current);
-			// 	this.consume();
-			// } else if (current.type === "RBRACE") {
-			// 	braceDepth--;
-			// 	if (braceDepth === 0) {
-			// 		this.consume();
-			// 		break; // Found matching closing brace
-			// 	}
-			// 	tokens.push(current);
-			// 	this.consume();
-			// } else {
-			// 	tokens.push(current);
-			// 	this.consume();
-			// }
 		}
 
 		if (braceDepth !== 0) throw new Error("Unmatched braces in block");
@@ -383,7 +363,7 @@ export class Parser {
 		return tokens;
 	}
 
-	private getKeywordBlock(startDirective: string, terminators: string[]): Token[] {
+	private getKeywordBlock(_startDirective: string, terminators: string[]): Token[] {
 		const tokens: Token[] = [];
 		let nestingDepth = 0;
 		let braceDepth = 0;
@@ -421,11 +401,10 @@ export class Parser {
 					continue;
 				}
 
-				// Entering a nested block of same type
-				if (directiveName === startDirective) {
+				// Entering a nested block
+				if (blockDirectives.has(directiveName)) {
 					nestingDepth++;
 
-					// tokens.push(this.advance());
 					tokens.push(current);
 					tokens.push(directive);
 					this.consume(2);
@@ -441,7 +420,6 @@ export class Parser {
 
 				// Exiting a nested block
 				if (directiveName === "END") {
-					// tokens.push(this.advance());
 					this.consume(2);
 
 					if (nestingDepth > 0) {
@@ -456,99 +434,11 @@ export class Parser {
 				}
 			}
 
-			// tokens.push(this.advance());
 			tokens.push(current);
 			this.consume();
 		}
 
 		return tokens;
-	}
-
-	public _getDirectiveBlockTokens(startDirective: string, terminators: string[] = ["END"]) {
-		const terminatorsSet = new Set(terminators);
-		// const isEOFallowed = terminatorsSet.has(Parser.EOF);
-		const tokens: Token[] = [];
-		// const depth = this.is("LBRACE") ? 0 : 1;
-		let braceDepth = 0;
-		let nestingDepth = 0;
-
-		while (!this.isEOS()) {
-			const isDirective = this.isDirective();
-
-			let token = this.next() as Token;
-			tokens.push(token);
-
-			// Track braces
-			if (token.type === "LBRACE") braceDepth++;
-			if (token.type === "RBRACE") braceDepth--;
-
-			// Only check directives when not inside braces
-			if (braceDepth === 0 && isDirective) {
-				token = this.next() as ScalarToken;
-				tokens.push(token);
-
-				const directiveName = token.value;
-
-				if (directiveName === startDirective) {
-					nestingDepth++;
-				} else if (nestingDepth === 0 && terminatorsSet.has(directiveName)) {
-					// break;
-					return tokens.slice(0, -2);
-				} else if (directiveName === "END" && nestingDepth > 0) {
-					nestingDepth--;
-				}
-			}
-
-			// this.consume();
-			// tokens.push(token);
-
-			// case "LBRACE":
-			// 	if (depth === 0) tokens.pop();
-			// 	depth++;
-			// 	break;
-			// case "RBRACE":
-			// 	depth--;
-			// 	if (depth === 0) return tokens.slice(0, -1);
-			// 	break;
-
-			// switch (token.type) {
-			// 	case "DOT": {
-			// 		const nextToken = this.peek();
-			// 		if (nextToken?.type === "IDENTIFIER") {
-			// 			tokens.push(nextToken);
-			// 			this.consume(1);
-			// 			const directiveName = nextToken.value;
-
-			// 			if (blockDirectives.has(directiveName)) {
-			// 				const lineTokens = this.getInstructionTokens(nextToken);
-			// 				if (!this.is("LBRACE")) depth++;
-			// 				tokens.push(...lineTokens);
-			// 				continue;
-			// 			}
-
-			// 			if (rawDirectives.has(directiveName)) {
-			// 				const lineTokens = this.getInstructionTokens(nextToken);
-			// 				tokens.push(...lineTokens);
-			// 				const block = this.next({ endMarker: ".END" });
-			// 				if (block) tokens.push(block);
-			// 				continue;
-			// 			}
-
-			// 			if (terminatorsSet.has(directiveName)) {
-			// 				depth--;
-			// 				if (depth === 0) return tokens.slice(0, -2);
-			// 			}
-			// 			continue;
-			// 		}
-			// 		break;
-			// 	}
-			// }
-		}
-
-		return tokens;
-
-		// if (isEOFallowed) return tokens;
-		// throw new Error(`line ${token?.line} : Unterminated '${startDirective}' block.`);
 	}
 
 	public skipToEndOfLine(startIndex?: number): number {
