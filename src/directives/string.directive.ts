@@ -42,8 +42,9 @@ export class StringDirective implements IDirective {
 		const evaluateAndPush = () => {
 			if (currentExpression.length === 0) return;
 
-			const value = assembler.expressionEvaluator.evaluate(currentExpression, context);
-			if (typeof value !== "string") throw new Error(`Data directive expression must evaluate to a string on line ${directive.line}.`);
+			const value = assembler.expressionEvaluator.evaluate(currentExpression, context) as string;
+			if (!context.allowForwardRef && typeof value !== "string")
+				throw new Error(`Data directive expression must evaluate to a string on line ${directive.line}.`);
 
 			strings.push(value);
 			currentExpression = [];
