@@ -3,7 +3,7 @@ import type { SymbolValue } from "../symbol.class";
 import type { EvaluationStack, FunctionHandler } from "./types";
 
 export const array: FunctionHandler = (stack: EvaluationStack, token: Token, _symbolTable, argCount): void => {
-	const newArray: SymbolValue[] = [];
+	const newArray: (SymbolValue | null)[] = [];
 
 	for (let i = 0; i < (argCount ?? 0); i++) {
 		const arg = stack.pop();
