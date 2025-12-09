@@ -68,4 +68,17 @@ describe("Bug Fixes", () => {
 		const machineCode = assembler.link();
 		expect(hexDump(0x1000, machineCode, { hasText: false })).toEqual("1000:  9C 11 10 20 00 20 EE 11 10 AE 11 10 E0 B7 D0 F3\n1010:  60 00");
 	});
+
+	it("should put a byte with 'A' | $80 - variables.asm bug", () => {
+		const source = `
+				.dw $1000, $2000
+				.db "A" | $80
+				.db "A"+"B"
+			`;
+
+		assembler.assemble(source);
+
+		const machineCode = assembler.link();
+		expect(hexDump(0x1000, machineCode, { hasText: false })).toEqual("1000:  00 10 00 20 C1 41 42");
+	});
 });

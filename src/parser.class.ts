@@ -285,9 +285,7 @@ export class Parser {
 		const startLine = instructionToken ? instructionToken.line : startToken.line;
 		while (true) {
 			const token = this.peek();
-			if (!token || token.line !== startLine || token.type === "LBRACE" || token.type === "RBRACE" || token.type === "EOF") {
-				break;
-			}
+			if (!token || token.line !== startLine || token.type === "LBRACE" || token.type === "RBRACE" || token.type === "EOF") break;
 
 			if (token.value === "(") {
 				parenDepth++;
