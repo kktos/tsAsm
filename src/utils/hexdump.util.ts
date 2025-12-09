@@ -1,4 +1,8 @@
-export function hexDump(address: number, bytes: number[]): string {
+type HexDumpOptions = {
+	hasText?: boolean;
+};
+
+export function hexDump(address: number, bytes: number[], { hasText = false }: HexDumpOptions = {}): string {
 	const lines: string[] = [];
 	const bytesPerLine = 16;
 
@@ -26,9 +30,12 @@ export function hexDump(address: number, bytes: number[]): string {
 		}
 
 		const hexStr = hexParts.join(" ");
-		const asciiStr = asciiParts.join("");
-
-		lines.push(`${addrHex}:  ${hexStr}   ${asciiStr}`);
+		if (hasText) {
+			const asciiStr = asciiParts.join("");
+			lines.push(`${addrHex}:  ${hexStr}   ${asciiStr}`);
+		} else {
+			lines.push(`${addrHex}:  ${hexStr.trim()}`);
+		}
 	}
 
 	return lines.join("\n");
