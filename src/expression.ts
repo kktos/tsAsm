@@ -569,7 +569,18 @@ export class ExpressionEvaluator {
 
 	private handleBinaryOperator(token: OperatorToken, right: SymbolValue | undefined, stack: (SymbolValue | null)[]): void {
 		let left = stack.pop();
-		if (left === undefined || right === undefined) throw new Error(`Binary operator '${token.value}' requires two operands.`);
+		if (left === undefined || right === undefined) throw `line: ${token.line} Binary operator '${token.value}' requires two operands.`;
+
+		if (typeof left === "string" && typeof right === "number" && left.length === 1) {
+			switch (token.value) {
+				case "&":
+					stack.push(left.charCodeAt(0) & right);
+					return;
+				case "|":
+					stack.push(left.charCodeAt(0) | right);
+					return;
+			}
+		}
 
 		// Handle string operations first
 		if (typeof left === "string" || typeof right === "string") {
@@ -707,19 +718,49 @@ export class ExpressionEvaluator {
 			}
 
 			case "ANONYMOUS_LABEL_REF": {
+				const distance = Number.parseInt(token.value, 10);
+				const addr = this.assembler.namelessLabels.findNearest(context.pc, distance);
+
+				if (addr === null && !context.allowForwardRef)
+					throw `Not enough ${distance < 0 ? "preceding" : "succeeding"} anonymous labels to satisfy '${token.value}' on line ${token.line}.`;
+
+				return addr;
+
+				/*
 				const labels = this.assembler.anonymousLabels;
 				const direction = token.value.startsWith("-") ? -1 : 1;
 				const count = Number.parseInt(token.value.substring(1), 10);
 
+				// labels.sort((a, b) => a - b);
+
+				// console.log("");
+				// console.log(
+				// 	"LABELS",
+				// 	labels.map((pc) => getHex(pc)),
+				// );
+				// console.log("DIRECTION", direction, "COUNT", count, "PC", getHex(context.pc));
+
 				if (direction === -1) {
 					// Backward reference: Find the last label defined *before* the current PC.
 					const relevantLabels = labels.filter((pc) => pc <= context.pc);
+
+					// console.log(
+					// 	"RELEVANTLABELS",
+					// 	relevantLabels.map((pc) => getHex(pc)),
+					// );
+
 					if (relevantLabels.length < count) throw `Not enough preceding anonymous labels to satisfy '${token.value}' on line ${token.line}.`;
 					return relevantLabels[relevantLabels.length - count] as SymbolValue;
 				}
 
 				// Forward reference: Find the first label defined *at or after* the current PC.
 				const relevantLabels = labels.filter((pc) => pc >= context.pc);
+
+				// console.log(
+				// 	"RELEVANTLABELS",
+				// 	relevantLabels.map((pc) => getHex(pc)),
+				// );
+
 				if (relevantLabels.length < count) {
 					// Pass 1: Assume 0 for forward references.
 					if (context.allowForwardRef) return null;
@@ -729,6 +770,7 @@ export class ExpressionEvaluator {
 				}
 
 				return relevantLabels[count - 1] as SymbolValue;
+*/
 			}
 
 			default:

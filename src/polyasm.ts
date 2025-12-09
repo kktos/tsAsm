@@ -8,6 +8,7 @@ import { AssemblyLexer, type OperatorStackToken, type ScalarToken, type Token } 
 import { Linker, type Segment } from "./linker.class";
 import { Lister } from "./lister.class";
 import { Logger } from "./logger.class";
+import { NamelessLabels } from "./namelesslabels.class";
 import { Parser } from "./parser.class";
 import type { AssemblerOptions, DataProcessor, FileHandler, StreamState } from "./polyasm.types";
 import { PASymbolTable } from "./symbol.class";
@@ -32,7 +33,8 @@ export class Assembler {
 	private filenameStack: string[] = [];
 
 	public lastGlobalLabel: string | null = null;
-	public anonymousLabels: number[] = [];
+	// public anonymousLabels: number[] = [];
+	public namelessLabels: NamelessLabels = new NamelessLabels();
 
 	public macroDefinitions: Map<string, MacroDefinition> = new Map();
 	private options: Map<string, string> = new Map();
@@ -173,7 +175,9 @@ export class Assembler {
 
 		this.pass = 1;
 		this.parser.setPosition(0);
-		this.anonymousLabels = [];
+		// this.anonymousLabels = [];
+		this.namelessLabels.clear();
+
 		this.lastGlobalLabel = null;
 
 		let blockDepth = 0;
@@ -270,7 +274,16 @@ export class Assembler {
 				}
 
 				case "ANONYMOUS_LABEL_DEF": {
-					this.anonymousLabels.push(this.currentPC);
+					// console.log(colors.blue("ADD ANONYMOUS LABEL"), getHex(this.currentPC, 4));
+
+					// this.anonymousLabels.push(this.currentPC);
+					this.namelessLabels.add(this.currentPC, token);
+
+					// console.log(
+					// 	"LABELS",
+					// 	this.anonymousLabels.map((pc) => getHex(pc)),
+					// );
+
 					break;
 				}
 
@@ -295,7 +308,7 @@ export class Assembler {
 
 		this.symbolTable.setNamespace("global");
 
-		let anonymousLabelCounter = 0;
+		// const anonymousLabelCounter = 0;
 
 		this.lastGlobalLabel = null;
 
@@ -386,7 +399,15 @@ export class Assembler {
 				}
 
 				case "ANONYMOUS_LABEL_DEF":
-					this.anonymousLabels[anonymousLabelCounter++] = this.currentPC;
+					// console.log(colors.blue("UPDATE ANONYMOUS LABEL"), anonymousLabelCounter, getHex(this.currentPC, 4));
+					// console.log(
+					// 	"LABELS",
+					// 	this.anonymousLabels.map((pc) => getHex(pc)),
+					// );
+
+					// this.anonymousLabels[anonymousLabelCounter++] = this.currentPC;
+					this.namelessLabels.add(this.currentPC, token);
+
 					break;
 			}
 		}

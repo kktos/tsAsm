@@ -41,7 +41,8 @@ describe("Label References", () => {
 	describe("Nameless Local Labels", () => {
 		it("should resolve a simple backward reference (:-)", () => {
 			const { evaluator, tokenize, assembler } = setup();
-			assembler.anonymousLabels = [0x1000, 0x1004];
+			assembler.namelessLabels.add(0x1000, { line: 0, column: 0 });
+			assembler.namelessLabels.add(0x1004, { line: 1, column: 0 });
 			const tokens = tokenize(":-");
 			const result = evaluator.evaluateAsNumber(tokens, {
 				pc: 0x1008,
@@ -52,7 +53,8 @@ describe("Label References", () => {
 
 		it("should resolve a simple forward reference (:+)", () => {
 			const { evaluator, tokenize, assembler } = setup();
-			assembler.anonymousLabels = [0x1000, 0x1008];
+			assembler.namelessLabels.add(0x1000, { line: 0, column: 0 });
+			assembler.namelessLabels.add(0x1008, { line: 1, column: 0 });
 			const tokens = tokenize(":+");
 			const result = evaluator.evaluateAsNumber(tokens, {
 				pc: 0x1002,
@@ -63,7 +65,9 @@ describe("Label References", () => {
 
 		it("should resolve a repeated backward reference (:--)", () => {
 			const { evaluator, tokenize, assembler } = setup();
-			assembler.anonymousLabels = [0x1000, 0x1004, 0x1008];
+			assembler.namelessLabels.add(0x1000, { line: 0, column: 0 });
+			assembler.namelessLabels.add(0x1004, { line: 1, column: 0 });
+			assembler.namelessLabels.add(0x1008, { line: 2, column: 0 });
 			const tokens = tokenize(":--");
 			const result = evaluator.evaluateAsNumber(tokens, {
 				pc: 0x100a,
@@ -74,7 +78,9 @@ describe("Label References", () => {
 
 		it("should resolve a numbered backward reference (:-2)", () => {
 			const { evaluator, tokenize, assembler } = setup();
-			assembler.anonymousLabels = [0x1000, 0x1004, 0x1008];
+			assembler.namelessLabels.add(0x1000, { line: 0, column: 0 });
+			assembler.namelessLabels.add(0x1004, { line: 1, column: 0 });
+			assembler.namelessLabels.add(0x1008, { line: 2, column: 0 });
 			const tokens = tokenize(":-2");
 			const result = evaluator.evaluateAsNumber(tokens, {
 				pc: 0x100a,
@@ -85,7 +91,9 @@ describe("Label References", () => {
 
 		it("should resolve a numbered forward reference (:+2)", () => {
 			const { evaluator, tokenize, assembler } = setup();
-			assembler.anonymousLabels = [0x1000, 0x1008, 0x1010];
+			assembler.namelessLabels.add(0x1000, { line: 0, column: 0 });
+			assembler.namelessLabels.add(0x1008, { line: 1, column: 0 });
+			assembler.namelessLabels.add(0x1010, { line: 2, column: 0 });
 			const tokens = tokenize(":+2");
 			const result = evaluator.evaluateAsNumber(tokens, {
 				pc: 0x1002,
@@ -96,14 +104,14 @@ describe("Label References", () => {
 
 		it("should throw an error for an unsatisfiable backward reference", () => {
 			const { evaluator, tokenize, assembler } = setup();
-			assembler.anonymousLabels = [0x1000];
+			assembler.namelessLabels.add(0x1000, { line: 0, column: 0 });
 			const tokens = tokenize(":-2");
 			expect(() => evaluator.evaluateAsNumber(tokens, { pc: 0x1002, assembler })).toThrow("Not enough preceding anonymous labels to satisfy '-2' on line 1.");
 		});
 
 		it("should throw an error for an unsatisfiable forward reference", () => {
 			const { evaluator, tokenize, assembler } = setup();
-			assembler.anonymousLabels = [0x1008];
+			assembler.namelessLabels.add(0x1008, { line: 0, column: 0 });
 			const tokens = tokenize(":+2");
 			expect(() => evaluator.evaluateAsNumber(tokens, { pc: 0x1002, assembler })).toThrow("Not enough succeeding anonymous labels to satisfy '+2' on line 1.");
 		});
