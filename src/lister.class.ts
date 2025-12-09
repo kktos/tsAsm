@@ -34,8 +34,8 @@ export class Lister {
 		}
 	}
 
-	public label(label: string) {
-		this.logger.log(`${"".padStart(LABEL_START_COL)}${label}:`);
+	public label(label: string, address: number) {
+		this.logger.log(`${getHex(address)}${"".padStart(LABEL_START_COL)}${label}:`);
 	}
 
 	public symbol(label: string, value: SymbolValue) {
@@ -63,7 +63,7 @@ export function asString(value: SymbolValue, wannaJoinArray = false): string {
 				if (!wannaJoinArray) return `[${value.map((v) => asString(v)).join(",")}]`;
 				return `${value.map((v) => asString(v)).join("")}`;
 			}
-			if ((value as Token).type && (value as Token).column && (value as Token).line && (value as Token).value) {
+			if (value && (value as Token).type && (value as Token).column && (value as Token).line && (value as Token).value) {
 				switch ((value as Token).type) {
 					case "NUMBER":
 						return `$${getHex(Number((value as Token).value))}`;
