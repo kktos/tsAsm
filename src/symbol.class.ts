@@ -17,6 +17,7 @@ export class PASymbolTable {
 	private symbols: Map<string, Map<string, PASymbol>> = new Map();
 	private scopeStack: string[] = [];
 	private scopeCounter = 0;
+	private savedSymbols: Map<string, Map<string, PASymbol>> = new Map();
 
 	constructor() {
 		this.scopeStack.push(INTERNAL_GLOBAL);
@@ -24,17 +25,27 @@ export class PASymbolTable {
 	}
 
 	/** Pushes a new scope onto the stack, making it the current scope. */
-	pushScope(name?: string): void {
+	pushScope(name?: string) {
 		const newScopeName = name || `@@LOCAL_${this.scopeCounter++}__`;
 		this.scopeStack.push(newScopeName);
 		if (!this.symbols.has(newScopeName)) this.symbols.set(newScopeName, new Map());
 	}
 
+	restoreAndPushScope(name: string) {
+		let scope = this.savedSymbols.get(name);
+		if (!scope) scope = new Map();
+		this.scopeStack.push(name);
+		if (!this.symbols.has(name)) this.symbols.set(name, scope);
+	}
+
 	/** Pops the current scope from the stack, returning to the parent scope. */
-	popScope(): void {
+	popScope(parm?: { wannaSave: boolean }) {
 		if (this.scopeStack.length > 1) {
 			const oldScopeName = this.scopeStack.pop();
-			if (oldScopeName) this.symbols.delete(oldScopeName);
+			if (oldScopeName) {
+				if (parm?.wannaSave) this.savedSymbols.set(oldScopeName, this.symbols.get(oldScopeName) as Map<string, PASymbol>);
+				this.symbols.delete(oldScopeName);
+			}
 		}
 	}
 
