@@ -250,14 +250,14 @@ export class Assembler {
 					this.lastGlobalLabel = token.value;
 					if (!this.parser.isOperator("=") && !this.parser.isDirective("EQU")) {
 						this.symbolTable.defineConstant(token.value, this.currentPC);
-						this.lister.label(token.raw ?? token.value);
+						this.lister.label(token.raw ?? token.value, this.currentPC);
 					}
 					break;
 				}
 				case "LABEL": {
 					this.lastGlobalLabel = token.value;
 					this.symbolTable.defineConstant(token.value, this.currentPC);
-					this.lister.label(token.raw ?? token.value);
+					this.lister.label(token.raw ?? token.value, this.currentPC);
 					break;
 				}
 
@@ -295,8 +295,7 @@ export class Assembler {
 
 		this.symbolTable.setNamespace("global");
 
-		this.anonymousLabels = [];
-		const anonymousLabelCounter = 0;
+		let anonymousLabelCounter = 0;
 
 		this.lastGlobalLabel = null;
 
@@ -348,7 +347,7 @@ export class Assembler {
 						// In functions, the scope is lost between the passes
 						if (this.symbolTable.hasSymbolInScope(token.value)) this.symbolTable.updateSymbol(token.value, this.currentPC);
 						else this.symbolTable.defineConstant(token.value, this.currentPC);
-						this.lister.label(token.raw ?? token.value);
+						this.lister.label(token.raw ?? token.value, this.currentPC);
 					}
 					break;
 				}
@@ -381,74 +380,18 @@ export class Assembler {
 					if (this.symbolTable.hasSymbolInScope(token.value)) this.symbolTable.updateSymbol(token.value, this.currentPC);
 					else this.symbolTable.defineConstant(token.value, this.currentPC);
 
-					this.lister.label(token.raw ?? token.value);
+					this.lister.label(token.raw ?? token.value, this.currentPC);
 
 					break;
 				}
 
 				case "ANONYMOUS_LABEL_DEF":
-					this.anonymousLabels[anonymousLabelCounter] = this.currentPC;
+					this.anonymousLabels[anonymousLabelCounter++] = this.currentPC;
 					break;
 			}
 		}
 	}
-	/*
-	public handleSymbolInPassOne(label: string, token: ScalarToken) {
-		const expressionTokens = this.parser.getInstructionTokens();
 
-		let value = this.expressionEvaluator.evaluate(expressionTokens, {
-			pc: this.currentPC,
-			allowForwardRef: true,
-			currentGlobalLabel: this.lastGlobalLabel, // Added for .EQU
-			macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
-		});
-
-		this.lister.symbol(label, value);
-
-		if (label === "*") {
-			if (typeof value !== "number") {
-				value = 0;
-				this.logger.warn(`Warning on line ${token.line}: Failed to evaluate .ORG expression. Assuming 0x0000.`);
-			}
-			this.currentPC = value;
-			return;
-		}
-
-		this.symbolTable.addSymbol(label, value);
-	}
-
-	public handleSymbolInPassTwo(label: string, token: ScalarToken) {
-		// Re-evaluate symbol assignment in Pass 2 so forward-references
-		// that were unresolved in Pass 1 can be resolved now.
-
-		const expressionTokens = this.parser.getInstructionTokens(token);
-
-		const value = this.expressionEvaluator.evaluate(expressionTokens, {
-			pc: this.currentPC,
-			allowForwardRef: false, // now require resolution
-			currentGlobalLabel: this.lastGlobalLabel,
-			macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
-			assembler: this,
-		});
-
-		// If evaluation produced undefined, treat as an error in Pass 2
-		if (value === undefined) throw new Error(`line ${token.line}: Unresolved assignment for ${label}`);
-
-		this.lister.symbol(label, value);
-
-		if (label === "*") {
-			if (typeof value === "number") {
-				this.currentPC = value;
-				return;
-			}
-			throw `line ${token.line}: Failed to evaluate .ORG expression.`;
-		}
-
-		// If symbol exists already, update it; otherwise add it as a constant.
-		if (this.symbolTable.lookupSymbol(label) !== undefined) this.symbolTable.lookupAndUpdateSymbol(label, value);
-		else this.symbolTable.addSymbol(label, value);
-	}
-*/
 	private handleInstructionPassOne(mnemonicToken: ScalarToken): void {
 		let operandTokens = this.parser.getInstructionTokens(mnemonicToken) as OperatorStackToken[];
 
