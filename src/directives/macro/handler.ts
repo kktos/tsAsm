@@ -1,14 +1,11 @@
 import type { ScalarToken, Token } from "../../lexer/lexer.class";
-import type { Logger } from "../../logger.class";
 import type { Assembler } from "../../polyasm";
 
 export class MacroHandler {
 	private assembler: Assembler;
-	private logger: Logger;
 
-	constructor(assembler: Assembler, logger: Logger) {
+	constructor(assembler: Assembler) {
 		this.assembler = assembler;
-		this.logger = logger;
 	}
 
 	public isMacro(name: string): boolean {
@@ -21,8 +18,6 @@ export class MacroHandler {
 		const definition = this.assembler.macroDefinitions.get(macroName);
 
 		if (!definition) throw new Error(`ERROR: Macro '${macroName}' not defined.`);
-
-		this.logger.log(`Expanding macro: ${macroName}`);
 
 		const passedArgsArray = this.parseMacroArguments(macroToken.line);
 		const macroArgs = new Map<string, Token[]>();
@@ -70,6 +65,8 @@ export class MacroHandler {
 			...bodyToken,
 			line: `${macroToken.line}.${bodyToken.line}`,
 		}));
+
+		this.assembler.lister.macro(macroToken.raw as string, passedArgsArray);
 
 		this.assembler.parser.pushTokenStream({ newTokens, macroArgs, onEndOfStream: () => this.assembler.symbolTable.popScope() });
 	}
