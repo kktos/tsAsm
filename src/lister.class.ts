@@ -1,4 +1,4 @@
-import type { ScalarToken } from "./lexer/lexer.class";
+import type { ScalarToken, Token } from "./lexer/lexer.class";
 import type { Logger } from "./logger.class";
 import type { SymbolValue } from "./symbol.class";
 import { getHex } from "./utils/hex.util";
@@ -10,12 +10,13 @@ const LABEL_START_COL = BYTES_PAD + 1 + CHARS_PAD + 1 + 4 + 2;
 const TEXT_PAD = LABEL_START_COL + 8;
 const LABEL_PAD = 16;
 
-type Args = { addr: number; bytes: number[]; text: string; hasText?: boolean };
+type BytesArgs = { addr: number; bytes: number[]; text: string; hasText?: boolean };
+type DirectiveBytesArgs = Omit<BytesArgs, "text"> & { pragma: ScalarToken | string; params: SymbolValue[][] };
 
 export class Lister {
 	constructor(private logger: Logger) {}
 
-	public bytes({ addr, bytes, text = "", hasText = false }: Args) {
+	public bytes({ addr, bytes, text = "", hasText = false }: BytesArgs) {
 		let lineText = text;
 		for (let i = 0; i < bytes.length; i += BYTES_PER_LINE) {
 			const lineAddr = addr + i;
@@ -41,15 +42,39 @@ export class Lister {
 		this.logger.log(`${"".padStart(LABEL_START_COL)}${label.padEnd(LABEL_PAD)} = ${asString(value)}`);
 	}
 
+	public macro(name: string, params: Token[][]) {
+		this.logger.log(`${"".padStart(LABEL_START_COL)}${name}(${params.map((p) => p.map((t) => t.value).join("")).join(", ")})`);
+	}
+
 	public directive(pragma: ScalarToken | string, ...params: SymbolValue[]) {
 		this.logger.log(`${"".padStart(LABEL_START_COL)}.${(typeof pragma === "string" ? pragma : pragma.value).toLowerCase()} ${params.join(", ")}`);
 	}
+
+	public directiveWithBytes(args: DirectiveBytesArgs) {
+		const text = `.${(typeof args.pragma === "string" ? args.pragma : args.pragma.value).toLowerCase()} ${args.params.map((p) => asString(p, true)).join(", ")}`;
+		this.bytes({ ...args, text });
+	}
 }
 
-export function asString(value: SymbolValue): string {
+export function asString(value: SymbolValue, wannaJoinArray = false): string {
 	switch (typeof value) {
 		case "object":
-			if (Array.isArray(value)) return `[${value.map((v) => asString(v)).join(",")}]`;
+			if (Array.isArray(value)) {
+				if (!wannaJoinArray) return `[${value.map((v) => asString(v)).join(",")}]`;
+				return `${value.map((v) => asString(v)).join("")}`;
+			}
+			if ((value as Token).type && (value as Token).column && (value as Token).line && (value as Token).value) {
+				switch ((value as Token).type) {
+					case "NUMBER":
+						return `$${getHex(Number((value as Token).value))}`;
+					case "STRING":
+						return `"${(value as Token).value}"`;
+					case "IDENTIFIER":
+						return `${(value as Token).raw}`;
+					default:
+						return `${(value as Token).value}`;
+				}
+			}
 			return JSON.stringify(value);
 		case "number":
 			return `$${getHex(value)}`;
