@@ -25,6 +25,19 @@ describe("Label References", () => {
 		return { assembler, symbolTable, evaluator, lexer, tokenize };
 	};
 
+	describe("Labels", () => {
+		it("should define a label", () => {
+			const { assembler } = setup();
+			const source = `
+			fwelcome	.cstr "WELCOME"
+			`;
+			assembler.assemble(source);
+			const machineCode = assembler.link();
+			expect(machineCode).toEqual([87, 69, 76, 67, 79, 77, 69, 0]);
+			expect(assembler.symbolTable.lookupSymbol("fwelcome")).toBe(0x1000);
+		});
+	});
+
 	describe("Nameless Local Labels", () => {
 		it("should resolve a simple backward reference (:-)", () => {
 			const { evaluator, tokenize, assembler } = setup();

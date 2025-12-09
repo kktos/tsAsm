@@ -12,9 +12,9 @@ export class DataDirective implements IDirective {
 		if (assembler.isAssembling) assembler.currentPC += this.calculateDirectiveSize(assembler);
 	}
 
-	public handlePassTwo(_directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
+	public handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
 		if (assembler.isAssembling) {
-			const bytes = this.encodeDataDirective(assembler, context);
+			const bytes = this.encodeDataDirective(directive, assembler, context);
 			assembler.writeBytes(bytes);
 		}
 	}
@@ -53,13 +53,17 @@ export class DataDirective implements IDirective {
 		return totalSize;
 	}
 
-	private encodeDataDirective(assembler: Assembler, context: DirectiveContext): number[] {
+	private encodeDataDirective(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): number[] {
 		const argTokens = assembler.parser.getInstructionTokens();
 		const outputBytes: number[] = [];
 		let currentExpression: Token[] = [];
+		const params: Token[][] = [];
+		let hasText = false;
 
 		const evaluateAndPush = () => {
 			if (currentExpression.length === 0) return;
+
+			params.push(currentExpression);
 
 			const value = assembler.expressionEvaluator.evaluateAsNumber(currentExpression, context);
 
@@ -74,6 +78,8 @@ export class DataDirective implements IDirective {
 					evaluateAndPush(); // Push any pending expression before the string
 					const strValue = token.value;
 					for (let i = 0; i < strValue.length; i++) outputBytes.push(strValue.charCodeAt(i));
+					params.push([token]);
+					hasText = true;
 					break;
 				}
 				case "COMMA":
@@ -86,6 +92,13 @@ export class DataDirective implements IDirective {
 
 		evaluateAndPush(); // Push the last expression
 
+		assembler.lister.directiveWithBytes({
+			addr: context.pc,
+			bytes: outputBytes,
+			pragma: directive,
+			params,
+			hasText,
+		});
 		return outputBytes;
 	}
 }

@@ -65,7 +65,7 @@ export class Assembler {
 
 		this.expressionEvaluator = new ExpressionEvaluator(this, this.logger);
 		this.directiveHandler = new DirectiveHandler(this, this.logger);
-		this.macroHandler = new MacroHandler(this, this.logger);
+		this.macroHandler = new MacroHandler(this);
 
 		this.emitter = new EventEmitter();
 		this.lexer = new AssemblyLexer(this.emitter);
@@ -190,8 +190,6 @@ export class Assembler {
 				continue;
 			}
 
-			// console.log("previousPosition", this.previousPosition, this.parser.ensureToken(this.previousPosition));
-
 			switch (token.type) {
 				case "DOT": {
 					const directiveToken = this.parser.next() as ScalarToken;
@@ -250,12 +248,15 @@ export class Assembler {
 					// PRIORITY 3: ... OR LABEL
 					// It's not a known instruction, so treat it as a label definition.
 					this.lastGlobalLabel = token.value;
+					if (!this.parser.isOperator("=") && !this.parser.isDirective("EQU")) {
+						this.symbolTable.defineConstant(token.value, this.currentPC);
+						this.lister.label(token.raw ?? token.value);
+					}
 					break;
 				}
 				case "LABEL": {
 					this.lastGlobalLabel = token.value;
 					this.symbolTable.defineConstant(token.value, this.currentPC);
-
 					this.lister.label(token.raw ?? token.value);
 					break;
 				}
@@ -294,7 +295,7 @@ export class Assembler {
 
 		this.symbolTable.setNamespace("global");
 
-		// this.anonymousLabels = [];
+		this.anonymousLabels = [];
 		const anonymousLabelCounter = 0;
 
 		this.lastGlobalLabel = null;
@@ -343,6 +344,12 @@ export class Assembler {
 					}
 
 					this.lastGlobalLabel = token.value;
+					if (!this.parser.isOperator("=") && !this.parser.isDirective("EQU")) {
+						// In functions, the scope is lost between the passes
+						if (this.symbolTable.hasSymbolInScope(token.value)) this.symbolTable.updateSymbol(token.value, this.currentPC);
+						else this.symbolTable.defineConstant(token.value, this.currentPC);
+						this.lister.label(token.raw ?? token.value);
+					}
 					break;
 				}
 

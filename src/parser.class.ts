@@ -99,6 +99,10 @@ export class Parser {
 		return token as IdentifierToken;
 	}
 
+	public isOperator(expectedValue?: SymbolValue | SymbolValue[], offset = 0) {
+		return this.is("OPERATOR", expectedValue, offset);
+	}
+
 	public operator(expectedOperator?: string) {
 		const token = this.next();
 		if (!token || token.type !== "OPERATOR" || (expectedOperator && token.value !== expectedOperator))

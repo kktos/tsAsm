@@ -31,11 +31,10 @@ export class IncludeDirective implements IDirective {
 			assembler.startNewStream(filename);
 			assembler.parser.pushTokenStream({
 				newTokens: assembler.lexer.getBufferedTokens(),
-				// cacheName: filename,
 				cacheName: assembler.fileHandler.fullpath,
 				onEndOfStream: () => {
 					assembler.endCurrentStream();
-					// assembler.lister.directive({ ...directive, value: "--------------- end of INCLUDE ---------------" }, filename);
+					// assembler.lister.directive({ ...directive, value: "END INCLUDE" }, filename);
 				},
 			});
 
@@ -59,12 +58,14 @@ export class IncludeDirective implements IDirective {
 
 		assembler.startNewStream(filename);
 		assembler.parser.pushTokenStream({
-			// cacheName: filename,
 			cacheName: assembler.currentFilename,
 			newTokens: [],
 			onEndOfStream: () => {
-				assembler.lister.directive({ ...directive, value: "END INCLUDE" }, filename);
+				assembler.endCurrentStream();
+				// 	assembler.lister.directive({ ...directive, value: "END INCLUDE" }, filename);
 			},
 		});
+
+		assembler.lister.directive(directive, assembler.fileHandler.fullpath);
 	}
 }
