@@ -489,7 +489,7 @@ export class Cpu6502Handler implements CPUHandler {
 
 		// 6. Absolute/Zero Page Direct (e.g., LDA $1234 or LDA MyLabel)
 		const resolvedAddress = resolveValue(operandTokens);
-		const isZP = resolvedAddress >= 0x00 && resolvedAddress <= 0xff;
+		const isZP = resolvedAddress !== null && resolvedAddress >= 0x00 && resolvedAddress <= 0xff;
 
 		let mode: AddressingMode;
 		if (forcedSize === "ZP" || (forcedSize === null && isZP)) {

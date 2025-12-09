@@ -98,7 +98,7 @@ export class ExpressionEvaluator {
 	 * A wrapper for evaluate that ensures the result is a number.
 	 * Throws an error if the expression evaluates to a string or array.
 	 */
-	public evaluateAsNumber(tokens: Token[], context: Omit<EvaluationContext, "symbolTable">): number {
+	public evaluateAsNumber(tokens: Token[], context: Omit<EvaluationContext, "symbolTable">) {
 		let result = this.evaluate(tokens, context);
 
 		if (context.numberMax && typeof result === "string") {
@@ -113,7 +113,7 @@ export class ExpressionEvaluator {
 			}
 		}
 
-		if (typeof result !== "number") throw new Error("Expression did not evaluate to a number as expected.");
+		if (result !== null && typeof result !== "number") throw new Error("Expression did not evaluate to a number as expected.");
 
 		return result;
 	}
@@ -445,7 +445,7 @@ export class ExpressionEvaluator {
 
 	/** Evaluates a Reverse Polish Notation (RPN) token stream. */
 	private evaluateRPN(rpnTokens: Token[], context: Omit<EvaluationContext, "symbolTable">): SymbolValue {
-		const stack: SymbolValue[] = [];
+		const stack: (SymbolValue | null)[] = [];
 
 		for (const token of rpnTokens) {
 			switch (token.type) {
@@ -507,7 +507,8 @@ export class ExpressionEvaluator {
 				}
 
 				case "OPERATOR": {
-					const right = stack.pop();
+					let right = stack.pop();
+					if (right === null) right = 0;
 					if (this.handleUnaryOperator(token as OperatorToken, right, stack)) break;
 					if (this.handleArrayAccessOperator(token as OperatorToken, right, stack)) break;
 					this.handleBinaryOperator(token as OperatorToken, right, stack);
@@ -527,7 +528,7 @@ export class ExpressionEvaluator {
 		return stack[0] as SymbolValue;
 	}
 
-	private handleUnaryOperator(token: OperatorToken, right: SymbolValue | undefined, stack: SymbolValue[]): boolean {
+	private handleUnaryOperator(token: OperatorToken, right: SymbolValue | undefined, stack: (SymbolValue | null)[]): boolean {
 		if (token.value === "UNARY_MINUS") {
 			if (typeof right !== "number") throw new Error("Unary operator requires a numeric operand.");
 			stack.push(-right);
@@ -551,7 +552,7 @@ export class ExpressionEvaluator {
 		return false;
 	}
 
-	private handleArrayAccessOperator(token: OperatorToken, right: SymbolValue | undefined, stack: SymbolValue[]): boolean {
+	private handleArrayAccessOperator(token: OperatorToken, right: SymbolValue | undefined, stack: (SymbolValue | null)[]): boolean {
 		if (token.value === "ARRAY_ACCESS") {
 			if (typeof right !== "number") throw new Error(`Array index must be a number on line ${token.line}.`);
 
@@ -566,8 +567,8 @@ export class ExpressionEvaluator {
 		return false;
 	}
 
-	private handleBinaryOperator(token: OperatorToken, right: SymbolValue | undefined, stack: SymbolValue[]): void {
-		const left = stack.pop();
+	private handleBinaryOperator(token: OperatorToken, right: SymbolValue | undefined, stack: (SymbolValue | null)[]): void {
+		let left = stack.pop();
 		if (left === undefined || right === undefined) throw new Error(`Binary operator '${token.value}' requires two operands.`);
 
 		// Handle string operations first
@@ -590,6 +591,7 @@ export class ExpressionEvaluator {
 			}
 		}
 
+		if (left === null) left = 0;
 		if (typeof left !== "number" || typeof right !== "number") throw new Error(`Binary operator '${token.value}' requires two numbers.`);
 
 		// Numeric operations
@@ -655,7 +657,7 @@ export class ExpressionEvaluator {
 		}
 	}
 
-	private resolveValue(token: Token, context: Omit<EvaluationContext, "symbolTable">): SymbolValue {
+	private resolveValue(token: Token, context: Omit<EvaluationContext, "symbolTable">): SymbolValue | null {
 		switch (token.type) {
 			case "NUMBER":
 				return Number.parseInt(token.value, 10);
@@ -681,7 +683,7 @@ export class ExpressionEvaluator {
 
 				if (value !== undefined) return value;
 
-				if (context.allowForwardRef) return 0; // Pass 1: Assume 0 for forward references.
+				if (context.allowForwardRef) return null; // Pass 1: Assume 0 for forward references.
 
 				// If we are here, the symbol is not defined. Let's find suggestions.
 				const suggestions = this.assembler.symbolTable.findSimilarSymbols(token.value);
@@ -699,7 +701,7 @@ export class ExpressionEvaluator {
 				const value = this.assembler.symbolTable.lookupSymbol(qualifiedName);
 				if (value !== undefined) return value;
 
-				if (context.allowForwardRef) return 0; // Pass 1: Assume 0 for forward references.
+				if (context.allowForwardRef) return null; // Pass 1: Assume 0 for forward references.
 
 				throw `Undefined local label ':${token.value}' in scope '${context.currentGlobalLabel}' on line ${token.line}.`;
 			}
@@ -720,7 +722,7 @@ export class ExpressionEvaluator {
 				const relevantLabels = labels.filter((pc) => pc >= context.pc);
 				if (relevantLabels.length < count) {
 					// Pass 1: Assume 0 for forward references.
-					if (context.allowForwardRef) return 0;
+					if (context.allowForwardRef) return null;
 
 					// During pass 2, this is a fatal error.
 					throw `Not enough succeeding anonymous labels to satisfy '${token.value}' on line ${token.line}.`;
