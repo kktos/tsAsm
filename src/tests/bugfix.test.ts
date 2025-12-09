@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { Cpu6502Handler } from "../cpu/cpu6502.class";
+import { Cpu65C02Handler } from "../cpu/cpu65c02.class";
 import { Logger } from "../logger.class";
 import { Assembler } from "../polyasm";
 import type { FileHandler, SegmentDefinition } from "../polyasm.types";
+import { hexDump } from "../utils/hexdump.util";
 
 const DEFAULT_SEGMENTS: SegmentDefinition[] = [{ name: "CODE", start: 0x1000, size: 0, resizable: true }];
 
@@ -19,33 +20,31 @@ class MockFileHandler implements FileHandler {
 describe("Bug Fixes", () => {
 	let assembler: Assembler;
 	let logger: Logger;
-	let cpu6502: Cpu6502Handler;
+	let cpu65C02: Cpu65C02Handler;
 	let mockFileHandler: MockFileHandler;
 
 	beforeEach(() => {
-		logger = new Logger();
-		cpu6502 = new Cpu6502Handler();
+		logger = new Logger(true, true);
+		cpu65C02 = new Cpu65C02Handler();
 		mockFileHandler = new MockFileHandler();
-		assembler = new Assembler(cpu6502, mockFileHandler, { logger, segments: DEFAULT_SEGMENTS });
+		assembler = new Assembler(cpu65C02, mockFileHandler, { logger, segments: DEFAULT_SEGMENTS });
 	});
 
-	it("should fix the read_file macro bug", () => {
+	it("should access forward references correctly in function - clearScreen bug", () => {
 		const includedCode = `
-				.macro read_file(filename) {
-					; WDM disk_read_file
-					.db $42, $11
-					.dw filename
+			.namespace utils
+			.function clearScreen {
+					stz yPos
+			:		jsr $2000
+					inc yPos
+					ldx yPos
+					cpx #$b7
+					bne :-
+					rts
+			yPos	.db 0
 
-			:		bit $C0FF
-					bpl :-
-				}
-
-					read_file fwelcome
-					jmp $2000
-
-			fwelcome:
-					.cstr "WELCOME"
-
+					.echo "yPos = "+.hex(yPos)
+			}
 			`;
 		const source = `
 				.INCLUDE "included.asm"
@@ -59,8 +58,14 @@ describe("Bug Fixes", () => {
 		vi.spyOn(mockFileHandler, "readSourceFile").mockImplementation(mockReadSource);
 
 		assembler.assemble(source);
+
+		const { log } = logger.getLogs();
+
+		// expect(log).toEqual("");
+
+		expect(log.filter((l) => l === "yPos = $1011").at(1)).toEqual("yPos = $1011");
+
 		const machineCode = assembler.link();
-		expect(machineCode).toEqual([87, 69, 76, 67, 79, 77, 69, 0]);
-		expect(assembler.symbolTable.lookupSymbol("fwelcome")).toBe(0x1000);
+		expect(hexDump(0x1000, machineCode, { hasText: false })).toEqual("1000:  9C 11 10 20 00 20 EE 11 10 AE 11 10 E0 B7 D0 F3\n1010:  60 00");
 	});
 });
