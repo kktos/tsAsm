@@ -112,6 +112,12 @@ describe("ExpressionEvaluator", () => {
 			expect(evaluator.evaluateAsNumber(tokenize("$AA ^ $FF"), { pc: 0 })).toBe(0x55);
 		});
 
+		it("should works with characters too", () => {
+			const { evaluator, tokenize } = setup();
+			expect(evaluator.evaluateAsNumber(tokenize('"A" & $4f'), { pc: 0 })).toBe(0x41);
+			expect(evaluator.evaluateAsNumber(tokenize('"A" | $80'), { pc: 0 })).toBe(0xc1);
+		});
+
 		it("should respect bitwise operator precedence (& > ^ > |)", () => {
 			const { evaluator, tokenize } = setup();
 			// Expression: 12 & 10 ^ 6 | 3

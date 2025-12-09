@@ -1,5 +1,6 @@
-import type { ScalarToken, Token } from "../lexer/lexer.class";
+import type { ScalarToken } from "../lexer/lexer.class";
 import type { Assembler } from "../polyasm";
+import type { SymbolValue } from "../symbol.class";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class DataDirective implements IDirective {
@@ -54,51 +55,43 @@ export class DataDirective implements IDirective {
 	}
 
 	private encodeDataDirective(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): number[] {
-		const argTokens = assembler.parser.getInstructionTokens();
 		const outputBytes: number[] = [];
-		let currentExpression: Token[] = [];
-		const params: Token[][] = [];
+		const params: SymbolValue[] = [];
 		let hasText = false;
 
-		const evaluateAndPush = () => {
-			if (currentExpression.length === 0) return;
+		while (true) {
+			const exprTokens = assembler.parser.getExpressionTokens(directive);
+			if (exprTokens.length === 0) break;
 
-			params.push(currentExpression);
+			const value = assembler.expressionEvaluator.evaluate(exprTokens, context);
 
-			const value = assembler.expressionEvaluator.evaluateAsNumber(currentExpression, context);
-
-			for (let i = 0; i < this.bytesPerElement; i++) outputBytes.push((value >> (i * 8)) & 0xff);
-
-			currentExpression = [];
-		};
-
-		for (const token of argTokens) {
-			switch (token.type) {
-				case "STRING": {
-					evaluateAndPush(); // Push any pending expression before the string
-					const strValue = token.value;
-					for (let i = 0; i < strValue.length; i++) outputBytes.push(strValue.charCodeAt(i));
-					params.push([token]);
+			switch (typeof value) {
+				case "string": {
+					for (let i = 0; i < value.length; i++) outputBytes.push(value.charCodeAt(i));
+					params.push(value);
 					hasText = true;
 					break;
 				}
-				case "COMMA":
-					evaluateAndPush(); // Evaluate and push the expression before the comma
+				case "number": {
+					for (let i = 0; i < this.bytesPerElement; i++) outputBytes.push((value >> (i * 8)) & 0xff);
+					params.push(value);
 					break;
-				default:
-					currentExpression.push(token);
+				}
 			}
-		}
 
-		evaluateAndPush(); // Push the last expression
+			if (assembler.parser.isEOS() || !assembler.parser.is("COMMA")) break;
+
+			assembler.parser.consume();
+		}
 
 		assembler.lister.directiveWithBytes({
 			addr: context.pc,
 			bytes: outputBytes,
 			pragma: directive,
-			params,
+			params: params as SymbolValue[][],
 			hasText,
 		});
+
 		return outputBytes;
 	}
 }
