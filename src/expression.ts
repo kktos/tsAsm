@@ -701,7 +701,7 @@ export class ExpressionEvaluator {
 
 				if (context.allowForwardRef) return 0; // Pass 1: Assume 0 for forward references.
 
-				throw new Error(`Undefined local label ':${token.value}' in scope '${context.currentGlobalLabel}' on line ${token.line}.`);
+				throw `Undefined local label ':${token.value}' in scope '${context.currentGlobalLabel}' on line ${token.line}.`;
 			}
 
 			case "ANONYMOUS_LABEL_REF": {
@@ -712,10 +712,10 @@ export class ExpressionEvaluator {
 				if (direction === -1) {
 					// Backward reference: Find the last label defined *before* the current PC.
 					const relevantLabels = labels.filter((pc) => pc <= context.pc);
-					if (relevantLabels.length < count) throw new Error(`Not enough preceding anonymous labels to satisfy '${token.value}' on line ${token.line}.`);
-
+					if (relevantLabels.length < count) throw `Not enough preceding anonymous labels to satisfy '${token.value}' on line ${token.line}.`;
 					return relevantLabels[relevantLabels.length - count] as SymbolValue;
 				}
+
 				// Forward reference: Find the first label defined *at or after* the current PC.
 				const relevantLabels = labels.filter((pc) => pc >= context.pc);
 				if (relevantLabels.length < count) {
@@ -723,7 +723,7 @@ export class ExpressionEvaluator {
 					if (context.allowForwardRef) return 0;
 
 					// During pass 2, this is a fatal error.
-					throw new Error(`Not enough succeeding anonymous labels to satisfy '${token.value}' on line ${token.line}.`);
+					throw `Not enough succeeding anonymous labels to satisfy '${token.value}' on line ${token.line}.`;
 				}
 
 				return relevantLabels[count - 1] as SymbolValue;
