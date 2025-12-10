@@ -107,9 +107,9 @@ describe(".LET directive", () => {
 
 		it("should allow operator == in name expression", () => {
 			const { asm } = makeAssembler();
-			const src = `.LET ("na")+("me"=="") = "hello"`;
+			const src = `.LET ("na")+.iif("me"=="","yes","no") = "hello"`;
 			asm.assemble(src);
-			const symbolName = asm.symbolTable.lookupSymbol("na0");
+			const symbolName = asm.symbolTable.lookupSymbol("nano");
 			expect(symbolName).toBe("hello");
 		});
 
