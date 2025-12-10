@@ -2,11 +2,11 @@ import type { Token } from "../lexer/lexer.class";
 import type { PASymbolTable } from "../symbol.class";
 import type { EvaluationStack, FunctionHandler } from "./types";
 
-export const def: FunctionHandler = (stack: EvaluationStack, _token: Token, symbolTable: PASymbolTable): void => {
+export const defFunction: FunctionHandler = (stack: EvaluationStack, _token: Token, symbolTable: PASymbolTable): void => {
 	stack.push(checkIfDefined(stack, symbolTable) ? 1 : 0);
 };
 
-export const undef: FunctionHandler = (stack: EvaluationStack, _token: Token, symbolTable: PASymbolTable): void => {
+export const undefFunction: FunctionHandler = (stack: EvaluationStack, _token: Token, symbolTable: PASymbolTable): void => {
 	stack.push(checkIfDefined(stack, symbolTable) ? 0 : 1);
 };
 

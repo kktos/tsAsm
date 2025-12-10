@@ -2,7 +2,7 @@ import type { Token } from "../lexer/lexer.class";
 import type { SymbolValue } from "../symbol.class";
 import type { EvaluationStack, FunctionHandler } from "./types";
 
-export const iif: FunctionHandler = (stack: EvaluationStack, token: Token): void => {
+export const iifFunction: FunctionHandler = (stack: EvaluationStack, token: Token): void => {
 	const falseValue = stack.pop() as SymbolValue;
 	const trueValue = stack.pop() as SymbolValue;
 	const condition = stack.pop();

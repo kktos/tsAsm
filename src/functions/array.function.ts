@@ -2,7 +2,7 @@ import type { Token } from "../lexer/lexer.class";
 import type { SymbolValue } from "../symbol.class";
 import type { EvaluationStack, FunctionHandler } from "./types";
 
-export const array: FunctionHandler = (stack: EvaluationStack, token: Token, _symbolTable, argCount): void => {
+export const arrayFunction: FunctionHandler = (stack: EvaluationStack, token: Token, _symbolTable, argCount): void => {
 	const newArray: (SymbolValue | null)[] = [];
 
 	for (let i = 0; i < (argCount ?? 0); i++) {

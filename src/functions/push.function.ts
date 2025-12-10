@@ -2,7 +2,7 @@ import type { Token } from "../lexer/lexer.class";
 import type { SymbolValue } from "../symbol.class";
 import type { EvaluationStack, FunctionHandler } from "./types";
 
-export const push: FunctionHandler = (stack: EvaluationStack, token: Token, _symbolTable, argCount): void => {
+export const pushFunction: FunctionHandler = (stack: EvaluationStack, token: Token, _symbolTable, argCount): void => {
 	const itemsToAdd: SymbolValue[] = [];
 	for (let i = 0; i < (argCount ?? 0) - 1; i++) {
 		itemsToAdd.unshift(stack.pop() as SymbolValue); // Pop items and reverse order

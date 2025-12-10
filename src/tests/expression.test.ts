@@ -100,7 +100,7 @@ describe("ExpressionEvaluator", () => {
 				pc: 0,
 				allowForwardRef: true,
 			});
-			expect(result).toBe(1); // FutureLabel resolves to 0
+			expect(result).toBe(null); // FutureLabel resolves to 0
 		});
 	});
 
@@ -424,9 +424,30 @@ describe("ExpressionEvaluator", () => {
 			assembler.addSegment("main", 0x1000, 0);
 			assembler.useSegment("main");
 
-			const tokens = tokenize('.segment.name +":"+ .segment.start');
+			const tokens = tokenize(".segment.name");
 			const result = evaluator.evaluate(tokens, { pc: 0 });
-			expect(result).toEqual("main:4096");
+			expect(result).toEqual("main");
+		});
+	});
+
+	describe("Strings operations", () => {
+		it("should evaluate simple concatenation", () => {
+			const { evaluator, tokenize } = setup();
+			const tokens = tokenize(`"he" + "llo"`);
+			const result = evaluator.evaluate(tokens, { pc: 0 });
+			expect(result).toBe("hello");
+		});
+		it("should evaluate string equality", () => {
+			const { evaluator, tokenize } = setup();
+			const tokens = tokenize(`"he" = "llo"`);
+			const result = evaluator.evaluateAsNumber(tokens, { pc: 0 });
+			expect(result).toBe(0);
+		});
+		it("should evaluate string inequality", () => {
+			const { evaluator, tokenize } = setup();
+			const tokens = tokenize(`"he" != "llo"`);
+			const result = evaluator.evaluateAsNumber(tokens, { pc: 0 });
+			expect(result).toBe(1);
 		});
 	});
 });

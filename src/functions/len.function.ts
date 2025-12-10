@@ -1,7 +1,7 @@
 import type { Token } from "../lexer/lexer.class";
 import type { EvaluationStack, FunctionHandler } from "./types";
 
-export const len: FunctionHandler = (stack: EvaluationStack, token: Token): void => {
+export const lenFunction: FunctionHandler = (stack: EvaluationStack, token: Token): void => {
 	const arg = stack.pop();
 
 	if (typeof arg !== "string" && !Array.isArray(arg)) throw new Error(`.LEN() requires a string or array argument on line ${token.line}.`);

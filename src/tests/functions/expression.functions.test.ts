@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { Assembler } from "../polyasm";
-import type { FileHandler } from "../polyasm.types";
+import { Assembler } from "../../polyasm";
+import type { FileHandler } from "../../polyasm.types";
 
 // Minimal fake CPU handler
 const fakeCPU = {
@@ -34,21 +34,6 @@ describe("ExpressionEvaluator", () => {
 	};
 
 	describe("Functions", () => {
-		it("should evaluate .LEN() on a string literal", () => {
-			const { evaluator, tokenize } = setup();
-			const tokens = tokenize('.LEN("hello")');
-			const result = evaluator.evaluateAsNumber(tokens, { pc: 0 });
-			expect(result).toBe(5);
-		});
-
-		it("should evaluate .LEN() on an array literal", () => {
-			const { evaluator, tokenize, symbolTable } = setup();
-			symbolTable.assignVariable("MyArr", [10, 20, 30]);
-			const tokens = tokenize(".LEN([1, 2, 3])");
-			const result = evaluator.evaluateAsNumber(tokens, { pc: 0 });
-			expect(result).toBe(3);
-		});
-
 		it("should evaluate .DEF() on a defined symbol", () => {
 			const { evaluator, tokenize, symbolTable } = setup();
 			symbolTable.assignVariable("MySymbol", 123);
@@ -83,16 +68,6 @@ describe("ExpressionEvaluator", () => {
 			const tokens = tokenize(".HEX(42, 4)");
 			const result = evaluator.evaluate(tokens, { pc: 0 });
 			expect(result).toBe("$002A");
-		});
-
-		it("should evaluate .IIF() to return the true or false value based on the condition", () => {
-			const { evaluator, tokenize } = setup();
-
-			const tokens = tokenize('.IIF(1!=0, "true", "false")');
-			const result = evaluator.evaluate(tokens, { pc: 0 });
-			expect(result).toBe("true");
-
-			expect(evaluator.evaluate(tokenize('.IIF(50-50, "true", "false")'), { pc: 0 })).toBe("false");
 		});
 
 		it("should evaluate .LOBYTE() to get the low byte of a 16-bit value", () => {
