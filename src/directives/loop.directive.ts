@@ -21,9 +21,20 @@ export class LoopDirective implements IDirective {
 	// A map to store the state of active loops between iterations. Key: A unique identifier for the loop.
 	private loopStates: Map<string, LoopState> = new Map();
 
-	public handlePassOne(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
-		assembler.parser.getInstructionTokens();
-		assembler.parser.skipToDirectiveEnd(directive.value);
+	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
+		// const argTokens = assembler.parser.getInstructionTokens();
+		// assembler.parser.skipToDirectiveEnd(directive.value);
+		// assembler.lister.directive(directive, argTokens);
+		switch (directive.value) {
+			case "FOR":
+				this.handleForLoop(directive, assembler, context);
+				return;
+			case "REPEAT":
+				this.handleRepeatLoop(directive, assembler, context);
+				return;
+			default:
+				throw new Error(`Invalid directive ${directive.value} on line ${directive.line}.`);
+		}
 	}
 
 	public handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
@@ -64,6 +75,8 @@ export class LoopDirective implements IDirective {
 		const arrayValue = assembler.expressionEvaluator.evaluate(expressionTokens, evaluationContext);
 		if (!Array.isArray(arrayValue))
 			throw `line ${directive.line} The expression in the .FOR loop did not evaluate to an array.\nvalue: ${typeof arrayValue}\n${arrayValue}\n`;
+
+		assembler.lister.directive(directive, itemIteratorToken, ofToken, exprHeader);
 
 		// Find the loop body
 		const bodyTokens = assembler.parser.getDirectiveBlockTokens(directive.value);
