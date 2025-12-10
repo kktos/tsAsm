@@ -29,6 +29,7 @@ interface SchemaSpec {
 
 	schema?: TSchema;
 	items?: SchemaSpec;
+	allowUnknown?: boolean;
 
 	validate?: (value: unknown) => boolean;
 	errorMessage?: string;
@@ -46,51 +47,71 @@ interface ValidationResult {
 
 export type TSchema = Record<string, SchemaSpec>;
 
-export function validate(obj: Record<string, unknown>, schema: TSchema): ValidationResult {
+export function validate(obj: Record<string, unknown>, schema: Record<string, SchemaSpec>, options?: { allowUnknown?: boolean }): ValidationResult {
 	const errors: ValidationError[] = [];
-	validateInternal(obj, schema, "", errors);
+	validateInternal(obj, schema, "", errors, options?.allowUnknown ?? false);
 	return { ok: errors.length === 0, errors };
 }
 
-function validateInternal(obj: Record<string, unknown>, schema: TSchema, basePath: string, errors: ValidationError[]) {
+function validateInternal(
+	obj: Record<string, unknown>,
+	schema: Record<string, SchemaSpec>,
+	basePath: string,
+	errors: ValidationError[],
+	allowUnknown: boolean,
+) {
+	if (!allowUnknown)
+		for (const key in obj) {
+			if (!(key in schema)) {
+				errors.push({
+					path: basePath ? `${basePath}.${key}` : key,
+					message: "Unknown property",
+				});
+			}
+		}
+
 	for (const key in schema) {
 		const spec = schema[key] as SchemaSpec;
 		const value = obj[key];
 		const path = basePath ? `${basePath}.${key}` : key;
 
 		if (value === undefined) {
-			if (!spec.optional)
+			if (!spec.optional) {
 				errors.push({
 					path,
 					message: "Missing required property",
 				});
+			}
 			continue;
 		}
 
 		// Type check
 		switch (spec.type) {
 			case "string":
-				if (typeof value !== "string")
+				if (typeof value !== "string") {
 					errors.push({
 						path,
 						message: `Expected string, got ${typeof value}`,
 					});
+				}
 				break;
 
 			case "number":
-				if (typeof value !== "number" || Number.isNaN(value))
+				if (typeof value !== "number" || Number.isNaN(value)) {
 					errors.push({
 						path,
 						message: "Expected number",
 					});
+				}
 				break;
 
 			case "boolean":
-				if (typeof value !== "boolean")
+				if (typeof value !== "boolean") {
 					errors.push({
 						path,
 						message: "Expected boolean",
 					});
+				}
 				break;
 
 			case "object":
@@ -101,7 +122,9 @@ function validateInternal(obj: Record<string, unknown>, schema: TSchema, basePat
 					});
 					break;
 				}
-				if (spec.schema) validateInternal(value as Record<string, unknown>, spec.schema, path, errors);
+				if (spec.schema) {
+					validateInternal(value as Record<string, unknown>, spec.schema, path, errors, spec.allowUnknown ?? allowUnknown);
+				}
 				break;
 
 			case "array":
@@ -112,20 +135,22 @@ function validateInternal(obj: Record<string, unknown>, schema: TSchema, basePat
 					});
 					break;
 				}
-				if (spec.items)
+				if (spec.items) {
 					for (let i = 0; i < value.length; i++) {
 						const item = value[i];
-						validateInternal({ _: item }, { _: spec.items }, `${path}[${i}]`, errors);
+						validateInternal({ _: item }, { _: spec.items }, `${path}[${i}]`, errors, allowUnknown);
 					}
+				}
 				break;
 		}
 
 		// Custom constraint
-		if (spec.validate && !spec.validate(value))
+		if (spec.validate && !spec.validate(value)) {
 			errors.push({
 				path,
 				message: spec.errorMessage ?? "Custom validation failed",
 			});
+		}
 	}
 }
 /*
@@ -143,6 +168,7 @@ const userSchema = {
 	address: {
 		type: "object",
 		optional: true,
+		allowUnknown: true,
 		schema: {
 			city: { type: "string" },
 			zip: { type: "string" },
@@ -156,7 +182,21 @@ const data: User = {
 	name: "Jane",
 	age: 200,
 	tags: ["a", "5"],
+	extra: "field",
 };
 
-console.log(validate(data, userSchema));
+console.log("Disallowing unknown:", validate(data, userSchema));
+console.log("Allowing unknown:", validate(data, userSchema, { allowUnknown: true }));
+
+const dataWithAddress = {
+	name: "John",
+	age: 30,
+	tags: [],
+	address: {
+		city: "New York",
+		zip: "10001",
+		street: "5th Ave", // unknown property
+	},
+};
+console.log("Address with unknown (should be ok):", validate(dataWithAddress, userSchema));
 */
