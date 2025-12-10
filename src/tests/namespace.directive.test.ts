@@ -72,19 +72,19 @@ describe(".NAMESPACE Directive", () => {
 	it("should pop the NS when .end is encountered", () => {
 		const { assembler, logger } = createAssembler();
 		const source = `
-			.echo .PASS + "NS>> global:", .NAMESPACE
+			.echo .str(.PASS) + "NS>> global:", .NAMESPACE
 
 			.NAMESPACE one
-			.echo .PASS + "NS>> one:", .NAMESPACE
+			.echo .str(.PASS) + "NS>> one:", .NAMESPACE
 			.end NAMESPACE
 
-			.echo .PASS + "NS>> global:", .NAMESPACE
+			.echo .str(.PASS) + "NS>> global:", .NAMESPACE
 
 			.NAMESPACE two
-			.echo .PASS + "NS>> two:", .NAMESPACE
+			.echo .str(.PASS) + "NS>> two:", .NAMESPACE
 
 			.NAMESPACE
-			.echo .PASS + "NS>> global:", .NAMESPACE
+			.echo .str(.PASS) + "NS>> global:", .NAMESPACE
 		`;
 
 		assembler.assemble(source);
