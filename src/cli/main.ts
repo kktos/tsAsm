@@ -57,7 +57,16 @@ chdir(dirname(confFilename));
 const segments = (conf.segments as SegmentDefinition[]) ?? undefined;
 
 const textHandler = (blockContent: string, _context: DirectiveContext) => blockContent;
-const handlers = { default: "TEXT", map: new Map([["TEXT", textHandler]]) };
+const yamlHandler = (blockContent: string, _context: DirectiveContext) => yamlparse(blockContent);
+const jsonHandler = (blockContent: string, _context: DirectiveContext) => JSON.parse(blockContent);
+const handlers = {
+	default: "YAML",
+	map: new Map([
+		["TEXT", textHandler],
+		["YAML", yamlHandler],
+		["JSON", jsonHandler],
+	]),
+};
 
 try {
 	const assembler = new Assembler(new Cpu6502Handler(), fileHandler, { logger, segments, rawDataProcessors: handlers });

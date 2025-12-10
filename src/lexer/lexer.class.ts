@@ -154,7 +154,7 @@ export class AssemblyLexer {
 			if (t.type === "EOF") break;
 		}
 
-		if (this.endMarker) return this.scanRawTextBlock(this.currentStream.line, this.currentStream.column);
+		if (this.endMarker) return this.scanRawTextBlock({ line: this.currentStream.line, column: this.currentStream.column, hasToGoNextline: false });
 
 		const token = this.currentStream.tokenBuffer[index];
 		if (!token) return null;
@@ -205,7 +205,7 @@ export class AssemblyLexer {
 
 		if (this.currentStream.pos >= this.currentStream.length) return this.makeToken("EOF", "");
 
-		if (this.endMarker) return this.scanRawTextBlock(this.currentStream.line, this.currentStream.column);
+		if (this.endMarker) return this.scanRawTextBlock({ line: this.currentStream.line, column: this.currentStream.column, hasToGoNextline: true });
 
 		const ch = this.currentStream.source[this.currentStream.pos] as string;
 		const startLine = this.currentStream.line;
@@ -592,17 +592,29 @@ export class AssemblyLexer {
 		return this.makeToken("ANONYMOUS_LABEL_DEF", ":", line, column);
 	}
 
-	private scanRawTextBlock(line: number, column: number): Token | null {
+	private scanRawTextBlock({ line, column, hasToGoNextline }: { line: number; column: number; hasToGoNextline: boolean }): Token | null {
 		const endMarker = this.endMarker?.toLowerCase();
 		const endMarkerLen = this.endMarker?.length || 0;
 		this.endMarker = undefined;
 
-		// The raw data starts after the current line.
-		const endOfLine = this.currentStream.source.indexOf("\n", this.currentStream.pos);
-		// No newline after the directive, so no raw data.
-		if (endOfLine === -1) return null;
+		// console.log(
+		// 	"scanRawTextBlock",
+		// 	hasToGoNextline?"nextline":"",
+		// 	this.currentStream.pos,
+		// 	"\n",
+		// 	this.currentStream.source.slice(this.currentStream.pos - 1, this.currentStream.pos + 20),
+		// );
 
-		const rawDataStart = endOfLine + 1;
+		let rawDataStart: number;
+		if (hasToGoNextline) {
+			// The raw data starts after the current line.
+			const endOfLine = this.currentStream.source.indexOf("\n", this.currentStream.pos);
+			// No newline after the directive, so no raw data.
+			if (endOfLine === -1) return null;
+			rawDataStart = endOfLine + 1;
+		} else {
+			rawDataStart = this.currentStream.pos - 1;
+		}
 
 		// Find the end marker, which can be preceded by whitespace on its own line.
 		let currentPos = rawDataStart;

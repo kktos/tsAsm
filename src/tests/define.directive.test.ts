@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { yamlparse } from "../cli/asm-yaml";
 import type { DirectiveContext } from "../directives/directive.interface";
 import { Assembler } from "../polyasm";
 import type { FileHandler, SegmentDefinition } from "../polyasm.types";
@@ -193,6 +194,64 @@ describe(".DEFINE Directive", () => {
 		`;
 		assembler.assemble(source);
 
-		expect(assembler.symbolTable.lookupSymbol("spriteList")).toBeTypeOf("string");
+		const blockContent = textHandler.mock.calls[0]?.[0];
+
+		const expectedContent = `			- { id: $55, x: $0d, y: $30, name:"text key"}
+			- { id: $27, x: 15, y: 60, name:"img key"}
+			- { id: $57, x: $31, y: $27, name:"text locked door"}
+			- { id: $5C, x: $3A, y: $3C, name:"img locked door"}
+			- { id: $58, x: $59, y: $27, name:"text unlocked door"}
+			- { id: $5d, x: $67, y: $3C, name:"img unlocked door"}
+			- { id: $59, x: $25, y: $64, name:"text gem"}
+			- { id: $28, x: $28, y: $6e, name:"img gem"}
+			- { id: $5a, x: $53, y: $5b, name:"text gem holder"}
+			- { id: $56, x: $5b, y: $6d, name:"img gem holder"}
+			- { id: $5b, x: $2e, y: $88, name:"text extra sword"}
+			- { id: $1e, x: $40, y: $9b, name:"img extra sword"}`;
+
+		expect(blockContent).toBe(expectedContent);
+		expect(assembler.symbolTable.lookupSymbol("spriteList")).toBe(expectedContent);
+	});
+
+	it("should return a yaml object", () => {
+		const yamlHandler = vi.fn((blockContent: string, _context: DirectiveContext) => yamlparse(blockContent) as object);
+		const handlers = { default: "YAML", map: new Map([["YAML", yamlHandler]]) };
+		const assembler = createAssembler(handlers);
+
+		const source = `
+			.define spriteList
+- { id: $55, x: $0d, y: $30, name: "text key"}
+- { id: $27, x: 15, y: 60, name: "img key"}
+- { id: $57, x: $31, y: $27, name: "text locked door"}
+- { id: $5C, x: $3A, y: $3C, name: "img locked door"}
+- { id: $58, x: $59, y: $27, name: "text unlocked door"}
+- { id: $5d, x: $67, y: $3C, name: "img unlocked door"}
+- { id: $59, x: $25, y: $64, name: "text gem"}
+- { id: $28, x: $28, y: $6e, name: "img gem"}
+- { id: $5a, x: $53, y: $5b, name: "text gem holder"}
+- { id: $56, x: $5b, y: $6d, name: "img gem holder"}
+- { id: $5b, x: $2e, y: $88, name: "text extra sword"}
+- { id: $1e, x: $40, y: $9b, name: "img extra sword"}
+			.end
+		`;
+		assembler.assemble(source);
+
+		const blockContent = yamlHandler.mock.calls[0]?.[0];
+
+		const expectedContent = `- { id: $55, x: $0d, y: $30, name: "text key"}
+- { id: $27, x: 15, y: 60, name: "img key"}
+- { id: $57, x: $31, y: $27, name: "text locked door"}
+- { id: $5C, x: $3A, y: $3C, name: "img locked door"}
+- { id: $58, x: $59, y: $27, name: "text unlocked door"}
+- { id: $5d, x: $67, y: $3C, name: "img unlocked door"}
+- { id: $59, x: $25, y: $64, name: "text gem"}
+- { id: $28, x: $28, y: $6e, name: "img gem"}
+- { id: $5a, x: $53, y: $5b, name: "text gem holder"}
+- { id: $56, x: $5b, y: $6d, name: "img gem holder"}
+- { id: $5b, x: $2e, y: $88, name: "text extra sword"}
+- { id: $1e, x: $40, y: $9b, name: "img extra sword"}`;
+
+		expect(blockContent).toBe(expectedContent);
+		// expect(assembler.symbolTable.lookupSymbol("spriteList")).toBe(expectedContent);
 	});
 });
