@@ -249,7 +249,7 @@ describe("Macro Handling", () => {
 
 			`;
 
-			expect(() => assembler.assemble(src)).toThrow(/Missing game interface fields	 	\[ONE, TWO\]/);
+			expect(() => assembler.assemble(src)).toThrow(/Missing game interface fields\s+\[ONE, TWO\]/);
 		});
 		it("should works too ;)", () => {
 			const { assembler } = setup();
