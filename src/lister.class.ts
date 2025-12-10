@@ -47,7 +47,9 @@ export class Lister {
 	}
 
 	public directive(pragma: ScalarToken | string, ...params: SymbolValue[]) {
-		this.logger.log(`${"".padStart(TEXT_PAD)}.${(typeof pragma === "string" ? pragma : pragma.value).toLowerCase()} ${params.join(", ")}`);
+		this.logger.log(
+			`${"".padStart(TEXT_PAD)}.${(typeof pragma === "string" ? pragma : pragma.value).toLowerCase()} ${params.map((p) => asString(p, true)).join(", ")}`,
+		);
 	}
 
 	public directiveWithBytes(args: DirectiveBytesArgs) {
