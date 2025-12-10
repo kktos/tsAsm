@@ -23,7 +23,7 @@ export class Lister {
 			const addressHex = getHex(lineAddr);
 			const lineBytes = bytes.slice(i, i + BYTES_PER_LINE);
 			const hexBytes = lineBytes.map((b) => getHex(b)).join(" ");
-			const text = hasText ? lineBytes.map((b) => String.fromCharCode(b)).join("") : "";
+			const text = hasText ? lineBytes.map((b) => (b >= 32 && b <= 126 ? String.fromCharCode(b) : ".")).join("") : "";
 
 			const header = `${addressHex}: ${hexBytes.padEnd(BYTES_PAD)} ${text.padEnd(CHARS_PAD)}`;
 
@@ -47,7 +47,7 @@ export class Lister {
 	}
 
 	public directive(pragma: ScalarToken | string, ...params: SymbolValue[]) {
-		this.logger.log(`${"".padStart(LABEL_START_COL)}.${(typeof pragma === "string" ? pragma : pragma.value).toLowerCase()} ${params.join(", ")}`);
+		this.logger.log(`${"".padStart(TEXT_PAD)}.${(typeof pragma === "string" ? pragma : pragma.value).toLowerCase()} ${params.join(", ")}`);
 	}
 
 	public directiveWithBytes(args: DirectiveBytesArgs) {
