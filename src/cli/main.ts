@@ -1,4 +1,5 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import * as console from "node:console";
+import { writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { chdir } from "node:process";
 import { name, version } from "../../package.json";
@@ -6,42 +7,17 @@ import { Cpu6502Handler } from "../cpu/cpu6502.class";
 import type { DirectiveContext } from "../directives/directive.interface";
 import { Logger } from "../logger.class";
 import { Assembler } from "../polyasm";
-import type { FileHandler, SegmentDefinition } from "../polyasm.types";
 import { yamlparse, yamlstringify } from "./asm-yaml";
 import colors from "./colors";
-
-class NodeFileHandler implements FileHandler {
-	fullpath = "";
-	readSourceFile(filename: string, from?: string): string {
-		this.fullpath = filename;
-		if (from) {
-			const dir = dirname(from);
-			this.fullpath = `${dir}/${filename}`;
-		}
-		// logger.log(colors.blue(`READFILE ${this.fullpath} FROM ${from}`));
-		return readFileSync(this.fullpath, "utf-8");
-	}
-	readBinaryFile(filename: string, from?: string): number[] {
-		this.fullpath = filename;
-		if (from) {
-			const dir = dirname(from);
-			this.fullpath = `${dir}/${filename}`;
-		}
-		const buffer = readFileSync(this.fullpath);
-		return Array.from(buffer);
-	}
-}
+import { readConf } from "./conf";
+import { NodeFileHandler } from "./file";
 
 const logger = new Logger();
 
 logger.log(colors.cyan(`${name} v${version}`));
 
-// To get the arguments passed to your CLI, you can use `process.argv`.
-// The first two elements are the node executable and the script path,
-// so we slice the array to get only the user-provided arguments.
 const args = process.argv.slice(2);
-logger.log(colors.yellow(`Arguments received: ${args.join(", ") || "None"}`));
-
+// logger.log(colors.yellow(`Arguments received: ${args.join(", ") || "None"}`));
 if (args.length < 1 || !args[0]) {
 	logger.error(colors.red("ERROR: Missing source file argument or configuration file argument"));
 	process.exit(-1);
@@ -49,12 +25,19 @@ if (args.length < 1 || !args[0]) {
 
 const confFilename = args[0];
 const fileHandler = new NodeFileHandler();
-const confFile = fileHandler.readSourceFile(confFilename);
-const conf = yamlparse(confFile) as Record<string, unknown>;
-console.log(conf);
+
+const { conf, errors } = readConf(fileHandler, confFilename);
+if (errors) {
+	logger.error("");
+	logger.error(colors.red("Invalid configuration file"));
+	for (const error of errors) logger.error(colors.red(`${error.path}: ${error.message}`));
+
+	process.exit(-1);
+}
+
 chdir(dirname(confFilename));
 
-const segments = (conf.segments as SegmentDefinition[]) ?? undefined;
+const segments = conf.segments;
 
 const textHandler = (blockContent: string, _context: DirectiveContext) => blockContent;
 const yamlHandler = (blockContent: string, _context: DirectiveContext) => yamlparse(blockContent);
