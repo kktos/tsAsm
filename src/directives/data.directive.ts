@@ -11,9 +11,9 @@ export class DataDirective implements IDirective {
 
 	public handlePassOne(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
 		if (assembler.isAssembling) {
-			const size = this.calculateDirectiveSize(assembler);
-			assembler.currentPC += size;
-			assembler.lister.directive(directive, `<${size} bytes>`);
+			const byteCount = this.calculateDirectiveSize(assembler);
+			assembler.currentPC += byteCount;
+			assembler.lister.directive(directive, `<${byteCount} bytes>`);
 		}
 	}
 

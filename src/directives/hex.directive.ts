@@ -12,6 +12,8 @@ export class HexDirective implements IDirective {
 		try {
 			const byteCount = hexString.replace(/\s/g, "").length / 2;
 			assembler.currentPC += byteCount;
+
+			assembler.lister.directive(directive, `<${byteCount} bytes>`);
 		} catch (e) {
 			assembler.logger.warn(`[PASS 1] Warning on line ${directive.line}: Could not calculate size of .HEX block. ${e}`);
 		}
@@ -35,6 +37,8 @@ export class HexDirective implements IDirective {
 		if (assembler.isAssembling && bytes.length > 0) assembler.writeBytes(bytes);
 
 		if (!assembler.isAssembling) assembler.currentPC += bytes.length;
+
+		assembler.lister.directive(directive, `<${bytes.length} bytes>`);
 	}
 
 	/**
