@@ -9,8 +9,12 @@ export class DataDirective implements IDirective {
 
 	constructor(private readonly bytesPerElement: number) {}
 
-	public handlePassOne(_directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
-		if (assembler.isAssembling) assembler.currentPC += this.calculateDirectiveSize(assembler);
+	public handlePassOne(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
+		if (assembler.isAssembling) {
+			const size = this.calculateDirectiveSize(assembler);
+			assembler.currentPC += size;
+			assembler.lister.directive(directive, `<${size} bytes>`);
+		}
 	}
 
 	public handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
