@@ -81,4 +81,22 @@ describe("Bug Fixes", () => {
 		const machineCode = assembler.link();
 		expect(hexDump(0x1000, machineCode, { hasText: false })).toEqual("1000:  00 10 00 20 C1 41 42");
 	});
+
+	it("should reserve the same amount of bytes between passes - animConanJump bug", () => {
+		const src = `
+				; testing null on left and right of the expr eval
+				lda caption + 2 ; caption, as a forward ref, will be null on 1st pass
+				lda 2 + caption ; caption, as a forward ref, will be null on 1st pass
+
+				caption:
+					.db "hello",0
+				end:
+			`;
+		assembler.assemble(src);
+
+		const logs = logger.getLogs().log as string[];
+
+		expect(logs.filter((l) => l.startsWith("1000:"))[0]).toContain("1000: 00 00 00");
+		expect(logs.filter((l) => l.startsWith("1003:"))[0]).toContain("1003: 00 00 00");
+	});
 });

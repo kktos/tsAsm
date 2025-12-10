@@ -62,7 +62,8 @@ export class LoopDirective implements IDirective {
 		};
 
 		const arrayValue = assembler.expressionEvaluator.evaluate(expressionTokens, evaluationContext);
-		if (!Array.isArray(arrayValue)) throw new Error(`The expression in the .FOR loop on line ${directive.line} did not evaluate to an array.`);
+		if (!Array.isArray(arrayValue))
+			throw `line ${directive.line} The expression in the .FOR loop did not evaluate to an array.\nvalue: ${typeof arrayValue}\n${arrayValue}\n`;
 
 		// Find the loop body
 		const bodyTokens = assembler.parser.getDirectiveBlockTokens(directive.value);

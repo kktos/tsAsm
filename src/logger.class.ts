@@ -3,7 +3,7 @@ export class Logger {
 	public cached: boolean;
 	private warnings: string[] = [];
 	private errors: string[] = [];
-	private logs: unknown[] = [];
+	private logs: string[] = [];
 
 	constructor(enabled = true, cached = false) {
 		this.enabled = enabled;
@@ -11,7 +11,7 @@ export class Logger {
 	}
 
 	public cache(...args: unknown[]) {
-		if (this.enabled) this.logs.push(...args);
+		if (this.enabled) this.logs.push(...(args as string[]));
 	}
 
 	public flush() {

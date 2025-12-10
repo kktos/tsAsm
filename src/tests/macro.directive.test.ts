@@ -18,11 +18,11 @@ describe("Macro Handling", () => {
 				throw new Error(`Mock bin file not found: ${filename}`);
 			}
 		}
-		const logger = new Logger();
+		const logger = new Logger(true, true);
 		const assembler = new Assembler(new Cpu6502Handler(), new MockFileHandler(), { logger, segments: DEFAULT_SEGMENTS });
 		const { symbolTable, expressionEvaluator: evaluator, lexer } = assembler;
 		const tokenize = (expr: string) => lexer.tokenize(expr).filter((t) => t.type !== "EOF");
-		return { assembler, symbolTable, evaluator, lexer, tokenize };
+		return { assembler, symbolTable, evaluator, lexer, tokenize, logger };
 	};
 
 	describe("Macro Argument Evaluation", () => {
@@ -249,7 +249,7 @@ describe("Macro Handling", () => {
 
 			`;
 
-			expect(() => assembler.assemble(src)).toThrow("[ERROR] Missing game interface fields	 	[ONE, TWO]");
+			expect(() => assembler.assemble(src)).toThrow(/Missing game interface fields	 	\[ONE, TWO\]/);
 		});
 		it("should works too ;)", () => {
 			const { assembler } = setup();

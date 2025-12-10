@@ -74,7 +74,7 @@ describe("Logging directives", () => {
 		it("log a simple error", () => {
 			const { asm } = makeAssembler();
 			const src = `.ERR "Boom Bada Boom"`;
-			expect(() => asm.assemble(src)).toThrow("[ERROR] Boom Bada Boom");
+			expect(() => asm.assemble(src)).toThrow(/Boom Bada Boom/);
 		});
 	});
 
