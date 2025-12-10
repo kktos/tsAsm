@@ -507,8 +507,7 @@ export class ExpressionEvaluator {
 				}
 
 				case "OPERATOR": {
-					let right = stack.pop();
-					if (right === null) right = 0;
+					const right = stack.pop();
 					if (this.handleUnaryOperator(token as OperatorToken, right, stack)) break;
 					if (this.handleArrayAccessOperator(token as OperatorToken, right, stack)) break;
 					this.handleBinaryOperator(token as OperatorToken, right, stack);
@@ -528,81 +527,103 @@ export class ExpressionEvaluator {
 		return stack[0] as SymbolValue;
 	}
 
-	private handleUnaryOperator(token: OperatorToken, right: SymbolValue | undefined, stack: (SymbolValue | null)[]): boolean {
-		if (token.value === "UNARY_MINUS") {
-			if (typeof right !== "number") throw new Error("Unary operator requires a numeric operand.");
-			stack.push(-right);
-			return true;
+	private handleUnaryOperator(token: OperatorToken, right: SymbolValue | undefined | null, stack: (SymbolValue | null)[]): boolean {
+		switch (token.value) {
+			case "UNARY_MINUS":
+				if (right === null) {
+					stack.push(right);
+					return true;
+				}
+				if (typeof right !== "number") throw new Error("Unary operator requires a numeric operand.");
+				stack.push(-right);
+				return true;
+			case "!":
+				if (right === null) {
+					stack.push(right);
+					return true;
+				}
+				if (typeof right !== "number") throw new Error("Unary operator '!' requires a numeric operand.");
+				stack.push(right === 0 ? 1 : 0);
+				return true;
+			case "UNARY_LSB":
+				if (right === null) {
+					stack.push(right);
+					return true;
+				}
+				if (typeof right !== "number") throw new Error("Unary operator '<' (LSB) requires a numeric operand.");
+				stack.push(right & 0xff);
+				return true;
+			case "UNARY_MSB":
+				if (right === null) {
+					stack.push(right);
+					return true;
+				}
+				if (typeof right !== "number") throw new Error("Unary operator '>' (MSB) requires a numeric operand.");
+				stack.push((right >> 8) & 0xff);
+				return true;
 		}
-		if (token.value === "!") {
-			if (typeof right !== "number") throw new Error("Unary operator '!' requires a numeric operand.");
-			stack.push(right === 0 ? 1 : 0);
-			return true;
-		}
-		if (token.value === "UNARY_LSB") {
-			if (typeof right !== "number") throw new Error("Unary operator '<' (LSB) requires a numeric operand.");
-			stack.push(right & 0xff);
-			return true;
-		}
-		if (token.value === "UNARY_MSB") {
-			if (typeof right !== "number") throw new Error("Unary operator '>' (MSB) requires a numeric operand.");
-			stack.push((right >> 8) & 0xff);
-			return true;
-		}
+
 		return false;
 	}
 
-	private handleArrayAccessOperator(token: OperatorToken, right: SymbolValue | undefined, stack: (SymbolValue | null)[]): boolean {
+	private handleArrayAccessOperator(token: OperatorToken, right: SymbolValue | undefined | null, stack: (SymbolValue | null)[]): boolean {
 		if (token.value === "ARRAY_ACCESS") {
-			if (typeof right !== "number") throw new Error(`Array index must be a number on line ${token.line}.`);
+			const arrIdx = right === null ? 0 : right;
+			if (typeof arrIdx !== "number") throw new Error(`Array index must be a number on line ${token.line}.`);
 
 			const array = stack.pop() as SymbolValue[];
 			if (!Array.isArray(array)) throw new Error(`Attempted to index a non-array value on line ${token.line}.`);
 
-			if (right < 0 || right >= array.length) throw new Error(`Array index ${right} out of bounds for array of length ${array.length} on line ${token.line}.`);
+			if (arrIdx < 0 || arrIdx >= array.length)
+				throw new Error(`Array index ${arrIdx} out of bounds for array of length ${array.length} on line ${token.line}.`);
 
-			stack.push(array[right] as SymbolValue);
+			stack.push(array[arrIdx] as SymbolValue);
 			return true;
 		}
 		return false;
 	}
 
-	private handleBinaryOperator(token: OperatorToken, right: SymbolValue | undefined, stack: (SymbolValue | null)[]): void {
-		let left = stack.pop();
+	private handleBinaryOperator(token: OperatorToken, right: SymbolValue | undefined | null, stack: (SymbolValue | null)[]): void {
+		const left = stack.pop();
 		if (left === undefined || right === undefined) throw `line: ${token.line} Binary operator '${token.value}' requires two operands.`;
 
-		if (typeof left === "string" && typeof right === "number" && left.length === 1) {
-			switch (token.value) {
-				case "&":
-					stack.push(left.charCodeAt(0) & right);
-					return;
-				case "|":
-					stack.push(left.charCodeAt(0) | right);
-					return;
-			}
-		}
-
 		// Handle string operations first
-		if (typeof left === "string" || typeof right === "string") {
-			const leftStr = String(left);
-			const rightStr = String(right);
+		if (typeof left === "string") {
+			// eg: "A" | $80
+			if (left.length === 1 && (typeof right === "number" || right === null)) {
+				switch (token.value) {
+					case "&":
+						stack.push(right === null ? null : left.charCodeAt(0) & right);
+						return;
+					case "|":
+						stack.push(right === null ? null : left.charCodeAt(0) | right);
+						return;
+				}
+			}
+
+			if (typeof right !== "string") throw new Error(`Binary operator '${token.value}' requires two strings.`);
+
 			switch (token.value) {
 				case "+":
-					stack.push(leftStr + rightStr);
+					stack.push(left + right);
 					return;
 				case "=":
 				case "==":
-					stack.push(leftStr === rightStr ? 1 : 0);
+					stack.push(left === right ? 1 : 0);
 					return;
 				case "!=":
-					stack.push(leftStr !== rightStr ? 1 : 0);
+					stack.push(left !== right ? 1 : 0);
 					return;
 				default:
 					throw new Error(`Operator '${token.value}' cannot be applied to strings.`);
 			}
 		}
 
-		if (left === null) left = 0;
+		// when pass 1 and forward ref
+		if (left === null || right === null) {
+			stack.push(null);
+			return;
+		}
 		if (typeof left !== "number" || typeof right !== "number") throw new Error(`Binary operator '${token.value}' requires two numbers.`);
 
 		// Numeric operations
@@ -705,16 +726,15 @@ export class ExpressionEvaluator {
 			}
 
 			case "LOCAL_LABEL": {
-				if (!context.currentGlobalLabel) {
-					throw new Error(`Local label reference ':${token.value}' used without a preceding global label on line ${token.line}.`);
-				}
+				if (!context.currentGlobalLabel) throw `Local label reference ':${token.value}' used without a preceding global label.`;
+
 				const qualifiedName = `${context.currentGlobalLabel}.${token.value}`;
 				const value = this.assembler.symbolTable.lookupSymbol(qualifiedName);
 				if (value !== undefined) return value;
 
 				if (context.allowForwardRef) return null; // Pass 1: Assume 0 for forward references.
 
-				throw `Undefined local label ':${token.value}' in scope '${context.currentGlobalLabel}' on line ${token.line}.`;
+				throw `Undefined local label ':${token.value}' in scope '${context.currentGlobalLabel}'.`;
 			}
 
 			case "ANONYMOUS_LABEL_REF": {
@@ -722,55 +742,9 @@ export class ExpressionEvaluator {
 				const addr = this.assembler.namelessLabels.findNearest(context.pc, distance);
 
 				if (addr === null && !context.allowForwardRef)
-					throw `Not enough ${distance < 0 ? "preceding" : "succeeding"} anonymous labels to satisfy '${token.value}' on line ${token.line}.`;
+					throw `Not enough ${distance < 0 ? "preceding" : "succeeding"} anonymous labels to satisfy '${token.value}'.`;
 
 				return addr;
-
-				/*
-				const labels = this.assembler.anonymousLabels;
-				const direction = token.value.startsWith("-") ? -1 : 1;
-				const count = Number.parseInt(token.value.substring(1), 10);
-
-				// labels.sort((a, b) => a - b);
-
-				// console.log("");
-				// console.log(
-				// 	"LABELS",
-				// 	labels.map((pc) => getHex(pc)),
-				// );
-				// console.log("DIRECTION", direction, "COUNT", count, "PC", getHex(context.pc));
-
-				if (direction === -1) {
-					// Backward reference: Find the last label defined *before* the current PC.
-					const relevantLabels = labels.filter((pc) => pc <= context.pc);
-
-					// console.log(
-					// 	"RELEVANTLABELS",
-					// 	relevantLabels.map((pc) => getHex(pc)),
-					// );
-
-					if (relevantLabels.length < count) throw `Not enough preceding anonymous labels to satisfy '${token.value}' on line ${token.line}.`;
-					return relevantLabels[relevantLabels.length - count] as SymbolValue;
-				}
-
-				// Forward reference: Find the first label defined *at or after* the current PC.
-				const relevantLabels = labels.filter((pc) => pc >= context.pc);
-
-				// console.log(
-				// 	"RELEVANTLABELS",
-				// 	relevantLabels.map((pc) => getHex(pc)),
-				// );
-
-				if (relevantLabels.length < count) {
-					// Pass 1: Assume 0 for forward references.
-					if (context.allowForwardRef) return null;
-
-					// During pass 2, this is a fatal error.
-					throw `Not enough succeeding anonymous labels to satisfy '${token.value}' on line ${token.line}.`;
-				}
-
-				return relevantLabels[count - 1] as SymbolValue;
-*/
 			}
 
 			default:
