@@ -83,13 +83,18 @@ export class LogDirective implements IDirective {
 
 	private formatValue(value: unknown): string {
 		if (Array.isArray(value)) return `[${value.map((v) => this.formatValue(v)).join(", ")}]`;
+		if (typeof value === "object") {
+			console.log(value);
+			return JSON.stringify(value);
+		}
+
 		return String(value);
 	}
 
 	private emitLog(assembler: Assembler, message: string): void {
 		switch (this.mode) {
 			case "ERR":
-				throw new Error(`[ERROR] ${message}`);
+				throw `${message}`;
 			case "WARN":
 				assembler.logger.warn(message);
 				break;
