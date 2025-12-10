@@ -175,7 +175,6 @@ export class Assembler {
 
 		this.pass = 1;
 		this.parser.setPosition(0);
-		// this.anonymousLabels = [];
 		this.namelessLabels.clear();
 
 		this.lastGlobalLabel = null;
@@ -274,16 +273,7 @@ export class Assembler {
 				}
 
 				case "ANONYMOUS_LABEL_DEF": {
-					// console.log(colors.blue("ADD ANONYMOUS LABEL"), getHex(this.currentPC, 4));
-
-					// this.anonymousLabels.push(this.currentPC);
-					this.namelessLabels.add(this.currentPC, token);
-
-					// console.log(
-					// 	"LABELS",
-					// 	this.anonymousLabels.map((pc) => getHex(pc)),
-					// );
-
+					this.namelessLabels.add({ address: this.currentPC, ...token, file: this.currentFilename });
 					break;
 				}
 
@@ -389,6 +379,7 @@ export class Assembler {
 
 				case "LABEL": {
 					this.lastGlobalLabel = token.value;
+					// TODO : this is not true anymore
 					// In functions, the scope is lost between the passes
 					if (this.symbolTable.hasSymbolInScope(token.value)) this.symbolTable.updateSymbol(token.value, this.currentPC);
 					else this.symbolTable.defineConstant(token.value, this.currentPC);
@@ -399,14 +390,7 @@ export class Assembler {
 				}
 
 				case "ANONYMOUS_LABEL_DEF":
-					// console.log(colors.blue("UPDATE ANONYMOUS LABEL"), anonymousLabelCounter, getHex(this.currentPC, 4));
-					// console.log(
-					// 	"LABELS",
-					// 	this.anonymousLabels.map((pc) => getHex(pc)),
-					// );
-
-					// this.anonymousLabels[anonymousLabelCounter++] = this.currentPC;
-					this.namelessLabels.add(this.currentPC, token);
+					this.namelessLabels.add({ address: this.currentPC, ...token, file: this.currentFilename });
 
 					break;
 			}
@@ -418,6 +402,8 @@ export class Assembler {
 
 		const currentStream = this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState;
 		if (currentStream.macroArgs) operandTokens = this.substituteTokens(operandTokens, currentStream.macroArgs) as OperatorStackToken[];
+
+		const instructionPC = this.currentPC;
 
 		// It's an instruction. Resolve its size and advance the PC.
 		try {
@@ -431,6 +417,13 @@ export class Assembler {
 				}),
 			);
 			this.currentPC += sizeInfo.bytes;
+
+			const operandString = operandTokens.map((t) => (t.type === "NUMBER" ? `$${getHex(Number(t.value))}` : t.value)).join("");
+			this.lister.bytes({
+				addr: instructionPC,
+				bytes: Array.from({ length: sizeInfo.bytes }, () => 0),
+				text: `${mnemonicToken.value} ${operandString}`,
+			});
 		} catch (e) {
 			const errorMessage = e instanceof Error ? e.message : String(e);
 			throw `line ${mnemonicToken.line}: Could not determine size of instruction '${mnemonicToken.value}'.\n${JSON.stringify(operandTokens)}\n${errorMessage}`;
