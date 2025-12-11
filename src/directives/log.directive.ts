@@ -69,11 +69,11 @@ export class LogDirective implements IDirective {
 		for (const exprTokens of exprs) {
 			// try {
 			const value = this.assembler.expressionEvaluator.evaluate(exprTokens, {
-				pc: context.pc,
+				PC: context.PC,
 				// assembler: this.assembler,
 				allowForwardRef: context.allowForwardRef ?? false,
 				macroArgs: context.macroArgs,
-				currentGlobalLabel: context.currentGlobalLabel,
+				currentLabel: context.currentLabel,
 			});
 
 			outputs.push(this.formatValue(value));

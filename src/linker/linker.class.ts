@@ -1,5 +1,7 @@
+import type { ValueHolder } from "../assembler/expression.types";
 import type { Parser } from "../assembler/parser.class";
 import type { Assembler } from "../assembler/polyasm";
+import type { DirectiveContext } from "../directives/directive.interface";
 import type { Logger } from "../helpers/logger.class";
 import type { ScalarToken } from "../shared/lexer/lexer.class";
 import { pushNumber } from "../utils/array.utils";
@@ -32,6 +34,7 @@ export class Linker {
 	private outputFile: TOutputFile = { filename: "" };
 	private endianess: 1 | -1 = 1;
 	private assembler: Assembler | undefined;
+	private PC: ValueHolder = { value: 0 };
 
 	constructor(private logger?: Logger) {}
 
@@ -121,7 +124,7 @@ export class Linker {
 	}
 	public emitString(value: string, _offset?: number) {
 		this.finalObj.push(...stringToASCIICharCodes(value));
-		if (this.assembler) this.assembler.currentPC += value.length;
+		if (this.assembler) this.PC.value += value.length;
 	}
 	public emitByte(value: number, offset?: number) {
 		if (offset !== undefined) {
@@ -129,7 +132,7 @@ export class Linker {
 			return;
 		}
 		pushNumber(this.finalObj, value, 1);
-		if (this.assembler) this.assembler.currentPC += 1;
+		if (this.assembler) this.PC.value += 1;
 	}
 	public emitWord(value: number, offset?: number) {
 		if (offset !== undefined) {
@@ -137,7 +140,7 @@ export class Linker {
 			return;
 		}
 		pushNumber(this.finalObj, value, this.endianess * 2);
-		if (this.assembler) this.assembler.currentPC += 2;
+		if (this.assembler) this.PC.value += 2;
 	}
 	public emitLong(value: number, offset?: number) {
 		if (offset !== undefined) {
@@ -145,7 +148,7 @@ export class Linker {
 			return;
 		}
 		pushNumber(this.finalObj, value, this.endianess * 4);
-		if (this.assembler) this.assembler.currentPC += 4;
+		if (this.assembler) this.PC.value += 4;
 	}
 	public emitBytes(value: number[], _offset?: number) {
 		// if (offset !== undefined) {
@@ -153,7 +156,7 @@ export class Linker {
 		// 	return;
 		// }
 		this.finalObj.push(...value);
-		if (this.assembler) this.assembler.currentPC += value.length;
+		if (this.assembler) this.PC.value += value.length;
 	}
 
 	public link(script: string, parser: Parser, assembler: Assembler) {
@@ -162,12 +165,12 @@ export class Linker {
 
 		// assembler.symbolTable.clear();
 		assembler.symbolTable.defineConstant("segments", this.segments);
-		assembler.currentPC = 0;
+		this.PC.value = 0;
 
 		parser.lexer.commentChar = "#";
 		parser.start(script);
 
-		let lastGlobalLabel: string | undefined;
+		let currentLabel: string | undefined;
 
 		while (parser.tokenStreamStack.length > 0) {
 			const token = parser.next();
@@ -184,10 +187,10 @@ export class Linker {
 					const directiveToken = parser.next() as ScalarToken;
 					if (directiveToken?.type !== "IDENTIFIER") throw new Error(`Bad directive in line ${token.line} - ${directiveToken.value}`);
 
-					const directiveContext = {
+					const directiveContext: DirectiveContext = {
 						isAssembling: true,
-						pc: assembler.currentPC,
-						currentGlobalLabel: lastGlobalLabel,
+						PC: this.PC,
+						currentLabel,
 						writebytes: (_bytes: number[]) => {},
 					};
 					if (!dispatcher.dispatch(directiveToken, directiveContext))
@@ -195,15 +198,15 @@ export class Linker {
 					break;
 				}
 				case "IDENTIFIER":
-					lastGlobalLabel = token.value;
+					currentLabel = token.value;
 					break;
 
 				case "OPERATOR":
-					if (token.value === "=" && lastGlobalLabel) {
-						const directiveContext = {
+					if (token.value === "=" && currentLabel) {
+						const directiveContext: DirectiveContext = {
 							isAssembling: true,
-							pc: assembler.currentPC,
-							currentGlobalLabel: lastGlobalLabel,
+							PC: this.PC,
+							currentLabel,
 							writebytes: (_bytes: number[]) => {},
 						};
 						if (!dispatcher.dispatch(token, directiveContext)) throw new Error(`Syntax error in line ${token.line} - Unexpected directive '${token.value}'`);

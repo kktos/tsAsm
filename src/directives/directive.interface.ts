@@ -1,9 +1,9 @@
-import type { EvaluationContext } from "../assembler/expression";
+import type { EvaluationContext } from "../assembler/expression.types";
 import type { Prettify } from "../cli/schema";
 import type { ScalarToken } from "../shared/lexer/lexer.class";
 
 export type DirectiveContext = Prettify<
-	Omit<EvaluationContext, "symbolTable"> & {
+	EvaluationContext & {
 		writebytes: (bytes: number[]) => void;
 		isAssembling: boolean;
 	}

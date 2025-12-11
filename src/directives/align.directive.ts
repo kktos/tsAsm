@@ -24,8 +24,8 @@ export class AlignDirective implements IDirective {
 			// Check if boundary is a power of two, which is a common requirement.
 			if ((boundary & 1) !== 0) this.logger.warn(`Warning on line ${directive.line}: .ALIGN boundary $${getHex(boundary)} is not a power of two.`);
 
-			const newPC = (this.assembler.currentPC + boundary - 1) & ~(boundary - 1);
-			this.assembler.currentPC = newPC;
+			const newPC = (context.PC.value + boundary - 1) & ~(boundary - 1);
+			context.PC.value = newPC;
 		} catch (e) {
 			this.logger.warn(`Warning on line ${directive.line}: Could not evaluate .ALIGN expression. ${e}`);
 		}
@@ -41,8 +41,8 @@ export class AlignDirective implements IDirective {
 
 			const fillerValue = valueTokens.length > 0 ? this.assembler.expressionEvaluator.evaluateAsNumber(valueTokens, context) : 0; // Default to 0 if no value is provided
 
-			const newPC = (this.assembler.currentPC + boundary - 1) & ~(boundary - 1);
-			const paddingBytes = newPC - this.assembler.currentPC;
+			const newPC = (context.PC.value + boundary - 1) & ~(boundary - 1);
+			const paddingBytes = newPC - context.PC.value;
 
 			if (context.isAssembling && paddingBytes > 0) {
 				// Ensure filler value is a single byte
@@ -50,7 +50,7 @@ export class AlignDirective implements IDirective {
 				const bytes = new Array(paddingBytes).fill(filler);
 				context.writebytes(bytes);
 			} else {
-				this.assembler.currentPC = newPC;
+				context.PC.value = newPC;
 			}
 		} catch (e) {
 			this.logger.error(`ERROR on line ${directive.line}: Failed to evaluate .ALIGN expression. ${e}`);

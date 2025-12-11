@@ -33,7 +33,7 @@ describe("Macro Handling", () => {
 			macroArgs.set("MY_ARG", tokenize("10"));
 
 			const tokens = tokenize("MY_ARG * 2");
-			const result = evaluator.evaluateAsNumber(tokens, { pc: 0, macroArgs });
+			const result = evaluator.evaluateAsNumber(tokens, { PC: { value: 0 }, macroArgs });
 			expect(result).toBe(20);
 		});
 
@@ -47,7 +47,7 @@ describe("Macro Handling", () => {
 			// The expression inside the macro is "COMPLEX_ARG / 2"
 			const tokens = tokenize("COMPLEX_ARG / 2");
 			// Expected: (5 + 5) / 2 = 5
-			const result = evaluator.evaluateAsNumber(tokens, { pc: 0, macroArgs });
+			const result = evaluator.evaluateAsNumber(tokens, { PC: { value: 0 }, macroArgs });
 			expect(result).toBe(5);
 		});
 

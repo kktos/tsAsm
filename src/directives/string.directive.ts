@@ -16,13 +16,13 @@ export class StringDirective implements IDirective {
 	) {}
 
 	public handlePassOne(directive: ScalarToken, context: DirectiveContext) {
-		this.assembler.currentPC += this.calculateSize(directive, context);
+		context.PC.value += this.calculateSize(directive, context);
 	}
 
 	public handlePassTwo(directive: ScalarToken, context: DirectiveContext) {
 		// If not assembling, just advance PC
 		if (!context.isAssembling) {
-			this.assembler.currentPC += this.calculateSize(directive, context);
+			context.PC.value += this.calculateSize(directive, context);
 			return;
 		}
 
@@ -30,7 +30,7 @@ export class StringDirective implements IDirective {
 		const bytes = this.encodeData(directive, strings);
 
 		this.lister.bytes({
-			addr: this.assembler.currentPC,
+			addr: context.PC.value,
 			bytes,
 			text: `.${directive.value} ${strings.map((s) => `"${s}"`).join(" ")}`,
 			hasText: true,

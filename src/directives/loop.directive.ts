@@ -28,9 +28,6 @@ export class LoopDirective implements IDirective {
 	) {}
 
 	public handlePassOne(directive: ScalarToken, context: DirectiveContext) {
-		// const argTokens = this.assembler.parser.getInstructionTokens();
-		// this.assembler.parser.skipToDirectiveEnd(directive.value);
-		// this.assembler.lister.directive(directive, argTokens);
 		switch (directive.value) {
 			case "FOR":
 				this.handleForLoop(directive, context);
@@ -71,13 +68,7 @@ export class LoopDirective implements IDirective {
 		const indexIteratorToken = asIndex < exprHeader.length ? (exprHeader[asIndex + 1] as IdentifierToken) : undefined;
 
 		// Resolve the array from the symbol table
-		const evaluationContext = {
-			pc: this.assembler.currentPC,
-			macroArgs: this.assembler.parser.tokenStreamStack[this.assembler.parser.tokenStreamStack.length - 1]?.macroArgs,
-			currentGlobalLabel: this.assembler.lastGlobalLabel ?? undefined,
-		};
-
-		const arrayValue = this.assembler.expressionEvaluator.evaluate(expressionTokens, evaluationContext);
+		const arrayValue = this.assembler.expressionEvaluator.evaluate(expressionTokens, context);
 		if (!Array.isArray(arrayValue))
 			throw `line ${directive.line} The expression in the .FOR loop did not evaluate to an array.\nvalue: ${typeof arrayValue}\n${arrayValue}\n`;
 
@@ -116,13 +107,7 @@ export class LoopDirective implements IDirective {
 		const exprTokens = asPos === -1 ? countExpressionTokens : countExpressionTokens.slice(0, asPos);
 		if (asPos !== -1) iteratorToken = countExpressionTokens[asPos + 1] as IdentifierToken;
 
-		const evaluationContext = {
-			pc: this.assembler.currentPC,
-			macroArgs: this.assembler.parser.tokenStreamStack[this.assembler.parser.tokenStreamStack.length - 1]?.macroArgs,
-			currentGlobalLabel: this.assembler.lastGlobalLabel ?? undefined,
-		};
-
-		const count = this.assembler.expressionEvaluator.evaluateAsNumber(exprTokens, evaluationContext);
+		const count = this.assembler.expressionEvaluator.evaluateAsNumber(exprTokens, context);
 		if (count <= 0) throw new Error("Repeat count must be a positive integer.");
 
 		// Find loop body

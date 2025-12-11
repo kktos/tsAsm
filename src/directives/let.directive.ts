@@ -1,5 +1,4 @@
 import type { Assembler } from "../assembler/polyasm";
-import type { StreamState } from "../assembler/polyasm.types";
 import type { SymbolValue } from "../assembler/symbol.class";
 import type { Lister } from "../helpers/lister.class";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
@@ -15,15 +14,15 @@ export class LetDirective implements IDirective {
 		private readonly lister: Lister,
 	) {}
 
-	public handlePassOne(directive: ScalarToken, _context: DirectiveContext): void {
-		this.handleLet(directive);
+	public handlePassOne(directive: ScalarToken, context: DirectiveContext): void {
+		this.handleLet(directive, context);
 	}
 
-	public handlePassTwo(directive: ScalarToken, _context: DirectiveContext): void {
-		this.handleLet(directive);
+	public handlePassTwo(directive: ScalarToken, context: DirectiveContext): void {
+		this.handleLet(directive, context);
 	}
 
-	private handleLet(directive: ScalarToken) {
+	private handleLet(directive: ScalarToken, context: DirectiveContext) {
 		const lineTokens = this.assembler.parser.getExpressionTokens(directive);
 		if (!hasNoMoreThanOne<Token>(lineTokens, (token: Token) => token.type === "OPERATOR" && token.value === "="))
 			throw `.LET expression only allows operator "==" to test equality`;
@@ -33,24 +32,13 @@ export class LetDirective implements IDirective {
 		let name: SymbolValue = "";
 		const nameTokens = lineTokens.slice(0, index);
 		if (nameTokens.length === 1 && nameTokens[0]?.type === "IDENTIFIER") name = nameTokens[0].value;
-		else
-			name = this.assembler.expressionEvaluator.evaluate(nameTokens, {
-				pc: this.assembler.currentPC,
-				allowForwardRef: this.assembler.pass === 1,
-				currentGlobalLabel: this.assembler.lastGlobalLabel,
-				macroArgs: (this.assembler.parser.tokenStreamStack[this.assembler.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
-			});
+		else name = this.assembler.expressionEvaluator.evaluate(nameTokens, context);
 		if (typeof name !== "string") throw "Expected a string for symbol name";
 
 		if (!this.assembler.parser.lexer.isValidIdentifier(name)) throw `Invalid identifier for symbol name : ${name}`;
 
 		const expressionTokens = lineTokens.slice(index + 1);
-		const value = this.assembler.expressionEvaluator.evaluate(expressionTokens, {
-			pc: this.assembler.currentPC,
-			allowForwardRef: this.assembler.pass === 1,
-			currentGlobalLabel: this.assembler.lastGlobalLabel,
-			macroArgs: (this.assembler.parser.tokenStreamStack[this.assembler.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
-		});
+		const value = this.assembler.expressionEvaluator.evaluate(expressionTokens, context);
 
 		this.lister.symbol(name, value);
 

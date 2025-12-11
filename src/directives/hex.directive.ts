@@ -14,12 +14,12 @@ export class HexDirective implements IDirective {
 		private readonly lister: Lister,
 	) {}
 
-	public handlePassOne(directive: ScalarToken, _context: DirectiveContext) {
+	public handlePassOne(directive: ScalarToken, context: DirectiveContext) {
 		const hexString = this.extractHexData(directive);
 
 		try {
 			const byteCount = hexString.replace(/\s/g, "").length / 2;
-			this.assembler.currentPC += byteCount;
+			context.PC.value += byteCount;
 
 			this.lister.directive(directive, `<${byteCount} bytes>`);
 		} catch (e) {
@@ -44,7 +44,7 @@ export class HexDirective implements IDirective {
 
 		if (context.isAssembling && bytes.length > 0) context.writebytes(bytes);
 
-		if (!context.isAssembling) this.assembler.currentPC += bytes.length;
+		if (!context.isAssembling) context.PC.value += bytes.length;
 
 		this.lister.directive(directive, `<${bytes.length} bytes>`);
 	}

@@ -16,17 +16,17 @@ export class OrgDirective implements IDirective {
 		const orgExpressionTokens = this.assembler.parser.getInstructionTokens();
 
 		try {
-			this.assembler.currentPC = this.assembler.expressionEvaluator.evaluateAsNumber(orgExpressionTokens, context);
+			context.PC.value = this.assembler.expressionEvaluator.evaluateAsNumber(orgExpressionTokens, context);
 		} catch (e) {
 			this.logger.warn(`Warning on line ${directive.line}: Failed to evaluate .ORG expression. Assuming 0x0000. Error: ${e}`);
-			this.assembler.currentPC = 0x0000;
+			context.PC.value = 0x0000;
 		}
 	}
 
 	public handlePassTwo(directive: ScalarToken, context: DirectiveContext) {
 		const orgExpressionTokens = this.assembler.parser.getInstructionTokens();
 		try {
-			this.assembler.currentPC = this.assembler.expressionEvaluator.evaluateAsNumber(orgExpressionTokens, context);
+			context.PC.value = this.assembler.expressionEvaluator.evaluateAsNumber(orgExpressionTokens, context);
 		} catch (e) {
 			throw `line ${directive.line}: Failed to evaluate .ORG expression. ${e}`;
 		}

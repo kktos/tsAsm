@@ -17,8 +17,8 @@ export class FunctionDirective implements IDirective {
 		if (nameToken?.type !== "IDENTIFIER") throw new Error(`line ${directive.line}: Expected function name after .FUNCTION directive.`);
 
 		// Define the function name as a label in the current scope.
-		if (this.assembler.pass === 1) this.assembler.symbolTable.defineConstant(nameToken.value, context.pc);
-		else this.assembler.symbolTable.updateSymbol(nameToken.value, context.pc);
+		if (this.assembler.pass === 1) this.assembler.symbolTable.defineConstant(nameToken.value, context.PC);
+		else this.assembler.symbolTable.updateSymbol(nameToken.value, context.PC);
 
 		// this.logger.log(`Defined function label '${nameToken.value}' @ $${context.pc.toString(16)}`);
 		this.lister.directive(directive, nameToken.raw as string);

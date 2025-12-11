@@ -41,7 +41,7 @@ export class SegmentDirective implements IDirective {
 		}
 
 		this.assembler.useSegment(name);
-		this.lister.directive(directive, name, `ORG $${getHex(this.assembler.currentPC)}`);
+		this.lister.directive(directive, name, `ORG $${getHex(context.PC.value)}`);
 	}
 
 	public handlePassTwo(directive: ScalarToken, context: DirectiveContext) {

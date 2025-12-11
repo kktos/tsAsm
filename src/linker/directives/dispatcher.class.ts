@@ -40,7 +40,7 @@ export class Dispatcher {
 		this.register("IF", new IfDirective(assembler));
 		this.register("END", new EndDirective(assembler));
 
-		this.register("ENDIAN", new EndianDirective(assembler, linker));
+		this.register("ENDIAN", new EndianDirective(assembler.parser, linker));
 		this.register("OUTPUT", new OutputDirective(assembler, linker));
 		this.register("WRITE", new WriteDirective(assembler, linker));
 	}

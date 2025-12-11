@@ -38,7 +38,7 @@ describe("Function IIF()", () => {
 		const { evaluator, tokenize } = setup();
 
 		const tokens = tokenize('.IIF(1!=0, "true", "false")');
-		const result = evaluator.evaluate(tokens, { pc: 0 });
+		const result = evaluator.evaluate(tokens, { PC: { value: 0 } });
 		expect(result).toBe("true");
 	});
 
@@ -46,7 +46,7 @@ describe("Function IIF()", () => {
 		const { evaluator, tokenize } = setup();
 
 		const tokens = tokenize('.IIF(1==0, "true", "false")');
-		const result = evaluator.evaluate(tokens, { pc: 0 });
+		const result = evaluator.evaluate(tokens, { PC: { value: 0 } });
 		expect(result).toBe("false");
 	});
 
@@ -54,6 +54,6 @@ describe("Function IIF()", () => {
 		const { evaluator, tokenize } = setup();
 
 		const tokens = tokenize('.IIF("toto", "true", "false")');
-		expect(() => evaluator.evaluate(tokens, { pc: 0 })).toThrow("First argument to .IIF() must be a number on line 1.");
+		expect(() => evaluator.evaluate(tokens, { PC: { value: 0 } })).toThrow("First argument to .IIF() must be a number on line 1.");
 	});
 });

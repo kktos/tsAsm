@@ -9,7 +9,7 @@ export class AssignDirective implements IDirective {
 	constructor(private readonly assembler: Assembler) {}
 
 	public handlePassOne(directive: ScalarToken, context: DirectiveContext): void {
-		const label = context.currentGlobalLabel;
+		const label = context.currentLabel;
 		if (!label) throw `Syntax error in line ${directive.line} - Missing symbol name before =`;
 
 		const expressionTokens = this.assembler.parser.getInstructionTokens();

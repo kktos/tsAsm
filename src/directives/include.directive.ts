@@ -12,7 +12,7 @@ export class IncludeDirective implements IDirective {
 		private readonly lister: Lister,
 	) {}
 
-	public handlePassOne(directive: ScalarToken, _context: DirectiveContext) {
+	public handlePassOne(directive: ScalarToken, context: DirectiveContext) {
 		// Find expression tokens on the header line after 'OF', optionally followed by 'AS'
 		const expressionTokens = this.assembler.parser.getInstructionTokens();
 		// let asIndex = exprHeader.findIndex((t) => t.type === "IDENTIFIER" && t.value === "AS");
@@ -23,13 +23,7 @@ export class IncludeDirective implements IDirective {
 		if (expressionTokens.length === 0) throw new Error(`.INCLUDE requires a string argument on line ${directive.line}.`);
 
 		// 2. Resolve the array from the symbol table
-		const evaluationContext = {
-			pc: this.assembler.currentPC,
-			macroArgs: this.assembler.parser.tokenStreamStack[this.assembler.parser.tokenStreamStack.length - 1]?.macroArgs,
-			currentGlobalLabel: this.assembler.lastGlobalLabel ?? undefined,
-		};
-
-		const filename = this.assembler.expressionEvaluator.evaluate(expressionTokens, evaluationContext);
+		const filename = this.assembler.expressionEvaluator.evaluate(expressionTokens, context);
 		if (typeof filename !== "string") throw new Error(`.INCLUDE requires a string argument on line ${directive.line}.`);
 
 		try {
@@ -49,15 +43,9 @@ export class IncludeDirective implements IDirective {
 		}
 	}
 
-	public handlePassTwo(directive: ScalarToken, _context: DirectiveContext) {
+	public handlePassTwo(directive: ScalarToken, context: DirectiveContext) {
 		const expressionTokens = this.assembler.parser.getInstructionTokens();
-
-		const evaluationContext = {
-			pc: this.assembler.currentPC,
-			macroArgs: this.assembler.parser.tokenStreamStack[this.assembler.parser.tokenStreamStack.length - 1]?.macroArgs,
-			currentGlobalLabel: this.assembler.lastGlobalLabel ?? undefined,
-		};
-		const filename = this.assembler.expressionEvaluator.evaluate(expressionTokens, evaluationContext);
+		const filename = this.assembler.expressionEvaluator.evaluate(expressionTokens, context);
 		if (typeof filename !== "string") throw new Error(`.INCLUDE requires a string argument on line ${directive.line}.`);
 
 		this.assembler.startNewStream(filename);

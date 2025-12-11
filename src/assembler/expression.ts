@@ -5,88 +5,23 @@
  */
 
 import type { PASymbolTable, SymbolValue } from "../assembler/symbol.class";
-import type { Logger } from "../helpers/logger.class";
-import type { Segment } from "../linker/linker.class";
 import { functionDispatcher } from "../shared/functions/dispatcher";
 import type { FunctionToken, OperatorStackToken, OperatorToken, ScalarToken, Token } from "../shared/lexer/lexer.class";
-import { resolveSysVar } from "../shared/sysvar";
-import type { Assembler } from "./polyasm";
-
-const PRECEDENCE: Record<string, number> = {
-	// Property access has the highest precedence
-	PROPERTY_ACCESS: 10,
-
-	// Unary operators (highest precedence)
-	UNARY_MINUS: 9,
-	"!": 9,
-	UNARY_MSB: 9,
-	UNARY_LSB: 9,
-
-	// High precedence for array indexing
-	ARRAY_ACCESS: 9,
-
-	// Multiplicative
-	"*": 8,
-	"/": 8,
-	"%": 8,
-
-	// Additive
-	"+": 7,
-	"-": 7,
-
-	// Bitwise shifts
-	"<<": 6,
-	">>": 6,
-
-	// Relational
-	"<": 5,
-	">": 5,
-	"<=": 5,
-	">=": 5,
-
-	// Equality
-	"=": 4,
-	"==": 4,
-	"!=": 4,
-
-	// Bitwise AND
-	"&": 3,
-
-	// Logical AND
-	"&&": 2,
-
-	// Bitwise XOR
-	"^": 1,
-
-	// Bitwise OR / Logical OR (lowest precedence)
-	"|": 0,
-	"||": 0,
-};
-
-/**
- * Provides the context needed for the expression evaluator to resolve symbols
- * and the current program counter.
- */
-export interface EvaluationContext {
-	symbolTable: PASymbolTable;
-	pc: number;
-	macroArgs?: Map<string, Token[]>;
-	allowForwardRef?: boolean;
-	currentGlobalLabel?: string | null;
-	numberMax?: number;
-}
+import { type EvaluationContext, PRECEDENCE } from "./expression.types";
+import type { NamelessLabels } from "./namelesslabels.class";
 
 export class ExpressionEvaluator {
 	constructor(
-		private assembler: Assembler,
-		_logger: Logger,
+		private readonly symbolTable: PASymbolTable,
+		private readonly namelessLabels: NamelessLabels,
+		private readonly resolveSysValue: (nameToken: Token) => SymbolValue | undefined,
 	) {}
 
 	/**
 	 * Resolves an array of tokens into a single numeric value using the
 	 * Shunting-Yard algorithm for precedence and RPN evaluation.
 	 */
-	public evaluate(tokens: Token[], context: Omit<EvaluationContext, "symbolTable">): SymbolValue {
+	public evaluate(tokens: Token[], context: EvaluationContext): SymbolValue {
 		if (tokens.length === 0) return 0;
 
 		const rpnTokens = this.infixToRPN(tokens, context);
@@ -97,7 +32,7 @@ export class ExpressionEvaluator {
 	 * A wrapper for evaluate that ensures the result is a number.
 	 * Throws an error if the expression evaluates to a string or array.
 	 */
-	public evaluateAsNumber(tokens: Token[], context: Omit<EvaluationContext, "symbolTable">) {
+	public evaluateAsNumber(tokens: Token[], context: EvaluationContext) {
 		let result = this.evaluate(tokens, context);
 
 		if (context.numberMax && typeof result === "string") {
@@ -121,7 +56,7 @@ export class ExpressionEvaluator {
 	 * Evaluates the contents of an array literal.
 	 * e.g., [ "red", "green", 1+2 ]
 	 */
-	private evaluateArray(tokens: Token[], context: Omit<EvaluationContext, "symbolTable">): SymbolValue[] {
+	private evaluateArray(tokens: Token[], context: EvaluationContext): SymbolValue[] {
 		const elements: SymbolValue[] = [];
 		let currentExpression: Token[] = [];
 
@@ -147,9 +82,7 @@ export class ExpressionEvaluator {
 	/** Handles comma tokens, used as separators in function arguments. */
 	private handleComma(token: Token, outputQueue: Token[], operatorStack: Token[]): void {
 		// A comma separates arguments, so we evaluate the expression for the current argument.
-		while (operatorStack.length > 0 && operatorStack[operatorStack.length - 1]?.value !== "(") {
-			outputQueue.push(operatorStack.pop() as Token);
-		}
+		while (operatorStack.length > 0 && operatorStack[operatorStack.length - 1]?.value !== "(") outputQueue.push(operatorStack.pop() as Token);
 
 		// Ensure the comma is inside a function call.
 		let foundParen = false;
@@ -306,7 +239,7 @@ export class ExpressionEvaluator {
 	}
 
 	/** Converts an infix token stream to Reverse Polish Notation (RPN). */
-	private infixToRPN(tokens: Token[], context: Omit<EvaluationContext, "symbolTable">) {
+	private infixToRPN(tokens: Token[], context: EvaluationContext) {
 		const outputQueue: Token[] = [];
 		const operatorStack: (OperatorToken | FunctionToken)[] = [];
 		let lastToken: Token | undefined;
@@ -443,7 +376,7 @@ export class ExpressionEvaluator {
 	}
 
 	/** Evaluates a Reverse Polish Notation (RPN) token stream. */
-	private evaluateRPN(rpnTokens: Token[], context: Omit<EvaluationContext, "symbolTable">): SymbolValue {
+	private evaluateRPN(rpnTokens: Token[], context: EvaluationContext): SymbolValue {
 		const stack: (SymbolValue | null)[] = [];
 
 		for (const token of rpnTokens) {
@@ -475,20 +408,14 @@ export class ExpressionEvaluator {
 
 				case "SYSVAR": {
 					// Resolve system variables like .NAMESPACE / .NS and .PC
-					const val = resolveSysVar(token, {
-						pc: context.pc,
-						symbolTable: this.assembler.symbolTable,
-						pass: this.assembler.pass,
-						segment: this.assembler.linker.currentSegment as Segment,
-						filename: this.assembler.currentFilename,
-					});
+					const val = this.resolveSysValue(token) as SymbolValue;
 					stack.push(val);
 					break;
 				}
 
 				case "FUNCTION": {
 					const argCount = token.argCount ?? 0;
-					functionDispatcher(token.value.toUpperCase(), stack, token, this.assembler.symbolTable, argCount);
+					functionDispatcher(token.value.toUpperCase(), stack, token, this.symbolTable, argCount);
 					break;
 				}
 
@@ -688,7 +615,7 @@ export class ExpressionEvaluator {
 		}
 	}
 
-	private resolveValue(token: Token, context: Omit<EvaluationContext, "symbolTable">): SymbolValue | null {
+	private resolveValue(token: Token, context: EvaluationContext): SymbolValue | null {
 		switch (token.type) {
 			case "NUMBER":
 				return Number.parseInt(token.value, 10);
@@ -698,7 +625,7 @@ export class ExpressionEvaluator {
 
 			case "IDENTIFIER":
 			case "LABEL": {
-				if (token.value === "*") return context.pc;
+				if (token.value === "*") return context.PC.value;
 
 				// PRIORITY 1: Check if it's a macro argument from the current stream context.
 				const macroArgTokens = context.macroArgs?.get(token.value);
@@ -706,7 +633,7 @@ export class ExpressionEvaluator {
 					// Recursively evaluate the tokens passed as the argument.
 					return this.evaluate(macroArgTokens, context);
 
-				const value = this.assembler.symbolTable.lookupSymbol(token.value);
+				const value = this.symbolTable.lookupSymbol(token.value);
 
 				// If the symbol's value is an array of tokens, it's a macro parameter.
 				// We need to evaluate it recursively. This handles .EQU with token arrays.
@@ -717,7 +644,7 @@ export class ExpressionEvaluator {
 				if (context.allowForwardRef) return null; // Pass 1: Assume 0 for forward references.
 
 				// If we are here, the symbol is not defined. Let's find suggestions.
-				const suggestions = this.assembler.symbolTable.findSimilarSymbols(token.value);
+				const suggestions = this.symbolTable.findSimilarSymbols(token.value);
 				let errorMessage = `Undefined symbol '${token.value}' on line ${token.line}.`;
 				if (suggestions.length > 0 && suggestions[0] !== token.value) errorMessage += ` Did you mean '${suggestions[0]}'?`;
 
@@ -725,20 +652,20 @@ export class ExpressionEvaluator {
 			}
 
 			case "LOCAL_LABEL": {
-				if (!context.currentGlobalLabel) throw `Local label reference ':${token.value}' used without a preceding global label.`;
+				if (!context.currentLabel) throw `Local label reference ':${token.value}' used without a preceding global label.`;
 
-				const qualifiedName = `${context.currentGlobalLabel}.${token.value}`;
-				const value = this.assembler.symbolTable.lookupSymbol(qualifiedName);
+				const qualifiedName = `${context.currentLabel}.${token.value}`;
+				const value = this.symbolTable.lookupSymbol(qualifiedName);
 				if (value !== undefined) return value;
 
 				if (context.allowForwardRef) return null; // Pass 1: Assume 0 for forward references.
 
-				throw `Undefined local label ':${token.value}' in scope '${context.currentGlobalLabel}'.`;
+				throw `Undefined local label ':${token.value}' in scope '${context.currentLabel}'.`;
 			}
 
 			case "ANONYMOUS_LABEL_REF": {
 				const distance = Number.parseInt(token.value, 10);
-				const addr = this.assembler.namelessLabels.findNearest(context.pc, distance);
+				const addr = this.namelessLabels.findNearest(context.PC.value, distance);
 
 				if (addr === null && !context.allowForwardRef)
 					throw `Not enough ${distance < 0 ? "preceding" : "succeeding"} anonymous labels to satisfy '${token.value}'.`;

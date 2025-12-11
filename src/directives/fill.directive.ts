@@ -20,7 +20,7 @@ export class FillDirective implements IDirective {
 		if (countTokens.length > 0) {
 			try {
 				const count = this.assembler.expressionEvaluator.evaluateAsNumber(countTokens, context);
-				this.assembler.currentPC += count;
+				context.PC.value += count;
 			} catch (e) {
 				// Error evaluating in pass one, but we must continue. Assume 0 size.
 				this.logger.warn(`Warning on line ${directive.line}: Could not evaluate .FILL count. ${e}`);
@@ -44,7 +44,7 @@ export class FillDirective implements IDirective {
 		}
 
 		// Advance PC if not assembling; writeBytes already advances PC when assembling
-		if (!context.isAssembling) this.assembler.currentPC += count;
+		if (!context.isAssembling) context.PC.value += count;
 	}
 
 	/**

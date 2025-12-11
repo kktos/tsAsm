@@ -1,5 +1,4 @@
 import type { Assembler } from "../assembler/polyasm";
-import type { StreamState } from "../assembler/polyasm.types";
 import type { SymbolValue } from "../assembler/symbol.class";
 import type { Lister } from "../helpers/lister.class";
 import type { ScalarToken } from "../shared/lexer/lexer.class";
@@ -18,7 +17,8 @@ export class DataDirective implements IDirective {
 	public handlePassOne(directive: ScalarToken, context: DirectiveContext) {
 		if (context.isAssembling) {
 			const byteCount = this.calculateDirectiveSize();
-			this.assembler.currentPC += byteCount;
+			// this.assembler.currentPC += byteCount;
+			context.PC.value += byteCount;
 			this.lister.directive(directive, `<${byteCount} bytes>`);
 		}
 	}
@@ -73,12 +73,13 @@ export class DataDirective implements IDirective {
 			const exprTokens = this.assembler.parser.getExpressionTokens(directive);
 			if (exprTokens.length === 0) break;
 
-			const value = this.assembler.expressionEvaluator.evaluate(exprTokens, {
-				pc: this.assembler.currentPC,
-				allowForwardRef: this.assembler.pass === 1,
-				currentGlobalLabel: this.assembler.lastGlobalLabel,
-				macroArgs: (this.assembler.parser.tokenStreamStack[this.assembler.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
-			});
+			// const value = this.assembler.expressionEvaluator.evaluate(exprTokens, {
+			// 	pc: this.assembler.currentPC,
+			// 	allowForwardRef: this.assembler.pass === 1,
+			// 	currentLabel: this.assembler.lastGlobalLabel,
+			// 	macroArgs: (this.assembler.parser.tokenStreamStack[this.assembler.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
+			// });
+			const value = this.assembler.expressionEvaluator.evaluate(exprTokens, context);
 
 			switch (typeof value) {
 				case "string": {
@@ -100,7 +101,7 @@ export class DataDirective implements IDirective {
 		}
 
 		this.lister.directiveWithBytes({
-			addr: context.pc,
+			addr: context.PC.value,
 			bytes: outputBytes,
 			pragma: directive,
 			params: params as SymbolValue[][],

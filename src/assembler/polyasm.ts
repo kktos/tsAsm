@@ -10,6 +10,7 @@ import { Linker, type Segment } from "../linker/linker.class";
 import type { OperatorStackToken, ScalarToken, Token } from "../shared/lexer/lexer.class";
 import { getHex } from "../utils/hex.util";
 import { ExpressionEvaluator } from "./expression";
+import type { ValueHolder } from "./expression.types";
 import { NamelessLabels } from "./namelesslabels.class";
 import { Parser } from "./parser.class";
 import type { AssemblerOptions, DataProcessor, FileHandler, StreamState } from "./polyasm.types";
@@ -20,21 +21,19 @@ const DEFAULT_PC = 0x1000;
 export class Assembler {
 	public logger: Logger;
 	public lister: Lister;
-	// public lexer: AssemblyLexer;
 	public parser: Parser;
 	public linker: Linker;
 	private cpuHandler: CPUHandler;
 	public fileHandler: FileHandler;
 
 	public symbolTable: PASymbolTable;
-	public currentPC = 0;
 	private isAssembling = true;
+	private PC: ValueHolder = { value: 0 };
 
 	public currentFilename = "";
 	private filenameStack: string[] = [];
 
 	public lastGlobalLabel: string | null = null;
-	// public anonymousLabels: number[] = [];
 	public namelessLabels: NamelessLabels = new NamelessLabels();
 
 	public macroDefinitions: Map<string, MacroDefinition> = new Map();
@@ -62,16 +61,15 @@ export class Assembler {
 			if (!this.rawDataProcessors.has(this.defaultRawDataProcessor)) throw "Default data processor not found.";
 		}
 
-		// this.currentPC = DEFAULT_PC;
 		this.symbolTable = new PASymbolTable();
-		// this.symbolTable.assignVariable("*", this.currentPC);
 
-		this.expressionEvaluator = new ExpressionEvaluator(this, this.logger);
+		const resolveSysValue = (nameToken: Token) => this.resolveSysValue(nameToken);
+		this.expressionEvaluator = new ExpressionEvaluator(this.symbolTable, this.namelessLabels, resolveSysValue);
+
 		this.directiveHandler = new DirectiveHandler(this, this.logger, this.lister);
 		this.macroHandler = new MacroHandler(this);
 
 		this.emitter = new EventEmitter();
-		// this.lexer = new AssemblyLexer(this.emitter);
 		this.parser = new Parser(this.emitter);
 
 		this.pass = -1;
@@ -81,6 +79,30 @@ export class Assembler {
 			if (options.segments[0]) this.linker.useSegment(options.segments[0].name);
 		}
 	}
+
+	private resolveSysValue(nameToken: Token) {
+		switch (nameToken.value) {
+			case "NAMESPACE":
+			case "NS":
+				return this.symbolTable.getCurrentNamespace();
+
+			case "PC":
+				return this.PC.value;
+
+			case "PASS":
+				return this.pass;
+
+			case "SEGMENT":
+				return this.linker.currentSegment;
+
+			case "FILENAME":
+				return this.currentFilename;
+
+			default:
+				throw new Error(`Unknown system variable: ${name} on line ${nameToken.line}.`);
+		}
+	}
+
 	/** Convenience: add a segment via the embedded linker. */
 	public addSegment(name: string, start: number, size: number, padValue = 0, resizable = false): void {
 		this.linker.addSegment(name, start, size, padValue, resizable);
@@ -93,13 +115,13 @@ export class Assembler {
 
 	/** Select the active segment for subsequent writes. */
 	public useSegment(name: string) {
-		this.currentPC = this.linker.useSegment(name);
+		this.PC.value = this.linker.useSegment(name);
 	}
 
 	/** Write an array of bytes at the current PC via the linker and advance PC. */
 	private writeBytes(bytes: number[]) {
-		this.linker.writeBytes(this.currentPC, bytes);
-		this.currentPC += bytes.length;
+		this.linker.writeBytes(this.PC.value, bytes);
+		this.PC.value += bytes.length;
 	}
 
 	public getDataProcessor(name?: string) {
@@ -175,7 +197,7 @@ export class Assembler {
 
 		let blockDepth = 0;
 
-		if (this.linker.segments.length) this.currentPC = this.linker.segments[0] ? this.linker.segments[0].start : DEFAULT_PC;
+		if (this.linker.segments.length) this.PC.value = this.linker.segments[0] ? this.linker.segments[0].start : DEFAULT_PC;
 
 		while (this.parser.tokenStreamStack.length > 0) {
 			const token = this.parser.next();
@@ -194,9 +216,9 @@ export class Assembler {
 
 					const directiveContext: DirectiveContext = {
 						isAssembling: this.isAssembling,
-						pc: this.currentPC,
+						PC: this.PC,
 						allowForwardRef: true,
-						currentGlobalLabel: this.lastGlobalLabel,
+						currentLabel: this.lastGlobalLabel,
 						macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
 						writebytes: this.writeBytes.bind(this),
 					};
@@ -215,9 +237,9 @@ export class Assembler {
 					if (token.value === "=" && this.lastGlobalLabel) {
 						const directiveContext: DirectiveContext = {
 							isAssembling: this.isAssembling,
-							pc: this.currentPC,
+							PC: this.PC,
 							allowForwardRef: true,
-							currentGlobalLabel: this.lastGlobalLabel,
+							currentLabel: this.lastGlobalLabel,
 							macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
 							writebytes: this.writeBytes.bind(this),
 						};
@@ -248,15 +270,15 @@ export class Assembler {
 					// It's not a known instruction, so treat it as a label definition.
 					this.lastGlobalLabel = token.value;
 					if (!this.parser.isOperator("=") && !this.parser.isDirective("EQU")) {
-						this.symbolTable.defineConstant(token.value, this.currentPC);
-						this.lister.label(token.raw ?? token.value, this.currentPC);
+						this.symbolTable.defineConstant(token.value, this.PC.value);
+						this.lister.label(token.raw ?? token.value, this.PC.value);
 					}
 					break;
 				}
 				case "LABEL": {
 					this.lastGlobalLabel = token.value;
-					this.symbolTable.defineConstant(token.value, this.currentPC);
-					this.lister.label(token.raw ?? token.value, this.currentPC);
+					this.symbolTable.defineConstant(token.value, this.PC.value);
+					this.lister.label(token.raw ?? token.value, this.PC.value);
 					break;
 				}
 
@@ -264,12 +286,12 @@ export class Assembler {
 					if (!this.lastGlobalLabel) throw `ERROR on line ${token.line}: Local label ':${token.value}' defined without a preceding global label.`;
 
 					const qualifiedName = `${this.lastGlobalLabel}.${token.value}`;
-					this.symbolTable.defineConstant(qualifiedName, this.currentPC);
+					this.symbolTable.defineConstant(qualifiedName, this.PC.value);
 					break;
 				}
 
 				case "ANONYMOUS_LABEL_DEF": {
-					this.namelessLabels.add({ address: this.currentPC, ...token, file: this.currentFilename });
+					this.namelessLabels.add({ address: this.PC.value, ...token, file: this.currentFilename });
 					break;
 				}
 
@@ -290,7 +312,7 @@ export class Assembler {
 	private passTwo(): void {
 		this.logger.log("\n--- Starting Pass 2: Code Generation ---");
 		this.pass = 2;
-		if (this.linker.segments.length) this.currentPC = this.linker.segments[0] ? this.linker.segments[0].start : DEFAULT_PC;
+		if (this.linker.segments.length) this.PC.value = this.linker.segments[0] ? this.linker.segments[0].start : DEFAULT_PC;
 
 		this.symbolTable.setNamespace("global");
 
@@ -316,9 +338,9 @@ export class Assembler {
 					if (token.value === "=" && this.lastGlobalLabel) {
 						const directiveContext: DirectiveContext = {
 							isAssembling: this.isAssembling,
-							pc: this.currentPC,
+							PC: this.PC,
 							macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
-							currentGlobalLabel: this.lastGlobalLabel,
+							currentLabel: this.lastGlobalLabel,
 							writebytes: this.writeBytes.bind(this),
 						};
 
@@ -343,9 +365,9 @@ export class Assembler {
 					this.lastGlobalLabel = token.value;
 					if (!this.parser.isOperator("=") && !this.parser.isDirective("EQU")) {
 						// In functions, the scope is lost between the passes
-						if (this.symbolTable.hasSymbolInScope(token.value)) this.symbolTable.updateSymbol(token.value, this.currentPC);
-						else this.symbolTable.defineConstant(token.value, this.currentPC);
-						this.lister.label(token.raw ?? token.value, this.currentPC);
+						if (this.symbolTable.hasSymbolInScope(token.value)) this.symbolTable.updateSymbol(token.value, this.PC.value);
+						else this.symbolTable.defineConstant(token.value, this.PC.value);
+						this.lister.label(token.raw ?? token.value, this.PC.value);
 					}
 					break;
 				}
@@ -357,10 +379,9 @@ export class Assembler {
 					const streamBefore = this.parser.tokenStreamStack.length;
 					const directiveContext: DirectiveContext = {
 						isAssembling: this.isAssembling,
-						pc: this.currentPC,
+						PC: this.PC,
 						macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
-						currentGlobalLabel: this.lastGlobalLabel,
-						// options: this.options,
+						currentLabel: this.lastGlobalLabel,
 						writebytes: this.writeBytes.bind(this),
 					};
 
@@ -378,16 +399,16 @@ export class Assembler {
 					this.lastGlobalLabel = token.value;
 					// TODO : this is not true anymore
 					// In functions, the scope is lost between the passes
-					if (this.symbolTable.hasSymbolInScope(token.value)) this.symbolTable.updateSymbol(token.value, this.currentPC);
-					else this.symbolTable.defineConstant(token.value, this.currentPC);
+					if (this.symbolTable.hasSymbolInScope(token.value)) this.symbolTable.updateSymbol(token.value, this.PC.value);
+					else this.symbolTable.defineConstant(token.value, this.PC.value);
 
-					this.lister.label(token.raw ?? token.value, this.currentPC);
+					this.lister.label(token.raw ?? token.value, this.PC.value);
 
 					break;
 				}
 
 				case "ANONYMOUS_LABEL_DEF":
-					this.namelessLabels.add({ address: this.currentPC, ...token, file: this.currentFilename });
+					this.namelessLabels.add({ address: this.PC.value, ...token, file: this.currentFilename });
 
 					break;
 			}
@@ -400,20 +421,19 @@ export class Assembler {
 		const currentStream = this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState;
 		if (currentStream.macroArgs) operandTokens = this.substituteTokens(operandTokens, currentStream.macroArgs) as OperatorStackToken[];
 
-		const instructionPC = this.currentPC;
+		const instructionPC = this.PC.value;
 
 		// It's an instruction. Resolve its size and advance the PC.
 		try {
 			const sizeInfo = this.cpuHandler.resolveAddressingMode(mnemonicToken.value, operandTokens, (exprTokens, numberMax = 0) =>
 				this.expressionEvaluator.evaluateAsNumber(exprTokens, {
-					pc: this.currentPC,
+					PC: this.PC,
 					allowForwardRef: true,
-					currentGlobalLabel: this.lastGlobalLabel,
-					// assembler: this,
+					currentLabel: this.lastGlobalLabel,
 					numberMax,
 				}),
 			);
-			this.currentPC += sizeInfo.bytes;
+			this.PC.value += sizeInfo.bytes;
 
 			const operandString = operandTokens.map((t) => (t.type === "NUMBER" ? `$${getHex(Number(t.value))}` : t.value)).join("");
 			this.lister.bytes({
@@ -429,7 +449,7 @@ export class Assembler {
 
 	private handleInstructionPassTwo(mnemonicToken: OperatorStackToken): void {
 		{
-			const instructionPC = this.currentPC;
+			const instructionPC = this.PC.value;
 			// It's an instruction.
 			let operandTokens = this.parser.getInstructionTokens(mnemonicToken) as OperatorStackToken[];
 
@@ -441,10 +461,9 @@ export class Assembler {
 					// 1. Resolve Mode & Address
 					const modeInfo = this.cpuHandler.resolveAddressingMode(mnemonicToken.value, operandTokens, (exprTokens, numberMax = 0) =>
 						this.expressionEvaluator.evaluateAsNumber(exprTokens, {
-							pc: this.currentPC,
+							PC: this.PC,
 							macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
-							// assembler: this,
-							currentGlobalLabel: this.lastGlobalLabel,
+							currentLabel: this.lastGlobalLabel,
 							numberMax,
 						}),
 					);
@@ -452,7 +471,7 @@ export class Assembler {
 					// 2. Encode Bytes using resolved info
 					const encodedBytes = this.cpuHandler.encodeInstruction([mnemonicToken, ...operandTokens], {
 						...modeInfo,
-						pc: this.currentPC,
+						pc: this.PC.value,
 					});
 
 					// 3. LOGGING (New location)
@@ -463,20 +482,15 @@ export class Assembler {
 						text: `${mnemonicToken.value} ${operandString}`,
 					});
 
-					// const hexBytes = encodedBytes.map((b) => getHex(b)).join(" ");
-					// const addressHex = instructionPC.toString(16).padStart(4, "0").toUpperCase();
-					// const operandString = operandTokens.map((t) => (t.type === "NUMBER" ? `$${getHex(Number(t.value))}` : t.value)).join("");
-					// this.logger.log(`${addressHex}: ${hexBytes.padEnd(8)} | ${mnemonicToken.value} ${operandString} ; Line ${mnemonicToken.line}`);
-
-					this.linker.writeBytes(this.currentPC, encodedBytes);
-					this.currentPC += encodedBytes.length;
+					this.linker.writeBytes(this.PC.value, encodedBytes);
+					this.PC.value += encodedBytes.length;
 				} catch (e) {
 					const errorMessage = e instanceof Error ? e.message : String(e);
 					throw new Error(`line ${mnemonicToken.line}: Invalid instruction syntax or unresolved symbol. Error: ${errorMessage}`);
 				}
 			} else {
 				// Not assembling: just advance PC
-				this.currentPC += this.getInstructionSize();
+				this.PC.value += this.getInstructionSize();
 			}
 		}
 	}
@@ -489,9 +503,9 @@ export class Assembler {
 
 			const sizeInfo = this.cpuHandler.resolveAddressingMode(mnemonicToken.value, operandTokens, (exprTokens) =>
 				this.expressionEvaluator.evaluateAsNumber(exprTokens, {
-					pc: this.currentPC,
+					PC: this.PC,
 					macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
-					currentGlobalLabel: this.lastGlobalLabel, // Added for instruction size evaluation
+					currentLabel: this.lastGlobalLabel, // Added for instruction size evaluation
 				}),
 			);
 			return sizeInfo.bytes;
@@ -532,23 +546,18 @@ export class Assembler {
 				// If we found a complete `[...]` expression
 				if (j < tokens.length && tokens[j]?.value === "]") {
 					const indexValue = this.expressionEvaluator.evaluateAsNumber(indexTokens, {
-						pc: this.currentPC,
-						macroArgs: macroArgs, // Pass current macro args for evaluation context
-						// assembler: this,
-						currentGlobalLabel: this.lastGlobalLabel,
+						PC: this.PC,
+						macroArgs: macroArgs,
+						currentLabel: this.lastGlobalLabel,
 					});
 
-					// const argTokens = macroArgs.get(token.value) ?? [];
-					// const expressions = this.extractExpressionArrayTokens(argTokens);
 					const argTokens = macroArgs.get(token.value) ?? [];
 
-					// if(expressions[0].type==="ARRAY") expressions = expressions[0].value;
 					const expressions = argTokens[0]?.value as Token[][];
 
 					if (indexValue < 0 || indexValue >= expressions.length)
 						throw new Error(`line ${token.line}: Macro argument index ${indexValue} out of bounds for argument '${token.value}'.`);
 
-					// result.push(...expressions[indexValue]);
 					result.push(...(expressions[indexValue] as Token[]));
 					i = j; // Advance main loop past `]`
 					continue;
