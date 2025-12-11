@@ -1,4 +1,6 @@
 import type { Assembler } from "../assembler/polyasm";
+import type { Lister } from "../helpers/lister.class";
+import type { Logger } from "../helpers/logger.class";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
 import { getHex } from "../utils/hex.util";
 import type { DirectiveContext, IDirective } from "./directive.interface";
@@ -6,6 +8,11 @@ import type { DirectiveContext, IDirective } from "./directive.interface";
 export class AlignDirective implements IDirective {
 	public isBlockDirective = false;
 	public isRawDirective = false;
+
+	constructor(
+		private readonly logger: Logger,
+		private readonly lister: Lister,
+	) {}
 
 	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void {
 		const alignExpressionTokens = assembler.parser.getInstructionTokens();
@@ -16,12 +23,12 @@ export class AlignDirective implements IDirective {
 			if (boundary <= 0) return;
 
 			// Check if boundary is a power of two, which is a common requirement.
-			if ((boundary & 1) !== 0) assembler.logger.warn(`Warning on line ${directive.line}: .ALIGN boundary $${getHex(boundary)} is not a power of two.`);
+			if ((boundary & 1) !== 0) this.logger.warn(`Warning on line ${directive.line}: .ALIGN boundary $${getHex(boundary)} is not a power of two.`);
 
 			const newPC = (assembler.currentPC + boundary - 1) & ~(boundary - 1);
 			assembler.currentPC = newPC;
 		} catch (e) {
-			assembler.logger.warn(`Warning on line ${directive.line}: Could not evaluate .ALIGN expression. ${e}`);
+			this.logger.warn(`Warning on line ${directive.line}: Could not evaluate .ALIGN expression. ${e}`);
 		}
 	}
 
@@ -47,7 +54,7 @@ export class AlignDirective implements IDirective {
 				assembler.currentPC = newPC;
 			}
 		} catch (e) {
-			assembler.logger.error(`ERROR on line ${directive.line}: Failed to evaluate .ALIGN expression. ${e}`);
+			this.logger.error(`ERROR on line ${directive.line}: Failed to evaluate .ALIGN expression. ${e}`);
 		}
 	}
 

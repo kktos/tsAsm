@@ -1,4 +1,5 @@
 import type { Assembler } from "../assembler/polyasm";
+import type { Logger } from "../helpers/logger.class";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
@@ -6,6 +7,7 @@ export class FillDirective implements IDirective {
 	public isBlockDirective = false;
 	public isRawDirective = false;
 
+	constructor(private readonly logger: Logger) {}
 	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void {
 		const argTokens = assembler.parser.getInstructionTokens();
 
@@ -17,7 +19,7 @@ export class FillDirective implements IDirective {
 				assembler.currentPC += count;
 			} catch (e) {
 				// Error evaluating in pass one, but we must continue. Assume 0 size.
-				assembler.logger.warn(`Warning on line ${directive.line}: Could not evaluate .FILL count. ${e}`);
+				this.logger.warn(`Warning on line ${directive.line}: Could not evaluate .FILL count. ${e}`);
 			}
 		}
 	}

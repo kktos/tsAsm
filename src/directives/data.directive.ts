@@ -1,6 +1,7 @@
 import type { Assembler } from "../assembler/polyasm";
 import type { StreamState } from "../assembler/polyasm.types";
 import type { SymbolValue } from "../assembler/symbol.class";
+import type { Lister } from "../helpers/lister.class";
 import type { ScalarToken } from "../shared/lexer/lexer.class";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
@@ -8,13 +9,16 @@ export class DataDirective implements IDirective {
 	public isBlockDirective = false;
 	public isRawDirective = false;
 
-	constructor(private readonly bytesPerElement: number) {}
+	constructor(
+		private readonly bytesPerElement: number,
+		private readonly lister: Lister,
+	) {}
 
 	public handlePassOne(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
 		if (assembler.isAssembling) {
 			const byteCount = this.calculateDirectiveSize(assembler);
 			assembler.currentPC += byteCount;
-			assembler.lister.directive(directive, `<${byteCount} bytes>`);
+			this.lister.directive(directive, `<${byteCount} bytes>`);
 		}
 	}
 
@@ -94,7 +98,7 @@ export class DataDirective implements IDirective {
 			assembler.parser.advance();
 		}
 
-		assembler.lister.directiveWithBytes({
+		this.lister.directiveWithBytes({
 			addr: context.pc,
 			bytes: outputBytes,
 			pragma: directive,

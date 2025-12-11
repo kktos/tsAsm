@@ -1,10 +1,13 @@
 import type { Assembler } from "../assembler/polyasm";
+import type { Lister } from "../helpers/lister.class";
 import type { ScalarToken } from "../shared/lexer/lexer.class";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class FunctionDirective implements IDirective {
 	public isBlockDirective = true;
 	public isRawDirective = false;
+
+	constructor(private readonly lister: Lister) {}
 
 	private defineAndScope(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
 		const nameToken = assembler.parser.next() as ScalarToken;
@@ -14,8 +17,8 @@ export class FunctionDirective implements IDirective {
 		if (assembler.pass === 1) assembler.symbolTable.defineConstant(nameToken.value, context.pc);
 		else assembler.symbolTable.updateSymbol(nameToken.value, context.pc);
 
-		// assembler.logger.log(`Defined function label '${nameToken.value}' @ $${context.pc.toString(16)}`);
-		assembler.lister.directive(directive, nameToken.raw as string);
+		// this.logger.log(`Defined function label '${nameToken.value}' @ $${context.pc.toString(16)}`);
+		this.lister.directive(directive, nameToken.raw as string);
 
 		const scopeId = `@@function_${assembler.symbolTable.getSymbolFullPath(nameToken.value)}`;
 		assembler.symbolTable.restoreAndPushScope(scopeId);

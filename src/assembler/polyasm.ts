@@ -66,7 +66,7 @@ export class Assembler {
 		// this.symbolTable.assignVariable("*", this.currentPC);
 
 		this.expressionEvaluator = new ExpressionEvaluator(this, this.logger);
-		this.directiveHandler = new DirectiveHandler(this, this.logger);
+		this.directiveHandler = new DirectiveHandler(this, this.logger, this.lister);
 		this.macroHandler = new MacroHandler(this);
 
 		this.emitter = new EventEmitter();

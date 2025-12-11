@@ -1,4 +1,5 @@
 import type { Assembler } from "../assembler/polyasm";
+import type { Lister } from "../helpers/lister.class";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
@@ -6,6 +7,7 @@ export class DefineDirective implements IDirective {
 	public isBlockDirective = false;
 	public isRawDirective = true;
 
+	constructor(private readonly lister: Lister) {}
 	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
 		const symbolNameToken = assembler.parser.identifier();
 		if (!symbolNameToken) throw new Error(`'.DEFINE' directive on line ${directive.line} requires a symbol name.`);
@@ -32,7 +34,7 @@ export class DefineDirective implements IDirective {
 		const value = processor ? processor(blockContent, context) : blockContent;
 		assembler.symbolTable.defineVariable(symbolNameToken.value, value);
 
-		assembler.lister.directive(directive, symbolNameToken.value);
+		this.lister.directive(directive, symbolNameToken.value);
 	}
 
 	public handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
@@ -71,6 +73,6 @@ export class DefineDirective implements IDirective {
 		// In functions, the scope is lost between the passes
 		assembler.symbolTable.assignVariable(symbolNameToken.value, value);
 
-		assembler.lister.directive(directive, symbolNameToken.value);
+		this.lister.directive(directive, symbolNameToken.value);
 	}
 }

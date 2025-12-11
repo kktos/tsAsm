@@ -1,5 +1,6 @@
 import type { Assembler } from "../assembler/polyasm";
 import type { StreamState } from "../assembler/polyasm.types";
+import type { Lister } from "../helpers/lister.class";
 import type { ScalarToken } from "../shared/lexer/lexer.class";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
@@ -7,6 +8,7 @@ export class EquDirective implements IDirective {
 	public isBlockDirective = false;
 	public isRawDirective = false;
 
+	constructor(private readonly lister: Lister) {}
 	public handlePassOne(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext): void {
 		const labelToken = assembler.parser.ensureToken(assembler.parser.getPosition() - 3);
 
@@ -27,7 +29,7 @@ export class EquDirective implements IDirective {
 			macroArgs: (assembler.parser.tokenStreamStack[assembler.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
 		});
 
-		assembler.lister.symbol(label, value);
+		this.lister.symbol(label, value);
 
 		assembler.symbolTable.defineConstant(label, value);
 	}
@@ -49,7 +51,7 @@ export class EquDirective implements IDirective {
 		// If evaluation produced undefined, treat as an error in Pass 2
 		if (value === undefined) throw new Error(`line ${directive.line}: Unresolved assignment for ${label}`);
 
-		assembler.lister.symbol(label, value);
+		this.lister.symbol(label, value);
 
 		assembler.symbolTable.updateSymbol(label, value);
 	}

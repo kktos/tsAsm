@@ -7,6 +7,7 @@
 
 import { blockDirectives, rawDirectives } from "../assembler/parser.class";
 import type { Assembler } from "../assembler/polyasm";
+import type { Lister } from "../helpers/lister.class";
 import type { Logger } from "../helpers/logger.class";
 import type { ScalarToken } from "../shared/lexer/lexer.class";
 import { AlignDirective } from "./align.directive";
@@ -39,7 +40,8 @@ export class DirectiveHandler {
 	private readonly directiveMap: Map<string, IDirective>;
 	constructor(
 		private readonly assembler: Assembler,
-		readonly logger: Logger,
+		private readonly logger: Logger,
+		private readonly lister: Lister,
 	) {
 		this.assembler = assembler;
 		this.directiveMap = new Map();
@@ -47,28 +49,28 @@ export class DirectiveHandler {
 		this.register("ORG", new OrgDirective());
 		this.register("NAMESPACE", new NamespaceDirective());
 		this.register("MACRO", new MacroDirective());
-		this.register("DEFINE", new DefineDirective());
+		this.register("DEFINE", new DefineDirective(this.lister));
 
-		const functionDirective = new FunctionDirective();
+		const functionDirective = new FunctionDirective(this.lister);
 		this.register("FUNCTION", functionDirective);
 
-		this.register("EQU", new EquDirective());
-		this.register("=", new AssignDirective());
+		this.register("EQU", new EquDirective(this.lister));
+		this.register("=", new AssignDirective(this.lister));
 		this.register("LET", new LetDirective());
-		this.register("EXPORT", new ExportDirective());
+		this.register("EXPORT", new ExportDirective(this.lister));
 
 		this.register("OPTION", new OptionDirective());
 
 		this.register("INCLUDE", new IncludeDirective());
-		this.register("INCBIN", new IncbinDirective());
+		this.register("INCBIN", new IncbinDirective(this.logger, this.lister));
 
-		this.register("HEX", new HexDirective());
-		this.register("DB", new DataDirective(1)); // Define Byte (1 byte)
-		this.register("BYTE", new DataDirective(1)); // Define Byte (1 byte)
-		this.register("DW", new DataDirective(2)); // Define Word (2 bytes)
-		this.register("WORD", new DataDirective(2)); // Define Word (2 bytes)
-		this.register("DL", new DataDirective(4)); // Define Long (4 bytes)
-		this.register("LONG", new DataDirective(4)); // Define Long (4 bytes)
+		this.register("HEX", new HexDirective(this.logger, this.lister));
+		this.register("DB", new DataDirective(1, this.lister)); // Define Byte (1 byte)
+		this.register("BYTE", new DataDirective(1, this.lister)); // Define Byte (1 byte)
+		this.register("DW", new DataDirective(2, this.lister)); // Define Word (2 bytes)
+		this.register("WORD", new DataDirective(2, this.lister)); // Define Word (2 bytes)
+		this.register("DL", new DataDirective(4, this.lister)); // Define Long (4 bytes)
+		this.register("LONG", new DataDirective(4, this.lister)); // Define Long (4 bytes)
 		// this.register("DBYTE", new DataDirective(-2)); // Define Word (2 bytes)
 		// this.register("DWORD", new DataDirective(-4)); // Define Long (4 bytes)
 
@@ -99,21 +101,21 @@ export class DirectiveHandler {
 		this.register("WARNING", warnLogHandler);
 		this.register("WARN", warnLogHandler);
 
-		const fillHandler = new FillDirective();
+		const fillHandler = new FillDirective(this.logger);
 		this.register("FILL", fillHandler);
 		this.register("DS", fillHandler);
 		this.register("RES", fillHandler);
 
-		this.register("ALIGN", new AlignDirective());
+		this.register("ALIGN", new AlignDirective(this.logger, this.lister));
 
 		this.register("SEGMENT", new SegmentDirective());
 
-		const cpuDirective = new CpuDirective();
+		const cpuDirective = new CpuDirective(this.lister);
 		this.register("CPU", cpuDirective);
 		this.register("SETCPU", cpuDirective);
 		this.register("PROCESSOR", cpuDirective);
 
-		this.register("IF", new IfDirective());
+		this.register("IF", new IfDirective(this.logger, this.lister));
 		this.register("END", new EndDirective());
 	}
 

@@ -1,10 +1,17 @@
 import type { Assembler } from "../assembler/polyasm";
+import { Lister } from "../helpers/lister.class";
+import { Logger } from "../helpers/logger.class";
 import type { ScalarToken } from "../shared/lexer/lexer.class";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class HexDirective implements IDirective {
 	public isBlockDirective = true;
 	public isRawDirective = false;
+
+	constructor(
+		private readonly logger: Logger,
+		private readonly lister: Lister,
+	) {}
 
 	public handlePassOne(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
 		const hexString = this.extractHexData(directive, assembler);
@@ -13,9 +20,9 @@ export class HexDirective implements IDirective {
 			const byteCount = hexString.replace(/\s/g, "").length / 2;
 			assembler.currentPC += byteCount;
 
-			assembler.lister.directive(directive, `<${byteCount} bytes>`);
+			this.lister.directive(directive, `<${byteCount} bytes>`);
 		} catch (e) {
-			assembler.logger.warn(`[PASS 1] Warning on line ${directive.line}: Could not calculate size of .HEX block. ${e}`);
+			this.logger.warn(`[PASS 1] Warning on line ${directive.line}: Could not calculate size of .HEX block. ${e}`);
 		}
 	}
 
@@ -38,7 +45,7 @@ export class HexDirective implements IDirective {
 
 		if (!assembler.isAssembling) assembler.currentPC += bytes.length;
 
-		assembler.lister.directive(directive, `<${bytes.length} bytes>`);
+		this.lister.directive(directive, `<${bytes.length} bytes>`);
 	}
 
 	/**

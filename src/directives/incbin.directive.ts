@@ -1,10 +1,17 @@
 import type { Assembler } from "../assembler/polyasm";
+import { Lister } from "../helpers/lister.class";
+import { Logger } from "../helpers/logger.class";
 import type { ScalarToken } from "../shared/lexer/lexer.class";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class IncbinDirective implements IDirective {
 	public isBlockDirective = false;
 	public isRawDirective = false;
+
+	constructor(
+		private readonly logger: Logger,
+		private readonly lister: Lister,
+	) {}
 
 	public handlePassOne(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
 		const expressionTokens = assembler.parser.getInstructionTokens();
@@ -24,9 +31,9 @@ export class IncbinDirective implements IDirective {
 		try {
 			const rawBytes = assembler.fileHandler.readBinaryFile(filename);
 			assembler.currentPC += rawBytes.length;
-			assembler.logger.log(`[PASS 1] Reserved ${rawBytes.length} bytes for binary file: ${filename}`);
+			this.logger.log(`[PASS 1] Reserved ${rawBytes.length} bytes for binary file: ${filename}`);
 		} catch (e) {
-			assembler.logger.error(`[PASS 1] ERROR reading binary file ${filename} for size calculation: ${e}`);
+			this.logger.error(`[PASS 1] ERROR reading binary file ${filename} for size calculation: ${e}`);
 		}
 
 		return undefined;
@@ -60,10 +67,10 @@ export class IncbinDirective implements IDirective {
 					.map((b) => b.toString(16).padStart(2, "0").toUpperCase())
 					.join(" ") + (rawBytes.length > 4 ? "..." : "");
 			const addressHex = assembler.currentPC.toString(16).padStart(4, "0").toUpperCase();
-			assembler.logger.log(`[PASS 2] $${addressHex}: ${bytesStr.padEnd(8)} | Line ${directive.line}: .INCBIN "${filename}" (${rawBytes.length} bytes)`);
+			this.logger.log(`[PASS 2] $${addressHex}: ${bytesStr.padEnd(8)} | Line ${directive.line}: .INCBIN "${filename}" (${rawBytes.length} bytes)`);
 		} catch (e) {
 			const errorMessage = e instanceof Error ? e.message : String(e);
-			assembler.logger.error(`\n[PASS 2] FATAL ERROR on line ${directive.line}: Could not include binary file ${filename}. Error: ${errorMessage}`);
+			this.logger.error(`\n[PASS 2] FATAL ERROR on line ${directive.line}: Could not include binary file ${filename}. Error: ${errorMessage}`);
 			throw new Error(`Assembly failed on line ${directive.line}: Binary include failed.`);
 		}
 
