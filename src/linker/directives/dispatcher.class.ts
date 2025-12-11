@@ -26,17 +26,17 @@ export class Dispatcher {
 		this.assembler = assembler;
 		this.directiveMap = new Map();
 
-		const loopHandler = new LoopDirective();
+		const loopHandler = new LoopDirective(assembler.lister);
 		this.register("FOR", loopHandler);
 		this.register("REPEAT", loopHandler);
 		this.register("=", new AssignDirective());
 
-		this.register("LOG", new LogDirective("LOG"));
-		this.register("ERROR", new LogDirective("ERR"));
-		this.register("WARNING", new LogDirective("WARN"));
+		this.register("LOG", new LogDirective(logger, "LOG"));
+		this.register("ERROR", new LogDirective(logger, "ERR"));
+		this.register("WARNING", new LogDirective(logger, "WARN"));
 
-		this.register("FILL", new FillDirective());
-		this.register("ALIGN", new AlignDirective());
+		this.register("FILL", new FillDirective(logger));
+		this.register("ALIGN", new AlignDirective(logger));
 		this.register("SEGMENT", new SegmentDirective());
 		this.register("IF", new IfDirective());
 		this.register("END", new EndDirective());

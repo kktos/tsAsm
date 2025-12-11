@@ -1,4 +1,5 @@
 import type { Assembler } from "../assembler/polyasm";
+import type { Lister } from "../helpers/lister.class";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
@@ -8,7 +9,10 @@ export class StringDirective implements IDirective {
 	public isBlockDirective = false;
 	public isRawDirective = false;
 
-	constructor(private readonly format: StringFormat) {}
+	constructor(
+		private readonly format: StringFormat,
+		private readonly lister: Lister,
+	) {}
 
 	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
 		assembler.currentPC += this.calculateSize(directive, assembler, context);
@@ -24,7 +28,7 @@ export class StringDirective implements IDirective {
 		const strings = this.getStrings(directive, assembler, context);
 		const bytes = this.encodeData(directive, strings);
 
-		assembler.lister.bytes({
+		this.lister.bytes({
 			addr: assembler.currentPC,
 			bytes,
 			text: `.${directive.value} ${strings.map((s) => `"${s}"`).join(" ")}`,

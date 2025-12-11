@@ -46,7 +46,7 @@ export class DirectiveHandler {
 		this.assembler = assembler;
 		this.directiveMap = new Map();
 
-		this.register("ORG", new OrgDirective());
+		this.register("ORG", new OrgDirective(this.logger));
 		this.register("NAMESPACE", new NamespaceDirective());
 		this.register("MACRO", new MacroDirective());
 		this.register("DEFINE", new DefineDirective(this.lister));
@@ -71,33 +71,33 @@ export class DirectiveHandler {
 		this.register("WORD", new DataDirective(2, this.lister)); // Define Word (2 bytes)
 		this.register("DL", new DataDirective(4, this.lister)); // Define Long (4 bytes)
 		this.register("LONG", new DataDirective(4, this.lister)); // Define Long (4 bytes)
-		// this.register("DBYTE", new DataDirective(-2)); // Define Word (2 bytes)
-		// this.register("DWORD", new DataDirective(-4)); // Define Long (4 bytes)
+		// this.register("DBYTE", new DataDirective(-2, this.logger, this.lister)); // Define Word (2 bytes)
+		// this.register("DWORD", new DataDirective(-4, this.logger, this.lister)); // Define Long (4 bytes)
 
-		this.register("TEXT", new StringDirective("TEXT"));
-		const cstrHandler = new StringDirective("CSTR");
+		this.register("TEXT", new StringDirective("TEXT", this.lister));
+		const cstrHandler = new StringDirective("CSTR", this.lister);
 		this.register("CSTR", cstrHandler);
 		this.register("CSTRING", cstrHandler);
 		this.register("ASCIIZ", cstrHandler);
-		this.register("PSTR", new StringDirective("PSTR"));
-		this.register("PSTRL", new StringDirective("PSTRL"));
+		this.register("PSTR", new StringDirective("PSTR", this.lister));
+		this.register("PSTRL", new StringDirective("PSTRL", this.lister));
 
-		const loopHandler = new LoopDirective();
+		const loopHandler = new LoopDirective(this.lister);
 		this.register("FOR", loopHandler);
 		this.register("REPEAT", loopHandler);
 
-		this.register("LIST", new ListDirective(logger));
+		this.register("LIST", new ListDirective(this.logger));
 
-		const logHandler = new LogDirective("LOG");
+		const logHandler = new LogDirective(this.logger, "LOG");
 		this.register("LOG", logHandler);
 		this.register("ECHO", logHandler);
 		this.register("OUT", logHandler);
 
-		const errLogHandler = new LogDirective("ERR");
+		const errLogHandler = new LogDirective(this.logger, "ERR");
 		this.register("ERROR", errLogHandler);
 		this.register("ERR", errLogHandler);
 
-		const warnLogHandler = new LogDirective("WARN");
+		const warnLogHandler = new LogDirective(this.logger, "WARN");
 		this.register("WARNING", warnLogHandler);
 		this.register("WARN", warnLogHandler);
 
@@ -106,7 +106,7 @@ export class DirectiveHandler {
 		this.register("DS", fillHandler);
 		this.register("RES", fillHandler);
 
-		this.register("ALIGN", new AlignDirective(this.logger, this.lister));
+		this.register("ALIGN", new AlignDirective(this.logger));
 
 		this.register("SEGMENT", new SegmentDirective());
 
@@ -115,7 +115,7 @@ export class DirectiveHandler {
 		this.register("SETCPU", cpuDirective);
 		this.register("PROCESSOR", cpuDirective);
 
-		this.register("IF", new IfDirective(this.logger, this.lister));
+		this.register("IF", new IfDirective());
 		this.register("END", new EndDirective());
 	}
 

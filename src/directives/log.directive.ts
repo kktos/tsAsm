@@ -1,4 +1,5 @@
 import type { Assembler } from "../assembler/polyasm";
+import type { Logger } from "../helpers/logger.class";
 import type { ScalarToken } from "../shared/lexer/lexer.class";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
@@ -6,7 +7,10 @@ export class LogDirective implements IDirective {
 	public isBlockDirective = false;
 	public isRawDirective = false;
 
-	constructor(private mode: "LOG" | "ERR" | "WARN" = "LOG") {}
+	constructor(
+		private readonly logger: Logger,
+		private mode: "LOG" | "ERR" | "WARN" = "LOG",
+	) {}
 
 	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void {
 		this.handle(directive, assembler, {
@@ -55,7 +59,7 @@ export class LogDirective implements IDirective {
 
 		if (exprs.length === 0) {
 			// Nothing to log
-			this.emitLog(assembler, `.LOG on line ${directive.line}:`);
+			this.emitLog(`.LOG on line ${directive.line}:`);
 			return;
 		}
 
@@ -78,7 +82,7 @@ export class LogDirective implements IDirective {
 			// }
 		}
 
-		this.emitLog(assembler, outputs.join("\t"));
+		this.emitLog(outputs.join("\t"));
 	}
 
 	private formatValue(value: unknown): string {
@@ -91,15 +95,15 @@ export class LogDirective implements IDirective {
 		return String(value);
 	}
 
-	private emitLog(assembler: Assembler, message: string): void {
+	private emitLog(message: string): void {
 		switch (this.mode) {
 			case "ERR":
 				throw `${message}`;
 			case "WARN":
-				assembler.logger.warn(message);
+				this.logger.warn(message);
 				break;
 			default:
-				assembler.logger.log(message);
+				this.logger.log(message);
 		}
 	}
 }

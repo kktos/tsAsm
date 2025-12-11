@@ -1,5 +1,6 @@
 import type { Assembler } from "../assembler/polyasm";
 import type { SymbolValue } from "../assembler/symbol.class";
+import type { Lister } from "../helpers/lister.class";
 import type { IdentifierToken, ScalarToken, Token } from "../shared/lexer/lexer.class";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
@@ -20,6 +21,8 @@ export class LoopDirective implements IDirective {
 
 	// A map to store the state of active loops between iterations. Key: A unique identifier for the loop.
 	private loopStates: Map<string, LoopState> = new Map();
+
+	constructor(private readonly lister: Lister) {}
 
 	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
 		// const argTokens = assembler.parser.getInstructionTokens();
@@ -76,7 +79,7 @@ export class LoopDirective implements IDirective {
 		if (!Array.isArray(arrayValue))
 			throw `line ${directive.line} The expression in the .FOR loop did not evaluate to an array.\nvalue: ${typeof arrayValue}\n${arrayValue}\n`;
 
-		assembler.lister.directive(directive, itemIteratorToken, ofToken, exprHeader);
+		this.lister.directive(directive, itemIteratorToken, ofToken, exprHeader);
 
 		// Find the loop body
 		const bodyTokens = assembler.parser.getDirectiveBlockTokens(directive.value);

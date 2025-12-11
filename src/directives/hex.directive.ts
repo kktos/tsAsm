@@ -1,6 +1,6 @@
 import type { Assembler } from "../assembler/polyasm";
-import { Lister } from "../helpers/lister.class";
-import { Logger } from "../helpers/logger.class";
+import type { Lister } from "../helpers/lister.class";
+import type { Logger } from "../helpers/logger.class";
 import type { ScalarToken } from "../shared/lexer/lexer.class";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 

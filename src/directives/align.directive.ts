@@ -1,5 +1,4 @@
 import type { Assembler } from "../assembler/polyasm";
-import type { Lister } from "../helpers/lister.class";
 import type { Logger } from "../helpers/logger.class";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
 import { getHex } from "../utils/hex.util";
@@ -9,10 +8,7 @@ export class AlignDirective implements IDirective {
 	public isBlockDirective = false;
 	public isRawDirective = false;
 
-	constructor(
-		private readonly logger: Logger,
-		private readonly lister: Lister,
-	) {}
+	constructor(private readonly logger: Logger) {}
 
 	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void {
 		const alignExpressionTokens = assembler.parser.getInstructionTokens();

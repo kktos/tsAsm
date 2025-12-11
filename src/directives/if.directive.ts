@@ -1,17 +1,10 @@
 import type { Assembler } from "../assembler/polyasm";
-import { Lister } from "../helpers/lister.class";
-import { Logger } from "../helpers/logger.class";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class IfDirective implements IDirective {
 	isBlockDirective = true;
 	isRawDirective = false;
-
-	constructor(
-		private readonly logger: Logger,
-		private readonly lister: Lister,
-	) {}
 
 	private work(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void {
 		const parser = assembler.parser;
