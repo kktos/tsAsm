@@ -1,6 +1,6 @@
+import type { PASymbolTable, SymbolValue } from "./assembler/symbol.class";
 import type { Token } from "./lexer/lexer.class";
-import type { Segment } from "./linker.class";
-import type { PASymbolTable, SymbolValue } from "./symbol.class";
+import type { Segment } from "./linker/linker.class";
 
 /** Minimal context shape required by sysvar resolver. Avoid importing EvaluationContext to prevent circular imports. */
 export interface SysVarContext {

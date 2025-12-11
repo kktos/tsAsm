@@ -1,5 +1,5 @@
+import type { Assembler } from "../assembler/polyasm";
 import type { ScalarToken } from "../lexer/lexer.class";
-import type { Assembler } from "../polyasm";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class IncludeDirective implements IDirective {
@@ -30,7 +30,7 @@ export class IncludeDirective implements IDirective {
 		try {
 			assembler.startNewStream(filename);
 			assembler.parser.pushTokenStream({
-				newTokens: assembler.lexer.getBufferedTokens(),
+				newTokens: assembler.parser.lexer.getBufferedTokens(),
 				cacheName: assembler.fileHandler.fullpath,
 				onEndOfStream: () => {
 					assembler.endCurrentStream();

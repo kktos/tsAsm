@@ -19,7 +19,7 @@ export default defineConfig([
 	},
 	{
 		// Configuration for the 'libtsasm' library
-		input: "src/polyasm.ts",
+		input: "src/assembler/polyasm.ts",
 		output: {
 			file: "dist/libtsasm.js",
 			format: "esm",

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { EvaluationContext } from "../expression";
-import { Logger } from "../logger.class";
-import { Assembler } from "../polyasm";
-import type { FileHandler } from "../polyasm.types";
+import type { EvaluationContext } from "../assembler/expression";
+import { Assembler } from "../assembler/polyasm";
+import type { FileHandler } from "../assembler/polyasm.types";
+import { Logger } from "../helpers/logger.class";
 
 // Minimal fake CPU handler
 const fakeCPU = {
@@ -47,7 +47,8 @@ describe("System Variables", () => {
 		}
 		const logger = new CaptureLogger();
 		const assembler = new Assembler(fakeCPU, new MockFileHandler(), { logger });
-		const { symbolTable, expressionEvaluator: evaluator, lexer } = assembler;
+		const { symbolTable, expressionEvaluator: evaluator } = assembler;
+		const lexer = assembler.parser.lexer;
 		const tokenize = (expr: string) => lexer.tokenize(expr).filter((t) => t.type !== "EOF");
 		return { assembler, symbolTable, evaluator, lexer, tokenize, logger };
 	};

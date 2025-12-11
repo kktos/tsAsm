@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { Assembler } from "../polyasm";
-import type { SegmentDefinition } from "../polyasm.types";
+import { Assembler } from "../assembler/polyasm";
+import type { SegmentDefinition } from "../assembler/polyasm.types";
 
 // Minimal fake CPU handler
 const fakeCPU = {

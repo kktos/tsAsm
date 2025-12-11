@@ -1,7 +1,7 @@
+import type { Assembler } from "../assembler/polyasm";
+import type { StreamState } from "../assembler/polyasm.types";
+import type { SymbolValue } from "../assembler/symbol.class";
 import type { ScalarToken, Token } from "../lexer/lexer.class";
-import type { Assembler } from "../polyasm";
-import type { StreamState } from "../polyasm.types";
-import type { SymbolValue } from "../symbol.class";
 import { hasNoMoreThanOne } from "../utils/array.utils";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
@@ -36,7 +36,7 @@ export class LetDirective implements IDirective {
 			});
 		if (typeof name !== "string") throw "Expected a string for symbol name";
 
-		if (!assembler.lexer.isValidIdentifier(name)) throw `Invalid identifier for symbol name : ${name}`;
+		if (!assembler.parser.lexer.isValidIdentifier(name)) throw `Invalid identifier for symbol name : ${name}`;
 
 		const expressionTokens = lineTokens.slice(index + 1);
 		const value = assembler.expressionEvaluator.evaluate(expressionTokens, {

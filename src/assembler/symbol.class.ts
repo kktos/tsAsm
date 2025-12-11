@@ -1,5 +1,5 @@
-import type { Token } from "./lexer/lexer.class";
-import { getHex } from "./utils/hex.util";
+import type { Token } from "../lexer/lexer.class";
+import { getHex } from "../utils/hex.util";
 
 // Internal unique key for the global namespace to avoid collisions with user namespaces
 const INTERNAL_GLOBAL = "%%GLOBAL";

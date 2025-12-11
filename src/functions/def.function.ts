@@ -1,5 +1,5 @@
+import type { PASymbolTable } from "../assembler/symbol.class";
 import type { Token } from "../lexer/lexer.class";
-import type { PASymbolTable } from "../symbol.class";
 import type { EvaluationStack, FunctionHandler } from "./types";
 
 export const defFunction: FunctionHandler = (stack: EvaluationStack, _token: Token, symbolTable: PASymbolTable): void => {

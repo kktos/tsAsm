@@ -1,21 +1,25 @@
 import type { EventEmitter } from "node:events";
-import { blockDirectives, rawDirectives } from "./directives/handler";
-import type { AssemblyLexer, IdentifierToken, Token } from "./lexer/lexer.class";
-import type { PushTokenStreamParams, StreamState } from "./polyasm.types";
-import type { SymbolValue } from "./symbol.class";
+import type { PushTokenStreamParams, StreamState } from "../assembler/polyasm.types";
+import type { SymbolValue } from "../assembler/symbol.class";
+import { AssemblyLexer, type IdentifierToken, type NumberToken, type StringToken, type Token } from "../lexer/lexer.class";
+
+export const blockDirectives: Set<string> = new Set();
+export const rawDirectives: Set<string> = new Set();
 
 export class Parser {
 	public activeTokens: Token[] = [];
 	public tokenStreamStack: StreamState[] = [];
 	private streamIdCounter = 0;
 	private tokenStreamCache: Map<string, StreamState> = new Map();
+	public lexer: AssemblyLexer;
 
-	constructor(
-		public lexer: AssemblyLexer,
-		private emitter: EventEmitter,
-	) {}
+	constructor(public emitter: EventEmitter) {
+		this.lexer = new AssemblyLexer(emitter);
+	}
 
 	public start(source: string): void {
+		this.lexer.reset();
+
 		// Start streaming tokens instead of tokenizing the entire source.
 		this.lexer.startStream(source);
 		this.activeTokens = this.lexer.getBufferedTokens();
@@ -97,6 +101,18 @@ export class Parser {
 		if (!token || token.type !== "IDENTIFIER" || (expectedIdentifier && token.value !== expectedIdentifier))
 			throw `Syntax error - Expecting an identifer ${expectedIdentifier}`;
 		return token as IdentifierToken;
+	}
+
+	public string(expectedString?: string) {
+		const token = this.next();
+		if (!token || token.type !== "STRING" || (expectedString && token.value !== expectedString)) throw `Syntax error - Expecting a string ${expectedString}`;
+		return token as StringToken;
+	}
+
+	public number(expectedNumber?: string) {
+		const token = this.next();
+		if (!token || token.type !== "NUMBER" || (expectedNumber && token.value !== expectedNumber)) throw `Syntax error - Expecting a number ${expectedNumber}`;
+		return token as NumberToken;
 	}
 
 	public isOperator(expectedValue?: SymbolValue | SymbolValue[], offset = 0) {
@@ -268,7 +284,7 @@ export class Parser {
 		return tokens;
 	}
 
-	public getExpressionTokens(instructionToken?: Token): Token[] {
+	public getExpressionTokens(instructionToken?: Token, inParentheses = false): Token[] {
 		const tokens: Token[] = [];
 		let parenDepth = 0;
 
@@ -287,16 +303,14 @@ export class Parser {
 			const token = this.peek();
 			if (!token || token.line !== startLine || token.type === "LBRACE" || token.type === "RBRACE" || token.type === "EOF") break;
 
-			if (token.value === "(") {
-				parenDepth++;
-			} else if (token.value === ")") {
-				parenDepth--;
-			} else if (token.type === "COMMA" && parenDepth <= 0) {
-				break;
-			}
+			if (token.value === "(") parenDepth++;
+			else if (token.value === ")") parenDepth--;
+			else if (token.type === "COMMA" && parenDepth <= 0) break;
 
 			this.consume(1);
 			tokens.push(token);
+
+			if (inParentheses && parenDepth === 0) break;
 		}
 		return tokens;
 	}

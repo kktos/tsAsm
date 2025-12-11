@@ -1,6 +1,6 @@
+import type { Assembler } from "../assembler/polyasm";
+import type { StreamState } from "../assembler/polyasm.types";
 import type { ScalarToken } from "../lexer/lexer.class";
-import type { Assembler } from "../polyasm";
-import type { StreamState } from "../polyasm.types";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class EquDirective implements IDirective {

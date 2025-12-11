@@ -1,6 +1,6 @@
+import type { Assembler } from "../assembler/polyasm";
+import type { SymbolValue } from "../assembler/symbol.class";
 import type { ScalarToken } from "../lexer/lexer.class";
-import type { Assembler } from "../polyasm";
-import type { SymbolValue } from "../symbol.class";
 import { getHex } from "../utils/hex.util";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 

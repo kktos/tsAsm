@@ -1,6 +1,6 @@
+import type { Assembler } from "../assembler/polyasm";
 import handlers from "../cpu";
 import type { ScalarToken } from "../lexer/lexer.class";
-import type { Assembler } from "../polyasm";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class CpuDirective implements IDirective {

@@ -4,13 +4,13 @@
  * * Uses the Shunting-Yard algorithm for precedence and parentheses.
  */
 
-import { functionDispatcher } from "./functions/dispatcher";
-import type { FunctionToken, OperatorStackToken, OperatorToken, ScalarToken, Token } from "./lexer/lexer.class";
-import type { Segment } from "./linker.class";
-import type { Logger } from "./logger.class";
+import type { PASymbolTable, SymbolValue } from "../assembler/symbol.class";
+import { functionDispatcher } from "../functions/dispatcher";
+import type { Logger } from "../helpers/logger.class";
+import type { FunctionToken, OperatorStackToken, OperatorToken, ScalarToken, Token } from "../lexer/lexer.class";
+import type { Segment } from "../linker/linker.class";
+import { resolveSysVar } from "../sysvar";
 import type { Assembler } from "./polyasm";
-import type { PASymbolTable, SymbolValue } from "./symbol.class";
-import { resolveSysVar } from "./sysvar";
 
 const PRECEDENCE: Record<string, number> = {
 	// Property access has the highest precedence

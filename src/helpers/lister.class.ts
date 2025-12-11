@@ -1,7 +1,7 @@
-import type { ScalarToken, Token } from "./lexer/lexer.class";
+import type { SymbolValue } from "../assembler/symbol.class";
+import type { ScalarToken, Token } from "../lexer/lexer.class";
+import { getHex } from "../utils/hex.util";
 import type { Logger } from "./logger.class";
-import type { SymbolValue } from "./symbol.class";
-import { getHex } from "./utils/hex.util";
 
 const BYTES_PER_LINE = 8;
 const BYTES_PAD = BYTES_PER_LINE * 3;

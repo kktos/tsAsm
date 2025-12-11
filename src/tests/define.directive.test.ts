@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
+import { Assembler } from "../assembler/polyasm";
+import type { FileHandler, SegmentDefinition } from "../assembler/polyasm.types";
+import type { SymbolValue } from "../assembler/symbol.class";
 import { yamlparse } from "../cli/asm-yaml";
 import type { DirectiveContext } from "../directives/directive.interface";
-import { Assembler } from "../polyasm";
-import type { FileHandler, SegmentDefinition } from "../polyasm.types";
-import type { SymbolValue } from "../symbol.class";
 
 class MockFileHandler implements FileHandler {
 	fullpath = "";

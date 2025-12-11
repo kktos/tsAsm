@@ -5,9 +5,10 @@
  * * Acts as a dispatcher to specialized directive handlers.
  */
 
+import { blockDirectives, rawDirectives } from "../assembler/parser.class";
+import type { Assembler } from "../assembler/polyasm";
+import type { Logger } from "../helpers/logger.class";
 import type { ScalarToken } from "../lexer/lexer.class";
-import type { Logger } from "../logger.class";
-import type { Assembler } from "../polyasm";
 import { AlignDirective } from "./align.directive";
 import { AssignDirective } from "./assign.directive";
 import { CpuDirective } from "./cpu.directive";
@@ -33,9 +34,6 @@ import { OptionDirective } from "./option.directive";
 import { OrgDirective } from "./org.directive";
 import { SegmentDirective } from "./segment.directive";
 import { StringDirective } from "./string.directive";
-
-export const blockDirectives: Set<string> = new Set();
-export const rawDirectives: Set<string> = new Set();
 
 export class DirectiveHandler {
 	private readonly directiveMap: Map<string, IDirective>;

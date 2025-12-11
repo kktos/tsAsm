@@ -1,4 +1,4 @@
-import { getHex } from "./utils/hex.util";
+import { getHex } from "../utils/hex.util";
 
 interface NamelessLabel {
 	address: number;

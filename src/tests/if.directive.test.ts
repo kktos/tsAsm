@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { Assembler } from "../assembler/polyasm";
+import type { FileHandler } from "../assembler/polyasm.types";
 import { Cpu6502Handler } from "../cpu/cpu6502.class";
-import { Assembler } from "../polyasm";
-import type { FileHandler } from "../polyasm.types";
 
 class MockFileHandler implements FileHandler {
 	fullpath = "";

@@ -1,6 +1,6 @@
+import type { Assembler } from "../assembler/polyasm";
+import type { SymbolValue } from "../assembler/symbol.class";
 import type { IdentifierToken, ScalarToken, Token } from "../lexer/lexer.class";
-import type { Assembler } from "../polyasm";
-import type { SymbolValue } from "../symbol.class";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
 interface LoopState {

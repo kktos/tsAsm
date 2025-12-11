@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { Assembler } from "../assembler/polyasm";
+import type { FileHandler, SegmentDefinition } from "../assembler/polyasm.types";
 import { Cpu65C02Handler } from "../cpu/cpu65c02.class";
-import { Logger } from "../logger.class";
-import { Assembler } from "../polyasm";
-import type { FileHandler, SegmentDefinition } from "../polyasm.types";
+import { Logger } from "../helpers/logger.class";
 import { hexDump } from "../utils/hexdump.util";
 
 const DEFAULT_SEGMENTS: SegmentDefinition[] = [{ name: "CODE", start: 0x1000, size: 0, resizable: true }];

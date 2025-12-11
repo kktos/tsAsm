@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { Assembler } from "../assembler/polyasm";
+import type { FileHandler, SegmentDefinition } from "../assembler/polyasm.types";
 import { Cpu6502Handler } from "../cpu/cpu6502.class";
+import { Logger } from "../helpers/logger.class";
 import type { Token } from "../lexer/lexer.class";
-import { Logger } from "../logger.class";
-import { Assembler } from "../polyasm";
-import type { FileHandler, SegmentDefinition } from "../polyasm.types";
 
 const DEFAULT_SEGMENTS: SegmentDefinition[] = [{ name: "CODE", start: 0x1000, size: 0, resizable: true }];
 
@@ -20,7 +20,8 @@ describe("Macro Handling", () => {
 		}
 		const logger = new Logger(true, true);
 		const assembler = new Assembler(new Cpu6502Handler(), new MockFileHandler(), { logger, segments: DEFAULT_SEGMENTS });
-		const { symbolTable, expressionEvaluator: evaluator, lexer } = assembler;
+		const { symbolTable, expressionEvaluator: evaluator } = assembler;
+		const lexer = assembler.parser.lexer;
 		const tokenize = (expr: string) => lexer.tokenize(expr).filter((t) => t.type !== "EOF");
 		return { assembler, symbolTable, evaluator, lexer, tokenize, logger };
 	};

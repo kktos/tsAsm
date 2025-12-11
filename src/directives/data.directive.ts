@@ -1,6 +1,7 @@
+import type { Assembler } from "../assembler/polyasm";
+import type { StreamState } from "../assembler/polyasm.types";
+import type { SymbolValue } from "../assembler/symbol.class";
 import type { ScalarToken } from "../lexer/lexer.class";
-import type { Assembler } from "../polyasm";
-import type { SymbolValue } from "../symbol.class";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class DataDirective implements IDirective {
@@ -67,7 +68,12 @@ export class DataDirective implements IDirective {
 			const exprTokens = assembler.parser.getExpressionTokens(directive);
 			if (exprTokens.length === 0) break;
 
-			const value = assembler.expressionEvaluator.evaluate(exprTokens, context);
+			const value = assembler.expressionEvaluator.evaluate(exprTokens, {
+				pc: assembler.currentPC,
+				allowForwardRef: assembler.pass === 1,
+				currentGlobalLabel: assembler.lastGlobalLabel,
+				macroArgs: (assembler.parser.tokenStreamStack[assembler.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
+			});
 
 			switch (typeof value) {
 				case "string": {

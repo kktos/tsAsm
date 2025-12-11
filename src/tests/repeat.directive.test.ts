@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { Assembler } from "../polyasm";
-import type { FileHandler, SegmentDefinition } from "../polyasm.types";
+import { Assembler } from "../assembler/polyasm";
+import type { FileHandler, SegmentDefinition } from "../assembler/polyasm.types";
 
 class MockFileHandler implements FileHandler {
 	fullpath = "";

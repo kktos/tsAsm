@@ -1,25 +1,25 @@
 import { EventEmitter } from "node:events";
-import type { CPUHandler } from "./cpu/cpuhandler.class";
-import { DirectiveHandler } from "./directives/handler";
-import { MacroHandler } from "./directives/macro/handler";
-import type { MacroDefinition } from "./directives/macro/macro.interface";
+import type { CPUHandler } from "../cpu/cpuhandler.class";
+import { DirectiveHandler } from "../directives/handler";
+import { MacroHandler } from "../directives/macro/handler";
+import type { MacroDefinition } from "../directives/macro/macro.interface";
+import { Lister } from "../helpers/lister.class";
+import { Logger } from "../helpers/logger.class";
+import type { OperatorStackToken, ScalarToken, Token } from "../lexer/lexer.class";
+import { Linker, type Segment } from "../linker/linker.class";
+import { getHex } from "../utils/hex.util";
 import { ExpressionEvaluator } from "./expression";
-import { AssemblyLexer, type OperatorStackToken, type ScalarToken, type Token } from "./lexer/lexer.class";
-import { Linker, type Segment } from "./linker.class";
-import { Lister } from "./lister.class";
-import { Logger } from "./logger.class";
 import { NamelessLabels } from "./namelesslabels.class";
 import { Parser } from "./parser.class";
 import type { AssemblerOptions, DataProcessor, FileHandler, StreamState } from "./polyasm.types";
 import { PASymbolTable } from "./symbol.class";
-import { getHex } from "./utils/hex.util";
 
 const DEFAULT_PC = 0x1000;
 
 export class Assembler {
 	public logger: Logger;
 	public lister: Lister;
-	public lexer: AssemblyLexer;
+	// public lexer: AssemblyLexer;
 	public parser: Parser;
 	public linker: Linker;
 	private cpuHandler: CPUHandler;
@@ -53,7 +53,7 @@ export class Assembler {
 		this.fileHandler = fileHandler;
 		this.logger = options?.logger ?? new Logger();
 		this.lister = new Lister(this.logger);
-		this.linker = new Linker();
+		this.linker = new Linker(this.logger);
 
 		if (options?.rawDataProcessors) {
 			this.rawDataProcessors = options.rawDataProcessors.map;
@@ -70,8 +70,8 @@ export class Assembler {
 		this.macroHandler = new MacroHandler(this);
 
 		this.emitter = new EventEmitter();
-		this.lexer = new AssemblyLexer(this.emitter);
-		this.parser = new Parser(this.lexer, this.emitter);
+		// this.lexer = new AssemblyLexer(this.emitter);
+		this.parser = new Parser(this.emitter);
 
 		this.pass = -1;
 
@@ -87,7 +87,7 @@ export class Assembler {
 
 	/** Convenience: link segments via the linker. */
 	public link(segments?: Segment[]): number[] {
-		return this.linker.link(segments);
+		return this.linker.rawBinaryLink(segments);
 	}
 
 	/** Select the active segment for subsequent writes. */
@@ -120,7 +120,7 @@ export class Assembler {
 		this.filenameStack.push(this.currentFilename);
 		const rawContent = this.fileHandler.readSourceFile(filename, this.currentFilename);
 		this.currentFilename = this.fileHandler.fullpath;
-		if (this.pass === 1) this.lexer.startStream(rawContent);
+		if (this.pass === 1) this.parser.lexer.startStream(rawContent);
 	}
 
 	public endCurrentStream() {
@@ -139,8 +139,6 @@ export class Assembler {
 		this.setOption("local_label_char", ":");
 
 		// Initialize or re-initialize the lexer
-		this.lexer.reset();
-		this.parser.lexer = this.lexer;
 		this.parser.start(source);
 
 		try {
@@ -174,9 +172,7 @@ export class Assembler {
 		this.symbolTable.setNamespace("global");
 
 		this.pass = 1;
-		this.parser.setPosition(0);
 		this.namelessLabels.clear();
-
 		this.lastGlobalLabel = null;
 
 		let blockDepth = 0;

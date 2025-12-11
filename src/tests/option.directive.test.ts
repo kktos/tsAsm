@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { Assembler } from "../polyasm";
-import type { FileHandler } from "../polyasm.types";
+import { Assembler } from "../assembler/polyasm";
+import type { FileHandler } from "../assembler/polyasm.types";
 
 class MockFileHandler implements FileHandler {
 	fullpath = "";

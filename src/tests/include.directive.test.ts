@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
+import { Assembler } from "../assembler/polyasm";
+import type { FileHandler, SegmentDefinition } from "../assembler/polyasm.types";
 import { Cpu6502Handler } from "../cpu/cpu6502.class";
 import type { DirectiveContext } from "../directives/directive.interface";
-import { Logger } from "../logger.class";
-import { Assembler } from "../polyasm";
-import type { FileHandler, SegmentDefinition } from "../polyasm.types";
+import { Logger } from "../helpers/logger.class";
 
 class CaptureLogger extends Logger {
 	public lines: string[] = [];

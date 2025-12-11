@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { Assembler } from "../../polyasm";
-import type { FileHandler } from "../../polyasm.types";
+import { Assembler } from "../../assembler/polyasm";
+import type { FileHandler } from "../../assembler/polyasm.types";
 
 // Minimal fake CPU handler
 const fakeCPU = {
@@ -28,7 +28,8 @@ describe("Function IIF()", () => {
 			}
 		}
 		const assembler = new Assembler(fakeCPU, new MockFileHandler());
-		const { symbolTable, expressionEvaluator: evaluator, lexer } = assembler;
+		const { symbolTable, expressionEvaluator: evaluator } = assembler;
+		const lexer = assembler.parser.lexer;
 		const tokenize = (expr: string) => lexer.tokenize(expr).filter((t) => t.type !== "EOF");
 		return { assembler, symbolTable, evaluator, lexer, tokenize };
 	};

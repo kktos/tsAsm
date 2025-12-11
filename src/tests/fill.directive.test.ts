@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { Assembler } from "../assembler/polyasm";
+import type { FileHandler } from "../assembler/polyasm.types";
 import { Cpu6502Handler } from "../cpu/cpu6502.class";
-import type { Segment } from "../linker.class";
-import { Assembler } from "../polyasm";
-import type { FileHandler } from "../polyasm.types";
+import type { Segment } from "../linker/linker.class";
 
 class MockFileHandler implements FileHandler {
 	fullpath = "";

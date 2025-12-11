@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { Assembler } from "../polyasm";
+import { Assembler } from "../assembler/polyasm";
 
 // Minimal fake CPU handler
 const fakeCPU = {

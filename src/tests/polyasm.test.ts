@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { Assembler } from "../assembler/polyasm";
+import type { FileHandler } from "../assembler/polyasm.types";
 import { Cpu6502Handler } from "../cpu/cpu6502.class";
-import { Logger } from "../logger.class";
-import { Assembler } from "../polyasm";
-import type { FileHandler } from "../polyasm.types";
+import { Logger } from "../helpers/logger.class";
 
 const _TEMP = `
 	; Macro with optional and rest parameters
