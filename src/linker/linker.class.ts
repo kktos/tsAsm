@@ -187,7 +187,7 @@ export class Linker {
 					const directiveContext = {
 						pc: assembler.currentPC,
 						currentGlobalLabel: lastGlobalLabel,
-						writebytes: (bytes: number[]) => {},
+						writebytes: (_bytes: number[]) => {},
 					};
 					if (!dispatcher.dispatch(directiveToken, directiveContext))
 						throw new Error(`Syntax error in line ${token.line} - Unexpected directive '${directiveToken.value}'`);
@@ -202,7 +202,7 @@ export class Linker {
 						const directiveContext = {
 							pc: assembler.currentPC,
 							currentGlobalLabel: lastGlobalLabel,
-							writebytes: (bytes: number[]) => {},
+							writebytes: (_bytes: number[]) => {},
 						};
 						if (!dispatcher.dispatch(token, directiveContext)) throw new Error(`Syntax error in line ${token.line} - Unexpected directive '${token.value}'`);
 						break;

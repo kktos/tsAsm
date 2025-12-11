@@ -39,7 +39,7 @@ export class IncbinDirective implements IDirective {
 		return undefined;
 	}
 
-	public handlePassTwo(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
+	public handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
 		const expressionTokens = assembler.parser.getInstructionTokens();
 		if (expressionTokens.length === 0) throw new Error(`[PASS 1] ERROR: .INCBIN requires a string argument on line ${directive.line}.`);
 
@@ -57,7 +57,7 @@ export class IncbinDirective implements IDirective {
 		try {
 			const rawBytes = assembler.fileHandler.readBinaryFile(filename);
 
-			assembler.writeBytes(rawBytes);
+			context.writebytes(rawBytes);
 			// assembler.currentPC is advanced by writeBytes
 			// assembler.symbolTable.lookupAndUpdateSymbol("*", assembler.currentPC);
 

@@ -26,7 +26,7 @@ export class HexDirective implements IDirective {
 		}
 	}
 
-	public handlePassTwo(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
+	public handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
 		const hexString = this.extractHexData(directive, assembler);
 
 		const cleanedString = hexString.replace(/\s/g, "");
@@ -41,7 +41,7 @@ export class HexDirective implements IDirective {
 			bytes.push(byte);
 		}
 
-		if (assembler.isAssembling && bytes.length > 0) assembler.writeBytes(bytes);
+		if (assembler.isAssembling && bytes.length > 0) context.writebytes(bytes);
 
 		if (!assembler.isAssembling) assembler.currentPC += bytes.length;
 

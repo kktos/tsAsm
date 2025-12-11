@@ -97,7 +97,7 @@ export class Assembler {
 	}
 
 	/** Write an array of bytes at the current PC via the linker and advance PC. */
-	public writeBytes(bytes: number[]) {
+	private writeBytes(bytes: number[]) {
 		this.linker.writeBytes(this.currentPC, bytes);
 		this.currentPC += bytes.length;
 	}

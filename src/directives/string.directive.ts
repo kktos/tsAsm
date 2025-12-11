@@ -35,7 +35,7 @@ export class StringDirective implements IDirective {
 			hasText: true,
 		});
 
-		assembler.writeBytes(bytes);
+		context.writebytes(bytes);
 	}
 
 	private getStrings(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): string[] {

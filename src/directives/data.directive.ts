@@ -25,7 +25,7 @@ export class DataDirective implements IDirective {
 	public handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
 		if (assembler.isAssembling) {
 			const bytes = this.encodeDataDirective(directive, assembler, context);
-			assembler.writeBytes(bytes);
+			context.writebytes(bytes);
 		}
 	}
 
