@@ -1,4 +1,4 @@
-import type { Token } from "../lexer/lexer.class";
+import type { Token } from "../shared/lexer/lexer.class";
 import { getHex } from "../utils/hex.util";
 
 // Internal unique key for the global namespace to avoid collisions with user namespaces

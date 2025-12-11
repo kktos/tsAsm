@@ -12,7 +12,7 @@ export class AssignDirective implements IDirective {
 
 		const expressionTokens = assembler.parser.getInstructionTokens();
 		const value = assembler.expressionEvaluator.evaluate(expressionTokens, context);
-		assembler.symbolTable.defineVariable(label, value);
+		assembler.symbolTable.assignVariable(label, value);
 	}
 
 	public handlePassTwo(_directive: ScalarToken, _assembler: Assembler, _context: DirectiveContext): void {}

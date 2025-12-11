@@ -1,6 +1,6 @@
 import type { DirectiveContext } from "../directives/directive.interface";
 import type { Logger } from "../helpers/logger.class";
-import type { Token } from "../lexer/lexer.class";
+import type { Token } from "../shared/lexer/lexer.class";
 import type { SymbolValue } from "./symbol.class";
 
 /** Defines the state of an active token stream. */

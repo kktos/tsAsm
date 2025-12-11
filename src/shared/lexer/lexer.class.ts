@@ -1,5 +1,5 @@
 import type * as EventEmitter from "node:events";
-import type { SymbolValue } from "../assembler/symbol.class";
+import type { SymbolValue } from "../../assembler/symbol.class";
 
 export type TokenType =
 	// Structural

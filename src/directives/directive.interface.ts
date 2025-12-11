@@ -1,6 +1,6 @@
 import type { EvaluationContext } from "../assembler/expression";
 import type { Assembler } from "../assembler/polyasm";
-import type { ScalarToken } from "../lexer/lexer.class";
+import type { ScalarToken } from "../shared/lexer/lexer.class";
 
 export type DirectiveContext = Omit<EvaluationContext, "symbolTable">;
 

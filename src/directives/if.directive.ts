@@ -1,5 +1,5 @@
 import type { Assembler } from "../assembler/polyasm";
-import type { ScalarToken, Token } from "../lexer/lexer.class";
+import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class IfDirective implements IDirective {

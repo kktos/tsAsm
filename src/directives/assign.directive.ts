@@ -1,6 +1,6 @@
 import type { Assembler } from "../assembler/polyasm";
 import type { StreamState } from "../assembler/polyasm.types";
-import type { ScalarToken } from "../lexer/lexer.class";
+import type { ScalarToken } from "../shared/lexer/lexer.class";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class AssignDirective implements IDirective {

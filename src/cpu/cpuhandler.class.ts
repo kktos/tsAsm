@@ -1,4 +1,4 @@
-import type { OperatorStackToken } from "../lexer/lexer.class";
+import type { OperatorStackToken } from "../shared/lexer/lexer.class";
 
 /** * Defines the standard addressing modes recognizable by the assembler.
  * Changed to 'string' to allow CPU Handlers to define their own specific modes

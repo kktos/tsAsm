@@ -1,5 +1,5 @@
 import type { SymbolValue } from "../assembler/symbol.class";
-import type { ScalarToken, Token } from "../lexer/lexer.class";
+import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
 import { getHex } from "../utils/hex.util";
 import type { Logger } from "./logger.class";
 

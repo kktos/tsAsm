@@ -1,7 +1,7 @@
 import type { Assembler } from "../assembler/polyasm";
 import type { StreamState } from "../assembler/polyasm.types";
 import type { SymbolValue } from "../assembler/symbol.class";
-import type { ScalarToken, Token } from "../lexer/lexer.class";
+import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
 import { hasNoMoreThanOne } from "../utils/array.utils";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 

@@ -26,7 +26,7 @@ export class Assembler {
 	public fileHandler: FileHandler;
 
 	public symbolTable: PASymbolTable;
-	public currentPC: number;
+	public currentPC = 0;
 	public isAssembling = true;
 
 	public currentFilename = "";
@@ -61,9 +61,9 @@ export class Assembler {
 			if (!this.rawDataProcessors.has(this.defaultRawDataProcessor)) throw "Default data processor not found.";
 		}
 
-		this.currentPC = DEFAULT_PC;
+		// this.currentPC = DEFAULT_PC;
 		this.symbolTable = new PASymbolTable();
-		this.symbolTable.assignVariable("*", this.currentPC);
+		// this.symbolTable.assignVariable("*", this.currentPC);
 
 		this.expressionEvaluator = new ExpressionEvaluator(this, this.logger);
 		this.directiveHandler = new DirectiveHandler(this, this.logger);
@@ -144,10 +144,9 @@ export class Assembler {
 		try {
 			this.passOne();
 
-			// this.currentPC = (this.symbolTable.lookupSymbol("*") as number) || 0x0000;
 			// Ensure there's at least one segment: if none defined, create a default growable segment starting at 0
 			if (!this.linker.segments || this.linker.segments.length === 0) {
-				this.linker.addSegment("CODE", 0x1000, 0xf000);
+				this.linker.addSegment("CODE", DEFAULT_PC, 0, 0, true);
 				this.linker.useSegment("CODE");
 			}
 
@@ -159,15 +158,13 @@ export class Assembler {
 			throw `${e} - pass ${this.pass} - file ${this.currentFilename}`;
 		}
 
-		this.logger.log(`\n--- Assembly Complete (${this.cpuHandler.cpuType}) ---`);
-		this.logger.log(`Final PC location: $${getHex(this.currentPC)}`);
+		this.logger.log("\n--- Assembly Complete ---");
 
-		// All emitted bytes are stored in the linker segments (a default segment was created if none existed).
 		return this.linker.segments;
 	}
 
 	private passOne(): void {
-		this.logger.log(`\n--- Starting Pass 1: PASymbol Definition & PC Calculation (${this.cpuHandler.cpuType}) ---`);
+		this.logger.log("\n--- Starting Pass 1: PASymbol Definition & PC Calculation ---");
 
 		this.symbolTable.setNamespace("global");
 
@@ -288,13 +285,11 @@ export class Assembler {
 	}
 
 	private passTwo(): void {
-		this.logger.log(`\n--- Starting Pass 2: Code Generation (${this.cpuHandler.cpuType}) ---`);
+		this.logger.log("\n--- Starting Pass 2: Code Generation ---");
 		this.pass = 2;
 		if (this.linker.segments.length) this.currentPC = this.linker.segments[0] ? this.linker.segments[0].start : DEFAULT_PC;
 
 		this.symbolTable.setNamespace("global");
-
-		// const anonymousLabelCounter = 0;
 
 		this.lastGlobalLabel = null;
 

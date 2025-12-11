@@ -1,4 +1,4 @@
-import type { Token } from "../../lexer/lexer.class";
+import type { Token } from "../../shared/lexer/lexer.class";
 
 /** Represents a defined Macro. */
 export interface MacroDefinition {

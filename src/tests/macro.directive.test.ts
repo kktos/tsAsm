@@ -3,7 +3,7 @@ import { Assembler } from "../assembler/polyasm";
 import type { FileHandler, SegmentDefinition } from "../assembler/polyasm.types";
 import { Cpu6502Handler } from "../cpu/cpu6502.class";
 import { Logger } from "../helpers/logger.class";
-import type { Token } from "../lexer/lexer.class";
+import type { Token } from "../shared/lexer/lexer.class";
 
 const DEFAULT_SEGMENTS: SegmentDefinition[] = [{ name: "CODE", start: 0x1000, size: 0, resizable: true }];
 

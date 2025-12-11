@@ -1,4 +1,4 @@
-import type { OperatorStackToken, Token } from "../lexer/lexer.class";
+import type { OperatorStackToken, Token } from "../shared/lexer/lexer.class";
 import { getHex } from "../utils/hex.util";
 import type { AddressingMode, CPUHandler } from "./cpuhandler.class";
 
