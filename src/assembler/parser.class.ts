@@ -76,6 +76,19 @@ export class Parser {
 		return this.ensureToken(this.getPosition() + offset);
 	}
 
+	public advance(n = 1) {
+		this.setPosition(this.getPosition() + n);
+	}
+
+	/** Read and consume the next token from the active stream. */
+	public next(options?: { endMarker?: string }): Token | null {
+		const pos = this.getPosition();
+		this.lexer.setEndMarker(options?.endMarker);
+		const t = this.ensureToken(pos);
+		if (t) this.setPosition(pos + 1);
+		return t;
+	}
+
 	public isEOS(offset = 0) {
 		const token = this.ensureToken(this.getPosition() + offset);
 		return !token || token.type === "EOF";
@@ -92,14 +105,26 @@ export class Parser {
 		return isMatchingType && isMatchingValue;
 	}
 
+	public consume(expectedType: Token["type"] | Token["type"][], expectedValue?: SymbolValue | SymbolValue[], offset = 0) {
+		const token = this.next();
+		if (!token) return token;
+
+		const isMatchingType = typeof expectedType === "string" ? token.type === expectedType : new Set(expectedType).has(token.type);
+		const isMatchingValue =
+			expectedValue === undefined ? true : Array.isArray(expectedValue) ? new Set(expectedValue).has(token.value) : token.value === expectedValue;
+
+		if (isMatchingType && isMatchingValue) return token;
+
+		throw `Syntax error - Expecting ${expectedType} ${expectedValue ? `with value ${expectedValue}` : ""}`;
+	}
+
 	public isIdentifier(expectedValue?: SymbolValue | SymbolValue[], offset = 0) {
 		return this.is("IDENTIFIER", expectedValue, offset);
 	}
 
-	public identifier(expectedIdentifier?: string) {
-		const token = this.next();
-		if (!token || token.type !== "IDENTIFIER" || (expectedIdentifier && token.value !== expectedIdentifier))
-			throw `Syntax error - Expecting an identifer ${expectedIdentifier}`;
+	public identifier(expectedIdentifier?: string | string[]) {
+		const token = this.consume("IDENTIFIER", expectedIdentifier);
+		if (!token) throw `Syntax error - Expecting an identifer ${expectedIdentifier}`;
 		return token as IdentifierToken;
 	}
 
@@ -144,20 +169,6 @@ export class Parser {
 		const token = this.ensureToken(this.getPosition() + offset);
 		this.lexer.rewind(offset + 1, lexerPos);
 		return token;
-	}
-
-	/** Read and consume the next token from the active stream. */
-	public next(options?: { endMarker?: string }): Token | null {
-		const pos = this.getPosition();
-		this.lexer.setEndMarker(options?.endMarker);
-		const t = this.ensureToken(pos);
-		if (t) this.setPosition(pos + 1);
-		return t;
-	}
-
-	/** Advance the current token pointer by `n`. */
-	public advance(n = 1) {
-		this.setPosition(this.getPosition() + n);
 	}
 
 	/** Slice tokens from start (inclusive) to end (exclusive) using buffered access. */

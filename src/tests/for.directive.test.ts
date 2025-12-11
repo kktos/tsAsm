@@ -84,4 +84,16 @@ describe(".FOR...OF", () => {
 			`;
 		expect(() => assembler.assemble(source)).toThrow("Undefined symbol 'ITEM' on line 5.");
 	});
+
+	it("should not make local global variables", () => {
+		const source = `
+				arr = []
+				.for item of [10,20] as idx {
+					arr= .push(arr, item)
+				}
+			`;
+		assembler.assemble(source);
+		const arr = assembler.symbolTable.lookupSymbol("arr");
+		expect(arr).toEqual([10, 20]);
+	});
 });
