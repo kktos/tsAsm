@@ -1,58 +1,72 @@
-import type { FileHandler } from "../polyasm.types";
+import type { FileHandler } from "../assembler/polyasm.types";
 import { yamlparse } from "./asm-yaml";
 import { type InferObject, validate } from "./schema";
 
-// export type TConf = {
-// 	segments?: SegmentDefinition[];
-// 	symbols?: Record<string, unknown>;
-// 	src: string;
-// 	out: string;
-// 	options: {
-// 		segments: boolean;
-// 		symbols: boolean;
-// 		listing: boolean;
-// 	};
-// 	link: {
-// 		post: string;
-// 	};
-// };
-
 const confSchema = {
-	src: { type: "string" },
-	out: { type: "string" },
-	// link: { type: "string" },
-	segments: {
-		type: "array",
-		optional: true,
-		items: {
-			type: "object",
-			schema: {
-				name: { type: "string" },
-				start: { type: "number" },
-				size: { type: "number" },
-				padValue: { type: "number", optional: true },
-				resizable: { type: "boolean", optional: true },
+	input: {
+		type: "object",
+		schema: {
+			source: { type: "string" },
+			segments: {
+				type: "array",
+				optional: true,
+				items: {
+					type: "object",
+					schema: {
+						name: { type: "string" },
+						start: { type: "number" },
+						size: { type: "number" },
+						padValue: { type: "number", optional: true },
+						resizable: { type: "boolean", optional: true },
+					},
+				},
 			},
 		},
 	},
-
-	// age: {
-	// 	type: "number",
-	// 	validate: (n: unknown) => Number(n) >= 0 && Number(n) <= 150,
-	// 	errorMessage: "Age must be between 0 and 150",
-	// },
-	// tags: {
-	// 	type: "array",
-	// 	items: { type: "string" },
-	// },
-	// address: {
-	// 	type: "object",
-	// 	optional: true,
-	// 	schema: {
-	// 		city: { type: "string" },
-	// 		zip: { type: "string" },
-	// 	},
-	// },
+	output: {
+		type: "object",
+		optional: true,
+		schema: {
+			linker: {
+				type: "object",
+				optional: true,
+				schema: {
+					script: { type: "string" },
+				},
+			},
+			object: {
+				type: "object",
+				optional: true,
+				schema: {
+					path: { type: "string" },
+				},
+			},
+			listing: {
+				type: "object",
+				optional: true,
+				schema: {
+					path: { type: "string", optional: true },
+					enabled: { type: "boolean" },
+				},
+			},
+			symbols: {
+				type: "object",
+				optional: true,
+				schema: {
+					path: { type: "string", optional: true },
+					enabled: { type: "boolean" },
+				},
+			},
+			segments: {
+				type: "object",
+				optional: true,
+				schema: {
+					path: { type: "string", optional: true },
+					enabled: { type: "boolean" },
+				},
+			},
+		},
+	},
 } as const;
 
 type TConf = InferObject<typeof confSchema>;

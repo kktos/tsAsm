@@ -23,6 +23,10 @@ export type InferObject<S extends TSchema> = {
 	[K in keyof S as S[K] extends { optional: true } ? K : never]?: InferSchema<S[K]>;
 };
 
+export type Prettify<T> = {
+	[K in keyof T]: T[K];
+} & {};
+
 interface SchemaSpec {
 	type: PrimitiveType;
 	optional?: boolean;

@@ -1,12 +1,12 @@
-import * as console from "node:console";
 import { writeFileSync } from "node:fs";
-import { dirname } from "node:path";
+import { basename, dirname } from "node:path";
 import { chdir } from "node:process";
 import { name, version } from "../../package.json";
+import { Assembler } from "../assembler/polyasm";
+import type { AssemblerOptions } from "../assembler/polyasm.types";
 import { Cpu6502Handler } from "../cpu/cpu6502.class";
 import type { DirectiveContext } from "../directives/directive.interface";
-import { Logger } from "../logger.class";
-import { Assembler } from "../polyasm";
+import { Logger } from "../helpers/logger.class";
 import { yamlparse, yamlstringify } from "./asm-yaml";
 import colors from "./colors";
 import { readConf } from "./conf";
@@ -35,9 +35,9 @@ if (errors) {
 	process.exit(-1);
 }
 
-chdir(dirname(confFilename));
+fileHandler.basedir = `${dirname(confFilename)}/${dirname(conf.input.source)}/`;
 
-const segments = conf.segments;
+const segments = conf.input.segments;
 
 const textHandler = (blockContent: string, _context: DirectiveContext) => blockContent;
 const yamlHandler = (blockContent: string, _context: DirectiveContext) => yamlparse(blockContent);
@@ -52,25 +52,45 @@ const handlers = {
 };
 
 try {
-	const assembler = new Assembler(new Cpu6502Handler(), fileHandler, { logger, segments, rawDataProcessors: handlers });
-	const sourceFile = fileHandler.readSourceFile(conf.src as string);
+	const options: AssemblerOptions = { logger, rawDataProcessors: handlers };
+	if (segments) options.segments = segments;
+	const assembler = new Assembler(new Cpu6502Handler(), fileHandler, options);
+	const sourceFile = fileHandler.readSourceFile(basename(conf.input.source));
 
-	chdir(dirname(conf.src as string));
+	const segmentList = assembler.assemble(sourceFile);
 
-	const _segmentList = assembler.assemble(sourceFile);
+	chdir(dirname(confFilename));
 
-	// for (const segment of segmentList) {
-	// 	logger.log(segment.name);
-	// 	logger.log(hexDump(segment.start, segment.data));
-	// }
+	if (conf.output?.segments?.enabled) {
+		const segmentsFilename = conf.output.segments.path ?? `${basename(conf.input.source)}.seg`;
+		const map: Record<string, unknown> = {};
+		for (const segment of segmentList) {
+			const s: Record<string, unknown> = { size: segment.size, start: segment.start };
+			if (segment.padValue) s.padValue = segment.padValue;
+			if (segment.resizable) s.resizable = segment.resizable;
+			map[segment.name] = s;
+		}
+		writeFileSync(segmentsFilename, yamlstringify(map, { flowLevel: 1, sortKeys: false }));
+	}
 
-	const objFile = assembler.link();
+	if (conf.output?.linker?.script) {
+		fileHandler.basedir = `${dirname(confFilename)}/`;
+		const scriptFile = fileHandler.readSourceFile(conf.output?.linker?.script);
+		const result = assembler.linker.link(scriptFile, assembler.parser, assembler);
 
-	const buffer = Buffer.from(objFile);
-	writeFileSync(conf.out as string, buffer);
+		const buffer = Buffer.from(result.bytes);
+		writeFileSync(result.outputFile.filename, buffer);
+	} else if (conf.output?.object?.path) {
+		const objFile = assembler.link();
+		const buffer = Buffer.from(objFile);
+		writeFileSync(conf.output.object.path, buffer);
+	}
 
-	const index = assembler.symbolTable.getDict();
-	console.log(yamlstringify(index));
+	if (conf.output?.symbols?.enabled) {
+		const symbolsFilename = conf.output.symbols.path ?? `${basename(conf.input.source)}.sym`;
+		const index = assembler.symbolTable.getDict();
+		writeFileSync(symbolsFilename, yamlstringify(index));
+	}
 } catch (e) {
 	logger.error(colors.red(`${e}`));
 }
