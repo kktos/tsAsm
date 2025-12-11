@@ -20,7 +20,7 @@ export class WriteDirective implements IDirective {
 		let offset: number | undefined;
 
 		if (parser.isIdentifier("AT")) {
-			parser.consume();
+			parser.advance();
 			offset = assembler.expressionEvaluator.evaluateAsNumber(parser.getExpressionTokens(directive), context);
 		}
 

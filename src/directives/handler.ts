@@ -62,13 +62,15 @@ export class DirectiveHandler {
 		this.register("INCLUDE", new IncludeDirective());
 		this.register("INCBIN", new IncbinDirective());
 
+		this.register("HEX", new HexDirective());
 		this.register("DB", new DataDirective(1)); // Define Byte (1 byte)
 		this.register("BYTE", new DataDirective(1)); // Define Byte (1 byte)
 		this.register("DW", new DataDirective(2)); // Define Word (2 bytes)
 		this.register("WORD", new DataDirective(2)); // Define Word (2 bytes)
 		this.register("DL", new DataDirective(4)); // Define Long (4 bytes)
 		this.register("LONG", new DataDirective(4)); // Define Long (4 bytes)
-		this.register("HEX", new HexDirective());
+		// this.register("DBYTE", new DataDirective(-2)); // Define Word (2 bytes)
+		// this.register("DWORD", new DataDirective(-4)); // Define Long (4 bytes)
 
 		this.register("TEXT", new StringDirective("TEXT"));
 		const cstrHandler = new StringDirective("CSTR");

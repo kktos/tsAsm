@@ -12,6 +12,7 @@ import type { Logger } from "../../helpers/logger.class";
 import type { ScalarToken } from "../../lexer/lexer.class";
 import type { Linker } from "../linker.class";
 import { AssignDirective } from "./assign.directive";
+import { EndianDirective } from "./endian.directive";
 import { OutputDirective } from "./output.directive";
 import { WriteDirective } from "./write.directive";
 
@@ -40,6 +41,7 @@ export class Dispatcher {
 		this.register("IF", new IfDirective());
 		this.register("END", new EndDirective());
 
+		this.register("ENDIAN", new EndianDirective(linker));
 		this.register("OUTPUT", new OutputDirective(linker));
 		this.register("WRITE", new WriteDirective(linker));
 	}

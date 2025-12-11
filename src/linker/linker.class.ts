@@ -18,16 +18,19 @@ export interface Segment {
 	padValue?: number;
 }
 
+type TOutputFile = {
+	filename: string;
+	size?: number;
+	maxSize?: number;
+};
+
 export class Linker {
 	public segments: Segment[] = [];
 	public currentSegment?: Segment;
 
 	private finalObj: number[] = [];
-	private outputFile: {
-		filename: string;
-		size?: number;
-		maxSize?: number;
-	} = { filename: "" };
+	private outputFile: TOutputFile = { filename: "" };
+	private endianess: 1 | -1 = 1;
 	private assembler: Assembler | undefined;
 
 	constructor(private logger?: Logger) {}
@@ -107,12 +110,16 @@ export class Linker {
 		return out;
 	}
 
+	public setEndianess(endianess: "little" | "big") {
+		this.endianess = endianess === "little" ? 1 : -1;
+	}
+
 	public setOutputFile(filename: string, size?: number, maxSize?: number) {
 		this.outputFile.filename = filename;
 		this.outputFile.size = size;
 		this.outputFile.maxSize = maxSize;
 	}
-	public emitString(value: string, offset?: number) {
+	public emitString(value: string, _offset?: number) {
 		this.finalObj.push(...stringToASCIICharCodes(value));
 		if (this.assembler) this.assembler.currentPC += value.length;
 	}
@@ -129,7 +136,7 @@ export class Linker {
 			this.finalObj[offset] = value;
 			return;
 		}
-		pushNumber(this.finalObj, value, 2);
+		pushNumber(this.finalObj, value, this.endianess * 2);
 		if (this.assembler) this.assembler.currentPC += 2;
 	}
 	public emitLong(value: number, offset?: number) {
@@ -137,10 +144,10 @@ export class Linker {
 			this.finalObj[offset] = value;
 			return;
 		}
-		pushNumber(this.finalObj, value, 4);
+		pushNumber(this.finalObj, value, this.endianess * 4);
 		if (this.assembler) this.assembler.currentPC += 4;
 	}
-	public emitBytes(value: number[], offset?: number) {
+	public emitBytes(value: number[], _offset?: number) {
 		// if (offset !== undefined) {
 		// 	this.finalObj[offset] = value;
 		// 	return;

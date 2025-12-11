@@ -17,13 +17,13 @@ export class OutputDirective implements IDirective {
 		const filename = parser.string().value;
 
 		if (parser.isIdentifier("SIZE")) {
-			parser.consume();
+			parser.advance();
 			const exprTokens = assembler.parser.getExpressionTokens(directive);
 			size = assembler.expressionEvaluator.evaluateAsNumber(exprTokens, context);
 		}
 
 		if (parser.isIdentifier("MAXSIZE")) {
-			parser.consume();
+			parser.advance();
 			const exprTokens = assembler.parser.getExpressionTokens(directive);
 			maxSize = assembler.expressionEvaluator.evaluateAsNumber(exprTokens, context);
 		}
