@@ -20,7 +20,7 @@ export class StringDirective implements IDirective {
 
 	public handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
 		// If not assembling, just advance PC
-		if (!assembler.isAssembling) {
+		if (!context.isAssembling) {
 			assembler.currentPC += this.calculateSize(directive, assembler, context);
 			return;
 		}

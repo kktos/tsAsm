@@ -14,8 +14,8 @@ export class DataDirective implements IDirective {
 		private readonly lister: Lister,
 	) {}
 
-	public handlePassOne(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
-		if (assembler.isAssembling) {
+	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
+		if (context.isAssembling) {
 			const byteCount = this.calculateDirectiveSize(assembler);
 			assembler.currentPC += byteCount;
 			this.lister.directive(directive, `<${byteCount} bytes>`);
@@ -23,7 +23,7 @@ export class DataDirective implements IDirective {
 	}
 
 	public handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
-		if (assembler.isAssembling) {
+		if (context.isAssembling) {
 			const bytes = this.encodeDataDirective(directive, assembler, context);
 			context.writebytes(bytes);
 		}

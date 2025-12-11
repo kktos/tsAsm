@@ -32,7 +32,7 @@ export class FillDirective implements IDirective {
 		const count = assembler.expressionEvaluator.evaluateAsNumber(countTokens, context);
 		const fillerValue = valueTokens.length > 0 ? assembler.expressionEvaluator.evaluateAsNumber(valueTokens, context) : 0; // Default to 0 if no value is provided
 
-		if (assembler.isAssembling && count > 0) {
+		if (context.isAssembling && count > 0) {
 			// Ensure filler value is a single byte
 			const byteValue = fillerValue & 0xff;
 			const bytes = new Array(count).fill(byteValue);
@@ -40,7 +40,7 @@ export class FillDirective implements IDirective {
 		}
 
 		// Advance PC if not assembling; writeBytes already advances PC when assembling
-		if (!assembler.isAssembling) assembler.currentPC += count;
+		if (!context.isAssembling) assembler.currentPC += count;
 	}
 
 	/**

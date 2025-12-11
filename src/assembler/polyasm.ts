@@ -28,7 +28,7 @@ export class Assembler {
 
 	public symbolTable: PASymbolTable;
 	public currentPC = 0;
-	public isAssembling = true;
+	private isAssembling = true;
 
 	public currentFilename = "";
 	private filenameStack: string[] = [];
@@ -193,10 +193,10 @@ export class Assembler {
 					if (directiveToken?.type !== "IDENTIFIER") throw new Error(`Bad directive in line ${token.line} - ${directiveToken.value}`);
 
 					const directiveContext: DirectiveContext = {
+						isAssembling: this.isAssembling,
 						pc: this.currentPC,
 						allowForwardRef: true,
 						currentGlobalLabel: this.lastGlobalLabel,
-						// options: this.options,
 						macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
 						writebytes: this.writeBytes.bind(this),
 					};
@@ -214,10 +214,10 @@ export class Assembler {
 
 					if (token.value === "=" && this.lastGlobalLabel) {
 						const directiveContext: DirectiveContext = {
+							isAssembling: this.isAssembling,
 							pc: this.currentPC,
 							allowForwardRef: true,
 							currentGlobalLabel: this.lastGlobalLabel,
-							// options: this.options,
 							macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
 							writebytes: this.writeBytes.bind(this),
 						};
@@ -315,6 +315,7 @@ export class Assembler {
 
 					if (token.value === "=" && this.lastGlobalLabel) {
 						const directiveContext: DirectiveContext = {
+							isAssembling: this.isAssembling,
 							pc: this.currentPC,
 							macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
 							currentGlobalLabel: this.lastGlobalLabel,
@@ -356,6 +357,7 @@ export class Assembler {
 
 					const streamBefore = this.parser.tokenStreamStack.length;
 					const directiveContext: DirectiveContext = {
+						isAssembling: this.isAssembling,
 						pc: this.currentPC,
 						macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
 						currentGlobalLabel: this.lastGlobalLabel,

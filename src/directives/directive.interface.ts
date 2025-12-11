@@ -6,6 +6,7 @@ import type { ScalarToken } from "../shared/lexer/lexer.class";
 export type DirectiveContext = Prettify<
 	Omit<EvaluationContext, "symbolTable"> & {
 		writebytes: (bytes: number[]) => void;
+		isAssembling: boolean;
 	}
 >;
 

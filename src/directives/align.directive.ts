@@ -41,7 +41,7 @@ export class AlignDirective implements IDirective {
 			const newPC = (assembler.currentPC + boundary - 1) & ~(boundary - 1);
 			const paddingBytes = newPC - assembler.currentPC;
 
-			if (assembler.isAssembling && paddingBytes > 0) {
+			if (context.isAssembling && paddingBytes > 0) {
 				// Ensure filler value is a single byte
 				const filler = fillerValue & 0xff;
 				const bytes = new Array(paddingBytes).fill(filler);

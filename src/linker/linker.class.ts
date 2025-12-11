@@ -185,6 +185,7 @@ export class Linker {
 					if (directiveToken?.type !== "IDENTIFIER") throw new Error(`Bad directive in line ${token.line} - ${directiveToken.value}`);
 
 					const directiveContext = {
+						isAssembling: true,
 						pc: assembler.currentPC,
 						currentGlobalLabel: lastGlobalLabel,
 						writebytes: (_bytes: number[]) => {},
@@ -200,6 +201,7 @@ export class Linker {
 				case "OPERATOR":
 					if (token.value === "=" && lastGlobalLabel) {
 						const directiveContext = {
+							isAssembling: true,
 							pc: assembler.currentPC,
 							currentGlobalLabel: lastGlobalLabel,
 							writebytes: (_bytes: number[]) => {},
