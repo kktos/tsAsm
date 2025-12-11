@@ -1,5 +1,5 @@
 import type * as EventEmitter from "node:events";
-import type { SymbolValue } from "../symbol.class";
+import type { SymbolValue } from "../assembler/symbol.class";
 
 export type TokenType =
 	// Structural
@@ -55,6 +55,7 @@ export type StringValueToken<T extends TokenType> = BaseToken & {
 export type OperatorToken = StringValueToken<"OPERATOR">;
 export type FunctionToken = StringValueToken<"FUNCTION">;
 export type NumberToken = StringValueToken<"NUMBER">;
+export type StringToken = StringValueToken<"STRING">;
 export type OperatorStackToken = OperatorToken | FunctionToken | NumberToken;
 export type IdentifierToken = StringValueToken<"IDENTIFIER">;
 export type PropAccessToken = StringValueToken<"PROPERTY_ACCESS">;
@@ -83,6 +84,8 @@ export class AssemblyLexer {
 
 	private streamStack: Stream[] = [];
 	private currentStream: Stream;
+
+	public commentChar = ";";
 
 	constructor(private emitter: EventEmitter) {
 		this.currentStream = { source: "", pos: 0, line: 1, column: 1, length: 0, lastToken: null, tokenBuffer: [] };
@@ -212,7 +215,7 @@ export class AssemblyLexer {
 		const startColumn = this.currentStream.column;
 
 		// Comment - fast path for semicolon
-		if (ch === ";") return this.scanComment(startLine, startColumn);
+		if (ch === this.commentChar) return this.scanComment(startLine, startColumn);
 
 		// Named or Nameless Local Labels
 		if (ch === this.localLabelChar) return this.scanLocalLabel(startLine, startColumn, ch);
