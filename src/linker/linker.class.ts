@@ -1,0 +1,204 @@
+import type { Parser } from "../assembler/parser.class";
+import type { Assembler } from "../assembler/polyasm";
+import type { Logger } from "../helpers/logger.class";
+import type { ScalarToken } from "../lexer/lexer.class";
+import { pushNumber } from "../utils/array.utils";
+import { getHex } from "../utils/hex.util";
+import { stringToASCIICharCodes } from "../utils/string.utils";
+import { Dispatcher } from "./directives/dispatcher.class";
+
+export interface Segment {
+	name: string;
+	start: number;
+	size: number;
+	data: number[];
+	/** Whether this segment may grow when writes go past its declared size. Default: false (fixed). */
+	resizable?: boolean;
+	/** Value used to pad the segment to its declared size when linking. Default: 0. */
+	padValue?: number;
+}
+
+export class Linker {
+	public segments: Segment[] = [];
+	public currentSegment?: Segment;
+
+	private finalObj: number[] = [];
+	private outputFile: {
+		filename: string;
+		size?: number;
+		maxSize?: number;
+	} = { filename: "" };
+	private assembler: Assembler | undefined;
+
+	constructor(private logger?: Logger) {}
+
+	public addSegment(name: string, start: number, size: number, padValue = 0, resizable = false): void {
+		// If size is zero, create an empty data array. If resizable is true, the segment will grow on writes.
+		const seg: Segment = { name, start, size, data: size > 0 ? new Array(size).fill(padValue) : [], resizable, padValue };
+		this.segments.push(seg);
+	}
+
+	/** Selects a segment by name and makes it the active segment for subsequent writes. */
+	public useSegment(name: string) {
+		const seg = this.segments.find((s) => s.name === name);
+		if (!seg) throw new Error(`Segment not found: ${name}`);
+		this.currentSegment = seg;
+		return seg.start;
+	}
+
+	public writeBytes(addr: number, values: number[]): void {
+		const active = this.currentSegment;
+		if (!active) throw new Error("Internal error: no active segment.");
+
+		const offset = addr - active.start;
+		if (offset < 0)
+			throw new Error(
+				`Write out of bounds: address $${addr.toString(16).toUpperCase()} is below segment '${active.name}' start $${active.start.toString(16).toUpperCase()}.`,
+			);
+
+		if (offset >= active.size && !active.resizable)
+			throw new Error(
+				`Write out of bounds: address $${addr.toString(16).toUpperCase()} outside fixed segment '${active.name}' (start $${active.start.toString(16).toUpperCase()}, size ${active.size}).`,
+			);
+
+		if (offset >= active.data.length) {
+			if (!active.resizable) throw new Error(`Internal error: segment '${active.name}' data shorter than declared size and not resizable.`);
+
+			const needed = offset + values.length - active.data.length;
+			active.data.push(...new Array(needed).fill(active.padValue ?? 0));
+		}
+
+		// active.data[offset] = value & 0xff;
+		active.data.splice(offset, values.length, ...values);
+		if (active.resizable && active.size < active.data.length) active.size = active.data.length;
+	}
+
+	public rawBinaryLink(segments?: Segment[]): number[] {
+		const segs = segments ?? this.segments;
+		if (!segs || segs.length === 0) return [];
+
+		let minStart = Number.POSITIVE_INFINITY;
+		let maxEnd = Number.NEGATIVE_INFINITY;
+		for (const s of segs) {
+			minStart = Math.min(minStart, s.start);
+			maxEnd = Math.max(maxEnd, s.start + s.size);
+		}
+
+		console.log("");
+		console.log("Linker");
+
+		// const outSize = maxEnd - minStart;
+		// const out = new Array(outSize).fill(0);
+		const out = [];
+		let offset = 0;
+		for (const s of segs) {
+			// const offset = s.start - minStart;
+
+			console.log("-", s.name, `offset: $${getHex(offset)}`, `addr: $${getHex(s.start)}`, `size: $${getHex(s.size)}`, `len: $${getHex(s.data.length)}`);
+
+			const pad = s.padValue ?? 0;
+			for (let i = 0; i < s.size; i++) {
+				if (i < s.data.length) out[offset + i] = s.data[i] ?? pad;
+				else out[offset + i] = pad;
+			}
+
+			offset += s.size;
+		}
+		return out;
+	}
+
+	public setOutputFile(filename: string, size?: number, maxSize?: number) {
+		this.outputFile.filename = filename;
+		this.outputFile.size = size;
+		this.outputFile.maxSize = maxSize;
+	}
+	public emitString(value: string, offset?: number) {
+		this.finalObj.push(...stringToASCIICharCodes(value));
+		if (this.assembler) this.assembler.currentPC += value.length;
+	}
+	public emitByte(value: number, offset?: number) {
+		if (offset !== undefined) {
+			this.finalObj[offset] = value;
+			return;
+		}
+		pushNumber(this.finalObj, value, 1);
+		if (this.assembler) this.assembler.currentPC += 1;
+	}
+	public emitWord(value: number, offset?: number) {
+		if (offset !== undefined) {
+			this.finalObj[offset] = value;
+			return;
+		}
+		pushNumber(this.finalObj, value, 2);
+		if (this.assembler) this.assembler.currentPC += 2;
+	}
+	public emitLong(value: number, offset?: number) {
+		if (offset !== undefined) {
+			this.finalObj[offset] = value;
+			return;
+		}
+		pushNumber(this.finalObj, value, 4);
+		if (this.assembler) this.assembler.currentPC += 4;
+	}
+	public emitBytes(value: number[], offset?: number) {
+		// if (offset !== undefined) {
+		// 	this.finalObj[offset] = value;
+		// 	return;
+		// }
+		this.finalObj.push(...value);
+		if (this.assembler) this.assembler.currentPC += value.length;
+	}
+
+	public link(script: string, parser: Parser, assembler: Assembler) {
+		const dispatcher = new Dispatcher(this, assembler, assembler.logger);
+		this.assembler = assembler;
+
+		// assembler.symbolTable.clear();
+		assembler.symbolTable.defineConstant("segments", this.segments);
+		assembler.currentPC = 0;
+
+		parser.lexer.commentChar = "#";
+		parser.start(script);
+
+		let lastGlobalLabel: string | undefined;
+
+		while (parser.tokenStreamStack.length > 0) {
+			const token = parser.next();
+			// If no token or EOF, pop the active stream
+			if (!token || token.type === "EOF") {
+				const poppedStream = parser.popTokenStream(false);
+				if (parser.tokenStreamStack.length === 0) break;
+				if (poppedStream) parser.emitter.emit(`endOfStream:${poppedStream.id}`);
+				continue;
+			}
+
+			switch (token.type) {
+				case "DOT": {
+					const directiveToken = parser.next() as ScalarToken;
+					if (directiveToken?.type !== "IDENTIFIER") throw new Error(`Bad directive in line ${token.line} - ${directiveToken.value}`);
+
+					const directiveContext = { pc: assembler.currentPC, currentGlobalLabel: lastGlobalLabel };
+					if (!dispatcher.dispatch(directiveToken, directiveContext))
+						throw new Error(`Syntax error in line ${token.line} - Unexpected directive '${directiveToken.value}'`);
+					break;
+				}
+				case "IDENTIFIER":
+					lastGlobalLabel = token.value;
+					break;
+
+				case "OPERATOR":
+					if (token.value === "=" && lastGlobalLabel) {
+						const directiveContext = { pc: assembler.currentPC, currentGlobalLabel: lastGlobalLabel };
+						if (!dispatcher.dispatch(token, directiveContext)) throw new Error(`Syntax error in line ${token.line} - Unexpected directive '${token.value}'`);
+						break;
+					}
+					break;
+
+				default:
+					throw new Error(`Syntax error in line ${token.line} : ${token.type} ${token.value}`);
+			}
+		}
+
+		return { bytes: this.finalObj, outputFile: this.outputFile };
+	}
+}
