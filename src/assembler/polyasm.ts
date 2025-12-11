@@ -1,5 +1,6 @@
 import { EventEmitter } from "node:events";
 import type { CPUHandler } from "../cpu/cpuhandler.class";
+import type { DirectiveContext } from "../directives/directive.interface";
 import { DirectiveHandler } from "../directives/handler";
 import { MacroHandler } from "../directives/macro/handler";
 import type { MacroDefinition } from "../directives/macro/macro.interface";
@@ -91,12 +92,12 @@ export class Assembler {
 	}
 
 	/** Select the active segment for subsequent writes. */
-	public useSegment(name: string): void {
+	public useSegment(name: string) {
 		this.currentPC = this.linker.useSegment(name);
 	}
 
 	/** Write an array of bytes at the current PC via the linker and advance PC. */
-	public writeBytes(bytes: number[]): void {
+	public writeBytes(bytes: number[]) {
 		this.linker.writeBytes(this.currentPC, bytes);
 		this.currentPC += bytes.length;
 	}
@@ -191,12 +192,13 @@ export class Assembler {
 					const directiveToken = this.parser.next() as ScalarToken;
 					if (directiveToken?.type !== "IDENTIFIER") throw new Error(`Bad directive in line ${token.line} - ${directiveToken.value}`);
 
-					const directiveContext = {
+					const directiveContext: DirectiveContext = {
 						pc: this.currentPC,
 						allowForwardRef: true,
 						currentGlobalLabel: this.lastGlobalLabel,
-						options: this.options,
+						// options: this.options,
 						macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
+						writebytes: this.writeBytes.bind(this),
 					};
 
 					if (!this.directiveHandler.handlePassOneDirective(directiveToken, directiveContext))
@@ -211,12 +213,13 @@ export class Assembler {
 					}
 
 					if (token.value === "=" && this.lastGlobalLabel) {
-						const directiveContext = {
+						const directiveContext: DirectiveContext = {
 							pc: this.currentPC,
 							allowForwardRef: true,
 							currentGlobalLabel: this.lastGlobalLabel,
-							options: this.options,
+							// options: this.options,
 							macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
+							writebytes: this.writeBytes.bind(this),
 						};
 						if (!this.directiveHandler.handlePassOneDirective(token, directiveContext))
 							throw new Error(`Syntax error in line ${token.line} - Unexpected directive '${token.value}'`);
@@ -311,11 +314,12 @@ export class Assembler {
 					}
 
 					if (token.value === "=" && this.lastGlobalLabel) {
-						const directiveContext = {
+						const directiveContext: DirectiveContext = {
 							pc: this.currentPC,
 							macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
 							currentGlobalLabel: this.lastGlobalLabel,
-							options: this.options,
+							// options: this.options,
+							writebytes: this.writeBytes.bind(this),
 						};
 
 						this.directiveHandler.handlePassTwoDirective(token, directiveContext);
@@ -351,11 +355,12 @@ export class Assembler {
 					if (directiveToken?.type !== "IDENTIFIER") throw new Error(`Syntax error in line ${token.line}`);
 
 					const streamBefore = this.parser.tokenStreamStack.length;
-					const directiveContext = {
+					const directiveContext: DirectiveContext = {
 						pc: this.currentPC,
 						macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
 						currentGlobalLabel: this.lastGlobalLabel,
-						options: this.options,
+						// options: this.options,
+						writebytes: this.writeBytes.bind(this),
 					};
 
 					this.directiveHandler.handlePassTwoDirective(directiveToken, directiveContext);

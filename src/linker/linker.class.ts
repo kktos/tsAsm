@@ -184,7 +184,11 @@ export class Linker {
 					const directiveToken = parser.next() as ScalarToken;
 					if (directiveToken?.type !== "IDENTIFIER") throw new Error(`Bad directive in line ${token.line} - ${directiveToken.value}`);
 
-					const directiveContext = { pc: assembler.currentPC, currentGlobalLabel: lastGlobalLabel };
+					const directiveContext = {
+						pc: assembler.currentPC,
+						currentGlobalLabel: lastGlobalLabel,
+						writebytes: (bytes: number[]) => {},
+					};
 					if (!dispatcher.dispatch(directiveToken, directiveContext))
 						throw new Error(`Syntax error in line ${token.line} - Unexpected directive '${directiveToken.value}'`);
 					break;
@@ -195,7 +199,11 @@ export class Linker {
 
 				case "OPERATOR":
 					if (token.value === "=" && lastGlobalLabel) {
-						const directiveContext = { pc: assembler.currentPC, currentGlobalLabel: lastGlobalLabel };
+						const directiveContext = {
+							pc: assembler.currentPC,
+							currentGlobalLabel: lastGlobalLabel,
+							writebytes: (bytes: number[]) => {},
+						};
 						if (!dispatcher.dispatch(token, directiveContext)) throw new Error(`Syntax error in line ${token.line} - Unexpected directive '${token.value}'`);
 						break;
 					}

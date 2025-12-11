@@ -1,8 +1,13 @@
 import type { EvaluationContext } from "../assembler/expression";
 import type { Assembler } from "../assembler/polyasm";
+import type { Prettify } from "../cli/schema";
 import type { ScalarToken } from "../shared/lexer/lexer.class";
 
-export type DirectiveContext = Omit<EvaluationContext, "symbolTable">;
+export type DirectiveContext = Prettify<
+	Omit<EvaluationContext, "symbolTable"> & {
+		writebytes: (bytes: number[]) => void;
+	}
+>;
 
 /**
  * Defines the interface for a directive handler.
