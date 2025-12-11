@@ -1,5 +1,4 @@
 import type { Assembler } from "../assembler/polyasm";
-import type { Lister } from "../helpers/lister.class";
 import type { Logger } from "../helpers/logger.class";
 import type { ScalarToken } from "../shared/lexer/lexer.class";
 import type { DirectiveContext, IDirective } from "./directive.interface";
@@ -9,28 +8,27 @@ export class IncbinDirective implements IDirective {
 	public isRawDirective = false;
 
 	constructor(
+		private readonly assembler: Assembler,
 		private readonly logger: Logger,
-		readonly _lister: Lister,
 	) {}
 
-	public handlePassOne(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
-		const expressionTokens = assembler.parser.getInstructionTokens();
+	public handlePassOne(directive: ScalarToken, _context: DirectiveContext) {
+		const expressionTokens = this.assembler.parser.getInstructionTokens();
 		if (expressionTokens.length === 0) throw new Error(`[PASS 1] ERROR: .INCBIN requires a string argument on line ${directive.line}.`);
 
 		// 2. Resolve the array from the symbol table
 		const evaluationContext = {
-			pc: assembler.currentPC,
-			macroArgs: assembler.parser.tokenStreamStack[assembler.parser.tokenStreamStack.length - 1]?.macroArgs,
-			assembler,
-			currentGlobalLabel: assembler.lastGlobalLabel ?? undefined,
+			pc: this.assembler.currentPC,
+			macroArgs: this.assembler.parser.tokenStreamStack[this.assembler.parser.tokenStreamStack.length - 1]?.macroArgs,
+			currentGlobalLabel: this.assembler.lastGlobalLabel ?? undefined,
 		};
 
-		const filename = assembler.expressionEvaluator.evaluate(expressionTokens, evaluationContext);
+		const filename = this.assembler.expressionEvaluator.evaluate(expressionTokens, evaluationContext);
 		if (typeof filename !== "string") throw new Error(`[PASS 1] ERROR: .INCBIN requires a string argument on line ${directive.line}.`);
 
 		try {
-			const rawBytes = assembler.fileHandler.readBinaryFile(filename);
-			assembler.currentPC += rawBytes.length;
+			const rawBytes = this.assembler.fileHandler.readBinaryFile(filename);
+			this.assembler.currentPC += rawBytes.length;
 			this.logger.log(`[PASS 1] Reserved ${rawBytes.length} bytes for binary file: ${filename}`);
 		} catch (e) {
 			this.logger.error(`[PASS 1] ERROR reading binary file ${filename} for size calculation: ${e}`);
@@ -39,34 +37,33 @@ export class IncbinDirective implements IDirective {
 		return undefined;
 	}
 
-	public handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
-		const expressionTokens = assembler.parser.getInstructionTokens();
+	public handlePassTwo(directive: ScalarToken, context: DirectiveContext) {
+		const expressionTokens = this.assembler.parser.getInstructionTokens();
 		if (expressionTokens.length === 0) throw new Error(`[PASS 1] ERROR: .INCBIN requires a string argument on line ${directive.line}.`);
 
 		// 2. Resolve the array from the symbol table
 		const evaluationContext = {
-			pc: assembler.currentPC,
-			macroArgs: assembler.parser.tokenStreamStack[assembler.parser.tokenStreamStack.length - 1]?.macroArgs,
-			assembler,
-			currentGlobalLabel: assembler.lastGlobalLabel ?? undefined,
+			pc: this.assembler.currentPC,
+			macroArgs: this.assembler.parser.tokenStreamStack[this.assembler.parser.tokenStreamStack.length - 1]?.macroArgs,
+			currentGlobalLabel: this.assembler.lastGlobalLabel ?? undefined,
 		};
 
-		const filename = assembler.expressionEvaluator.evaluate(expressionTokens, evaluationContext);
+		const filename = this.assembler.expressionEvaluator.evaluate(expressionTokens, evaluationContext);
 		if (typeof filename !== "string") throw new Error(`[PASS 2] ERROR: .INCBIN requires a string argument on line ${directive.line}.`);
 
 		try {
-			const rawBytes = assembler.fileHandler.readBinaryFile(filename);
+			const rawBytes = this.assembler.fileHandler.readBinaryFile(filename);
 
 			context.writebytes(rawBytes);
-			// assembler.currentPC is advanced by writeBytes
-			// assembler.symbolTable.lookupAndUpdateSymbol("*", assembler.currentPC);
+			// this.assembler.currentPC is advanced by writeBytes
+			// this.assembler.symbolTable.lookupAndUpdateSymbol("*", this.assembler.currentPC);
 
 			const bytesStr =
 				rawBytes
 					.slice(0, 4)
 					.map((b) => b.toString(16).padStart(2, "0").toUpperCase())
 					.join(" ") + (rawBytes.length > 4 ? "..." : "");
-			const addressHex = assembler.currentPC.toString(16).padStart(4, "0").toUpperCase();
+			const addressHex = this.assembler.currentPC.toString(16).padStart(4, "0").toUpperCase();
 			this.logger.log(`[PASS 2] $${addressHex}: ${bytesStr.padEnd(8)} | Line ${directive.line}: .INCBIN "${filename}" (${rawBytes.length} bytes)`);
 		} catch (e) {
 			const errorMessage = e instanceof Error ? e.message : String(e);

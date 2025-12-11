@@ -6,35 +6,37 @@ export class MacroDirective implements IDirective {
 	public isBlockDirective = true;
 	public isRawDirective = false;
 
-	public handlePassOne(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
-		this.handleMacroDefinition(directive, assembler);
+	constructor(private readonly assembler: Assembler) {}
+
+	public handlePassOne(directive: ScalarToken, _context: DirectiveContext) {
+		this.handleMacroDefinition(directive, _context);
 	}
 
-	public handlePassTwo(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
-		const nameToken = assembler.parser.identifier();
+	public handlePassTwo(directive: ScalarToken, _context: DirectiveContext) {
+		const nameToken = this.assembler.parser.identifier();
 		if (!nameToken) throw `ERROR: Macro needs a name on line ${directive.line}.`;
 
-		const definition = assembler.macroDefinitions.get(nameToken.value);
+		const definition = this.assembler.macroDefinitions.get(nameToken.value);
 		if (!definition) throw `ERROR: Unable to find macro definition for '${nameToken.value}' on line ${directive.line}.`;
 
-		assembler.parser.setPosition(definition.endPosition);
+		this.assembler.parser.setPosition(definition.endPosition);
 	}
 
 	/** Pass 1: Parses and stores a macro definition. */
-	private handleMacroDefinition(directive: ScalarToken, assembler: Assembler) {
-		const nameToken = assembler.parser.identifier();
+	private handleMacroDefinition(directive: ScalarToken, _context: DirectiveContext) {
+		const nameToken = this.assembler.parser.identifier();
 		if (!nameToken) throw `ERROR: Macro needs a name on line ${directive.line}.`;
 
 		const macroName = nameToken.value;
 
-		const { parameters, restParameter } = this.handleMacroParametersDefinition(directive, assembler);
+		const { parameters, restParameter } = this.handleMacroParametersDefinition(directive);
 
-		const bodyTokens = assembler.parser.getDirectiveBlockTokens(directive.value);
+		const bodyTokens = this.assembler.parser.getDirectiveBlockTokens(directive.value);
 		if (!bodyTokens) throw `ERROR: Unterminated macro body for '${macroName}' on line ${directive.line}.`;
 
-		const endPosition = assembler.parser.getPosition();
+		const endPosition = this.assembler.parser.getPosition();
 
-		assembler.macroDefinitions.set(macroName, {
+		this.assembler.macroDefinitions.set(macroName, {
 			name: macroName,
 			parameters,
 			restParameter,
@@ -42,17 +44,17 @@ export class MacroDirective implements IDirective {
 			endPosition,
 		});
 
-		assembler.lister.directive(
+		this.assembler.lister.directive(
 			directive,
 			`${nameToken.raw}(${parameters.join(", ")}${restParameter ? `${parameters.length ? ", " : ""}...${restParameter}` : ""})`,
 		);
 	}
 
-	private handleMacroParametersDefinition(directive: ScalarToken, assembler: Assembler) {
+	private handleMacroParametersDefinition(directive: ScalarToken) {
 		const parameters: string[] = [];
 		let restParameter: string | undefined;
 
-		const parameterTokens = assembler.parser.getInstructionTokens(directive);
+		const parameterTokens = this.assembler.parser.getInstructionTokens(directive);
 		if (parameterTokens.length > 0) {
 			let paramIndex = 0;
 			const hasParentheses = parameterTokens[0]?.value === "(";

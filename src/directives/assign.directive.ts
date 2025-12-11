@@ -8,52 +8,54 @@ export class AssignDirective implements IDirective {
 	public isBlockDirective = false;
 	public isRawDirective = false;
 
-	constructor(private readonly lister: Lister) {}
+	constructor(
+		private readonly assembler: Assembler,
+		private readonly lister: Lister,
+	) {}
 
-	public handlePassOne(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext): void {
-		const labelToken = assembler.parser.ensureToken(assembler.parser.getPosition() - 2);
+	public handlePassOne(directive: ScalarToken, _context: DirectiveContext): void {
+		const labelToken = this.assembler.parser.ensureToken(this.assembler.parser.getPosition() - 2);
 
 		const isOnSameLine = labelToken?.line === directive.line;
 		const isValidType = labelToken?.type === "IDENTIFIER" || (labelToken?.type === "OPERATOR" && labelToken.value === "*");
 		if (!isOnSameLine || !isValidType) throw `Syntax error in line ${directive.line} - Missing symbol name before =`;
 
-		const label = assembler.lastGlobalLabel;
+		const label = this.assembler.lastGlobalLabel;
 		if (!label) throw `Syntax error in line ${directive.line} - Missing symbol name before =`;
 
-		assembler.lastGlobalLabel = null;
+		this.assembler.lastGlobalLabel = null;
 
-		const expressionTokens = assembler.parser.getInstructionTokens();
+		const expressionTokens = this.assembler.parser.getInstructionTokens();
 
-		const value = assembler.expressionEvaluator.evaluate(expressionTokens, {
-			pc: assembler.currentPC,
+		const value = this.assembler.expressionEvaluator.evaluate(expressionTokens, {
+			pc: this.assembler.currentPC,
 			allowForwardRef: true,
 			currentGlobalLabel: label,
-			macroArgs: (assembler.parser.tokenStreamStack[assembler.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
+			macroArgs: (this.assembler.parser.tokenStreamStack[this.assembler.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
 		});
 
 		this.lister.symbol(label, value);
 
 		if (label === "*") {
 			if (typeof value !== "number") throw `line ${directive.line} - Invalid value for */ORG ${value}`;
-			assembler.currentPC = value;
+			this.assembler.currentPC = value;
 			return;
 		}
 
-		assembler.symbolTable.defineVariable(label, value);
+		this.assembler.symbolTable.defineVariable(label, value);
 	}
 
-	public handlePassTwo(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext): void {
-		const label = assembler.lastGlobalLabel;
+	public handlePassTwo(directive: ScalarToken, _context: DirectiveContext): void {
+		const label = this.assembler.lastGlobalLabel;
 		if (!label) throw new Error(`Syntax error in line ${directive.line} - Missing label name`);
 
-		const expressionTokens = assembler.parser.getInstructionTokens(directive);
+		const expressionTokens = this.assembler.parser.getInstructionTokens(directive);
 
-		const value = assembler.expressionEvaluator.evaluate(expressionTokens, {
-			pc: assembler.currentPC,
+		const value = this.assembler.expressionEvaluator.evaluate(expressionTokens, {
+			pc: this.assembler.currentPC,
 			allowForwardRef: false, // now require resolution
-			currentGlobalLabel: assembler.lastGlobalLabel,
-			macroArgs: (assembler.parser.tokenStreamStack[assembler.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
-			assembler,
+			currentGlobalLabel: this.assembler.lastGlobalLabel,
+			macroArgs: (this.assembler.parser.tokenStreamStack[this.assembler.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
 		});
 
 		// If evaluation produced undefined, treat as an error in Pass 2
@@ -63,11 +65,11 @@ export class AssignDirective implements IDirective {
 
 		if (label === "*") {
 			if (typeof value !== "number") throw `line ${directive.line} - Invalid value for */ORG ${value}`;
-			assembler.currentPC = value;
+			this.assembler.currentPC = value;
 			return;
 		}
 
 		// In functions & Macros, the scope is lost between the passes
-		assembler.symbolTable.assignVariable(label, value);
+		this.assembler.symbolTable.assignVariable(label, value);
 	}
 }

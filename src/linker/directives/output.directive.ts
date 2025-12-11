@@ -7,10 +7,13 @@ export class OutputDirective implements IDirective {
 	public isBlockDirective = false;
 	public isRawDirective = false;
 
-	constructor(private linker: Linker) {}
+	constructor(
+		private readonly assembler: Assembler,
+		private linker: Linker,
+	) {}
 
-	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
-		const parser = assembler.parser;
+	public handlePassOne(directive: ScalarToken, context: DirectiveContext) {
+		const parser = this.assembler.parser;
 
 		let size: number | undefined;
 		let maxSize: number | undefined;
@@ -18,18 +21,18 @@ export class OutputDirective implements IDirective {
 
 		if (parser.isIdentifier("SIZE")) {
 			parser.advance();
-			const exprTokens = assembler.parser.getExpressionTokens(directive);
-			size = assembler.expressionEvaluator.evaluateAsNumber(exprTokens, context);
+			const exprTokens = this.assembler.parser.getExpressionTokens(directive);
+			size = this.assembler.expressionEvaluator.evaluateAsNumber(exprTokens, context);
 		}
 
 		if (parser.isIdentifier("MAXSIZE")) {
 			parser.advance();
-			const exprTokens = assembler.parser.getExpressionTokens(directive);
-			maxSize = assembler.expressionEvaluator.evaluateAsNumber(exprTokens, context);
+			const exprTokens = this.assembler.parser.getExpressionTokens(directive);
+			maxSize = this.assembler.expressionEvaluator.evaluateAsNumber(exprTokens, context);
 		}
 
 		this.linker.setOutputFile(filename, size, maxSize);
 	}
 
-	public handlePassTwo(_directive: ScalarToken, _assembler: Assembler, _context: DirectiveContext) {}
+	public handlePassTwo(_directive: ScalarToken, _context: DirectiveContext) {}
 }

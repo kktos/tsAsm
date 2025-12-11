@@ -6,19 +6,20 @@ export class NamespaceDirective implements IDirective {
 	public isBlockDirective = true;
 	public isRawDirective = false;
 
-	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void {
-		this.setNamespace(directive, assembler, context);
+	constructor(private readonly assembler: Assembler) {}
+	public handlePassOne(directive: ScalarToken, context: DirectiveContext): void {
+		this.setNamespace(directive, context);
 	}
 
-	public handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void {
-		this.setNamespace(directive, assembler, context);
+	public handlePassTwo(directive: ScalarToken, context: DirectiveContext): void {
+		this.setNamespace(directive, context);
 	}
 
-	private setNamespace(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext): void {
-		const tokens = assembler.parser.getInstructionTokens(directive);
+	private setNamespace(directive: ScalarToken, _context: DirectiveContext): void {
+		const tokens = this.assembler.parser.getInstructionTokens(directive);
 		// If no argument provided, reset to GLOBAL namespace (behave like `.NAMESPACE GLOBAL`)
 		if (tokens.length === 0) {
-			assembler.symbolTable.setNamespace("global");
+			this.assembler.symbolTable.setNamespace("global");
 			return;
 		}
 
@@ -26,6 +27,6 @@ export class NamespaceDirective implements IDirective {
 		if (token.type !== "IDENTIFIER") throw `ERROR on line ${directive.line}: .NAMESPACE directive requires an identifier.`;
 
 		const ns = token.value;
-		assembler.symbolTable.pushNamespace(ns);
+		this.assembler.symbolTable.pushNamespace(ns);
 	}
 }

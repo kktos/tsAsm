@@ -1,4 +1,5 @@
 import type { Assembler } from "../assembler/polyasm";
+import type { Lister } from "../helpers/lister.class";
 import type { ScalarToken } from "../shared/lexer/lexer.class";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
@@ -6,9 +7,14 @@ export class IncludeDirective implements IDirective {
 	public isBlockDirective = false;
 	public isRawDirective = false;
 
-	public handlePassOne(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
+	constructor(
+		private readonly assembler: Assembler,
+		private readonly lister: Lister,
+	) {}
+
+	public handlePassOne(directive: ScalarToken, _context: DirectiveContext) {
 		// Find expression tokens on the header line after 'OF', optionally followed by 'AS'
-		const expressionTokens = assembler.parser.getInstructionTokens();
+		const expressionTokens = this.assembler.parser.getInstructionTokens();
 		// let asIndex = exprHeader.findIndex((t) => t.type === "IDENTIFIER" && t.value === "AS");
 		// if (asIndex === -1) asIndex = exprHeader.length;
 		// const expressionTokens = exprHeader.slice(0, asIndex);
@@ -18,54 +24,52 @@ export class IncludeDirective implements IDirective {
 
 		// 2. Resolve the array from the symbol table
 		const evaluationContext = {
-			pc: assembler.currentPC,
-			macroArgs: assembler.parser.tokenStreamStack[assembler.parser.tokenStreamStack.length - 1]?.macroArgs,
-			assembler,
-			currentGlobalLabel: assembler.lastGlobalLabel ?? undefined,
+			pc: this.assembler.currentPC,
+			macroArgs: this.assembler.parser.tokenStreamStack[this.assembler.parser.tokenStreamStack.length - 1]?.macroArgs,
+			currentGlobalLabel: this.assembler.lastGlobalLabel ?? undefined,
 		};
 
-		const filename = assembler.expressionEvaluator.evaluate(expressionTokens, evaluationContext);
+		const filename = this.assembler.expressionEvaluator.evaluate(expressionTokens, evaluationContext);
 		if (typeof filename !== "string") throw new Error(`.INCLUDE requires a string argument on line ${directive.line}.`);
 
 		try {
-			assembler.startNewStream(filename);
-			assembler.parser.pushTokenStream({
-				newTokens: assembler.parser.lexer.getBufferedTokens(),
-				cacheName: assembler.fileHandler.fullpath,
+			this.assembler.startNewStream(filename);
+			this.assembler.parser.pushTokenStream({
+				newTokens: this.assembler.parser.lexer.getBufferedTokens(),
+				cacheName: this.assembler.fileHandler.fullpath,
 				onEndOfStream: () => {
-					assembler.endCurrentStream();
-					// assembler.lister.directive({ ...directive, value: "END INCLUDE" }, filename);
+					this.assembler.endCurrentStream();
+					// this.assembler.lister.directive({ ...directive, value: "END INCLUDE" }, filename);
 				},
 			});
 
-			assembler.lister.directive(directive, assembler.fileHandler.fullpath);
+			this.lister.directive(directive, this.assembler.fileHandler.fullpath);
 		} catch (e) {
 			throw `including file ${filename} on line ${directive.line}: ${e}`;
 		}
 	}
 
-	public handlePassTwo(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
-		const expressionTokens = assembler.parser.getInstructionTokens();
+	public handlePassTwo(directive: ScalarToken, _context: DirectiveContext) {
+		const expressionTokens = this.assembler.parser.getInstructionTokens();
 
 		const evaluationContext = {
-			pc: assembler.currentPC,
-			macroArgs: assembler.parser.tokenStreamStack[assembler.parser.tokenStreamStack.length - 1]?.macroArgs,
-			assembler,
-			currentGlobalLabel: assembler.lastGlobalLabel ?? undefined,
+			pc: this.assembler.currentPC,
+			macroArgs: this.assembler.parser.tokenStreamStack[this.assembler.parser.tokenStreamStack.length - 1]?.macroArgs,
+			currentGlobalLabel: this.assembler.lastGlobalLabel ?? undefined,
 		};
-		const filename = assembler.expressionEvaluator.evaluate(expressionTokens, evaluationContext);
+		const filename = this.assembler.expressionEvaluator.evaluate(expressionTokens, evaluationContext);
 		if (typeof filename !== "string") throw new Error(`.INCLUDE requires a string argument on line ${directive.line}.`);
 
-		assembler.startNewStream(filename);
-		assembler.parser.pushTokenStream({
-			cacheName: assembler.currentFilename,
+		this.assembler.startNewStream(filename);
+		this.assembler.parser.pushTokenStream({
+			cacheName: this.assembler.currentFilename,
 			newTokens: [],
 			onEndOfStream: () => {
-				assembler.endCurrentStream();
-				// 	assembler.lister.directive({ ...directive, value: "END INCLUDE" }, filename);
+				this.assembler.endCurrentStream();
+				// 	this.assembler.lister.directive({ ...directive, value: "END INCLUDE" }, filename);
 			},
 		});
 
-		assembler.lister.directive(directive, assembler.fileHandler.fullpath);
+		this.lister.directive(directive, this.assembler.fileHandler.fullpath);
 	}
 }

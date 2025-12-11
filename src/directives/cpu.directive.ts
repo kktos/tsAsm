@@ -8,26 +8,29 @@ export class CpuDirective implements IDirective {
 	public isBlockDirective = false;
 	public isRawDirective = false;
 
-	constructor(private readonly lister: Lister) {}
+	constructor(
+		private readonly assembler: Assembler,
+		private readonly lister: Lister,
+	) {}
 
-	private setCpu(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
-		const tokens = assembler.parser.getInstructionTokens();
-		const cpuName = assembler.expressionEvaluator.evaluate(tokens, context);
+	private setCpu(directive: ScalarToken, context: DirectiveContext) {
+		const tokens = this.assembler.parser.getInstructionTokens();
+		const cpuName = this.assembler.expressionEvaluator.evaluate(tokens, context);
 		if (typeof cpuName !== "string") throw new Error(`ERROR on line ${directive.line}: ${directive.value} name must evaluate to a string.`);
 
 		const upperCpuName = cpuName.toUpperCase();
 		const handlerClass = handlers[upperCpuName];
 
 		if (!handlerClass) throw new Error(`ERROR on line ${directive.line}: Unknown CPU name '${cpuName}'.`);
-		if (assembler.getCPUHandler().cpuType !== upperCpuName) assembler.setCPUHandler(new handlerClass());
+		if (this.assembler.getCPUHandler().cpuType !== upperCpuName) this.assembler.setCPUHandler(new handlerClass());
 
 		this.lister.directive(directive, cpuName);
 	}
 
-	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void {
-		this.setCpu(directive, assembler, context);
+	public handlePassOne(directive: ScalarToken, context: DirectiveContext): void {
+		this.setCpu(directive, context);
 	}
-	public handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void {
-		this.setCpu(directive, assembler, context);
+	public handlePassTwo(directive: ScalarToken, context: DirectiveContext): void {
+		this.setCpu(directive, context);
 	}
 }

@@ -7,18 +7,21 @@ export class ListDirective implements IDirective {
 	public isBlockDirective = false;
 	public isRawDirective = false;
 
-	constructor(private readonly logger: Logger) {}
+	constructor(
+		private readonly assembler: Assembler,
+		private readonly logger: Logger,
+	) {}
 
-	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
-		this.setListing(directive, assembler, context);
+	public handlePassOne(directive: ScalarToken, context: DirectiveContext) {
+		this.setListing(directive, context);
 	}
 
-	public handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
-		this.setListing(directive, assembler, context);
+	public handlePassTwo(directive: ScalarToken, context: DirectiveContext) {
+		this.setListing(directive, context);
 	}
 
-	private setListing(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext): void {
-		const argsToken = assembler.parser.getInstructionTokens();
+	private setListing(directive: ScalarToken, _context: DirectiveContext): void {
+		const argsToken = this.assembler.parser.getInstructionTokens();
 
 		if (argsToken.length !== 1) {
 			this.logger.warn(`[LIST] Invalid .LIST syntax on line ${directive.line}. Expected ON or OFF.`);

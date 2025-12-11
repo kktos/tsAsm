@@ -7,16 +7,20 @@ export class FillDirective implements IDirective {
 	public isBlockDirective = false;
 	public isRawDirective = false;
 
-	constructor(private readonly logger: Logger) {}
-	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void {
-		const argTokens = assembler.parser.getInstructionTokens();
+	constructor(
+		private readonly assembler: Assembler,
+		private readonly logger: Logger,
+	) {}
+
+	public handlePassOne(directive: ScalarToken, context: DirectiveContext): void {
+		const argTokens = this.assembler.parser.getInstructionTokens();
 
 		const [countTokens] = this.parseArguments(argTokens);
 
 		if (countTokens.length > 0) {
 			try {
-				const count = assembler.expressionEvaluator.evaluateAsNumber(countTokens, context);
-				assembler.currentPC += count;
+				const count = this.assembler.expressionEvaluator.evaluateAsNumber(countTokens, context);
+				this.assembler.currentPC += count;
 			} catch (e) {
 				// Error evaluating in pass one, but we must continue. Assume 0 size.
 				this.logger.warn(`Warning on line ${directive.line}: Could not evaluate .FILL count. ${e}`);
@@ -24,13 +28,13 @@ export class FillDirective implements IDirective {
 		}
 	}
 
-	public handlePassTwo(_directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void {
-		const argTokens = assembler.parser.getInstructionTokens();
+	public handlePassTwo(_directive: ScalarToken, context: DirectiveContext): void {
+		const argTokens = this.assembler.parser.getInstructionTokens();
 
 		const [countTokens, valueTokens] = this.parseArguments(argTokens);
 
-		const count = assembler.expressionEvaluator.evaluateAsNumber(countTokens, context);
-		const fillerValue = valueTokens.length > 0 ? assembler.expressionEvaluator.evaluateAsNumber(valueTokens, context) : 0; // Default to 0 if no value is provided
+		const count = this.assembler.expressionEvaluator.evaluateAsNumber(countTokens, context);
+		const fillerValue = valueTokens.length > 0 ? this.assembler.expressionEvaluator.evaluateAsNumber(valueTokens, context) : 0; // Default to 0 if no value is provided
 
 		if (context.isAssembling && count > 0) {
 			// Ensure filler value is a single byte
@@ -40,7 +44,7 @@ export class FillDirective implements IDirective {
 		}
 
 		// Advance PC if not assembling; writeBytes already advances PC when assembling
-		if (!context.isAssembling) assembler.currentPC += count;
+		if (!context.isAssembling) this.assembler.currentPC += count;
 	}
 
 	/**

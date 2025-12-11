@@ -7,23 +7,26 @@ export class OrgDirective implements IDirective {
 	public isBlockDirective = false;
 	public isRawDirective = false;
 
-	constructor(private readonly logger: Logger) {}
+	constructor(
+		private readonly assembler: Assembler,
+		private readonly logger: Logger,
+	) {}
 
-	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
-		const orgExpressionTokens = assembler.parser.getInstructionTokens();
+	public handlePassOne(directive: ScalarToken, context: DirectiveContext) {
+		const orgExpressionTokens = this.assembler.parser.getInstructionTokens();
 
 		try {
-			assembler.currentPC = assembler.expressionEvaluator.evaluateAsNumber(orgExpressionTokens, context);
+			this.assembler.currentPC = this.assembler.expressionEvaluator.evaluateAsNumber(orgExpressionTokens, context);
 		} catch (e) {
 			this.logger.warn(`Warning on line ${directive.line}: Failed to evaluate .ORG expression. Assuming 0x0000. Error: ${e}`);
-			assembler.currentPC = 0x0000;
+			this.assembler.currentPC = 0x0000;
 		}
 	}
 
-	public handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
-		const orgExpressionTokens = assembler.parser.getInstructionTokens();
+	public handlePassTwo(directive: ScalarToken, context: DirectiveContext) {
+		const orgExpressionTokens = this.assembler.parser.getInstructionTokens();
 		try {
-			assembler.currentPC = assembler.expressionEvaluator.evaluateAsNumber(orgExpressionTokens, context);
+			this.assembler.currentPC = this.assembler.expressionEvaluator.evaluateAsNumber(orgExpressionTokens, context);
 		} catch (e) {
 			throw `line ${directive.line}: Failed to evaluate .ORG expression. ${e}`;
 		}

@@ -1,6 +1,7 @@
 import type { Assembler } from "../assembler/polyasm";
 import type { StreamState } from "../assembler/polyasm.types";
 import type { SymbolValue } from "../assembler/symbol.class";
+import type { Lister } from "../helpers/lister.class";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
 import { hasNoMoreThanOne } from "../utils/array.utils";
 import type { DirectiveContext, IDirective } from "./directive.interface";
@@ -9,16 +10,21 @@ export class LetDirective implements IDirective {
 	public isBlockDirective = false;
 	public isRawDirective = false;
 
-	public handlePassOne(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext): void {
-		this.handleLet(directive, assembler);
+	constructor(
+		private readonly assembler: Assembler,
+		private readonly lister: Lister,
+	) {}
+
+	public handlePassOne(directive: ScalarToken, _context: DirectiveContext): void {
+		this.handleLet(directive);
 	}
 
-	public handlePassTwo(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext): void {
-		this.handleLet(directive, assembler);
+	public handlePassTwo(directive: ScalarToken, _context: DirectiveContext): void {
+		this.handleLet(directive);
 	}
 
-	private handleLet(directive: ScalarToken, assembler: Assembler) {
-		const lineTokens = assembler.parser.getExpressionTokens(directive);
+	private handleLet(directive: ScalarToken) {
+		const lineTokens = this.assembler.parser.getExpressionTokens(directive);
 		if (!hasNoMoreThanOne<Token>(lineTokens, (token: Token) => token.type === "OPERATOR" && token.value === "="))
 			throw `.LET expression only allows operator "==" to test equality`;
 
@@ -28,27 +34,27 @@ export class LetDirective implements IDirective {
 		const nameTokens = lineTokens.slice(0, index);
 		if (nameTokens.length === 1 && nameTokens[0]?.type === "IDENTIFIER") name = nameTokens[0].value;
 		else
-			name = assembler.expressionEvaluator.evaluate(nameTokens, {
-				pc: assembler.currentPC,
-				allowForwardRef: assembler.pass === 1,
-				currentGlobalLabel: assembler.lastGlobalLabel,
-				macroArgs: (assembler.parser.tokenStreamStack[assembler.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
+			name = this.assembler.expressionEvaluator.evaluate(nameTokens, {
+				pc: this.assembler.currentPC,
+				allowForwardRef: this.assembler.pass === 1,
+				currentGlobalLabel: this.assembler.lastGlobalLabel,
+				macroArgs: (this.assembler.parser.tokenStreamStack[this.assembler.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
 			});
 		if (typeof name !== "string") throw "Expected a string for symbol name";
 
-		if (!assembler.parser.lexer.isValidIdentifier(name)) throw `Invalid identifier for symbol name : ${name}`;
+		if (!this.assembler.parser.lexer.isValidIdentifier(name)) throw `Invalid identifier for symbol name : ${name}`;
 
 		const expressionTokens = lineTokens.slice(index + 1);
-		const value = assembler.expressionEvaluator.evaluate(expressionTokens, {
-			pc: assembler.currentPC,
-			allowForwardRef: assembler.pass === 1,
-			currentGlobalLabel: assembler.lastGlobalLabel,
-			macroArgs: (assembler.parser.tokenStreamStack[assembler.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
+		const value = this.assembler.expressionEvaluator.evaluate(expressionTokens, {
+			pc: this.assembler.currentPC,
+			allowForwardRef: this.assembler.pass === 1,
+			currentGlobalLabel: this.assembler.lastGlobalLabel,
+			macroArgs: (this.assembler.parser.tokenStreamStack[this.assembler.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
 		});
 
-		assembler.lister.symbol(name, value);
+		this.lister.symbol(name, value);
 
-		if (assembler.pass === 1) assembler.symbolTable.assignVariable(name, value);
-		else assembler.symbolTable.updateSymbol(name, value);
+		if (this.assembler.pass === 1) this.assembler.symbolTable.assignVariable(name, value);
+		else this.assembler.symbolTable.updateSymbol(name, value);
 	}
 }

@@ -319,7 +319,6 @@ export class Assembler {
 							pc: this.currentPC,
 							macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
 							currentGlobalLabel: this.lastGlobalLabel,
-							// options: this.options,
 							writebytes: this.writeBytes.bind(this),
 						};
 
@@ -410,7 +409,7 @@ export class Assembler {
 					pc: this.currentPC,
 					allowForwardRef: true,
 					currentGlobalLabel: this.lastGlobalLabel,
-					assembler: this,
+					// assembler: this,
 					numberMax,
 				}),
 			);
@@ -444,7 +443,7 @@ export class Assembler {
 						this.expressionEvaluator.evaluateAsNumber(exprTokens, {
 							pc: this.currentPC,
 							macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
-							assembler: this,
+							// assembler: this,
 							currentGlobalLabel: this.lastGlobalLabel,
 							numberMax,
 						}),
@@ -535,7 +534,7 @@ export class Assembler {
 					const indexValue = this.expressionEvaluator.evaluateAsNumber(indexTokens, {
 						pc: this.currentPC,
 						macroArgs: macroArgs, // Pass current macro args for evaluation context
-						assembler: this,
+						// assembler: this,
 						currentGlobalLabel: this.lastGlobalLabel,
 					});
 

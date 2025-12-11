@@ -6,12 +6,14 @@ export class IfDirective implements IDirective {
 	isBlockDirective = true;
 	isRawDirective = false;
 
-	private work(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void {
-		const parser = assembler.parser;
+	constructor(private readonly assembler: Assembler) {}
+
+	private work(directive: ScalarToken, context: DirectiveContext): void {
+		const parser = this.assembler.parser;
 
 		// 1. Get and evaluate the IF expression.
 		const ifExprTokens = parser.getInstructionTokens(directive);
-		const ifResult = assembler.expressionEvaluator.evaluate(ifExprTokens, context);
+		const ifResult = this.assembler.expressionEvaluator.evaluate(ifExprTokens, context);
 
 		let activeBranchFound = false;
 		let tokensToPush: Token[] = [];
@@ -56,10 +58,10 @@ export class IfDirective implements IDirective {
 		if (tokensToPush.length > 0) parser.pushTokenStream({ newTokens: tokensToPush, macroArgs: context.macroArgs });
 	}
 
-	handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void {
-		this.work(directive, assembler, context);
+	handlePassOne(directive: ScalarToken, context: DirectiveContext): void {
+		this.work(directive, context);
 	}
-	handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void {
-		this.work(directive, assembler, context);
+	handlePassTwo(directive: ScalarToken, context: DirectiveContext): void {
+		this.work(directive, context);
 	}
 }

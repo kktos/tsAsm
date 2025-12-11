@@ -20,30 +20,29 @@ export class Dispatcher {
 	private readonly directiveMap: Map<string, IDirective>;
 	constructor(
 		linker: Linker,
-		private readonly assembler: Assembler,
+		assembler: Assembler,
 		readonly logger: Logger,
 	) {
-		this.assembler = assembler;
 		this.directiveMap = new Map();
 
-		const loopHandler = new LoopDirective(assembler.lister);
+		const loopHandler = new LoopDirective(assembler, assembler.lister);
 		this.register("FOR", loopHandler);
 		this.register("REPEAT", loopHandler);
-		this.register("=", new AssignDirective());
+		this.register("=", new AssignDirective(assembler));
 
-		this.register("LOG", new LogDirective(logger, "LOG"));
-		this.register("ERROR", new LogDirective(logger, "ERR"));
-		this.register("WARNING", new LogDirective(logger, "WARN"));
+		this.register("LOG", new LogDirective(assembler, logger, "LOG"));
+		this.register("ERROR", new LogDirective(assembler, logger, "ERR"));
+		this.register("WARNING", new LogDirective(assembler, logger, "WARN"));
 
-		this.register("FILL", new FillDirective(logger));
-		this.register("ALIGN", new AlignDirective(logger));
-		this.register("SEGMENT", new SegmentDirective());
-		this.register("IF", new IfDirective());
-		this.register("END", new EndDirective());
+		this.register("FILL", new FillDirective(assembler, logger));
+		this.register("ALIGN", new AlignDirective(assembler, logger));
+		this.register("SEGMENT", new SegmentDirective(assembler, assembler.lister));
+		this.register("IF", new IfDirective(assembler));
+		this.register("END", new EndDirective(assembler));
 
-		this.register("ENDIAN", new EndianDirective(linker));
-		this.register("OUTPUT", new OutputDirective(linker));
-		this.register("WRITE", new WriteDirective(linker));
+		this.register("ENDIAN", new EndianDirective(assembler, linker));
+		this.register("OUTPUT", new OutputDirective(assembler, linker));
+		this.register("WRITE", new WriteDirective(assembler, linker));
 	}
 
 	public register(name: string, handler: IDirective): void {
@@ -56,7 +55,7 @@ export class Dispatcher {
 	public dispatch(directive: ScalarToken, context: DirectiveContext) {
 		const handler = this.directiveMap.get(directive.value);
 		if (!handler) return false;
-		handler.handlePassOne(directive, this.assembler, context);
+		handler.handlePassOne(directive, context);
 		return true;
 	}
 }

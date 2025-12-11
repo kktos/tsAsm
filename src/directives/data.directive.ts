@@ -10,31 +10,32 @@ export class DataDirective implements IDirective {
 	public isRawDirective = false;
 
 	constructor(
+		private readonly assembler: Assembler,
 		private readonly bytesPerElement: number,
 		private readonly lister: Lister,
 	) {}
 
-	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
+	public handlePassOne(directive: ScalarToken, context: DirectiveContext) {
 		if (context.isAssembling) {
-			const byteCount = this.calculateDirectiveSize(assembler);
-			assembler.currentPC += byteCount;
+			const byteCount = this.calculateDirectiveSize();
+			this.assembler.currentPC += byteCount;
 			this.lister.directive(directive, `<${byteCount} bytes>`);
 		}
 	}
 
-	public handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
+	public handlePassTwo(directive: ScalarToken, context: DirectiveContext) {
 		if (context.isAssembling) {
-			const bytes = this.encodeDataDirective(directive, assembler, context);
+			const bytes = this.encodeDataDirective(directive, context);
 			context.writebytes(bytes);
 		}
 	}
 
-	private calculateDirectiveSize(assembler: Assembler): number {
+	private calculateDirectiveSize(): number {
 		if (this.bytesPerElement === 0) {
 			// Special case for .TEXT or similar string-only directives
 		}
 
-		const argTokens = assembler.parser.getInstructionTokens();
+		const argTokens = this.assembler.parser.getInstructionTokens();
 		if (argTokens.length === 0) return 0;
 
 		let totalSize = 0;
@@ -63,20 +64,20 @@ export class DataDirective implements IDirective {
 		return totalSize;
 	}
 
-	private encodeDataDirective(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): number[] {
+	private encodeDataDirective(directive: ScalarToken, context: DirectiveContext): number[] {
 		const outputBytes: number[] = [];
 		const params: SymbolValue[] = [];
 		let hasText = false;
 
 		while (true) {
-			const exprTokens = assembler.parser.getExpressionTokens(directive);
+			const exprTokens = this.assembler.parser.getExpressionTokens(directive);
 			if (exprTokens.length === 0) break;
 
-			const value = assembler.expressionEvaluator.evaluate(exprTokens, {
-				pc: assembler.currentPC,
-				allowForwardRef: assembler.pass === 1,
-				currentGlobalLabel: assembler.lastGlobalLabel,
-				macroArgs: (assembler.parser.tokenStreamStack[assembler.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
+			const value = this.assembler.expressionEvaluator.evaluate(exprTokens, {
+				pc: this.assembler.currentPC,
+				allowForwardRef: this.assembler.pass === 1,
+				currentGlobalLabel: this.assembler.lastGlobalLabel,
+				macroArgs: (this.assembler.parser.tokenStreamStack[this.assembler.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
 			});
 
 			switch (typeof value) {
@@ -93,9 +94,9 @@ export class DataDirective implements IDirective {
 				}
 			}
 
-			if (assembler.parser.isEOS() || !assembler.parser.is("COMMA")) break;
+			if (this.assembler.parser.isEOS() || !this.assembler.parser.is("COMMA")) break;
 
-			assembler.parser.advance();
+			this.assembler.parser.advance();
 		}
 
 		this.lister.directiveWithBytes({

@@ -6,19 +6,21 @@ export class EndDirective implements IDirective {
 	public isBlockDirective = false;
 	public isRawDirective = false;
 
-	public handlePassOne(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext): void {
-		const tokens = assembler.parser.getInstructionTokens(directive);
+	constructor(private readonly assembler: Assembler) {}
+
+	public handlePassOne(directive: ScalarToken, _context: DirectiveContext): void {
+		const tokens = this.assembler.parser.getInstructionTokens(directive);
 
 		if (tokens.length === 1 && tokens[0]?.value === "NAMESPACE") {
-			assembler.symbolTable.popNamespace();
+			this.assembler.symbolTable.popNamespace();
 			return;
 		}
 
 		throw new Error(`line ${directive.line}: Unexpected directive '${directive.value}'`);
 	}
 
-	public handlePassTwo(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext): void {
-		assembler.parser.getInstructionTokens(directive);
-		assembler.symbolTable.popNamespace();
+	public handlePassTwo(directive: ScalarToken, _context: DirectiveContext): void {
+		this.assembler.parser.getInstructionTokens(directive);
+		this.assembler.symbolTable.popNamespace();
 	}
 }

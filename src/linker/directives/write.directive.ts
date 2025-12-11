@@ -7,21 +7,24 @@ export class WriteDirective implements IDirective {
 	public isBlockDirective = false;
 	public isRawDirective = false;
 
-	constructor(private linker: Linker) {}
+	constructor(
+		private readonly assembler: Assembler,
+		private linker: Linker,
+	) {}
 
-	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
-		const parser = assembler.parser;
+	public handlePassOne(directive: ScalarToken, context: DirectiveContext) {
+		const parser = this.assembler.parser;
 
 		if (!parser.isIdentifier(["BYTE", "BYTES", "WORD", "LONG", "STRING"])) throw "Invalid write directive";
 		const cmd = parser.identifier().value;
 
-		const value = assembler.expressionEvaluator.evaluate(parser.getExpressionTokens(directive, true), context);
+		const value = this.assembler.expressionEvaluator.evaluate(parser.getExpressionTokens(directive, true), context);
 
 		let offset: number | undefined;
 
 		if (parser.isIdentifier("AT")) {
 			parser.advance();
-			offset = assembler.expressionEvaluator.evaluateAsNumber(parser.getExpressionTokens(directive), context);
+			offset = this.assembler.expressionEvaluator.evaluateAsNumber(parser.getExpressionTokens(directive), context);
 		}
 
 		switch (cmd) {
@@ -51,5 +54,5 @@ export class WriteDirective implements IDirective {
 		}
 	}
 
-	public handlePassTwo(_directive: ScalarToken, _assembler: Assembler, _context: DirectiveContext) {}
+	public handlePassTwo(_directive: ScalarToken, _context: DirectiveContext) {}
 }

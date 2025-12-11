@@ -1,5 +1,4 @@
 import type { EvaluationContext } from "../assembler/expression";
-import type { Assembler } from "../assembler/polyasm";
 import type { Prettify } from "../cli/schema";
 import type { ScalarToken } from "../shared/lexer/lexer.class";
 
@@ -18,6 +17,6 @@ export interface IDirective {
 	isBlockDirective: boolean;
 	isRawDirective: boolean;
 
-	handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void;
-	handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void;
+	handlePassOne(directive: ScalarToken, context: DirectiveContext): void;
+	handlePassTwo(directive: ScalarToken, context: DirectiveContext): void;
 }

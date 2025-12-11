@@ -10,26 +10,27 @@ export class StringDirective implements IDirective {
 	public isRawDirective = false;
 
 	constructor(
+		private readonly assembler: Assembler,
 		private readonly format: StringFormat,
 		private readonly lister: Lister,
 	) {}
 
-	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
-		assembler.currentPC += this.calculateSize(directive, assembler, context);
+	public handlePassOne(directive: ScalarToken, context: DirectiveContext) {
+		this.assembler.currentPC += this.calculateSize(directive, context);
 	}
 
-	public handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
+	public handlePassTwo(directive: ScalarToken, context: DirectiveContext) {
 		// If not assembling, just advance PC
 		if (!context.isAssembling) {
-			assembler.currentPC += this.calculateSize(directive, assembler, context);
+			this.assembler.currentPC += this.calculateSize(directive, context);
 			return;
 		}
 
-		const strings = this.getStrings(directive, assembler, context);
+		const strings = this.getStrings(directive, context);
 		const bytes = this.encodeData(directive, strings);
 
 		this.lister.bytes({
-			addr: assembler.currentPC,
+			addr: this.assembler.currentPC,
 			bytes,
 			text: `.${directive.value} ${strings.map((s) => `"${s}"`).join(" ")}`,
 			hasText: true,
@@ -38,15 +39,15 @@ export class StringDirective implements IDirective {
 		context.writebytes(bytes);
 	}
 
-	private getStrings(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): string[] {
-		const argTokens = assembler.parser.getInstructionTokens();
+	private getStrings(directive: ScalarToken, context: DirectiveContext): string[] {
+		const argTokens = this.assembler.parser.getInstructionTokens();
 		const strings: string[] = [];
 		let currentExpression: Token[] = [];
 
 		const evaluateAndPush = () => {
 			if (currentExpression.length === 0) return;
 
-			const value = assembler.expressionEvaluator.evaluate(currentExpression, context) as string;
+			const value = this.assembler.expressionEvaluator.evaluate(currentExpression, context) as string;
 			if (!context.allowForwardRef && typeof value !== "string")
 				throw new Error(`Data directive expression must evaluate to a string on line ${directive.line}.`);
 
@@ -63,8 +64,8 @@ export class StringDirective implements IDirective {
 		return strings;
 	}
 
-	private calculateSize(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): number {
-		const strings = this.getStrings(directive, assembler, {
+	private calculateSize(directive: ScalarToken, context: DirectiveContext): number {
+		const strings = this.getStrings(directive, {
 			...context,
 			allowForwardRef: true,
 		});

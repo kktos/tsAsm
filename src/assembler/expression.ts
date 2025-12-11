@@ -69,7 +69,6 @@ const PRECEDENCE: Record<string, number> = {
  */
 export interface EvaluationContext {
 	symbolTable: PASymbolTable;
-	assembler?: Assembler;
 	pc: number;
 	macroArgs?: Map<string, Token[]>;
 	allowForwardRef?: boolean;

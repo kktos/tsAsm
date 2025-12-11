@@ -7,12 +7,15 @@ export class EndianDirective implements IDirective {
 	public isBlockDirective = false;
 	public isRawDirective = false;
 
-	constructor(private linker: Linker) {}
+	constructor(
+		private readonly assembler: Assembler,
+		private linker: Linker,
+	) {}
 
-	public handlePassOne(_directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
-		const endianess = assembler.parser.identifier(["BIG", "LITTLE"]).value;
+	public handlePassOne(_directive: ScalarToken, _context: DirectiveContext) {
+		const endianess = this.assembler.parser.identifier(["BIG", "LITTLE"]).value;
 		this.linker.setEndianess(endianess.toLowerCase() as "little" | "big");
 	}
 
-	public handlePassTwo(_directive: ScalarToken, _assembler: Assembler, _context: DirectiveContext) {}
+	public handlePassTwo(_directive: ScalarToken, _context: DirectiveContext) {}
 }

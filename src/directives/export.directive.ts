@@ -7,31 +7,35 @@ export class ExportDirective implements IDirective {
 	public isBlockDirective = false;
 	public isRawDirective = false;
 
-	constructor(private readonly lister: Lister) {}
-	public handlePassOne(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext): void {
-		const symbolToken = assembler.parser.identifier();
+	constructor(
+		private readonly assembler: Assembler,
+		private readonly lister: Lister,
+	) {}
+
+	public handlePassOne(directive: ScalarToken, _context: DirectiveContext): void {
+		const symbolToken = this.assembler.parser.identifier();
 
 		this.lister.directive(directive, symbolToken.value);
 
-		const symbol = assembler.symbolTable.findSymbol(symbolToken.value);
+		const symbol = this.assembler.symbolTable.findSymbol(symbolToken.value);
 
 		try {
-			assembler.symbolTable.defineConstant(`global::${symbolToken.value}`, symbol?.symbol.value ?? 0);
+			this.assembler.symbolTable.defineConstant(`global::${symbolToken.value}`, symbol?.symbol.value ?? 0);
 		} catch (e) {
 			throw `line ${directive.line}: Can't export variable symbol ${symbolToken.value} - ${e}`;
 		}
 	}
 
-	public handlePassTwo(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext): void {
-		const symbolToken = assembler.parser.identifier();
+	public handlePassTwo(directive: ScalarToken, _context: DirectiveContext): void {
+		const symbolToken = this.assembler.parser.identifier();
 
 		this.lister.directive(directive, symbolToken.value);
 
-		const symbol = assembler.symbolTable.findSymbol(symbolToken.value);
+		const symbol = this.assembler.symbolTable.findSymbol(symbolToken.value);
 		if (symbol === undefined) throw `line ${directive.line}: Can't export undefined symbol ${symbolToken.value}`;
 		if (!symbol.symbol.isConstant) throw `line ${directive.line}: Can't export variable symbol ${symbolToken.value}`;
 
 		// In functions & Macros, the scope is lost between the passes
-		assembler.symbolTable.updateSymbol(`global::${symbolToken.value}`, symbol.symbol.value);
+		this.assembler.symbolTable.updateSymbol(`global::${symbolToken.value}`, symbol.symbol.value);
 	}
 }

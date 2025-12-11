@@ -8,27 +8,28 @@ export class LogDirective implements IDirective {
 	public isRawDirective = false;
 
 	constructor(
+		private readonly assembler: Assembler,
 		private readonly logger: Logger,
 		private mode: "LOG" | "ERR" | "WARN" = "LOG",
 	) {}
 
-	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void {
-		this.handle(directive, assembler, {
+	public handlePassOne(directive: ScalarToken, context: DirectiveContext): void {
+		this.handle(directive, {
 			...context,
 			allowForwardRef: context.allowForwardRef ?? true,
 		});
 	}
 
-	public handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void {
-		this.handle(directive, assembler, {
+	public handlePassTwo(directive: ScalarToken, context: DirectiveContext): void {
+		this.handle(directive, {
 			...context,
 			allowForwardRef: context.allowForwardRef ?? false,
 		});
 	}
 
-	private handle(directive: ScalarToken, assembler: Assembler, context: DirectiveContext & { allowForwardRef?: boolean }): void {
+	private handle(directive: ScalarToken, context: DirectiveContext & { allowForwardRef?: boolean }): void {
 		// Retrieve tokens on the same line after the directive
-		const tokens = assembler.parser.getInstructionTokens(directive);
+		const tokens = this.assembler.parser.getInstructionTokens(directive);
 
 		// Split tokens into comma-separated expressions, but respect nested
 		// parentheses/brackets/braces so commas inside arrays or function calls
@@ -67,9 +68,9 @@ export class LogDirective implements IDirective {
 
 		for (const exprTokens of exprs) {
 			// try {
-			const value = assembler.expressionEvaluator.evaluate(exprTokens, {
+			const value = this.assembler.expressionEvaluator.evaluate(exprTokens, {
 				pc: context.pc,
-				assembler: assembler,
+				// assembler: this.assembler,
 				allowForwardRef: context.allowForwardRef ?? false,
 				macroArgs: context.macroArgs,
 				currentGlobalLabel: context.currentGlobalLabel,

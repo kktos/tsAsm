@@ -39,84 +39,81 @@ import { StringDirective } from "./string.directive";
 export class DirectiveHandler {
 	private readonly directiveMap: Map<string, IDirective>;
 	constructor(
-		private readonly assembler: Assembler,
+		assembler: Assembler,
 		private readonly logger: Logger,
 		private readonly lister: Lister,
 	) {
-		this.assembler = assembler;
 		this.directiveMap = new Map();
 
-		this.register("ORG", new OrgDirective(this.logger));
-		this.register("NAMESPACE", new NamespaceDirective());
-		this.register("MACRO", new MacroDirective());
-		this.register("DEFINE", new DefineDirective(this.lister));
+		this.register("ORG", new OrgDirective(assembler, this.logger));
+		this.register("MACRO", new MacroDirective(assembler));
 
-		const functionDirective = new FunctionDirective(this.lister);
+		this.register("NAMESPACE", new NamespaceDirective(assembler));
+		this.register("EXPORT", new ExportDirective(assembler, this.lister));
+
+		const functionDirective = new FunctionDirective(assembler, this.lister);
 		this.register("FUNCTION", functionDirective);
 
-		this.register("EQU", new EquDirective(this.lister));
-		this.register("=", new AssignDirective(this.lister));
-		this.register("LET", new LetDirective());
-		this.register("EXPORT", new ExportDirective(this.lister));
+		this.register("DEFINE", new DefineDirective(assembler, this.lister));
+		this.register("EQU", new EquDirective(assembler, this.lister));
+		this.register("=", new AssignDirective(assembler, this.lister));
+		this.register("LET", new LetDirective(assembler, this.lister));
 
-		this.register("OPTION", new OptionDirective());
+		this.register("OPTION", new OptionDirective(assembler, this.logger));
+		this.register("INCLUDE", new IncludeDirective(assembler, this.lister));
+		this.register("INCBIN", new IncbinDirective(assembler, this.logger));
 
-		this.register("INCLUDE", new IncludeDirective());
-		this.register("INCBIN", new IncbinDirective(this.logger, this.lister));
+		this.register("HEX", new HexDirective(assembler, this.logger, this.lister));
+		this.register("DB", new DataDirective(assembler, 1, this.lister)); // Define Byte (1 byte)
+		this.register("BYTE", new DataDirective(assembler, 1, this.lister)); // Define Byte (1 byte)
+		this.register("DW", new DataDirective(assembler, 2, this.lister)); // Define Word (2 bytes)
+		this.register("WORD", new DataDirective(assembler, 2, this.lister)); // Define Word (2 bytes)
+		this.register("DL", new DataDirective(assembler, 4, this.lister)); // Define Long (4 bytes)
+		this.register("LONG", new DataDirective(assembler, 4, this.lister)); // Define Long (4 bytes)
 
-		this.register("HEX", new HexDirective(this.logger, this.lister));
-		this.register("DB", new DataDirective(1, this.lister)); // Define Byte (1 byte)
-		this.register("BYTE", new DataDirective(1, this.lister)); // Define Byte (1 byte)
-		this.register("DW", new DataDirective(2, this.lister)); // Define Word (2 bytes)
-		this.register("WORD", new DataDirective(2, this.lister)); // Define Word (2 bytes)
-		this.register("DL", new DataDirective(4, this.lister)); // Define Long (4 bytes)
-		this.register("LONG", new DataDirective(4, this.lister)); // Define Long (4 bytes)
-		// this.register("DBYTE", new DataDirective(-2, this.logger, this.lister)); // Define Word (2 bytes)
-		// this.register("DWORD", new DataDirective(-4, this.logger, this.lister)); // Define Long (4 bytes)
-
-		this.register("TEXT", new StringDirective("TEXT", this.lister));
-		const cstrHandler = new StringDirective("CSTR", this.lister);
+		this.register("TEXT", new StringDirective(assembler, "TEXT", this.lister));
+		const cstrHandler = new StringDirective(assembler, "CSTR", this.lister);
 		this.register("CSTR", cstrHandler);
 		this.register("CSTRING", cstrHandler);
 		this.register("ASCIIZ", cstrHandler);
-		this.register("PSTR", new StringDirective("PSTR", this.lister));
-		this.register("PSTRL", new StringDirective("PSTRL", this.lister));
+		this.register("PSTR", new StringDirective(assembler, "PSTR", this.lister));
+		this.register("PSTRL", new StringDirective(assembler, "PSTRL", this.lister));
 
-		const loopHandler = new LoopDirective(this.lister);
+		const loopHandler = new LoopDirective(assembler, this.lister);
 		this.register("FOR", loopHandler);
 		this.register("REPEAT", loopHandler);
 
-		this.register("LIST", new ListDirective(this.logger));
+		this.register("LIST", new ListDirective(assembler, this.logger));
 
-		const logHandler = new LogDirective(this.logger, "LOG");
+		const logHandler = new LogDirective(assembler, this.logger, "LOG");
 		this.register("LOG", logHandler);
 		this.register("ECHO", logHandler);
 		this.register("OUT", logHandler);
 
-		const errLogHandler = new LogDirective(this.logger, "ERR");
+		const errLogHandler = new LogDirective(assembler, this.logger, "ERR");
 		this.register("ERROR", errLogHandler);
 		this.register("ERR", errLogHandler);
 
-		const warnLogHandler = new LogDirective(this.logger, "WARN");
+		const warnLogHandler = new LogDirective(assembler, this.logger, "WARN");
 		this.register("WARNING", warnLogHandler);
 		this.register("WARN", warnLogHandler);
 
-		const fillHandler = new FillDirective(this.logger);
+		const fillHandler = new FillDirective(assembler, this.logger);
 		this.register("FILL", fillHandler);
 		this.register("DS", fillHandler);
 		this.register("RES", fillHandler);
 
-		this.register("ALIGN", new AlignDirective(this.logger));
+		this.register("ALIGN", new AlignDirective(assembler, this.logger));
 
-		this.register("SEGMENT", new SegmentDirective());
+		this.register("SEGMENT", new SegmentDirective(assembler, this.lister));
 
-		const cpuDirective = new CpuDirective(this.lister);
+		const cpuDirective = new CpuDirective(assembler, this.lister);
 		this.register("CPU", cpuDirective);
 		this.register("SETCPU", cpuDirective);
 		this.register("PROCESSOR", cpuDirective);
 
-		this.register("IF", new IfDirective());
-		this.register("END", new EndDirective());
+		this.register("IF", new IfDirective(assembler));
+		this.register("END", new EndDirective(assembler));
 	}
 
 	public register(name: string, handler: IDirective): void {
@@ -131,12 +128,12 @@ export class DirectiveHandler {
 		// if (directive.value === "CPU" && context.macroArgs)
 		// 	throw new Error(`ERROR on line ${directive.line}: The .CPU directive cannot be used inside a macro. Please set the CPU outside of macro definitions.`);
 		if (!handler) return false;
-		handler.handlePassOne(directive, this.assembler, context);
+		handler.handlePassOne(directive, context);
 		return true;
 	}
 
 	public handlePassTwoDirective(directive: ScalarToken, context: DirectiveContext) {
 		const handler = this.directiveMap.get(directive.value);
-		if (handler) handler.handlePassTwo(directive, this.assembler, context);
+		if (handler) handler.handlePassTwo(directive, context);
 	}
 }
