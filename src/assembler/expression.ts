@@ -5,11 +5,11 @@
  */
 
 import type { PASymbolTable, SymbolValue } from "../assembler/symbol.class";
-import { functionDispatcher } from "../functions/dispatcher";
 import type { Logger } from "../helpers/logger.class";
 import type { FunctionToken, OperatorStackToken, OperatorToken, ScalarToken, Token } from "../lexer/lexer.class";
 import type { Segment } from "../linker/linker.class";
-import { resolveSysVar } from "../sysvar";
+import { functionDispatcher } from "../shared/functions/dispatcher";
+import { resolveSysVar } from "../shared/sysvar";
 import type { Assembler } from "./polyasm";
 
 const PRECEDENCE: Record<string, number> = {

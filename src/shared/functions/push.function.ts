@@ -1,5 +1,5 @@
-import type { SymbolValue } from "../assembler/symbol.class";
-import type { Token } from "../lexer/lexer.class";
+import type { SymbolValue } from "../../assembler/symbol.class";
+import type { Token } from "../../lexer/lexer.class";
 import type { EvaluationStack, FunctionHandler } from "./types";
 
 export const pushFunction: FunctionHandler = (stack: EvaluationStack, token: Token, _symbolTable, argCount): void => {

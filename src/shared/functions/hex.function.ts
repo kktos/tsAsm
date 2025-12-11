@@ -1,5 +1,5 @@
-import type { Token } from "../lexer/lexer.class";
-import { getHex } from "../utils/hex.util";
+import type { Token } from "../../lexer/lexer.class";
+import { getHex } from "../../utils/hex.util";
 import type { EvaluationStack, FunctionHandler } from "./types";
 
 export const hexFunction: FunctionHandler = (stack: EvaluationStack, token: Token, _symbolTable, argCount): void => {

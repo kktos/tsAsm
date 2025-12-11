@@ -1,5 +1,5 @@
-import type { PASymbolTable } from "../assembler/symbol.class";
-import type { Token } from "../lexer/lexer.class";
+import type { PASymbolTable } from "../../assembler/symbol.class";
+import type { Token } from "../../lexer/lexer.class";
 import { arrayFunction } from "./array.function";
 import { defFunction, undefFunction } from "./def.function";
 import { hexFunction } from "./hex.function";
