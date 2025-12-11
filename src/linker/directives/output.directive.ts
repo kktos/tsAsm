@@ -1,6 +1,6 @@
 import type { Assembler } from "../../assembler/polyasm";
 import type { DirectiveContext, IDirective } from "../../directives/directive.interface";
-import type { ScalarToken } from "../../lexer/lexer.class";
+import type { ScalarToken } from "../../shared/lexer/lexer.class";
 import type { Linker } from "../linker.class";
 
 export class OutputDirective implements IDirective {

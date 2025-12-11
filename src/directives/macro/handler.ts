@@ -1,5 +1,5 @@
 import type { Assembler } from "../../assembler/polyasm";
-import type { ScalarToken, Token } from "../../lexer/lexer.class";
+import type { ScalarToken, Token } from "../../shared/lexer/lexer.class";
 
 export class MacroHandler {
 	private assembler: Assembler;

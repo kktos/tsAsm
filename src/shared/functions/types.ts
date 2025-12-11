@@ -1,5 +1,5 @@
 import type { PASymbolTable, SymbolValue } from "../../assembler/symbol.class";
-import type { Token } from "../../lexer/lexer.class";
+import type { Token } from "../lexer/lexer.class";
 
 export type EvaluationStack = (SymbolValue | null)[];
 

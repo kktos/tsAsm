@@ -9,7 +9,7 @@ import { LogDirective } from "../../directives/log.directive";
 import { LoopDirective } from "../../directives/loop.directive";
 import { SegmentDirective } from "../../directives/segment.directive";
 import type { Logger } from "../../helpers/logger.class";
-import type { ScalarToken } from "../../lexer/lexer.class";
+import type { ScalarToken } from "../../shared/lexer/lexer.class";
 import type { Linker } from "../linker.class";
 import { AssignDirective } from "./assign.directive";
 import { EndianDirective } from "./endian.directive";

@@ -6,9 +6,9 @@
 
 import type { PASymbolTable, SymbolValue } from "../assembler/symbol.class";
 import type { Logger } from "../helpers/logger.class";
-import type { FunctionToken, OperatorStackToken, OperatorToken, ScalarToken, Token } from "../lexer/lexer.class";
 import type { Segment } from "../linker/linker.class";
 import { functionDispatcher } from "../shared/functions/dispatcher";
+import type { FunctionToken, OperatorStackToken, OperatorToken, ScalarToken, Token } from "../shared/lexer/lexer.class";
 import { resolveSysVar } from "../shared/sysvar";
 import type { Assembler } from "./polyasm";
 

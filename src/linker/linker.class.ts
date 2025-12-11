@@ -1,7 +1,7 @@
 import type { Parser } from "../assembler/parser.class";
 import type { Assembler } from "../assembler/polyasm";
 import type { Logger } from "../helpers/logger.class";
-import type { ScalarToken } from "../lexer/lexer.class";
+import type { ScalarToken } from "../shared/lexer/lexer.class";
 import { pushNumber } from "../utils/array.utils";
 import { getHex } from "../utils/hex.util";
 import { stringToASCIICharCodes } from "../utils/string.utils";

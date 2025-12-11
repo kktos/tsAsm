@@ -8,7 +8,7 @@
 import { blockDirectives, rawDirectives } from "../assembler/parser.class";
 import type { Assembler } from "../assembler/polyasm";
 import type { Logger } from "../helpers/logger.class";
-import type { ScalarToken } from "../lexer/lexer.class";
+import type { ScalarToken } from "../shared/lexer/lexer.class";
 import { AlignDirective } from "./align.directive";
 import { AssignDirective } from "./assign.directive";
 import { CpuDirective } from "./cpu.directive";

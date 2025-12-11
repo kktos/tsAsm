@@ -1,7 +1,7 @@
 import type { EventEmitter } from "node:events";
 import type { PushTokenStreamParams, StreamState } from "../assembler/polyasm.types";
 import type { SymbolValue } from "../assembler/symbol.class";
-import { AssemblyLexer, type IdentifierToken, type NumberToken, type StringToken, type Token } from "../lexer/lexer.class";
+import { AssemblyLexer, type IdentifierToken, type NumberToken, type StringToken, type Token } from "../shared/lexer/lexer.class";
 
 export const blockDirectives: Set<string> = new Set();
 export const rawDirectives: Set<string> = new Set();
@@ -105,7 +105,7 @@ export class Parser {
 		return isMatchingType && isMatchingValue;
 	}
 
-	public consume(expectedType: Token["type"] | Token["type"][], expectedValue?: SymbolValue | SymbolValue[], offset = 0) {
+	public consume(expectedType: Token["type"] | Token["type"][], expectedValue?: SymbolValue | SymbolValue[], _offset = 0) {
 		const token = this.next();
 		if (!token) return token;
 

@@ -1,4 +1,4 @@
-import type { Token } from "../../lexer/lexer.class";
+import type { Token } from "../lexer/lexer.class";
 import type { EvaluationStack, FunctionHandler } from "./types";
 
 export const typeFunction: FunctionHandler = (stack: EvaluationStack, token: Token): void => {
