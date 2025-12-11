@@ -21,7 +21,7 @@ export class SegmentDirective implements IDirective {
 		const token = assembler.parser.peek();
 		if (token?.type === "IDENTIFIER") {
 			name = token.value;
-			assembler.parser.consume();
+			assembler.parser.advance();
 		} else {
 			const tokens = assembler.parser.getInstructionTokens();
 			if (tokens.length === 0) throw new Error(`ERROR on line ${directive.line}: .SEGMENT requires a name expression.`);
@@ -44,7 +44,7 @@ export class SegmentDirective implements IDirective {
 		const token = assembler.parser.peek();
 		if (token?.type === "IDENTIFIER") {
 			name = token.value;
-			assembler.parser.consume();
+			assembler.parser.advance();
 		} else {
 			const tokens = assembler.parser.getInstructionTokens();
 			if (tokens.length === 0) throw new Error(`ERROR on line ${directive.line}: .SEGMENT requires a name expression.`);
@@ -83,7 +83,7 @@ export class SegmentDirective implements IDirective {
 	private parseBlockParameters(assembler: Assembler, context: DirectiveContext, line: number | string): SegmentDef {
 		const params: SegmentDef = { start: 0 };
 
-		assembler.parser.consume();
+		assembler.parser.advance();
 
 		while (true) {
 			const token = assembler.parser.next();
@@ -97,7 +97,7 @@ export class SegmentDirective implements IDirective {
 			const valueTokens = assembler.parser.getExpressionTokens();
 			params[key] = assembler.expressionEvaluator.evaluateAsNumber(valueTokens, context);
 
-			if (assembler.parser.peek()?.type === "COMMA") assembler.parser.consume();
+			if (assembler.parser.peek()?.type === "COMMA") assembler.parser.advance();
 		}
 
 		return params;

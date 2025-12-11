@@ -91,7 +91,7 @@ export class DataDirective implements IDirective {
 
 			if (assembler.parser.isEOS() || !assembler.parser.is("COMMA")) break;
 
-			assembler.parser.consume();
+			assembler.parser.advance();
 		}
 
 		assembler.lister.directiveWithBytes({

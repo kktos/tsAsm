@@ -14,7 +14,7 @@ export class DefineDirective implements IDirective {
 
 		let token = assembler.parser.peekTokenUnbuffered();
 		if (token?.type === "IDENTIFIER" && token.value === "AS") {
-			assembler.parser.consume();
+			assembler.parser.advance();
 			token = assembler.parser.identifier();
 			if (!token) throw new Error(`'.DEFINE' directive on line ${directive.line} requires a Data Processor name.`);
 			processorName = token.value;
@@ -43,7 +43,7 @@ export class DefineDirective implements IDirective {
 		let processorName: string | undefined;
 
 		if (assembler.parser.isIdentifier("AS")) {
-			assembler.parser.consume();
+			assembler.parser.advance();
 			const nameToken = assembler.parser.identifier();
 			if (!nameToken) throw new Error(`'.DEFINE' directive on line ${directive.line} requires a Data Processor name.`);
 			processorName = nameToken.value;
@@ -56,7 +56,7 @@ export class DefineDirective implements IDirective {
 		let blockToken: Token | null;
 		const token = assembler.parser.peek();
 		if (token?.type === "RAW_TEXT") {
-			assembler.parser.consume();
+			assembler.parser.advance();
 			blockToken = token;
 		} else {
 			blockToken = assembler.parser.next({ endMarker: ".END" });

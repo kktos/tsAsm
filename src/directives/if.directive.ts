@@ -42,7 +42,7 @@ export class IfDirective implements IDirective {
 
 		if (nextIsElse) {
 			// If the terminator was a brace, we need to consume the .ELSE we peeked at
-			if (terminatorToken?.type === "RBRACE") parser.consume(2);
+			if (terminatorToken?.type === "RBRACE") parser.advance(2);
 
 			if (!activeBranchFound) {
 				activeBranchFound = true;

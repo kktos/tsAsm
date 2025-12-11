@@ -156,7 +156,7 @@ export class Parser {
 	}
 
 	/** Advance the current token pointer by `n`. */
-	public consume(n = 1): void {
+	public advance(n = 1) {
 		this.setPosition(this.getPosition() + n);
 	}
 
@@ -267,7 +267,7 @@ export class Parser {
 		if (startToken?.type === "EOF") return tokens;
 		if (instructionToken && instructionToken.line !== startToken?.line) return tokens;
 
-		this.consume(1);
+		this.advance(1);
 		if (!startToken) return tokens;
 
 		tokens.push(startToken);
@@ -292,7 +292,7 @@ export class Parser {
 		if (!startToken || startToken.type === "EOF") return tokens;
 		if (instructionToken && instructionToken.line !== startToken.line) return tokens;
 
-		this.consume(1);
+		this.advance(1);
 		tokens.push(startToken);
 
 		if (startToken.value === "(") parenDepth++;
@@ -307,7 +307,7 @@ export class Parser {
 			else if (token.value === ")") parenDepth--;
 			else if (token.type === "COMMA" && parenDepth <= 0) break;
 
-			this.consume(1);
+			this.advance(1);
 			tokens.push(token);
 
 			if (inParentheses && parenDepth === 0) break;
@@ -326,7 +326,7 @@ export class Parser {
 		// Consume opening brace
 		if (!this.is("LBRACE")) throw new Error("Expected '{' to start block");
 
-		this.consume(); // consume '{'
+		this.advance(); // consume '{'
 
 		let braceDepth = 1;
 
@@ -337,22 +337,22 @@ export class Parser {
 				case "LBRACE":
 					braceDepth++;
 					tokens.push(current);
-					this.consume();
+					this.advance();
 					break;
 
 				case "RBRACE":
 					braceDepth--;
 					if (braceDepth === 0) {
-						this.consume();
+						this.advance();
 						break loop; // Found matching closing brace
 					}
 					tokens.push(current);
-					this.consume();
+					this.advance();
 					break;
 
 				case "DOT": {
 					tokens.push(current);
-					this.consume();
+					this.advance();
 
 					const directive = this.next() as Token;
 					tokens.push(directive);
@@ -369,7 +369,7 @@ export class Parser {
 
 				default:
 					tokens.push(current);
-					this.consume();
+					this.advance();
 					break;
 			}
 		}
@@ -393,14 +393,14 @@ export class Parser {
 			if (current.type === "LBRACE") {
 				braceDepth++;
 				tokens.push(current);
-				this.consume();
+				this.advance();
 				continue;
 			}
 
 			if (current.type === "RBRACE") {
 				braceDepth--;
 				tokens.push(current);
-				this.consume();
+				this.advance();
 				continue;
 			}
 
@@ -423,20 +423,20 @@ export class Parser {
 
 					tokens.push(current);
 					tokens.push(directive);
-					this.consume(2);
+					this.advance(2);
 
 					continue;
 				}
 
 				// Only consider terminators at OUR level (depth 0)
 				if (nestingDepth === 0 && terminators.includes(directiveName)) {
-					this.consume(2);
+					this.advance(2);
 					break;
 				}
 
 				// Exiting a nested block
 				if (directiveName === "END") {
-					this.consume(2);
+					this.advance(2);
 
 					if (nestingDepth > 0) {
 						nestingDepth--;
@@ -451,7 +451,7 @@ export class Parser {
 			}
 
 			tokens.push(current);
-			this.consume();
+			this.advance();
 		}
 
 		return tokens;

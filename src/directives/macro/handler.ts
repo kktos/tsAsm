@@ -88,12 +88,12 @@ export class MacroHandler {
 
 		if (hasParens) {
 			// consume opening '('
-			this.assembler.parser.consume(1);
+			this.assembler.parser.advance(1);
 			parenDepth = 1;
 			while (true) {
 				const token = this.assembler.parser.peek();
 				if (!token || token.type === "EOF") break;
-				this.assembler.parser.consume(1);
+				this.assembler.parser.advance(1);
 
 				if (token.type === "OPERATOR" && token.value === "(") {
 					parenDepth++;
@@ -128,14 +128,14 @@ export class MacroHandler {
 
 				// Handle angle-bracketed arguments
 				if (token.type === "OPERATOR" && token.value === "<") {
-					this.assembler.parser.consume(1); // consume '<'
+					this.assembler.parser.advance(1); // consume '<'
 					let bracketDepth = 1;
 					while (bracketDepth > 0) {
 						const innerToken = this.assembler.parser.peek();
 						if (!innerToken || innerToken.type === "EOF" || innerToken.line !== callLineNum) {
 							throw new Error(`Unmatched '<' in macro arguments on line ${callLineNum}.`);
 						}
-						this.assembler.parser.consume(1);
+						this.assembler.parser.advance(1);
 						if (innerToken.type === "OPERATOR") {
 							if (innerToken.value === "<") bracketDepth++;
 							if (innerToken.value === ">") bracketDepth--;
@@ -146,7 +146,7 @@ export class MacroHandler {
 						}
 					}
 				} else {
-					this.assembler.parser.consume(1);
+					this.assembler.parser.advance(1);
 					if (token.type === "COMMA") {
 						argsArray.push(currentArgTokens);
 						currentArgTokens = [];
