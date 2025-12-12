@@ -1,7 +1,7 @@
 import type { ValueHolder } from "../assembler/expression.types";
 import type { Parser } from "../assembler/parser.class";
 import type { Assembler } from "../assembler/polyasm";
-import type { DirectiveContext } from "../directives/directive.interface";
+import type { DirectiveContext, DirectiveRuntime } from "../directives/directive.interface";
 import type { Logger } from "../helpers/logger.class";
 import type { ScalarToken } from "../shared/lexer/lexer.class";
 import { pushNumber } from "../utils/array.utils";
@@ -34,14 +34,18 @@ export class Linker {
 	private outputFile: TOutputFile = { filename: "" };
 	private endianess: 1 | -1 = 1;
 	private assembler: Assembler | undefined;
-	private PC: ValueHolder = { value: 0 };
+
+	public PC: ValueHolder = { value: 0 };
 
 	constructor(private logger?: Logger) {}
 
 	public addSegment(name: string, start: number, size: number, padValue = 0, resizable = false): void {
+		const seg = this.segments.find((s) => s.name === name);
+		if (seg) throw new Error(`Segment already defined : ${name}`);
+
 		// If size is zero, create an empty data array. If resizable is true, the segment will grow on writes.
-		const seg: Segment = { name, start, size, data: size > 0 ? new Array(size).fill(padValue) : [], resizable, padValue };
-		this.segments.push(seg);
+		const newSeg: Segment = { name, start, size, data: size > 0 ? new Array(size).fill(padValue) : [], resizable, padValue };
+		this.segments.push(newSeg);
 	}
 
 	/** Selects a segment by name and makes it the active segment for subsequent writes. */
@@ -49,6 +53,9 @@ export class Linker {
 		const seg = this.segments.find((s) => s.name === name);
 		if (!seg) throw new Error(`Segment not found: ${name}`);
 		this.currentSegment = seg;
+
+		this.PC.value = seg.start;
+
 		return seg.start;
 	}
 
@@ -159,8 +166,32 @@ export class Linker {
 		if (this.assembler) this.PC.value += value.length;
 	}
 
+	public emitSegment(name: string, _offset?: number) {
+		// if (offset !== undefined) {
+		// 	this.finalObj[offset] = value;
+		// 	return;
+		// }
+
+		const seg = this.segments.find((s) => s.name === name);
+		if (!seg) throw new Error(`Segment not found: ${name}`);
+
+		const startOffset = this.finalObj.length;
+		this.finalObj.push(...seg.data);
+		if (!seg.resizable) this.finalObj.push(...new Array(seg.size - seg.data.length).fill(seg.padValue ?? 0));
+		if (this.assembler) this.PC.value += this.finalObj.length - startOffset;
+	}
+
 	public link(script: string, parser: Parser, assembler: Assembler) {
-		const dispatcher = new Dispatcher(this, assembler, assembler.logger);
+		const runtime: DirectiveRuntime = {
+			parser: assembler.parser,
+			symbolTable: assembler.symbolTable,
+			evaluator: assembler.expressionEvaluator,
+			lister: assembler.lister,
+			logger: assembler.logger,
+			linker: this,
+		};
+		const dispatcher = new Dispatcher(this, runtime);
+
 		this.assembler = assembler;
 
 		// assembler.symbolTable.clear();

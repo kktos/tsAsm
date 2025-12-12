@@ -105,4 +105,15 @@ describe("Segments", () => {
 		expect(seg?.start).toBe(0x0a00);
 		expect(seg?.size).toBe(256);
 	});
+
+	it("should fail on duplicate segment names", () => {
+		const cpu = new Cpu6502Handler();
+		const assembler = new Assembler(cpu, mockFileHandler);
+		const source = `
+		  .SEGMENT SEG { start: $800, end: $8FF }
+		  .SEGMENT SEG { start: $A00, size: $100 }
+		`;
+
+		expect(() => assembler.assemble(source)).toThrow(/Segment already defined : SEG -/);
+	});
 });

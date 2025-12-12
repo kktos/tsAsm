@@ -1,6 +1,6 @@
 import { EventEmitter } from "node:events";
 import type { CPUHandler } from "../cpu/cpuhandler.class";
-import type { DirectiveContext } from "../directives/directive.interface";
+import type { DirectiveContext, DirectiveRuntime } from "../directives/directive.interface";
 import { DirectiveHandler } from "../directives/handler";
 import { MacroHandler } from "../directives/macro/handler";
 import type { MacroDefinition } from "../directives/macro/macro.interface";
@@ -53,7 +53,9 @@ export class Assembler {
 		this.fileHandler = fileHandler;
 		this.logger = options?.logger ?? new Logger();
 		this.lister = new Lister(this.logger);
+
 		this.linker = new Linker(this.logger);
+		this.PC = this.linker.PC;
 
 		if (options?.rawDataProcessors) {
 			this.rawDataProcessors = options.rawDataProcessors.map;
@@ -66,11 +68,20 @@ export class Assembler {
 		const resolveSysValue = (nameToken: Token) => this.resolveSysValue(nameToken);
 		this.expressionEvaluator = new ExpressionEvaluator(this.symbolTable, this.namelessLabels, resolveSysValue);
 
-		this.directiveHandler = new DirectiveHandler(this, this.logger, this.lister);
 		this.macroHandler = new MacroHandler(this);
 
 		this.emitter = new EventEmitter();
 		this.parser = new Parser(this.emitter);
+
+		const runtime: DirectiveRuntime = {
+			parser: this.parser,
+			symbolTable: this.symbolTable,
+			evaluator: this.expressionEvaluator,
+			lister: this.lister,
+			logger: this.logger,
+			linker: this.linker,
+		};
+		this.directiveHandler = new DirectiveHandler(this, runtime);
 
 		this.pass = -1;
 
@@ -99,7 +110,7 @@ export class Assembler {
 				return this.currentFilename;
 
 			default:
-				throw new Error(`Unknown system variable: ${name} on line ${nameToken.line}.`);
+				throw new Error(`Unknown system variable: ${nameToken.value} on line ${nameToken.line}.`);
 		}
 	}
 
@@ -443,7 +454,7 @@ export class Assembler {
 			});
 		} catch (e) {
 			const errorMessage = e instanceof Error ? e.message : String(e);
-			throw `line ${mnemonicToken.line}: Could not determine size of instruction '${mnemonicToken.value}'.\n${JSON.stringify(operandTokens)}\n${errorMessage}`;
+			throw `line ${mnemonicToken.line}: Could not determine size of instruction '${mnemonicToken.value}'.${errorMessage}`;
 		}
 	}
 

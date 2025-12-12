@@ -1,5 +1,4 @@
-import type { Assembler } from "../../assembler/polyasm";
-import type { DirectiveContext, IDirective } from "../../directives/directive.interface";
+import type { DirectiveContext, DirectiveRuntime, IDirective } from "../../directives/directive.interface";
 import type { ScalarToken } from "../../shared/lexer/lexer.class";
 import type { Linker } from "../linker.class";
 
@@ -8,23 +7,23 @@ export class WriteDirective implements IDirective {
 	public isRawDirective = false;
 
 	constructor(
-		private readonly assembler: Assembler,
+		private readonly runtime: DirectiveRuntime,
 		private linker: Linker,
 	) {}
 
 	public handlePassOne(directive: ScalarToken, context: DirectiveContext) {
-		const parser = this.assembler.parser;
+		const parser = this.runtime.parser;
 
-		if (!parser.isIdentifier(["BYTE", "BYTES", "WORD", "LONG", "STRING"])) throw "Invalid write directive";
+		if (!parser.isIdentifier(["BYTE", "BYTES", "WORD", "LONG", "STRING", "SEGMENT"])) throw "Invalid write directive";
 		const cmd = parser.identifier().value;
 
-		const value = this.assembler.expressionEvaluator.evaluate(parser.getExpressionTokens(directive, true), context);
+		const value = this.runtime.evaluator.evaluate(parser.getExpressionTokens(directive, true), context);
 
 		let offset: number | undefined;
 
 		if (parser.isIdentifier("AT")) {
 			parser.advance();
-			offset = this.assembler.expressionEvaluator.evaluateAsNumber(parser.getExpressionTokens(directive), context);
+			offset = this.runtime.evaluator.evaluateAsNumber(parser.getExpressionTokens(directive), context);
 		}
 
 		switch (cmd) {
@@ -50,6 +49,10 @@ export class WriteDirective implements IDirective {
 			case "BYTES":
 				if (Array.isArray(value) === false) throw `Invalid write bytes directive - ${value} is not an array`;
 				this.linker.emitBytes(value as number[], offset);
+				break;
+			case "SEGMENT":
+				if (typeof value !== "string") throw `Invalid write segment directive - ${value} is not a segment name`;
+				this.linker.emitSegment(value, offset);
 				break;
 		}
 	}

@@ -1,18 +1,17 @@
-import type { Assembler } from "../assembler/polyasm";
 import type { ScalarToken } from "../shared/lexer/lexer.class";
-import type { DirectiveContext, IDirective } from "./directive.interface";
+import type { DirectiveContext, DirectiveRuntime, IDirective } from "./directive.interface";
 
 export class EndDirective implements IDirective {
 	public isBlockDirective = false;
 	public isRawDirective = false;
 
-	constructor(private readonly assembler: Assembler) {}
+	constructor(private readonly runtime: DirectiveRuntime) {}
 
 	public handlePassOne(directive: ScalarToken, _context: DirectiveContext): void {
-		const tokens = this.assembler.parser.getInstructionTokens(directive);
+		const tokens = this.runtime.parser.getInstructionTokens(directive);
 
 		if (tokens.length === 1 && tokens[0]?.value === "NAMESPACE") {
-			this.assembler.symbolTable.popNamespace();
+			this.runtime.symbolTable.popNamespace();
 			return;
 		}
 
@@ -20,7 +19,7 @@ export class EndDirective implements IDirective {
 	}
 
 	public handlePassTwo(directive: ScalarToken, _context: DirectiveContext): void {
-		this.assembler.parser.getInstructionTokens(directive);
-		this.assembler.symbolTable.popNamespace();
+		this.runtime.parser.getInstructionTokens(directive);
+		this.runtime.symbolTable.popNamespace();
 	}
 }

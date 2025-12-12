@@ -1,5 +1,4 @@
-import type { Assembler } from "../../assembler/polyasm";
-import type { DirectiveContext, IDirective } from "../../directives/directive.interface";
+import type { DirectiveContext, DirectiveRuntime, IDirective } from "../../directives/directive.interface";
 import type { ScalarToken } from "../../shared/lexer/lexer.class";
 import type { Linker } from "../linker.class";
 
@@ -8,12 +7,12 @@ export class OutputDirective implements IDirective {
 	public isRawDirective = false;
 
 	constructor(
-		private readonly assembler: Assembler,
+		private readonly runtime: DirectiveRuntime,
 		private linker: Linker,
 	) {}
 
 	public handlePassOne(directive: ScalarToken, context: DirectiveContext) {
-		const parser = this.assembler.parser;
+		const parser = this.runtime.parser;
 
 		let size: number | undefined;
 		let maxSize: number | undefined;
@@ -21,14 +20,14 @@ export class OutputDirective implements IDirective {
 
 		if (parser.isIdentifier("SIZE")) {
 			parser.advance();
-			const exprTokens = this.assembler.parser.getExpressionTokens(directive);
-			size = this.assembler.expressionEvaluator.evaluateAsNumber(exprTokens, context);
+			const exprTokens = parser.getExpressionTokens(directive);
+			size = this.runtime.evaluator.evaluateAsNumber(exprTokens, context);
 		}
 
 		if (parser.isIdentifier("MAXSIZE")) {
 			parser.advance();
-			const exprTokens = this.assembler.parser.getExpressionTokens(directive);
-			maxSize = this.assembler.expressionEvaluator.evaluateAsNumber(exprTokens, context);
+			const exprTokens = parser.getExpressionTokens(directive);
+			maxSize = this.runtime.evaluator.evaluateAsNumber(exprTokens, context);
 		}
 
 		this.linker.setOutputFile(filename, size, maxSize);

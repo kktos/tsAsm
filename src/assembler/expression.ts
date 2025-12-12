@@ -34,7 +34,6 @@ export class ExpressionEvaluator {
 	 */
 	public evaluateAsNumber(tokens: Token[], context: EvaluationContext) {
 		let result = this.evaluate(tokens, context);
-
 		if (context.numberMax && typeof result === "string") {
 			const maxLen = context.numberMax / 256;
 			if (result.length <= maxLen) {

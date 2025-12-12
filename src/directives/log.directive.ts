@@ -1,35 +1,26 @@
-import type { Assembler } from "../assembler/polyasm";
-import type { Logger } from "../helpers/logger.class";
 import type { ScalarToken } from "../shared/lexer/lexer.class";
-import type { DirectiveContext, IDirective } from "./directive.interface";
+import type { DirectiveContext, DirectiveRuntime, IDirective } from "./directive.interface";
 
 export class LogDirective implements IDirective {
 	public isBlockDirective = false;
 	public isRawDirective = false;
 
 	constructor(
-		private readonly assembler: Assembler,
-		private readonly logger: Logger,
+		private readonly runtime: DirectiveRuntime,
 		private mode: "LOG" | "ERR" | "WARN" = "LOG",
 	) {}
 
-	public handlePassOne(directive: ScalarToken, context: DirectiveContext): void {
-		this.handle(directive, {
-			...context,
-			allowForwardRef: context.allowForwardRef ?? true,
-		});
+	public handlePassOne(directive: ScalarToken, context: DirectiveContext) {
+		this.handle(directive, context);
 	}
 
-	public handlePassTwo(directive: ScalarToken, context: DirectiveContext): void {
-		this.handle(directive, {
-			...context,
-			allowForwardRef: context.allowForwardRef ?? false,
-		});
+	public handlePassTwo(directive: ScalarToken, context: DirectiveContext) {
+		this.handle(directive, context);
 	}
 
-	private handle(directive: ScalarToken, context: DirectiveContext & { allowForwardRef?: boolean }): void {
+	private handle(directive: ScalarToken, context: DirectiveContext) {
 		// Retrieve tokens on the same line after the directive
-		const tokens = this.assembler.parser.getInstructionTokens(directive);
+		const tokens = this.runtime.parser.getInstructionTokens(directive);
 
 		// Split tokens into comma-separated expressions, but respect nested
 		// parentheses/brackets/braces so commas inside arrays or function calls
@@ -68,13 +59,7 @@ export class LogDirective implements IDirective {
 
 		for (const exprTokens of exprs) {
 			// try {
-			const value = this.assembler.expressionEvaluator.evaluate(exprTokens, {
-				PC: context.PC,
-				// assembler: this.assembler,
-				allowForwardRef: context.allowForwardRef ?? false,
-				macroArgs: context.macroArgs,
-				currentLabel: context.currentLabel,
-			});
+			const value = this.runtime.evaluator.evaluate(exprTokens, context);
 
 			outputs.push(this.formatValue(value));
 			// } catch (e) {
@@ -101,10 +86,10 @@ export class LogDirective implements IDirective {
 			case "ERR":
 				throw `${message}`;
 			case "WARN":
-				this.logger.warn(message);
+				this.runtime.logger.warn(message);
 				break;
 			default:
-				this.logger.log(message);
+				this.runtime.logger.log(message);
 		}
 	}
 }

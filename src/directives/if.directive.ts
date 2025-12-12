@@ -1,19 +1,18 @@
-import type { Assembler } from "../assembler/polyasm";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
-import type { DirectiveContext, IDirective } from "./directive.interface";
+import type { DirectiveContext, DirectiveRuntime, IDirective } from "./directive.interface";
 
 export class IfDirective implements IDirective {
 	isBlockDirective = true;
 	isRawDirective = false;
 
-	constructor(private readonly assembler: Assembler) {}
+	constructor(private readonly runtime: DirectiveRuntime) {}
 
 	private work(directive: ScalarToken, context: DirectiveContext): void {
-		const parser = this.assembler.parser;
+		const parser = this.runtime.parser;
 
 		// 1. Get and evaluate the IF expression.
 		const ifExprTokens = parser.getInstructionTokens(directive);
-		const ifResult = this.assembler.expressionEvaluator.evaluate(ifExprTokens, context);
+		const ifResult = this.runtime.evaluator.evaluate(ifExprTokens, context);
 
 		let activeBranchFound = false;
 		let tokensToPush: Token[] = [];
