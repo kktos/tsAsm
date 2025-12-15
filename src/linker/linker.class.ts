@@ -1,9 +1,13 @@
+import { EventEmitter } from "node:events";
+import { ExpressionEvaluator } from "../assembler/expression";
 import type { ValueHolder } from "../assembler/expression.types";
-import type { Parser } from "../assembler/parser.class";
+import { Parser } from "../assembler/parser.class";
 import type { Assembler } from "../assembler/polyasm";
+import { PASymbolTable } from "../assembler/symbol.class";
 import type { DirectiveContext, DirectiveRuntime } from "../directives/directive.interface";
-import type { Logger } from "../helpers/logger.class";
-import type { ScalarToken } from "../shared/lexer/lexer.class";
+import { NullLister } from "../helpers/lister.class";
+import { Logger } from "../helpers/logger.class";
+import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
 import { pushNumber } from "../utils/array.utils";
 import { getHex } from "../utils/hex.util";
 import { stringToASCIICharCodes } from "../utils/string.utils";
@@ -20,32 +24,34 @@ export interface Segment {
 	padValue?: number;
 }
 
-type TOutputFile = {
-	filename: string;
-	size?: number;
-	maxSize?: number;
-};
-
 export class Linker {
 	public segments: Segment[] = [];
-	public currentSegment?: Segment;
+	public linkerSegments: Segment[] = [];
 
-	private finalObj: number[] = [];
-	private outputFile: TOutputFile = { filename: "" };
+	private finalSegment: Segment = { name: "", start: 0, size: Number.POSITIVE_INFINITY, data: [], resizable: true };
+	public currentSegment: Segment = this.finalSegment;
+
 	private endianess: 1 | -1 = 1;
 	private assembler: Assembler | undefined;
 
 	public PC: ValueHolder = { value: 0 };
 
-	constructor(private logger?: Logger) {}
-
-	public addSegment(name: string, start: number, size: number, padValue = 0, resizable = false): void {
+	public addSegment(name: string, start: number, size: number, padValue = 0, resizable = false) {
 		const seg = this.segments.find((s) => s.name === name);
 		if (seg) throw new Error(`Segment already defined : ${name}`);
 
 		// If size is zero, create an empty data array. If resizable is true, the segment will grow on writes.
 		const newSeg: Segment = { name, start, size, data: size > 0 ? new Array(size).fill(padValue) : [], resizable, padValue };
 		this.segments.push(newSeg);
+	}
+
+	public addLinkerSegment(name: string, offset: number) {
+		const seg = this.segments.find((s) => s.name === name);
+		if (seg) throw new Error(`Segment already defined : ${name}`);
+
+		const newSeg: Segment = { name, start: offset, size: 0, data: [] };
+		this.linkerSegments.push(newSeg);
+		this.currentSegment = newSeg;
 	}
 
 	/** Selects a segment by name and makes it the active segment for subsequent writes. */
@@ -124,37 +130,42 @@ export class Linker {
 		this.endianess = endianess === "little" ? 1 : -1;
 	}
 
-	public setOutputFile(filename: string, size?: number, maxSize?: number) {
-		this.outputFile.filename = filename;
-		this.outputFile.size = size;
-		this.outputFile.maxSize = maxSize;
+	public setOutputFile(filename: string, fixedSize?: number, padValue?: number, maxSize?: number) {
+		this.finalSegment.name = filename;
+		if (fixedSize !== undefined) {
+			this.finalSegment.size = fixedSize;
+			this.finalSegment.padValue = padValue;
+			this.finalSegment.resizable = false;
+		}
+		if (maxSize !== undefined) this.finalSegment.size = maxSize;
 	}
+
 	public emitString(value: string, _offset?: number) {
-		this.finalObj.push(...stringToASCIICharCodes(value));
+		this.currentSegment.data.push(...stringToASCIICharCodes(value));
 		if (this.assembler) this.PC.value += value.length;
 	}
 	public emitByte(value: number, offset?: number) {
 		if (offset !== undefined) {
-			this.finalObj[offset] = value;
+			this.currentSegment.data[offset] = value;
 			return;
 		}
-		pushNumber(this.finalObj, value, 1);
+		pushNumber(this.currentSegment.data, value, 1);
 		if (this.assembler) this.PC.value += 1;
 	}
 	public emitWord(value: number, offset?: number) {
 		if (offset !== undefined) {
-			this.finalObj[offset] = value;
+			this.currentSegment.data[offset] = value;
 			return;
 		}
-		pushNumber(this.finalObj, value, this.endianess * 2);
+		pushNumber(this.currentSegment.data, value, this.endianess * 2);
 		if (this.assembler) this.PC.value += 2;
 	}
 	public emitLong(value: number, offset?: number) {
 		if (offset !== undefined) {
-			this.finalObj[offset] = value;
+			this.currentSegment.data[offset] = value;
 			return;
 		}
-		pushNumber(this.finalObj, value, this.endianess * 4);
+		pushNumber(this.currentSegment.data, value, this.endianess * 4);
 		if (this.assembler) this.PC.value += 4;
 	}
 	public emitBytes(value: number[], _offset?: number) {
@@ -162,7 +173,7 @@ export class Linker {
 		// 	this.finalObj[offset] = value;
 		// 	return;
 		// }
-		this.finalObj.push(...value);
+		this.currentSegment.data.push(...value);
 		if (this.assembler) this.PC.value += value.length;
 	}
 
@@ -175,28 +186,33 @@ export class Linker {
 		const seg = this.segments.find((s) => s.name === name);
 		if (!seg) throw new Error(`Segment not found: ${name}`);
 
-		const startOffset = this.finalObj.length;
-		this.finalObj.push(...seg.data);
-		if (!seg.resizable) this.finalObj.push(...new Array(seg.size - seg.data.length).fill(seg.padValue ?? 0));
-		if (this.assembler) this.PC.value += this.finalObj.length - startOffset;
+		const startOffset = this.finalSegment.data.length;
+		this.finalSegment.data.push(...seg.data);
+		if (!seg.resizable) this.finalSegment.data.push(...new Array(seg.size - seg.data.length).fill(seg.padValue ?? 0));
+		if (this.assembler) this.PC.value += this.finalSegment.data.length - startOffset;
 	}
 
-	public link(script: string, parser: Parser, assembler: Assembler) {
+	public link(script: string, outputPath: string | undefined, assembler: Assembler) {
+		const symbolTable = new PASymbolTable();
+		const parser = new Parser(new EventEmitter());
 		const runtime: DirectiveRuntime = {
-			parser: assembler.parser,
-			symbolTable: assembler.symbolTable,
-			evaluator: assembler.expressionEvaluator,
-			lister: assembler.lister,
-			logger: assembler.logger,
+			parser,
+			symbolTable,
+			evaluator: new ExpressionEvaluator(symbolTable, () => null, this.resolveSysValue.bind(this)),
+			logger: new Logger(),
+			lister: new NullLister(),
 			linker: this,
 		};
-		const dispatcher = new Dispatcher(this, runtime);
+		const dispatcher = new Dispatcher(runtime);
 
 		this.assembler = assembler;
 
-		// assembler.symbolTable.clear();
-		assembler.symbolTable.defineConstant("segments", this.segments);
+		symbolTable.defineConstant("segments", this.segments);
+		this.currentSegment = this.finalSegment;
 		this.PC.value = 0;
+		if (outputPath) this.setOutputFile(outputPath);
+
+		runtime.logger.log("--- Linker Begin---\n");
 
 		parser.lexer.commentChar = "#";
 		parser.start(script);
@@ -222,7 +238,9 @@ export class Linker {
 						isAssembling: true,
 						PC: this.PC,
 						currentLabel,
-						writebytes: (_bytes: number[]) => {},
+						emitbytes: (bytes: number[]) => {
+							this.emitBytes(bytes);
+						},
 					};
 					if (!dispatcher.dispatch(directiveToken, directiveContext))
 						throw new Error(`Syntax error in line ${token.line} - Unexpected directive '${directiveToken.value}'`);
@@ -238,7 +256,7 @@ export class Linker {
 							isAssembling: true,
 							PC: this.PC,
 							currentLabel,
-							writebytes: (_bytes: number[]) => {},
+							emitbytes: (_bytes: number[]) => {},
 						};
 						if (!dispatcher.dispatch(token, directiveContext)) throw new Error(`Syntax error in line ${token.line} - Unexpected directive '${token.value}'`);
 						break;
@@ -250,6 +268,35 @@ export class Linker {
 			}
 		}
 
-		return { bytes: this.finalObj, outputFile: this.outputFile };
+		if (!this.finalSegment.resizable)
+			this.finalSegment.data.push(...new Array(this.finalSegment.size - this.finalSegment.data.length).fill(this.finalSegment.padValue ?? 0));
+
+		for (const segment of this.linkerSegments) this.finalSegment.data.splice(segment.start, segment.data.length, ...segment.data);
+
+		if (this.finalSegment.data.length > this.finalSegment.size)
+			throw `Output file is too large. Max size is ${this.finalSegment.size} bytes, but the linker output is ${this.finalSegment.data.length} bytes`;
+
+		runtime.logger.log(`\nOUPUT FILE: ${this.finalSegment.name}`);
+		runtime.logger.log("\n--- Linker End ---");
+
+		return this.finalSegment;
+	}
+	private resolveSysValue(nameToken: Token) {
+		switch (nameToken.value) {
+			case "PC":
+				return this.PC.value;
+
+			case "SEGMENT":
+				return this.currentSegment;
+
+			case "FILENAME":
+				return this.finalSegment.name;
+
+			case "IMAGE_END":
+				return this.finalSegment.resizable ? this.finalSegment.data.length : this.finalSegment.size;
+
+			default:
+				throw new Error(`Unknown system variable: ${nameToken.value} on line ${nameToken.line}.`);
+		}
 	}
 }
