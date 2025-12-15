@@ -13,9 +13,20 @@ const LABEL_PAD = 16;
 type BytesArgs = { addr: number; bytes: number[]; text: string; hasText?: boolean };
 type DirectiveBytesArgs = Omit<BytesArgs, "text"> & { pragma: ScalarToken | string; params: SymbolValue[][] };
 
-export class Lister {
+export interface ILister {
+	bytes(args: BytesArgs): void;
+	label(label: string, address: number): void;
+	symbol(label: string, value: SymbolValue): void;
+	macro(name: string, params: Token[][]): void;
+	directive(pragma: ScalarToken | string, ...params: SymbolValue[]): void;
+	directiveWithBytes(args: DirectiveBytesArgs): void;
+}
+
+export class Lister implements ILister {
 	constructor(private logger: Logger) {}
 
+	// The methods below already match the ILister interface,
+	// so no changes are needed here.
 	public bytes({ addr, bytes, text = "", hasText = false }: BytesArgs) {
 		let lineText = text;
 		for (let i = 0; i < bytes.length; i += BYTES_PER_LINE) {
@@ -56,6 +67,15 @@ export class Lister {
 		const text = `.${(typeof args.pragma === "string" ? args.pragma : args.pragma.value).toLowerCase()} ${args.params.map((p) => asString(p, true)).join(", ")}`;
 		this.bytes({ ...args, text });
 	}
+}
+
+export class NullLister implements ILister {
+	public bytes(_args: BytesArgs) {}
+	public label(_label: string, _address: number) {}
+	public symbol(_label: string, _value: SymbolValue) {}
+	public macro(_name: string, _params: Token[][]) {}
+	public directive(_pragma: ScalarToken | string, ..._params: SymbolValue[]) {}
+	public directiveWithBytes(_args: DirectiveBytesArgs) {}
 }
 
 export function asString(value: SymbolValue, wannaJoinArray = false): string {
