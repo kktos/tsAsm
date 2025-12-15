@@ -7,33 +7,31 @@ import type { AssemblerOptions } from "../assembler/polyasm.types";
 import { Cpu6502Handler } from "../cpu/cpu6502.class";
 import type { DirectiveContext } from "../directives/directive.interface";
 import { Logger } from "../helpers/logger.class";
+import { parseCliArgs } from "./args";
 import { yamlparse, yamlstringify } from "./asm-yaml";
 import colors from "./colors";
 import { readConf } from "./conf";
 import { NodeFileHandler } from "./file";
+import type { ValidationError } from "./schema";
 
 const logger = new Logger();
 
 logger.log(colors.cyan(`${name} v${version}`));
 
-const args = process.argv.slice(2);
-// logger.log(colors.yellow(`Arguments received: ${args.join(", ") || "None"}`));
-if (args.length < 1 || !args[0]) {
-	logger.error(colors.red("ERROR: Missing source file argument or configuration file argument"));
-	process.exit(-1);
-}
-
-const confFilename = args[0];
-const fileHandler = new NodeFileHandler();
-
-const { conf, errors } = readConf(fileHandler, confFilename);
-if (errors) {
+const printErrorsAndExit = (errors: ValidationError[]) => {
 	logger.error("");
 	logger.error(colors.red("Invalid configuration file"));
 	for (const error of errors) logger.error(colors.red(`${error.path}: ${error.message}`));
-
 	process.exit(-1);
-}
+};
+
+const cliArgs = parseCliArgs(process.argv.slice(2), name, logger);
+
+const confFilename = cliArgs.projectName as string;
+const fileHandler = new NodeFileHandler();
+
+const { conf, errors } = readConf(fileHandler, confFilename);
+if (errors) printErrorsAndExit(errors);
 
 fileHandler.basedir = `${dirname(confFilename)}/${dirname(conf.input.source)}/`;
 
@@ -51,17 +49,22 @@ const handlers = {
 	]),
 };
 
+const options: AssemblerOptions = { logger, rawDataProcessors: handlers };
+if (segments) options.segments = segments;
+
+logger.enabled = conf.output?.listing?.enabled ?? false;
+
 try {
-	const options: AssemblerOptions = { logger, rawDataProcessors: handlers };
-	if (segments) options.segments = segments;
 	const assembler = new Assembler(new Cpu6502Handler(), fileHandler, options);
 	const sourceFile = fileHandler.readSourceFile(basename(conf.input.source));
 
 	const segmentList = assembler.assemble(sourceFile);
 
+	if (!conf.output) process.exit(0);
+
 	chdir(dirname(confFilename));
 
-	if (conf.output?.segments?.enabled) {
+	if (conf.output.segments?.enabled === true) {
 		const segmentsFilename = conf.output.segments.path ?? `${basename(conf.input.source)}.seg`;
 		const map: Record<string, unknown> = {};
 		for (const segment of segmentList) {
@@ -73,20 +76,22 @@ try {
 		writeFileSync(segmentsFilename, yamlstringify(map, { flowLevel: 1, sortKeys: false }));
 	}
 
-	if (conf.output?.linker?.script) {
-		fileHandler.basedir = `${dirname(confFilename)}/`;
-		const scriptFile = fileHandler.readSourceFile(conf.output?.linker?.script);
-		const result = assembler.linker.link(scriptFile, assembler.parser, assembler);
+	if (cliArgs.link) {
+		if (conf.output.linker?.script) {
+			fileHandler.basedir = `${dirname(confFilename)}/`;
+			const scriptFile = fileHandler.readSourceFile(conf.output?.linker?.script);
+			const result = assembler.linker.link(scriptFile, conf.output.object?.path, assembler);
 
-		const buffer = Buffer.from(result.bytes);
-		writeFileSync(result.outputFile.filename, buffer);
-	} else if (conf.output?.object?.path) {
-		const objFile = assembler.link();
-		const buffer = Buffer.from(objFile);
-		writeFileSync(conf.output.object.path, buffer);
+			const buffer = Buffer.from(result.data);
+			writeFileSync(result.name, buffer);
+		} else if (conf.output.object?.path) {
+			const objFile = assembler.link(); // This creates the object file, not final linking
+			const buffer = Buffer.from(objFile);
+			writeFileSync(conf.output.object.path, buffer);
+		}
 	}
 
-	if (conf.output?.symbols?.enabled) {
+	if (conf.output.symbols?.enabled === true) {
 		const symbolsFilename = conf.output.symbols.path ?? `${basename(conf.input.source)}.sym`;
 		const index = assembler.symbolTable.getDict();
 		writeFileSync(symbolsFilename, yamlstringify(index));
