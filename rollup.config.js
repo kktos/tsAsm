@@ -15,7 +15,16 @@ export default defineConfig([
 			format: "esm",
 			sourcemap: false,
 		},
-		plugins: [typescript(), json(), terser()],
+		plugins: [
+			typescript(),
+			json(),
+			// For maximum obfuscation, enable property mangling.
+			// WARNING: This is an advanced option that can break your code.
+			terser({
+				compress: true,
+				mangle: true,
+			}),
+		],
 	},
 	{
 		// Configuration for the 'libtsasm' library
@@ -25,6 +34,15 @@ export default defineConfig([
 			format: "esm",
 			sourcemap: true,
 		},
-		plugins: [typescript(), json(), terser()],
+		plugins: [
+			typescript(),
+			json(),
+			// For maximum obfuscation, enable property mangling.
+			// WARNING: This is an advanced option that can break your code.
+			terser({
+				compress: true,
+				mangle: true,
+			}),
+		],
 	},
 ]);
