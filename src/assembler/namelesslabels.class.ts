@@ -1,5 +1,3 @@
-import { getHex } from "../utils/hex.util";
-
 interface NamelessLabel {
 	address: number;
 	file: string;
@@ -61,12 +59,6 @@ export class NamelessLabels {
 			targetIndex = left + distance - 1; // left + 0 for distance=1, left + 1 for distance=2, etc.
 			if (targetIndex < this.labels.length) return this.labels[targetIndex]?.address ?? 0;
 		}
-
-		console.log("findNearest", getHex(currentAddress), distance, targetIndex);
-		console.log(
-			"labels",
-			this.labels.map((l, i) => `${i.toString().padStart(3, " ")}: ${getHex(l.address)} @${l.line}:${l.column}`),
-		);
 
 		return null;
 	}

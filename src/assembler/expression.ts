@@ -8,12 +8,11 @@ import type { PASymbolTable, SymbolValue } from "../assembler/symbol.class";
 import { functionDispatcher } from "../shared/functions/dispatcher";
 import type { FunctionToken, OperatorStackToken, OperatorToken, ScalarToken, Token } from "../shared/lexer/lexer.class";
 import { type EvaluationContext, PRECEDENCE } from "./expression.types";
-import type { NamelessLabels } from "./namelesslabels.class";
 
 export class ExpressionEvaluator {
 	constructor(
 		private readonly symbolTable: PASymbolTable,
-		private readonly namelessLabels: NamelessLabels,
+		private readonly findNearestLabel: (address: number, distance: number) => number | null,
 		private readonly resolveSysValue: (nameToken: Token) => SymbolValue | undefined,
 	) {}
 
@@ -664,7 +663,7 @@ export class ExpressionEvaluator {
 
 			case "ANONYMOUS_LABEL_REF": {
 				const distance = Number.parseInt(token.value, 10);
-				const addr = this.namelessLabels.findNearest(context.PC.value, distance);
+				const addr = this.findNearestLabel(context.PC.value, distance);
 
 				if (addr === null && !context.allowForwardRef)
 					throw `Not enough ${distance < 0 ? "preceding" : "succeeding"} anonymous labels to satisfy '${token.value}'.`;
