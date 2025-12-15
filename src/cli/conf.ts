@@ -46,7 +46,7 @@ const confSchema = {
 				optional: true,
 				schema: {
 					path: { type: "string", optional: true },
-					enabled: { type: "boolean" },
+					enabled: { type: "boolean", optional: true },
 				},
 			},
 			symbols: {
@@ -54,7 +54,7 @@ const confSchema = {
 				optional: true,
 				schema: {
 					path: { type: "string", optional: true },
-					enabled: { type: "boolean" },
+					enabled: { type: "boolean", optional: true },
 				},
 			},
 			segments: {
@@ -62,7 +62,7 @@ const confSchema = {
 				optional: true,
 				schema: {
 					path: { type: "string", optional: true },
-					enabled: { type: "boolean" },
+					enabled: { type: "boolean", optional: true },
 				},
 			},
 		},
