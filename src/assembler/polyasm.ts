@@ -54,7 +54,7 @@ export class Assembler {
 		this.logger = options?.logger ?? new Logger();
 		this.lister = new Lister(this.logger);
 
-		this.linker = new Linker(this.logger);
+		this.linker = new Linker();
 		this.PC = this.linker.PC;
 
 		if (options?.rawDataProcessors) {
@@ -66,7 +66,7 @@ export class Assembler {
 		this.symbolTable = new PASymbolTable();
 
 		const resolveSysValue = (nameToken: Token) => this.resolveSysValue(nameToken);
-		this.expressionEvaluator = new ExpressionEvaluator(this.symbolTable, this.namelessLabels, resolveSysValue);
+		this.expressionEvaluator = new ExpressionEvaluator(this.symbolTable, this.namelessLabels.findNearest.bind(this.namelessLabels), resolveSysValue);
 
 		this.macroHandler = new MacroHandler(this);
 
@@ -231,7 +231,7 @@ export class Assembler {
 						allowForwardRef: true,
 						currentLabel: this.lastGlobalLabel,
 						macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
-						writebytes: this.writeBytes.bind(this),
+						emitbytes: this.writeBytes.bind(this),
 					};
 
 					if (!this.directiveHandler.handlePassOneDirective(directiveToken, directiveContext))
@@ -252,7 +252,7 @@ export class Assembler {
 							allowForwardRef: true,
 							currentLabel: this.lastGlobalLabel,
 							macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
-							writebytes: this.writeBytes.bind(this),
+							emitbytes: this.writeBytes.bind(this),
 						};
 						if (!this.directiveHandler.handlePassOneDirective(token, directiveContext))
 							throw new Error(`Syntax error in line ${token.line} - Unexpected directive '${token.value}'`);
@@ -352,7 +352,7 @@ export class Assembler {
 							PC: this.PC,
 							macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
 							currentLabel: this.lastGlobalLabel,
-							writebytes: this.writeBytes.bind(this),
+							emitbytes: this.writeBytes.bind(this),
 						};
 
 						this.directiveHandler.handlePassTwoDirective(token, directiveContext);
@@ -393,7 +393,7 @@ export class Assembler {
 						PC: this.PC,
 						macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
 						currentLabel: this.lastGlobalLabel,
-						writebytes: this.writeBytes.bind(this),
+						emitbytes: this.writeBytes.bind(this),
 					};
 
 					this.directiveHandler.handlePassTwoDirective(directiveToken, directiveContext);
