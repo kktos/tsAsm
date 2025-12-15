@@ -1,5 +1,5 @@
 import type { Assembler } from "../assembler/polyasm";
-import type { Lister } from "../helpers/lister.class";
+import type { ILister } from "../helpers/lister.class";
 import type { ScalarToken } from "../shared/lexer/lexer.class";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
@@ -9,7 +9,7 @@ export class ExportDirective implements IDirective {
 
 	constructor(
 		private readonly assembler: Assembler,
-		private readonly lister: Lister,
+		private readonly lister: ILister,
 	) {}
 
 	public handlePassOne(directive: ScalarToken, _context: DirectiveContext): void {

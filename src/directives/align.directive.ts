@@ -43,7 +43,7 @@ export class AlignDirective implements IDirective {
 				// Ensure filler value is a single byte
 				const filler = fillerValue & 0xff;
 				const bytes = new Array(paddingBytes).fill(filler);
-				context.writebytes(bytes);
+				context.emitbytes(bytes);
 			} else {
 				context.PC.value = newPC;
 			}

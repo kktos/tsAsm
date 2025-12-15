@@ -1,37 +1,38 @@
 import type { DirectiveContext, DirectiveRuntime, IDirective } from "../../directives/directive.interface";
 import type { ScalarToken } from "../../shared/lexer/lexer.class";
-import type { Linker } from "../linker.class";
 
 export class OutputDirective implements IDirective {
 	public isBlockDirective = false;
 	public isRawDirective = false;
 
-	constructor(
-		private readonly runtime: DirectiveRuntime,
-		private linker: Linker,
-	) {}
+	constructor(private readonly runtime: DirectiveRuntime) {}
 
-	public handlePassOne(directive: ScalarToken, context: DirectiveContext) {
+	public handlePassOne(_directive: ScalarToken, _context: DirectiveContext) {}
+
+	public handlePassTwo(directive: ScalarToken, context: DirectiveContext) {
 		const parser = this.runtime.parser;
 
-		let size: number | undefined;
+		let fixedSize: number | undefined;
 		let maxSize: number | undefined;
+		let padValue = 0;
 		const filename = parser.string().value;
 
-		if (parser.isIdentifier("SIZE")) {
+		if (parser.isIdentifier("FIXED")) {
 			parser.advance();
 			const exprTokens = parser.getExpressionTokens(directive);
-			size = this.runtime.evaluator.evaluateAsNumber(exprTokens, context);
-		}
+			fixedSize = this.runtime.evaluator.evaluateAsNumber(exprTokens, context);
 
-		if (parser.isIdentifier("MAXSIZE")) {
+			if (parser.isIdentifier("PAD")) {
+				parser.advance();
+				const exprTokens = parser.getExpressionTokens(directive);
+				padValue = this.runtime.evaluator.evaluateAsNumber(exprTokens, context);
+			}
+		} else if (parser.isIdentifier("MAX")) {
 			parser.advance();
 			const exprTokens = parser.getExpressionTokens(directive);
 			maxSize = this.runtime.evaluator.evaluateAsNumber(exprTokens, context);
 		}
 
-		this.linker.setOutputFile(filename, size, maxSize);
+		this.runtime.linker.setOutputFile(filename, fixedSize, padValue, maxSize);
 	}
-
-	public handlePassTwo(_directive: ScalarToken, _context: DirectiveContext) {}
 }

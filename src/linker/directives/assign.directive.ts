@@ -7,7 +7,7 @@ export class AssignDirective implements IDirective {
 
 	constructor(private readonly runtime: DirectiveRuntime) {}
 
-	public handlePassOne(directive: ScalarToken, context: DirectiveContext): void {
+	public handlePassTwo(directive: ScalarToken, context: DirectiveContext): void {
 		const label = context.currentLabel;
 		if (!label) throw `Syntax error in line ${directive.line} - Missing symbol name before =`;
 
@@ -16,5 +16,5 @@ export class AssignDirective implements IDirective {
 		this.runtime.symbolTable.assignVariable(label, value);
 	}
 
-	public handlePassTwo(_directive: ScalarToken, _context: DirectiveContext): void {}
+	public handlePassOne(_directive: ScalarToken, _context: DirectiveContext): void {}
 }

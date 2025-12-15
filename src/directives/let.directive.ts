@@ -1,6 +1,6 @@
 import type { Assembler } from "../assembler/polyasm";
 import type { SymbolValue } from "../assembler/symbol.class";
-import type { Lister } from "../helpers/lister.class";
+import type { ILister } from "../helpers/lister.class";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
 import { hasNoMoreThanOne } from "../utils/array.utils";
 import type { DirectiveContext, IDirective } from "./directive.interface";
@@ -11,7 +11,7 @@ export class LetDirective implements IDirective {
 
 	constructor(
 		private readonly assembler: Assembler,
-		private readonly lister: Lister,
+		private readonly lister: ILister,
 	) {}
 
 	public handlePassOne(directive: ScalarToken, context: DirectiveContext): void {

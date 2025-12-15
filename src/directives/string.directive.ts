@@ -1,7 +1,5 @@
-import type { Assembler } from "../assembler/polyasm";
-import type { Lister } from "../helpers/lister.class";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
-import type { DirectiveContext, IDirective } from "./directive.interface";
+import type { DirectiveContext, DirectiveRuntime, IDirective } from "./directive.interface";
 
 export type StringFormat = "TEXT" | "CSTR" | "PSTR" | "PSTRL";
 
@@ -10,9 +8,8 @@ export class StringDirective implements IDirective {
 	public isRawDirective = false;
 
 	constructor(
-		private readonly assembler: Assembler,
+		private readonly runtime: DirectiveRuntime,
 		private readonly format: StringFormat,
-		private readonly lister: Lister,
 	) {}
 
 	public handlePassOne(directive: ScalarToken, context: DirectiveContext) {
@@ -29,25 +26,25 @@ export class StringDirective implements IDirective {
 		const strings = this.getStrings(directive, context);
 		const bytes = this.encodeData(directive, strings);
 
-		this.lister.bytes({
+		this.runtime.lister.bytes({
 			addr: context.PC.value,
 			bytes,
 			text: `.${directive.value} ${strings.map((s) => `"${s}"`).join(" ")}`,
 			hasText: true,
 		});
 
-		context.writebytes(bytes);
+		context.emitbytes(bytes);
 	}
 
 	private getStrings(directive: ScalarToken, context: DirectiveContext): string[] {
-		const argTokens = this.assembler.parser.getInstructionTokens();
+		const argTokens = this.runtime.parser.getInstructionTokens();
 		const strings: string[] = [];
 		let currentExpression: Token[] = [];
 
 		const evaluateAndPush = () => {
 			if (currentExpression.length === 0) return;
 
-			const value = this.assembler.expressionEvaluator.evaluate(currentExpression, context) as string;
+			const value = this.runtime.evaluator.evaluate(currentExpression, context) as string;
 			if (!context.allowForwardRef && typeof value !== "string")
 				throw new Error(`Data directive expression must evaluate to a string on line ${directive.line}.`);
 

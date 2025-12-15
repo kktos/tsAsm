@@ -8,7 +8,7 @@ export class FillDirective implements IDirective {
 	constructor(private readonly runtime: DirectiveRuntime) {}
 
 	public handlePassOne(directive: ScalarToken, context: DirectiveContext): void {
-		const argTokens = this.runtime.parser.getInstructionTokens();
+		const argTokens = this.runtime.parser.getInstructionTokens(directive);
 
 		const [countTokens] = this.parseArguments(argTokens);
 
@@ -23,19 +23,19 @@ export class FillDirective implements IDirective {
 		}
 	}
 
-	public handlePassTwo(_directive: ScalarToken, context: DirectiveContext): void {
-		const argTokens = this.runtime.parser.getInstructionTokens();
+	public handlePassTwo(directive: ScalarToken, context: DirectiveContext): void {
+		const argTokens = this.runtime.parser.getInstructionTokens(directive);
 
 		const [countTokens, valueTokens] = this.parseArguments(argTokens);
 
 		const count = this.runtime.evaluator.evaluateAsNumber(countTokens, context);
-		const fillerValue = valueTokens.length > 0 ? this.runtime.evaluator.evaluateAsNumber(valueTokens, context) : 0; // Default to 0 if no value is provided
+		const fillerValue = valueTokens.length > 0 ? this.runtime.evaluator.evaluateAsNumber(valueTokens, context) : 0;
 
 		if (context.isAssembling && count > 0) {
 			// Ensure filler value is a single byte
 			const byteValue = fillerValue & 0xff;
 			const bytes = new Array(count).fill(byteValue);
-			context.writebytes(bytes);
+			context.emitbytes(bytes);
 		}
 
 		// Advance PC if not assembling; writeBytes already advances PC when assembling

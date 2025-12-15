@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import type { Parser } from "../../assembler/parser.class";
 import { Assembler } from "../../assembler/polyasm";
 import { NodeFileHandler } from "../../cli/file";
 import { Linker } from "../linker.class";
@@ -21,18 +20,16 @@ const fakeCPU = {
 describe("Linker Script: = - variable assignment", () => {
 	let asm: Assembler;
 	let linker: Linker;
-	let parser: Parser;
 
 	beforeEach(() => {
 		const fileHandler = new NodeFileHandler();
 		asm = new Assembler(fakeCPU, fileHandler);
-		linker = new Linker(asm.logger);
-		parser = asm.parser;
+		linker = new Linker();
 	});
 
 	it("should define a variable", () => {
 		const src = "foo = 123";
-		linker.link(src, parser, asm);
+		linker.link(src, "", asm);
 		const symbol = asm.symbolTable.lookupSymbol("foo");
 		expect(symbol).toBe(123);
 	});
@@ -42,7 +39,7 @@ describe("Linker Script: = - variable assignment", () => {
 				foo = 123
 				foo = 456
 			`;
-		linker.link(src, parser, asm);
+		linker.link(src, "", asm);
 		const symbol = asm.symbolTable.lookupSymbol("foo");
 		expect(symbol).toBe(456);
 	});
@@ -52,7 +49,7 @@ describe("Linker Script: = - variable assignment", () => {
 				foo = 123
 				= 456
 			`;
-		expect(() => linker.link(src, parser, asm)).toThrow(/Syntax error in line 3 : OPERATOR =/);
+		expect(() => linker.link(src, "", asm)).toThrow(/Syntax error in line 3 : OPERATOR =/);
 	});
 
 	it.skip("should not work with label", () => {
@@ -60,6 +57,6 @@ describe("Linker Script: = - variable assignment", () => {
 				boo:
 					= 456
 			`;
-		expect(() => linker.link(src, parser, asm)).toThrow(/- Missing symbol name before =/);
+		expect(() => linker.link(src, "", asm)).toThrow(/- Missing symbol name before =/);
 	});
 });

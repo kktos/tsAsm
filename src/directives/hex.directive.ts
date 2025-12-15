@@ -1,5 +1,5 @@
 import type { Assembler } from "../assembler/polyasm";
-import type { Lister } from "../helpers/lister.class";
+import type { ILister } from "../helpers/lister.class";
 import type { Logger } from "../helpers/logger.class";
 import type { ScalarToken } from "../shared/lexer/lexer.class";
 import type { DirectiveContext, IDirective } from "./directive.interface";
@@ -11,7 +11,7 @@ export class HexDirective implements IDirective {
 	constructor(
 		private readonly assembler: Assembler,
 		private readonly logger: Logger,
-		private readonly lister: Lister,
+		private readonly lister: ILister,
 	) {}
 
 	public handlePassOne(directive: ScalarToken, context: DirectiveContext) {
@@ -42,7 +42,7 @@ export class HexDirective implements IDirective {
 			bytes.push(byte);
 		}
 
-		if (context.isAssembling && bytes.length > 0) context.writebytes(bytes);
+		if (context.isAssembling && bytes.length > 0) context.emitbytes(bytes);
 
 		if (!context.isAssembling) context.PC.value += bytes.length;
 

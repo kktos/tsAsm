@@ -43,7 +43,7 @@ export class IncbinDirective implements IDirective {
 		try {
 			const rawBytes = this.assembler.fileHandler.readBinaryFile(filename);
 
-			context.writebytes(rawBytes);
+			context.emitbytes(rawBytes);
 			// this.assembler.currentPC is advanced by writeBytes
 			// this.assembler.symbolTable.lookupAndUpdateSymbol("*", this.assembler.currentPC);
 

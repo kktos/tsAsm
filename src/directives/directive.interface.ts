@@ -3,14 +3,14 @@ import type { EvaluationContext } from "../assembler/expression.types";
 import type { Parser } from "../assembler/parser.class";
 import type { PASymbolTable } from "../assembler/symbol.class";
 import type { Prettify } from "../cli/schema";
-import type { Lister } from "../helpers/lister.class";
+import type { ILister } from "../helpers/lister.class";
 import type { Logger } from "../helpers/logger.class";
 import type { Linker } from "../linker/linker.class";
 import type { ScalarToken } from "../shared/lexer/lexer.class";
 
 export type DirectiveContext = Prettify<
 	EvaluationContext & {
-		writebytes: (bytes: number[]) => void;
+		emitbytes: (bytes: number[]) => void;
 		isAssembling: boolean;
 	}
 >;
@@ -32,6 +32,6 @@ export interface DirectiveRuntime {
 	symbolTable: PASymbolTable;
 	evaluator: ExpressionEvaluator;
 	logger: Logger;
-	lister: Lister;
+	lister: ILister;
 	linker: Linker;
 }

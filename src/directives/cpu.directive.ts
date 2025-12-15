@@ -1,6 +1,6 @@
 import type { Assembler } from "../assembler/polyasm";
 import handlers from "../cpu";
-import type { Lister } from "../helpers/lister.class";
+import type { ILister } from "../helpers/lister.class";
 import type { ScalarToken } from "../shared/lexer/lexer.class";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
@@ -10,7 +10,7 @@ export class CpuDirective implements IDirective {
 
 	constructor(
 		private readonly assembler: Assembler,
-		private readonly lister: Lister,
+		private readonly lister: ILister,
 	) {}
 
 	private setCpu(directive: ScalarToken, context: DirectiveContext) {
