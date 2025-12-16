@@ -14,6 +14,7 @@ export interface StreamState {
 
 export interface FileHandler {
 	fullpath: string;
+	filename: string;
 
 	/** Reads raw source content and returns the string content for .INCLUDE. */
 	readSourceFile(filename: string, from?: string): string;
