@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { Assembler } from "../assembler/polyasm";
+import { MockFileHandler } from "./mockfilehandler.class";
 
 // Minimal fake CPU handler
 const fakeCPU = {
@@ -19,7 +20,7 @@ describe("Directive .EXPORT", () => {
 	let asm: Assembler;
 
 	beforeEach(() => {
-		asm = asm = new Assembler(fakeCPU, { fullpath: "", readSourceFile: () => "", readBinaryFile: () => [] });
+		asm = asm = new Assembler(fakeCPU, new MockFileHandler());
 	});
 
 	it("should export a constant", () => {

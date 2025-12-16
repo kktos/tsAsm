@@ -1,17 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Assembler } from "../assembler/polyasm";
-import type { FileHandler } from "../assembler/polyasm.types";
 import { Cpu6502Handler } from "../cpu/cpu6502.class";
-
-class MockFileHandler implements FileHandler {
-	fullpath = "";
-	readSourceFile(filename: string): string {
-		throw new Error(`Mock file not found: "${filename}"`);
-	}
-	readBinaryFile(filename: string): number[] {
-		throw new Error(`Mock bin file not found: ${filename}`);
-	}
-}
+import { MockFileHandler } from "./mockfilehandler.class";
 
 describe("Directive: .if/.else", () => {
 	const createAssembler = () => {

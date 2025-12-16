@@ -1,22 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { Assembler } from "../assembler/polyasm";
-import type { FileHandler } from "../assembler/polyasm.types";
 import { Cpu6502Handler } from "../cpu/cpu6502.class";
-
-const mockFileHandler: FileHandler = {
-	fullpath: "",
-	readSourceFile: (filename: string) => {
-		throw new Error(`Mock file not found: "${filename}"`);
-	},
-	readBinaryFile: (filename: string) => {
-		throw new Error(`Mock bin file not found: ${filename}`);
-	},
-};
+import { MockFileHandler } from "./mockfilehandler.class";
 
 describe("6502 Opcodes", () => {
 	const assembleAndGetCode = (source: string): number[] => {
 		const cpu = new Cpu6502Handler();
-		const assembler = new Assembler(cpu, mockFileHandler, {
+		const assembler = new Assembler(cpu, new MockFileHandler(), {
 			segments: [{ name: "CODE", start: 0x8000, size: 0, resizable: true }],
 		});
 		const segments = assembler.assemble(source);

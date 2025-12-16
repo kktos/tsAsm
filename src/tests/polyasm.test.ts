@@ -101,6 +101,7 @@ const mockBinaryData = [0xde, 0xad, 0xbe, 0xef];
 
 class MockFileHandler implements FileHandler {
 	fullpath = "";
+	filename = "";
 	readSourceFile(filename: string): string {
 		// Updated method signature
 		if (filename === "symbols.asm") {

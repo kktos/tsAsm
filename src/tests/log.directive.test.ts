@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { Assembler } from "../assembler/polyasm";
 import { Logger } from "../helpers/logger.class";
-import type { LogSink } from "../helpers/logsink.interface";
+import { MemorySink } from "../helpers/memorysink.class";
+import { MockFileHandler } from "./mockfilehandler.class";
 
 // Minimal fake CPU handler
 const fakeCPU = {
@@ -17,30 +18,10 @@ const fakeCPU = {
 	getPCSize: () => 8,
 };
 
-class MemorySink implements LogSink {
-	public logs: string[] = [];
-	public warnings: string[] = [];
-	public errors: string[] = [];
-
-	log(message: unknown): void {
-		this.logs.push(String(message));
-	}
-	warn(message: unknown): void {
-		this.warnings.push(String(message));
-	}
-	error(message: unknown): void {
-		this.errors.push(String(message));
-	}
-}
-
 function makeAssembler() {
 	const sink = new MemorySink();
 	const logger = new Logger({ sink, enabled: true });
-	const asm = new Assembler(
-		fakeCPU,
-		{ fullpath: "", readSourceFile: () => "", readBinaryFile: () => [] },
-		{ logger, log: { pass1Enabled: true, pass2Enabled: true } },
-	);
+	const asm = new Assembler(fakeCPU, new MockFileHandler(), { logger, log: { pass1Enabled: true, pass2Enabled: true } });
 	return { asm, sink };
 }
 

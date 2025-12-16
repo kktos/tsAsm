@@ -1,35 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { Assembler } from "../assembler/polyasm";
-import type { FileHandler } from "../assembler/polyasm.types";
 import { Logger } from "../helpers/logger.class";
-import type { LogSink } from "../helpers/logsink.interface";
-
-class MemorySink implements LogSink {
-	public logs: string[] = [];
-	public warnings: string[] = [];
-	public errors: string[] = [];
-
-	log(message: unknown): void {
-		this.logs.push(String(message));
-	}
-	warn(message: unknown): void {
-		this.warnings.push(String(message));
-	}
-	error(message: unknown): void {
-		this.errors.push(String(message));
-	}
-}
-
-class MockFileHandler implements FileHandler {
-	fullpath = "";
-	readSourceFile(filename: string): string {
-		throw new Error(`Mock file not found: "${filename}"`);
-	}
-
-	readBinaryFile(filename: string): number[] {
-		throw new Error(`Mock bin file not found: ${filename}`);
-	}
-}
+import { MemorySink } from "../helpers/memorysink.class";
+import { MockFileHandler } from "./mockfilehandler.class";
 
 // Minimal fake CPU handler
 const fakeCPU = {

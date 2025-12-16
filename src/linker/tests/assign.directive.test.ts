@@ -1,23 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { Logger } from "../../helpers/logger.class";
-import type { LogSink } from "../../helpers/logsink.interface";
+import { MemorySink } from "../../helpers/memorysink.class";
 import { Linker } from "../linker.class";
-
-class MemorySink implements LogSink {
-	public logs: string[] = [];
-	public warnings: string[] = [];
-	public errors: string[] = [];
-
-	log(message: unknown): void {
-		this.logs.push(String(message));
-	}
-	warn(message: unknown): void {
-		this.warnings.push(String(message));
-	}
-	error(message: unknown): void {
-		this.errors.push(String(message));
-	}
-}
 
 describe("Linker Script: = - variable assignment", () => {
 	let linker: Linker;

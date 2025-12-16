@@ -1,21 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { Assembler } from "../assembler/polyasm";
-import type { FileHandler, SegmentDefinition } from "../assembler/polyasm.types";
+import type { SegmentDefinition } from "../assembler/polyasm.types";
 import { Cpu6502Handler } from "../cpu/cpu6502.class";
+import { MockFileHandler } from "./mockfilehandler.class";
 
 const DEFAULT_SEGMENTS: SegmentDefinition[] = [{ name: "CODE", start: 0x1000, size: 0, resizable: true }];
 
 describe("Label References", () => {
 	const setup = () => {
-		class MockFileHandler implements FileHandler {
-			fullpath = "";
-			readSourceFile(filename: string): string {
-				throw new Error(`Mock file not found: "${filename}"`);
-			}
-			readBinaryFile(filename: string): number[] {
-				throw new Error(`Mock bin file not found: ${filename}`);
-			}
-		}
 		const cpu6502 = new Cpu6502Handler();
 		const assembler = new Assembler(cpu6502, new MockFileHandler(), { segments: DEFAULT_SEGMENTS });
 		const { symbolTable, expressionEvaluator: evaluator } = assembler;

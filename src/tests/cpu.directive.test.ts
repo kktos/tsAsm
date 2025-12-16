@@ -1,19 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { Assembler } from "../assembler/polyasm";
-import type { FileHandler, SegmentDefinition } from "../assembler/polyasm.types";
+import type { SegmentDefinition } from "../assembler/polyasm.types";
 import { Cpu65C02Handler } from "../cpu/cpu65c02.class";
 import { Cpu6502Handler } from "../cpu/cpu6502.class";
+import { MockFileHandler } from "./mockfilehandler.class";
 
 // A simple mock for the FileHandler so we don't need to interact with the filesystem.
-class MockFileHandler implements FileHandler {
-	fullpath = "";
-	readSourceFile(_filename: string): string {
-		return ""; // Not used in these tests
-	}
-	readBinaryFile(_filename: string): number[] {
-		return []; // Not used in these tests
-	}
-}
 
 const DEFAULT_SEGMENTS: SegmentDefinition[] = [{ name: "CODE", start: 0x1000, size: 0, resizable: true }];
 
@@ -68,6 +60,6 @@ describe("CpuDirective", () => {
 		// const codeSegment = segments.find((s) => s.name === "CODE");
 		// expect(codeSegment?.data).toEqual([0x64, 0x44]);
 
-		expect(() => assembler.assemble(source)).toThrow(/Syntax error in line 2/);
+		expect(() => assembler.assemble(source)).toThrow("[:2:8] Error: Syntax error : NUMBER 68 - pass 1");
 	});
 });

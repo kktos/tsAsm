@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Assembler } from "../../assembler/polyasm";
-import type { FileHandler } from "../../assembler/polyasm.types";
+import { MockFileHandler } from "../mockfilehandler.class";
 
 // Minimal fake CPU handler
 const fakeCPU = {
@@ -18,15 +18,6 @@ const fakeCPU = {
 
 describe("ExpressionEvaluator", () => {
 	const setup = () => {
-		class MockFileHandler implements FileHandler {
-			fullpath = "";
-			readSourceFile(filename: string): string {
-				throw new Error(`Mock file not found: "${filename}"`);
-			}
-			readBinaryFile(filename: string): number[] {
-				throw new Error(`Mock bin file not found: ${filename}`);
-			}
-		}
 		const assembler = new Assembler(fakeCPU, new MockFileHandler());
 		const { symbolTable, expressionEvaluator: evaluator } = assembler;
 		const lexer = assembler.parser.lexer;

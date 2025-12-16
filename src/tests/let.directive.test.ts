@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Assembler } from "../assembler/polyasm";
+import { MockFileHandler } from "./mockfilehandler.class";
 
 // Minimal fake CPU handler
 const fakeCPU = {
@@ -16,7 +17,7 @@ const fakeCPU = {
 };
 
 function makeAssembler() {
-	const asm = new Assembler(fakeCPU, { fullpath: "", readSourceFile: () => "", readBinaryFile: () => [] });
+	const asm = new Assembler(fakeCPU, new MockFileHandler());
 	return { asm };
 }
 

@@ -1,19 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { Assembler } from "../assembler/polyasm";
-import type { FileHandler, SegmentDefinition } from "../assembler/polyasm.types";
+import type { SegmentDefinition } from "../assembler/polyasm.types";
 import type { SymbolValue } from "../assembler/symbol.class";
 import { yamlparse } from "../cli/asm-yaml";
 import type { DirectiveContext } from "../directives/directive.interface";
-
-class MockFileHandler implements FileHandler {
-	fullpath = "";
-	readSourceFile(filename: string): string {
-		throw new Error(`Mock file not found: "${filename}"`);
-	}
-	readBinaryFile(filename: string): number[] {
-		throw new Error(`Mock bin file not found: ${filename}`);
-	}
-}
+import { MockFileHandler } from "./mockfilehandler.class";
 
 // Minimal fake CPU handler
 const fakeCPU = {

@@ -1,38 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Assembler } from "../assembler/polyasm";
-import type { FileHandler, SegmentDefinition } from "../assembler/polyasm.types";
+import type { SegmentDefinition } from "../assembler/polyasm.types";
 import { Cpu65C02Handler } from "../cpu/cpu65c02.class";
 import { Logger } from "../helpers/logger.class";
-import type { LogSink } from "../helpers/logsink.interface";
+import { MemorySink } from "../helpers/memorysink.class";
 import { hexDump } from "../utils/hexdump.util";
+import { MockFileHandler } from "./mockfilehandler.class";
 
 const DEFAULT_SEGMENTS: SegmentDefinition[] = [{ name: "CODE", start: 0x1000, size: 0, resizable: true }];
-
-class MockFileHandler implements FileHandler {
-	fullpath = "";
-	readSourceFile(filename: string): string {
-		throw new Error(`Mock file not found: "${filename}"`);
-	}
-	readBinaryFile(filename: string): number[] {
-		throw new Error(`Mock bin file not found: ${filename}`);
-	}
-}
-
-class MemorySink implements LogSink {
-	public logs: string[] = [];
-	public warnings: string[] = [];
-	public errors: string[] = [];
-
-	log(message: unknown): void {
-		this.logs.push(String(message));
-	}
-	warn(message: unknown): void {
-		this.warnings.push(String(message));
-	}
-	error(message: unknown): void {
-		this.errors.push(String(message));
-	}
-}
 
 describe("Bug Fixes", () => {
 	let assembler: Assembler;

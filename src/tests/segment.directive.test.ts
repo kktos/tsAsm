@@ -1,18 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { Assembler } from "../assembler/polyasm";
-import type { FileHandler } from "../assembler/polyasm.types";
 import { Cpu6502Handler } from "../cpu/cpu6502.class";
-
-const mockFileHandler: FileHandler = {
-	fullpath: "",
-	readSourceFile: (_filename: string) => "",
-	readBinaryFile: (_filename: string) => [],
-};
+import { MockFileHandler } from "./mockfilehandler.class";
 
 describe("Segments", () => {
 	it("should define and use a new segment", () => {
 		const cpu = new Cpu6502Handler();
-		const assembler = new Assembler(cpu, mockFileHandler);
+		const assembler = new Assembler(cpu, new MockFileHandler());
 		const source = `
 		.SEGMENT CODE { start: 0x8000, end: 0x8FFF }
 		.SEGMENT "VECTORS" { start: 0xFFFA, end: 0xFFFF, pad: 0xEA }
@@ -48,7 +42,7 @@ describe("Segments", () => {
 
 	it("should throw an error for incomplete segment definition", () => {
 		const cpu = new Cpu6502Handler();
-		const assembler = new Assembler(cpu, mockFileHandler);
+		const assembler = new Assembler(cpu, new MockFileHandler());
 		const source = `
       .SEGMENT "INCOMPLETE" { start: 0x1000 }
     `;
@@ -57,7 +51,7 @@ describe("Segments", () => {
 
 	it("should throw an error for invalid end address", () => {
 		const cpu = new Cpu6502Handler();
-		const assembler = new Assembler(cpu, mockFileHandler);
+		const assembler = new Assembler(cpu, new MockFileHandler());
 		const source = `
       .SEGMENT "BAD" { start: 0x2000, end: 0x1000 }
     `;
@@ -66,7 +60,7 @@ describe("Segments", () => {
 
 	it("should handle expressions in segment definitions", () => {
 		const cpu = new Cpu6502Handler();
-		const assembler = new Assembler(cpu, mockFileHandler);
+		const assembler = new Assembler(cpu, new MockFileHandler());
 		const source = `
 		  START_ADDR = 0xC000
 		  END_ADDR = 0xC00F
@@ -88,7 +82,7 @@ describe("Segments", () => {
 
 	it("should handle end or size expressions in segment definitions", () => {
 		const cpu = new Cpu6502Handler();
-		const assembler = new Assembler(cpu, mockFileHandler);
+		const assembler = new Assembler(cpu, new MockFileHandler());
 		const source = `
 		  .SEGMENT END_SEG { start: $800, end: $8FF }
 		  .SEGMENT SIZE_SEG { start: $A00, size: $100 }
@@ -108,7 +102,7 @@ describe("Segments", () => {
 
 	it("should fail on duplicate segment names", () => {
 		const cpu = new Cpu6502Handler();
-		const assembler = new Assembler(cpu, mockFileHandler);
+		const assembler = new Assembler(cpu, new MockFileHandler());
 		const source = `
 		  .SEGMENT SEG { start: $800, end: $8FF }
 		  .SEGMENT SEG { start: $A00, size: $100 }

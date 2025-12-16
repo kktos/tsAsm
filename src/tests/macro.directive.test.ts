@@ -1,22 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { Assembler } from "../assembler/polyasm";
-import type { FileHandler, SegmentDefinition } from "../assembler/polyasm.types";
+import type { SegmentDefinition } from "../assembler/polyasm.types";
 import { Cpu6502Handler } from "../cpu/cpu6502.class";
 import type { Token } from "../shared/lexer/lexer.class";
+import { MockFileHandler } from "./mockfilehandler.class";
 
 const DEFAULT_SEGMENTS: SegmentDefinition[] = [{ name: "CODE", start: 0x1000, size: 0, resizable: true }];
 
 describe("Macro Handling", () => {
 	const setup = () => {
-		class MockFileHandler implements FileHandler {
-			fullpath = "";
-			readSourceFile(filename: string): string {
-				throw new Error(`Mock file not found: "${filename}"`);
-			}
-			readBinaryFile(filename: string): number[] {
-				throw new Error(`Mock bin file not found: ${filename}`);
-			}
-		}
 		const assembler = new Assembler(new Cpu6502Handler(), new MockFileHandler(), { segments: DEFAULT_SEGMENTS });
 		const { symbolTable, expressionEvaluator: evaluator } = assembler;
 		const lexer = assembler.parser.lexer;

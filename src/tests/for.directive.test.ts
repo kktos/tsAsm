@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { Assembler } from "../assembler/polyasm";
 import type { SegmentDefinition } from "../assembler/polyasm.types";
+import { MockFileHandler } from "./mockfilehandler.class";
 
 // Minimal fake CPU handler
 const fakeCPU = {
@@ -22,7 +23,7 @@ describe(".FOR...OF", () => {
 	let assembler: Assembler;
 
 	beforeEach(() => {
-		assembler = new Assembler(fakeCPU, { fullpath: "", readSourceFile: () => "", readBinaryFile: () => [] }, { segments: DEFAULT_SEGMENTS });
+		assembler = new Assembler(fakeCPU, new MockFileHandler(), { segments: DEFAULT_SEGMENTS });
 	});
 
 	it("should loop over an array of numbers", () => {
