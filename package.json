@@ -16,6 +16,8 @@
 	"scripts": {
 		"check": "tsc --noEmit",
 		"build": "rimraf ./dist && rollup -c rollup.config.js",
+		"build:cli": "set TARGET=cli && rollup -c rollup.config.js",
+		"build:lib": "set TARGET=lib && rollup -c rollup.config.js",
 		"test": "vitest",
 		"lint:ci": "biome ci ./src",
 		"lint:fix": "biome check --write --unsafe ./src",

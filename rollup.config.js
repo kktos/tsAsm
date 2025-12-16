@@ -5,8 +5,8 @@ import terser from "@rollup/plugin-terser";
 import typescript from "@rollup/plugin-typescript";
 import { defineConfig } from "rollup";
 
-export default defineConfig([
-	{
+const configs = {
+	cli: {
 		// Configuration for the 'tsasm' CLI executable
 		input: "src/cli/main.ts",
 		output: {
@@ -18,15 +18,13 @@ export default defineConfig([
 		plugins: [
 			typescript(),
 			json(),
-			// For maximum obfuscation, enable property mangling.
-			// WARNING: This is an advanced option that can break your code.
 			terser({
 				compress: true,
 				mangle: true,
 			}),
 		],
 	},
-	{
+	lib: {
 		// Configuration for the 'libtsasm' library
 		input: "src/assembler/polyasm.ts",
 		output: {
@@ -37,12 +35,21 @@ export default defineConfig([
 		plugins: [
 			typescript(),
 			json(),
-			// For maximum obfuscation, enable property mangling.
-			// WARNING: This is an advanced option that can break your code.
 			terser({
 				compress: true,
 				mangle: true,
 			}),
 		],
 	},
-]);
+};
+
+const target = process.env.TARGET;
+
+if (target && !Object.keys(configs).includes(target)) {
+	throw new Error(`Unknown target: ${target}`);
+}
+
+// @ts-expect-error - target is a string
+const selectedConfigs = target ? [configs[target]] : Object.values(configs);
+
+export default defineConfig(selectedConfigs);
