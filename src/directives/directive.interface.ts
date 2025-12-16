@@ -12,6 +12,7 @@ export type DirectiveContext = Prettify<
 	EvaluationContext & {
 		emitbytes: (bytes: number[]) => void;
 		isAssembling: boolean;
+		filename: string;
 	}
 >;
 
