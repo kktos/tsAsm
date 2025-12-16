@@ -1,6 +1,6 @@
 import type { LogSink } from "./logsink.interface";
 
-export class ConsoleSink implements LogSink {
+export class ConsoleSink implements LogSink<null> {
 	log(message: unknown): void {
 		console.log(message);
 	}
@@ -11,5 +11,11 @@ export class ConsoleSink implements LogSink {
 
 	error(message: unknown): void {
 		console.error(message);
+	}
+
+	pushConfig(): void {}
+	popConfig(): void {}
+	getConfigDepth(): number {
+		return 0;
 	}
 }
