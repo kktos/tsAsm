@@ -5,6 +5,7 @@ import { Parser } from "../assembler/parser.class";
 import type { Assembler } from "../assembler/polyasm";
 import { PASymbolTable } from "../assembler/symbol.class";
 import type { DirectiveContext, DirectiveRuntime } from "../directives/directive.interface";
+import { ConsoleSink } from "../helpers/consolesink.class";
 import { NullLister } from "../helpers/lister.class";
 import { Logger } from "../helpers/logger.class";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
@@ -193,14 +194,19 @@ export class Linker {
 	}
 
 	public link(script: string, outputPath: string | undefined, assembler: Assembler) {
-		const symbolTable = new PASymbolTable();
+		const lister = new NullLister();
+		const symbolTable = new PASymbolTable(lister);
 		const parser = new Parser(new EventEmitter());
 		const runtime: DirectiveRuntime = {
 			parser,
 			symbolTable,
 			evaluator: new ExpressionEvaluator(symbolTable, () => null, this.resolveSysValue.bind(this)),
-			logger: new Logger(),
-			lister: new NullLister(),
+			logger: new Logger({
+				sink: new ConsoleSink(),
+				enabled: true,
+				cached: false,
+			}),
+			lister,
 			linker: this,
 		};
 		const dispatcher = new Dispatcher(runtime);
