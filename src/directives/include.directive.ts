@@ -27,13 +27,20 @@ export class IncludeDirective implements IDirective {
 		if (typeof filename !== "string") throw new Error(`.INCLUDE requires a string argument on line ${directive.line}.`);
 
 		try {
+			const logConfigDepth = this.assembler.logger.getConfigDepth();
+
+			// console.log("INCLUDE", logConfigDepth, filename);
+
 			this.assembler.startNewStream(filename);
 			this.assembler.parser.pushTokenStream({
 				newTokens: this.assembler.parser.lexer.getBufferedTokens(),
 				cacheName: this.assembler.fileHandler.fullpath,
 				onEndOfStream: () => {
+					// console.log("END", this.assembler.logger.getConfigDepth(), logConfigDepth, this.assembler.fileHandler.fullpath);
+
+					// cleanup the log config if a .LIST file was included
+					if (logConfigDepth < this.assembler.logger.getConfigDepth()) this.assembler.logger.popConfig();
 					this.assembler.endCurrentStream();
-					// this.assembler.lister.directive({ ...directive, value: "END INCLUDE" }, filename);
 				},
 			});
 
@@ -48,13 +55,15 @@ export class IncludeDirective implements IDirective {
 		const filename = this.assembler.expressionEvaluator.evaluate(expressionTokens, context);
 		if (typeof filename !== "string") throw new Error(`.INCLUDE requires a string argument on line ${directive.line}.`);
 
+		const logConfigDepth = this.assembler.logger.getConfigDepth();
 		this.assembler.startNewStream(filename);
 		this.assembler.parser.pushTokenStream({
-			cacheName: this.assembler.currentFilename,
+			cacheName: this.assembler.currentFilepath,
 			newTokens: [],
 			onEndOfStream: () => {
+				// cleanup the log config if a .LIST file was included
+				if (logConfigDepth < this.assembler.logger.getConfigDepth()) this.assembler.logger.popConfig();
 				this.assembler.endCurrentStream();
-				// 	this.assembler.lister.directive({ ...directive, value: "END INCLUDE" }, filename);
 			},
 		});
 
