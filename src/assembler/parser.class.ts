@@ -6,6 +6,14 @@ import { AssemblyLexer, type IdentifierToken, type NumberToken, type StringToken
 export const blockDirectives: Set<string> = new Set();
 export const rawDirectives: Set<string> = new Set();
 
+export class ParserError extends Error {
+	public token: Token | null = null;
+	public constructor(message: string, token?: Token | null) {
+		super(message);
+		if (token !== undefined) this.token = token;
+	}
+}
+
 export class Parser {
 	public activeTokens: Token[] = [];
 	public tokenStreamStack: StreamState[] = [];
@@ -115,7 +123,7 @@ export class Parser {
 
 		if (isMatchingType && isMatchingValue) return token;
 
-		throw `Syntax error - Expecting ${expectedType} ${expectedValue ? `with value ${expectedValue}` : ""}`;
+		throw new ParserError(`Syntax error - Expecting ${expectedType} ${expectedValue ? `with value ${expectedValue}` : ""}`, token);
 	}
 
 	public isIdentifier(expectedValue?: SymbolValue | SymbolValue[], offset = 0) {
@@ -124,19 +132,21 @@ export class Parser {
 
 	public identifier(expectedIdentifier?: string | string[]) {
 		const token = this.consume("IDENTIFIER", expectedIdentifier);
-		if (!token) throw `Syntax error - Expecting an identifer ${expectedIdentifier}`;
+		if (!token) throw new ParserError(`Syntax error - Expecting an identifer ${expectedIdentifier}`, token);
 		return token as IdentifierToken;
 	}
 
 	public string(expectedString?: string) {
 		const token = this.next();
-		if (!token || token.type !== "STRING" || (expectedString && token.value !== expectedString)) throw `Syntax error - Expecting a string ${expectedString}`;
+		if (!token || token.type !== "STRING" || (expectedString && token.value !== expectedString))
+			throw new ParserError(`Syntax error - Expecting a string ${expectedString}`, token);
 		return token as StringToken;
 	}
 
 	public number(expectedNumber?: string) {
 		const token = this.next();
-		if (!token || token.type !== "NUMBER" || (expectedNumber && token.value !== expectedNumber)) throw `Syntax error - Expecting a number ${expectedNumber}`;
+		if (!token || token.type !== "NUMBER" || (expectedNumber && token.value !== expectedNumber))
+			throw new ParserError(`Syntax error - Expecting a number ${expectedNumber}`, token);
 		return token as NumberToken;
 	}
 
@@ -147,7 +157,7 @@ export class Parser {
 	public operator(expectedOperator?: string) {
 		const token = this.next();
 		if (!token || token.type !== "OPERATOR" || (expectedOperator && token.value !== expectedOperator))
-			throw `Syntax error - Expecting an Operator ${expectedOperator}`;
+			throw new ParserError(`Syntax error - Expecting an Operator ${expectedOperator}`, token);
 		return token as IdentifierToken;
 	}
 
@@ -157,10 +167,15 @@ export class Parser {
 
 	public directive(expectedValue?: SymbolValue | SymbolValue[]) {
 		try {
-			if (this.next()?.type !== "DOT") throw "";
+			const token = this.next();
+			if (token?.type !== "DOT") throw new ParserError("", token);
 			return this.identifier(expectedValue as string);
-		} catch (_e) {
-			throw `Syntax error - Expecting a directive ${expectedValue}`;
+		} catch (e) {
+			if (e instanceof ParserError) {
+				e.message = `Syntax error - Expecting a directive ${expectedValue}`;
+				throw e;
+			}
+			throw new ParserError(`Syntax error - Expecting a directive ${expectedValue}`);
 		}
 	}
 
