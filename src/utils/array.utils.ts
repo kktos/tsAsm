@@ -8,42 +8,22 @@ export function hasNoMoreThanOne<T>(arr: T[], predicate: (value: T, index: numbe
 	}
 	return count <= 1;
 }
-export function pushNumber(list: number[], value: number, endianSize: number) {
-	const dataSize = Math.abs(endianSize);
-	let numberValue = value;
 
-	numberValue &= dataSize === 4 ? 0xffffffff : 0xffff;
-	const byte3 = (numberValue >> 24) & 0xff;
-	const byte2 = (numberValue >> 16) & 0xff;
-	const byte1 = (numberValue >> 8) & 0xff;
-	const byte0 = numberValue & 0xff;
-
-	switch (endianSize) {
-		// byte
-		case 1:
-			if (value > 0xff) throw "Data Overflow - 8bits expected";
-			list.push(byte0);
-			break;
-
-		// word (2 bytes) little endian
-		case 2:
-			if (value > 0xffff) throw "Data Overflow - 16bits expected";
-			list.push(byte0, byte1);
-			break;
-
-		// long (4 bytes) little endian
-		case 4:
-			list.push(byte0, byte1, byte2, byte3);
-			break;
-
-		// long (4 bytes) big endian
-		case -4:
-			list.push(byte3, byte2, byte1, byte0);
-			break;
-
-		// word (2 bytes) big endian
-		case -2:
-			list.push(byte1, byte0);
-			break;
-	}
+const converters: [Record<8 | 16 | 32, (list: number[], value: number) => void>, Record<8 | 16 | 32, (list: number[], value: number) => void>] = [
+	{
+		8: (list: number[], value: number) => list.push(value),
+		16: (list: number[], value: number) => list.push(value & 0xff, value >>> 8),
+		32: (list: number[], value: number) => list.push(value & 0xff, (value >>> 8) & 0xff, (value >>> 16) & 0xff, value >>> 24),
+	},
+	{
+		8: (list: number[], value: number) => list.push(value),
+		16: (list: number[], value: number) => list.push(value >>> 8, value & 0xff),
+		32: (list: number[], value: number) => list.push(value >>> 24, (value >>> 16) & 0xff, (value >>> 8) & 0xff, value & 0xff),
+	},
+];
+const maxValues = { 8: 0xff, 16: 0xffff, 32: 0xffffffff };
+export function pushNumber(list: number[], value: number, bitSize: 8 | 16 | 32, isLittleEndian: boolean) {
+	if (value >>> 0 !== value || value > maxValues[bitSize]) throw new RangeError(`Value ${value} out of range for ${bitSize}-bit (0-${maxValues[bitSize]})`);
+	const converter = converters[isLittleEndian ? 0 : 1][bitSize];
+	converter(list, value);
 }

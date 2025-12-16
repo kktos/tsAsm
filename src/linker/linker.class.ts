@@ -30,7 +30,7 @@ export class Linker {
 	private finalSegment: Segment = { name: "", start: 0, size: Number.POSITIVE_INFINITY, data: [], resizable: true };
 	public currentSegment: Segment = this.finalSegment;
 
-	private endianess: 1 | -1 = 1;
+	private isLittleEndian = true;
 
 	public PC: ValueHolder = { value: 0 };
 
@@ -125,7 +125,7 @@ export class Linker {
 	}
 
 	public setEndianess(endianess: "little" | "big") {
-		this.endianess = endianess === "little" ? 1 : -1;
+		this.isLittleEndian = endianess === "little";
 	}
 
 	public setOutputFile(filename: string, fixedSize?: number, padValue?: number, maxSize?: number) {
@@ -147,7 +147,7 @@ export class Linker {
 			this.currentSegment.data[offset] = value;
 			return;
 		}
-		pushNumber(this.currentSegment.data, value, 1);
+		pushNumber(this.currentSegment.data, value, 8, this.isLittleEndian);
 		this.PC.value += 1;
 	}
 	public emitWord(value: number, offset?: number) {
@@ -155,7 +155,7 @@ export class Linker {
 			this.currentSegment.data[offset] = value;
 			return;
 		}
-		pushNumber(this.currentSegment.data, value, this.endianess * 2);
+		pushNumber(this.currentSegment.data, value, 16, this.isLittleEndian);
 		this.PC.value += 2;
 	}
 	public emitLong(value: number, offset?: number) {
@@ -163,7 +163,7 @@ export class Linker {
 			this.currentSegment.data[offset] = value;
 			return;
 		}
-		pushNumber(this.currentSegment.data, value, this.endianess * 4);
+		pushNumber(this.currentSegment.data, value, 32, this.isLittleEndian);
 		this.PC.value += 4;
 	}
 	public emitBytes(value: number[], _offset?: number) {
