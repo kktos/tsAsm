@@ -1,3 +1,4 @@
+import type { ILister } from "../helpers/lister.class";
 import type { Token } from "../shared/lexer/lexer.class";
 import { getHex } from "../utils/hex.util";
 
@@ -19,7 +20,7 @@ export class PASymbolTable {
 	private scopeCounter = 0;
 	private savedSymbols: Map<string, Map<string, PASymbol>> = new Map();
 
-	constructor() {
+	constructor(private readonly lister: ILister) {
 		this.scopeStack.push(INTERNAL_GLOBAL);
 		this.symbols.set(INTERNAL_GLOBAL, new Map());
 	}
@@ -58,7 +59,7 @@ export class PASymbolTable {
 
 		const nsRaw = name.toLowerCase() || "global";
 
-		console.log(`Set namespace: ${nsRaw}`);
+		this.lister.directive(`Set namespace: ${nsRaw}`);
 
 		if (nsRaw === "global") return;
 
@@ -77,7 +78,8 @@ export class PASymbolTable {
 		}
 		if (!this.symbols.has(name)) this.symbols.set(name, new Map());
 		this.scopeStack.push(name);
-		console.log(`Set namespace: ${name}`);
+
+		this.lister.directive(`Set namespace: ${name}`);
 	}
 
 	/**
@@ -93,7 +95,8 @@ export class PASymbolTable {
 
 		// Safe to pop named namespace (do not delete its symbol map so it remains addressable)
 		this.scopeStack.pop();
-		console.log(`Set namespace: ${this.getCurrentNamespace()}`);
+
+		this.lister.directive(`Set namespace: ${this.getCurrentNamespace()}`);
 	}
 
 	/** Retrieves the current active namespace. */
