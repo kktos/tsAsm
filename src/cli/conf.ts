@@ -47,6 +47,14 @@ const confSchema = {
 				schema: {
 					path: { type: "string", optional: true },
 					enabled: { type: "boolean", optional: true },
+					passes: {
+						type: "object",
+						optional: true,
+						schema: {
+							pass1: { type: "boolean", optional: true },
+							pass2: { type: "boolean", optional: true },
+						},
+					},
 				},
 			},
 			symbols: {

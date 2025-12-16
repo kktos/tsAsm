@@ -43,5 +43,9 @@ export interface PushTokenStreamParams {
 export interface AssemblerOptions {
 	segments?: SegmentDefinition[];
 	logger?: Logger;
+	log?: {
+		pass1Enabled?: boolean;
+		pass2Enabled?: boolean;
+	};
 	rawDataProcessors?: { default: string; map: Map<string, DataProcessor> };
 }

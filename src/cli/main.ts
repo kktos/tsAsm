@@ -12,20 +12,19 @@ import { yamlparse, yamlstringify } from "./asm-yaml";
 import colors from "./colors";
 import { readConf } from "./conf";
 import { NodeFileHandler } from "./file";
+import { FileSink } from "./filesink.class";
 import type { ValidationError } from "./schema";
 
-const logger = new Logger();
-
-logger.log(colors.cyan(`${name} v${version}`));
+console.log(colors.cyan(`${name} v${version}`));
 
 const printErrorsAndExit = (errors: ValidationError[]) => {
-	logger.error("");
-	logger.error(colors.red("Invalid configuration file"));
-	for (const error of errors) logger.error(colors.red(`${error.path}: ${error.message}`));
+	console.error("");
+	console.error(colors.red("Invalid configuration file"));
+	for (const error of errors) console.error(colors.red(`${error.path}: ${error.message}`));
 	process.exit(-1);
 };
 
-const cliArgs = parseCliArgs(process.argv.slice(2), name, logger);
+const cliArgs = parseCliArgs(process.argv.slice(2), name);
 
 const confFilename = cliArgs.projectName as string;
 const fileHandler = new NodeFileHandler();
@@ -49,10 +48,21 @@ const handlers = {
 	]),
 };
 
-const options: AssemblerOptions = { logger, rawDataProcessors: handlers };
-if (segments) options.segments = segments;
+const logger = new Logger({
+	sink: new FileSink(conf.output?.listing?.path ?? `${basename(conf.input.source)}.lst`),
+	enabled: conf.output?.listing?.enabled ?? false,
+	cached: false,
+});
 
-logger.enabled = conf.output?.listing?.enabled ?? false;
+const options: AssemblerOptions = {
+	logger,
+	rawDataProcessors: handlers,
+	log: {
+		pass1Enabled: conf.output?.listing?.passes?.pass1 === true,
+		pass2Enabled: conf.output?.listing?.passes?.pass2 === true,
+	},
+};
+if (segments) options.segments = segments;
 
 try {
 	const assembler = new Assembler(new Cpu6502Handler(), fileHandler, options);

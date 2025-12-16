@@ -1,4 +1,3 @@
-import type { Logger } from "../helpers/logger.class";
 import colors from "./colors";
 
 interface CliArgs {
@@ -6,7 +5,7 @@ interface CliArgs {
 	link: boolean;
 }
 
-export function parseCliArgs(argv: string[], name: string, logger: Logger): CliArgs {
+export function parseCliArgs(argv: string[], name: string): CliArgs {
 	const result: CliArgs = {
 		projectName: null,
 		link: true,
@@ -22,7 +21,7 @@ export function parseCliArgs(argv: string[], name: string, logger: Logger): CliA
 		switch (arg) {
 			case "-h":
 			case "--help":
-				showHelp(name, logger);
+				showHelp(name);
 				break;
 			case "-l":
 			case "--link": {
@@ -42,16 +41,16 @@ export function parseCliArgs(argv: string[], name: string, logger: Logger): CliA
 
 	if (!result.projectName && errors?.length === 0) errors.push("Missing mandatory project name argument.");
 
-	if (errors) {
-		for (const error of errors) logger.error(colors.red(`ERROR: ${error}`));
+	if (errors.length) {
+		for (const error of errors) console.error(colors.red(`ERROR: ${error}`));
 		process.exit(-1);
 	}
 
 	return result;
 }
 
-function showHelp(name: string, logger: Logger) {
-	logger.log(`
+function showHelp(name: string) {
+	console.log(`
 Usage: ${name} <project-file> [options]
 
 Arguments:

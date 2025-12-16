@@ -4,6 +4,7 @@ import type { DirectiveContext, DirectiveRuntime } from "../directives/directive
 import { DirectiveHandler } from "../directives/handler";
 import { MacroHandler } from "../directives/macro/handler";
 import type { MacroDefinition } from "../directives/macro/macro.interface";
+import { ConsoleSink } from "../helpers/consolesink.class";
 import { Lister } from "../helpers/lister.class";
 import { Logger } from "../helpers/logger.class";
 import { Linker, type Segment } from "../linker/linker.class";
@@ -41,6 +42,9 @@ export class Assembler {
 
 	public pass: number;
 
+	private wannaLogPass1 = false;
+	private wannaLogPass2 = false;
+
 	public expressionEvaluator: ExpressionEvaluator;
 	public directiveHandler: DirectiveHandler;
 	public macroHandler: MacroHandler;
@@ -51,7 +55,13 @@ export class Assembler {
 	constructor(handler: CPUHandler, fileHandler: FileHandler, options?: AssemblerOptions) {
 		this.cpuHandler = handler;
 		this.fileHandler = fileHandler;
-		this.logger = options?.logger ?? new Logger();
+		this.logger =
+			options?.logger ??
+			new Logger({
+				sink: new ConsoleSink(),
+				enabled: true,
+				cached: false,
+			});
 		this.lister = new Lister(this.logger);
 
 		this.linker = new Linker();
@@ -63,7 +73,7 @@ export class Assembler {
 			if (!this.rawDataProcessors.has(this.defaultRawDataProcessor)) throw "Default data processor not found.";
 		}
 
-		this.symbolTable = new PASymbolTable();
+		this.symbolTable = new PASymbolTable(this.lister);
 
 		const resolveSysValue = (nameToken: Token) => this.resolveSysValue(nameToken);
 		this.expressionEvaluator = new ExpressionEvaluator(this.symbolTable, this.namelessLabels.findNearest.bind(this.namelessLabels), resolveSysValue);
@@ -89,6 +99,9 @@ export class Assembler {
 			for (const seg of options.segments) this.linker.addSegment(seg.name, seg.start, seg.size, seg.padValue, seg.resizable);
 			if (options.segments[0]) this.linker.useSegment(options.segments[0].name);
 		}
+
+		if (options?.log?.pass1Enabled) this.wannaLogPass1 = true;
+		if (options?.log?.pass2Enabled) this.wannaLogPass2 = true;
 	}
 
 	private resolveSysValue(nameToken: Token) {
@@ -170,6 +183,9 @@ export class Assembler {
 	}
 
 	public assemble(source: string): Segment[] {
+		const isLogEnabled = this.logger.enabled;
+		this.logger.enabled = isLogEnabled && this.wannaLogPass1;
+
 		this.setOption("local_label_char", ":");
 
 		// Initialize or re-initialize the lexer
@@ -186,8 +202,11 @@ export class Assembler {
 
 			// Reset stream stack for Pass 2 (fresh position)
 			this.parser.restart();
+			this.logger.enabled = isLogEnabled && this.wannaLogPass2;
 
 			this.passTwo();
+
+			this.logger.enabled = isLogEnabled;
 		} catch (e) {
 			throw `${e} - pass ${this.pass} - file ${this.currentFilename}`;
 		}
