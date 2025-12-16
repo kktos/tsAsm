@@ -1,6 +1,7 @@
 import type { Assembler } from "../assembler/polyasm";
 import type { Logger } from "../helpers/logger.class";
 import type { ScalarToken } from "../shared/lexer/lexer.class";
+import { formatLogPrefix } from "../utils/error.utils";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class ListDirective implements IDirective {
@@ -20,16 +21,10 @@ export class ListDirective implements IDirective {
 		this.setListing(directive, context);
 	}
 
-	private setListing(directive: ScalarToken, _context: DirectiveContext): void {
-		const argsToken = this.assembler.parser.getInstructionTokens();
+	private setListing(directive: ScalarToken, context: DirectiveContext): void {
+		const instruction = this.assembler.parser.identifier(["ON", "OFF", "FILE"]);
 
-		if (argsToken.length !== 1) {
-			this.logger.warn(`[LIST] Invalid .LIST syntax on line ${directive.line}. Expected ON or OFF.`);
-			return;
-		}
-
-		const mode = argsToken[0]?.value;
-
+		const mode = instruction.value;
 		switch (mode) {
 			case "ON":
 				this.logger.enabled = true;
@@ -37,8 +32,19 @@ export class ListDirective implements IDirective {
 			case "OFF":
 				this.logger.enabled = false;
 				break;
+			case "FILE": {
+				this.assembler.parser.operator("=");
+				const expr = this.assembler.parser.getExpressionTokens(directive);
+				const filename = this.assembler.expressionEvaluator.evaluate(expr, context);
+				if (typeof filename !== "string") {
+					this.logger.warn(`${formatLogPrefix(directive, context)}.LIST FILE requires a string argument.`);
+					break;
+				}
+				this.logger.pushConfig({ filename });
+				break;
+			}
 			default:
-				this.logger.warn(`[LIST] Invalid .LIST mode '${mode}' on line ${directive.line}. Expected ON or OFF.`);
+				this.logger.warn(`${formatLogPrefix(directive, context)}Invalid .LIST mode '${mode}'. Expected ON or OFF.`);
 		}
 	}
 }
