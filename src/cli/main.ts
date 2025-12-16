@@ -7,13 +7,16 @@ import type { AssemblerOptions } from "../assembler/polyasm.types";
 import { Cpu6502Handler } from "../cpu/cpu6502.class";
 import type { DirectiveContext } from "../directives/directive.interface";
 import { Logger } from "../helpers/logger.class";
+import { TeeSink } from "../helpers/teesink.class";
 import { parseCliArgs } from "./args";
 import { yamlparse, yamlstringify } from "./asm-yaml";
 import colors from "./colors";
 import { readConf } from "./conf";
 import { NodeFileHandler } from "./file";
-import { FileSink } from "./filesink.class";
 import type { ValidationError } from "./schema";
+import { ConsoleErrorSink } from "./sinks/consoleerrorsink.class";
+import { ColoredConsoleSink } from "./sinks/consolesink.class";
+import { FileSink } from "./sinks/filesink.class";
 
 console.log(colors.cyan(`${name} v${version}`));
 
@@ -48,8 +51,14 @@ const handlers = {
 	]),
 };
 
+const logDir = dirname(conf.output?.listing?.path ?? conf.input.source);
+const sink = new TeeSink(
+	new FileSink(logDir, conf.output?.listing?.path ? basename(conf.output?.listing?.path) : `${basename(conf.input.source)}.lst`),
+	new ConsoleErrorSink(),
+);
+
 const logger = new Logger({
-	sink: new FileSink(conf.output?.listing?.path ?? `${basename(conf.input.source)}.lst`),
+	sink,
 	enabled: conf.output?.listing?.enabled ?? false,
 	cached: false,
 });
@@ -90,6 +99,11 @@ try {
 		if (conf.output.linker?.script) {
 			fileHandler.basedir = `${dirname(confFilename)}/`;
 			const scriptFile = fileHandler.readSourceFile(conf.output?.linker?.script);
+			const logger = new Logger({
+				sink: new ColoredConsoleSink(),
+				enabled: true,
+				cached: false,
+			});
 			const result = assembler.linker.link(scriptFile, conf.output.object?.path, logger);
 
 			const buffer = Buffer.from(result.data);
@@ -107,5 +121,5 @@ try {
 		writeFileSync(symbolsFilename, yamlstringify(index));
 	}
 } catch (e) {
-	logger.error(colors.red(`${e}`));
+	logger.error(e);
 }
