@@ -2,12 +2,10 @@ import { EventEmitter } from "node:events";
 import { ExpressionEvaluator } from "../assembler/expression";
 import type { ValueHolder } from "../assembler/expression.types";
 import { Parser } from "../assembler/parser.class";
-import type { Assembler } from "../assembler/polyasm";
 import { PASymbolTable } from "../assembler/symbol.class";
 import type { DirectiveContext, DirectiveRuntime } from "../directives/directive.interface";
-import { ConsoleSink } from "../helpers/consolesink.class";
 import { NullLister } from "../helpers/lister.class";
-import { Logger } from "../helpers/logger.class";
+import type { Logger } from "../helpers/logger.class";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
 import { pushNumber } from "../utils/array.utils";
 import { getHex } from "../utils/hex.util";
@@ -33,7 +31,6 @@ export class Linker {
 	public currentSegment: Segment = this.finalSegment;
 
 	private endianess: 1 | -1 = 1;
-	private assembler: Assembler | undefined;
 
 	public PC: ValueHolder = { value: 0 };
 
@@ -143,7 +140,7 @@ export class Linker {
 
 	public emitString(value: string, _offset?: number) {
 		this.currentSegment.data.push(...stringToASCIICharCodes(value));
-		if (this.assembler) this.PC.value += value.length;
+		this.PC.value += value.length;
 	}
 	public emitByte(value: number, offset?: number) {
 		if (offset !== undefined) {
@@ -151,7 +148,7 @@ export class Linker {
 			return;
 		}
 		pushNumber(this.currentSegment.data, value, 1);
-		if (this.assembler) this.PC.value += 1;
+		this.PC.value += 1;
 	}
 	public emitWord(value: number, offset?: number) {
 		if (offset !== undefined) {
@@ -159,7 +156,7 @@ export class Linker {
 			return;
 		}
 		pushNumber(this.currentSegment.data, value, this.endianess * 2);
-		if (this.assembler) this.PC.value += 2;
+		this.PC.value += 2;
 	}
 	public emitLong(value: number, offset?: number) {
 		if (offset !== undefined) {
@@ -167,7 +164,7 @@ export class Linker {
 			return;
 		}
 		pushNumber(this.currentSegment.data, value, this.endianess * 4);
-		if (this.assembler) this.PC.value += 4;
+		this.PC.value += 4;
 	}
 	public emitBytes(value: number[], _offset?: number) {
 		// if (offset !== undefined) {
@@ -175,7 +172,7 @@ export class Linker {
 		// 	return;
 		// }
 		this.currentSegment.data.push(...value);
-		if (this.assembler) this.PC.value += value.length;
+		this.PC.value += value.length;
 	}
 
 	public emitSegment(name: string, _offset?: number) {
@@ -190,10 +187,10 @@ export class Linker {
 		const startOffset = this.finalSegment.data.length;
 		this.finalSegment.data.push(...seg.data);
 		if (!seg.resizable) this.finalSegment.data.push(...new Array(seg.size - seg.data.length).fill(seg.padValue ?? 0));
-		if (this.assembler) this.PC.value += this.finalSegment.data.length - startOffset;
+		this.PC.value += this.finalSegment.data.length - startOffset;
 	}
 
-	public link(script: string, outputPath: string | undefined, assembler: Assembler) {
+	public link(script: string, outputPath: string | undefined, logger: Logger) {
 		const lister = new NullLister();
 		const symbolTable = new PASymbolTable(lister);
 		const parser = new Parser(new EventEmitter());
@@ -201,17 +198,11 @@ export class Linker {
 			parser,
 			symbolTable,
 			evaluator: new ExpressionEvaluator(symbolTable, () => null, this.resolveSysValue.bind(this)),
-			logger: new Logger({
-				sink: new ConsoleSink(),
-				enabled: true,
-				cached: false,
-			}),
+			logger,
 			lister,
 			linker: this,
 		};
 		const dispatcher = new Dispatcher(runtime);
-
-		this.assembler = assembler;
 
 		symbolTable.defineConstant("segments", this.segments);
 		this.currentSegment = this.finalSegment;

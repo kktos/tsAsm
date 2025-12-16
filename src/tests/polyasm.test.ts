@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { Assembler } from "../assembler/polyasm";
 import type { FileHandler } from "../assembler/polyasm.types";
 import { Cpu6502Handler } from "../cpu/cpu6502.class";
-import { Logger } from "../helpers/logger.class";
 
 const _TEMP = `
 	; Macro with optional and rest parameters
@@ -123,9 +122,8 @@ class MockFileHandler implements FileHandler {
 describe("PolyAsm", () => {
 	it("assemble a source", () => {
 		const mockFileHandler = new MockFileHandler();
-		const logger = new Logger();
 		const cpu6502 = new Cpu6502Handler();
-		const assembler6502 = new Assembler(cpu6502, mockFileHandler, { logger });
+		const assembler6502 = new Assembler(cpu6502, mockFileHandler);
 
 		assembler6502.assemble(source6502);
 		const machineCode6502 = assembler6502.link();

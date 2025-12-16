@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { Assembler } from "../assembler/polyasm";
 import type { FileHandler, SegmentDefinition } from "../assembler/polyasm.types";
 import { Cpu6502Handler } from "../cpu/cpu6502.class";
-import { Logger } from "../helpers/logger.class";
 import type { Token } from "../shared/lexer/lexer.class";
 
 const DEFAULT_SEGMENTS: SegmentDefinition[] = [{ name: "CODE", start: 0x1000, size: 0, resizable: true }];
@@ -18,12 +17,11 @@ describe("Macro Handling", () => {
 				throw new Error(`Mock bin file not found: ${filename}`);
 			}
 		}
-		const logger = new Logger(true, true);
-		const assembler = new Assembler(new Cpu6502Handler(), new MockFileHandler(), { logger, segments: DEFAULT_SEGMENTS });
+		const assembler = new Assembler(new Cpu6502Handler(), new MockFileHandler(), { segments: DEFAULT_SEGMENTS });
 		const { symbolTable, expressionEvaluator: evaluator } = assembler;
 		const lexer = assembler.parser.lexer;
 		const tokenize = (expr: string) => lexer.tokenize(expr).filter((t) => t.type !== "EOF");
-		return { assembler, symbolTable, evaluator, lexer, tokenize, logger };
+		return { assembler, symbolTable, evaluator, lexer, tokenize };
 	};
 
 	describe("Macro Argument Evaluation", () => {

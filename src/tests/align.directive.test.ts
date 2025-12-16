@@ -1,6 +1,24 @@
 import { describe, expect, it } from "vitest";
 import { Assembler } from "../assembler/polyasm";
 import type { FileHandler, SegmentDefinition } from "../assembler/polyasm.types";
+import { Logger } from "../helpers/logger.class";
+import type { LogSink } from "../helpers/logsink.interface";
+
+class MemorySink implements LogSink {
+	public logs: string[] = [];
+	public warnings: string[] = [];
+	public errors: string[] = [];
+
+	log(message: unknown): void {
+		this.logs.push(String(message));
+	}
+	warn(message: unknown): void {
+		this.warnings.push(String(message));
+	}
+	error(message: unknown): void {
+		this.errors.push(String(message));
+	}
+}
 
 class MockFileHandler implements FileHandler {
 	fullpath = "";
@@ -28,9 +46,9 @@ const fakeCPU = {
 };
 
 describe(".ALIGN", () => {
-	const createAssembler = (segments: SegmentDefinition[]) => {
+	const createAssembler = (segments: SegmentDefinition[], logger?: Logger) => {
 		const mockFileHandler = new MockFileHandler();
-		return new Assembler(fakeCPU, mockFileHandler, { segments });
+		return new Assembler(fakeCPU, mockFileHandler, { segments, logger, log: { pass1Enabled: true, pass2Enabled: true } });
 	};
 
 	it("should align the PC to the next boundary", () => {
@@ -101,15 +119,17 @@ describe(".ALIGN", () => {
 	});
 
 	it("should warn on non-power-of-two boundary", () => {
+		const sink = new MemorySink();
+		const logger = new Logger({ sink, enabled: true });
 		const segments = [{ name: "CODE", start: 0x1001, size: 0, resizable: true }];
-		const assembler = createAssembler(segments);
+		const assembler = createAssembler(segments, logger);
 		const source = `
       .org $1001
       .align 3
     `;
 		assembler.assemble(source);
-		const logs = assembler.logger.getLogs();
-		expect(logs.warnings.length).toBe(1);
-		expect(logs.warnings[0]).toContain("not a power of two");
+		// expect(sink).toBe(1);
+		expect(sink.warnings.length).toBe(1);
+		expect(sink.warnings[0]).toContain("not a power of two");
 	});
 });

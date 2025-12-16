@@ -90,7 +90,7 @@ try {
 		if (conf.output.linker?.script) {
 			fileHandler.basedir = `${dirname(confFilename)}/`;
 			const scriptFile = fileHandler.readSourceFile(conf.output?.linker?.script);
-			const result = assembler.linker.link(scriptFile, conf.output.object?.path, assembler);
+			const result = assembler.linker.link(scriptFile, conf.output.object?.path, logger);
 
 			const buffer = Buffer.from(result.data);
 			writeFileSync(result.name, buffer);

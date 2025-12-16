@@ -3,7 +3,6 @@ import { Assembler } from "../assembler/polyasm";
 import type { FileHandler, SegmentDefinition } from "../assembler/polyasm.types";
 import { Cpu6502Handler } from "../cpu/cpu6502.class";
 import type { DirectiveContext } from "../directives/directive.interface";
-import { Logger } from "../helpers/logger.class";
 
 class MockFileHandler implements FileHandler {
 	fullpath = "";
@@ -21,13 +20,12 @@ const DEFAULT_SEGMENTS: SegmentDefinition[] = [{ name: "CODE", start: 0x1000, si
 describe("File Directive .INCBIN", () => {
 	const createAssembler = (segments: SegmentDefinition[] = DEFAULT_SEGMENTS) => {
 		const mockFileHandler = new MockFileHandler();
-		const logger = new Logger(true);
 		const cpuHandler = new Cpu6502Handler();
 		const textHandler = vi.fn((blockContent: string, _context: DirectiveContext) => blockContent);
 		const handlers = { default: "TEXT", map: new Map([["TEXT", textHandler]]) };
 
-		const assembler = new Assembler(cpuHandler, mockFileHandler, { logger, segments, rawDataProcessors: handlers });
-		return { assembler, mockFileHandler, logger };
+		const assembler = new Assembler(cpuHandler, mockFileHandler, { segments, rawDataProcessors: handlers });
+		return { assembler, mockFileHandler };
 	};
 
 	it("should include a binary file", () => {

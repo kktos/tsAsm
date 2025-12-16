@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Assembler } from "../assembler/polyasm";
 import { Logger } from "../helpers/logger.class";
+import type { LogSink } from "../helpers/logsink.interface";
 
 // Minimal fake CPU handler
 const fakeCPU = {
@@ -16,56 +17,61 @@ const fakeCPU = {
 	getPCSize: () => 8,
 };
 
-class CaptureLogger extends Logger {
-	public lines: string[] = [];
-	constructor() {
-		super(true);
+class MemorySink implements LogSink {
+	public logs: string[] = [];
+	public warnings: string[] = [];
+	public errors: string[] = [];
+
+	log(message: unknown): void {
+		this.logs.push(String(message));
 	}
-	log(message: string): void {
-		this.lines.push(message);
+	warn(message: unknown): void {
+		this.warnings.push(String(message));
 	}
-	warn(message: string): void {
-		this.lines.push(`[WARN] ${message}`);
-	}
-	error(message: string): void {
-		this.lines.push(`[ERROR] ${message}`);
+	error(message: unknown): void {
+		this.errors.push(String(message));
 	}
 }
 
 function makeAssembler() {
-	const logger = new CaptureLogger();
-	const asm = new Assembler(fakeCPU, { fullpath: "", readSourceFile: () => "", readBinaryFile: () => [] }, { logger });
-	return { asm, logger };
+	const sink = new MemorySink();
+	const logger = new Logger({ sink, enabled: true });
+	const asm = new Assembler(
+		fakeCPU,
+		{ fullpath: "", readSourceFile: () => "", readBinaryFile: () => [] },
+		{ logger, log: { pass1Enabled: true, pass2Enabled: true } },
+	);
+	return { asm, sink };
 }
 
 describe("Logging directives", () => {
 	describe(".LOG directive", () => {
 		it("logs a single numeric expression", () => {
-			const { asm, logger } = makeAssembler();
+			const { asm, sink } = makeAssembler();
 			const src = ".LOG 1+2";
 			asm.assemble(src);
 
-			const found = logger.lines.find((l) => l === "3");
+			const found = sink.logs.find((l) => l === "3");
 			expect(found).toBeDefined();
 		});
 
 		it("logs a expression with function calls", () => {
-			const { asm, logger } = makeAssembler();
+			const { asm, sink } = makeAssembler();
 			const src = `.LOG "var=" + .hex(12,4)`;
 			asm.assemble(src);
 
 			// expect(logger.lines).toBe("");
 
-			const found = logger.lines.find((l) => l === "var=$000C");
+			const found = sink.logs.find((l) => l === "var=$000C");
 			expect(found).toBeDefined();
 		});
 
 		it("logs multiple comma-separated expressions", () => {
-			const { asm, logger } = makeAssembler();
+			const { asm, sink } = makeAssembler();
 			const src = '.LOG 10, "HELLO", [1,2]';
 			asm.assemble(src);
 
-			const found = logger.lines.find((l) => l === "10	HELLO	[1, 2]");
+			const found = sink.logs.find((l) => l === "10	HELLO	[1, 2]");
 			expect(found).toBeDefined();
 		});
 	});
@@ -80,13 +86,13 @@ describe("Logging directives", () => {
 
 	describe(".WARN directive", () => {
 		it("log a simple warning", () => {
-			const { asm, logger } = makeAssembler();
+			const { asm, sink } = makeAssembler();
 			const src = `.WARN "Boom Bada Boom"`;
 			asm.assemble(src);
 
-			// expect(logger.lines).toBe("");
+			// expect(sink.warnings).toBe("");
 
-			const found = logger.lines.find((l) => l === "[WARN] Boom Bada Boom");
+			const found = sink.warnings.find((l) => l === "Boom Bada Boom");
 			expect(found).toBeDefined();
 		});
 	});

@@ -4,20 +4,21 @@ import type { FileHandler, SegmentDefinition } from "../assembler/polyasm.types"
 import { Cpu6502Handler } from "../cpu/cpu6502.class";
 import type { DirectiveContext } from "../directives/directive.interface";
 import { Logger } from "../helpers/logger.class";
+import type { LogSink } from "../helpers/logsink.interface";
 
-class CaptureLogger extends Logger {
-	public lines: string[] = [];
-	constructor() {
-		super(true);
+class MemorySink implements LogSink {
+	public logs: string[] = [];
+	public warnings: string[] = [];
+	public errors: string[] = [];
+
+	log(message: unknown): void {
+		this.logs.push(String(message));
 	}
-	log(message: string): void {
-		this.lines.push(message);
+	warn(message: unknown): void {
+		this.warnings.push(String(message));
 	}
-	warn(message: string): void {
-		this.lines.push(`[WARN] ${message}`);
-	}
-	error(message: string): void {
-		this.lines.push(`[ERROR] ${message}`);
+	error(message: unknown): void {
+		this.errors.push(String(message));
 	}
 }
 
@@ -37,13 +38,18 @@ const DEFAULT_SEGMENTS: SegmentDefinition[] = [{ name: "CODE", start: 0x1000, si
 describe("File Directive .INCLUDE", () => {
 	const createAssembler = (segments: SegmentDefinition[] = DEFAULT_SEGMENTS) => {
 		const mockFileHandler = new MockFileHandler();
-		const logger = new CaptureLogger();
 		const cpuHandler = new Cpu6502Handler();
 		const textHandler = vi.fn((blockContent: string, _context: DirectiveContext) => blockContent);
 		const handlers = { default: "TEXT", map: new Map([["TEXT", textHandler]]) };
-
-		const assembler = new Assembler(cpuHandler, mockFileHandler, { logger, segments, rawDataProcessors: handlers });
-		return { assembler, mockFileHandler, logger };
+		const sink = new MemorySink();
+		const logger = new Logger({ sink, enabled: true });
+		const assembler = new Assembler(cpuHandler, mockFileHandler, {
+			logger,
+			segments,
+			rawDataProcessors: handlers,
+			log: { pass1Enabled: true, pass2Enabled: true },
+		});
+		return { assembler, mockFileHandler, sink };
 	};
 
 	it("should include and assemble a source file", () => {
@@ -130,7 +136,7 @@ describe("File Directive .INCLUDE", () => {
 	});
 
 	it("should include and parse a IF correctly - bug fix", () => {
-		const { assembler, mockFileHandler, logger } = createAssembler();
+		const { assembler, mockFileHandler, sink } = createAssembler();
 		const includedCode = `
 			.echo "START OF INCLUDED FILE"
 
@@ -156,7 +162,7 @@ describe("File Directive .INCLUDE", () => {
 
 		// expect(logger.lines).toBe("");
 
-		const found = logger.lines.find((l) => l === "7900 =	$7900");
+		const found = sink.logs.find((l) => l === "7900 =	$7900");
 		expect(found).toBeDefined();
 	});
 });

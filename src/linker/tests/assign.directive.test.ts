@@ -1,47 +1,52 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { Assembler } from "../../assembler/polyasm";
-import { NodeFileHandler } from "../../cli/file";
+import { Logger } from "../../helpers/logger.class";
+import type { LogSink } from "../../helpers/logsink.interface";
 import { Linker } from "../linker.class";
 
-// Minimal fake CPU handler
-const fakeCPU = {
-	cpuType: "6502" as const,
-	isInstruction: () => false,
-	resolveAddressingMode: () => ({
-		mode: "",
-		opcode: 0,
-		bytes: 0,
-		resolvedAddress: 0,
-	}),
-	encodeInstruction: () => [],
-	getPCSize: () => 8,
-};
+class MemorySink implements LogSink {
+	public logs: string[] = [];
+	public warnings: string[] = [];
+	public errors: string[] = [];
+
+	log(message: unknown): void {
+		this.logs.push(String(message));
+	}
+	warn(message: unknown): void {
+		this.warnings.push(String(message));
+	}
+	error(message: unknown): void {
+		this.errors.push(String(message));
+	}
+}
 
 describe("Linker Script: = - variable assignment", () => {
-	let asm: Assembler;
 	let linker: Linker;
+	let sink: MemorySink;
+	let logger: Logger;
 
 	beforeEach(() => {
-		const fileHandler = new NodeFileHandler();
-		asm = new Assembler(fakeCPU, fileHandler);
+		sink = new MemorySink();
+		logger = new Logger({ sink, enabled: true });
 		linker = new Linker();
 	});
 
 	it("should define a variable", () => {
-		const src = "foo = 123";
-		linker.link(src, "", asm);
-		const symbol = asm.symbolTable.lookupSymbol("foo");
-		expect(symbol).toBe(123);
+		const src = `
+				foo = 123
+				.log "foo=",foo
+			`;
+		linker.link(src, "", logger);
+		expect(sink.logs.filter((l) => l.match(/foo=\s*123/))).toEqual(["foo=	123"]);
 	});
 
 	it("should allow to change its value", () => {
 		const src = `
 				foo = 123
 				foo = 456
+				.log "foo=",foo
 			`;
-		linker.link(src, "", asm);
-		const symbol = asm.symbolTable.lookupSymbol("foo");
-		expect(symbol).toBe(456);
+		linker.link(src, "", logger);
+		expect(sink.logs.filter((l) => l.match(/foo=\s*456/))).toEqual(["foo=	456"]);
 	});
 
 	it.skip("should throw on missing symbol name before =", () => {
@@ -49,7 +54,7 @@ describe("Linker Script: = - variable assignment", () => {
 				foo = 123
 				= 456
 			`;
-		expect(() => linker.link(src, "", asm)).toThrow(/Syntax error in line 3 : OPERATOR =/);
+		expect(() => linker.link(src, "", logger)).toThrow(/Syntax error in line 3 : OPERATOR =/);
 	});
 
 	it.skip("should not work with label", () => {
@@ -57,6 +62,6 @@ describe("Linker Script: = - variable assignment", () => {
 				boo:
 					= 456
 			`;
-		expect(() => linker.link(src, "", asm)).toThrow(/- Missing symbol name before =/);
+		expect(() => linker.link(src, "", logger)).toThrow(/- Missing symbol name before =/);
 	});
 });

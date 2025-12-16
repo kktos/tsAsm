@@ -3,6 +3,7 @@ import { Assembler } from "../assembler/polyasm";
 import type { FileHandler, SegmentDefinition } from "../assembler/polyasm.types";
 import { Cpu6502Handler } from "../cpu/cpu6502.class";
 import { Logger } from "../helpers/logger.class";
+import type { LogSink } from "../helpers/logsink.interface";
 
 class MockFileHandler implements FileHandler {
 	fullpath = "";
@@ -15,19 +16,19 @@ class MockFileHandler implements FileHandler {
 	}
 }
 
-class CaptureLogger extends Logger {
-	public lines: string[] = [];
-	constructor() {
-		super(true);
+class MemorySink implements LogSink {
+	public logs: string[] = [];
+	public warnings: string[] = [];
+	public errors: string[] = [];
+
+	log(message: unknown): void {
+		this.logs.push(String(message));
 	}
-	log(message: string): void {
-		this.lines.push(message);
+	warn(message: unknown): void {
+		this.warnings.push(String(message));
 	}
-	warn(message: string): void {
-		this.lines.push(`[WARN] ${message}`);
-	}
-	error(message: string): void {
-		this.lines.push(`[ERROR] ${message}`);
+	error(message: unknown): void {
+		this.errors.push(String(message));
 	}
 }
 
@@ -36,9 +37,10 @@ const DEFAULT_SEGMENTS: SegmentDefinition[] = [{ name: "CODE", start: 0x1000, si
 describe(".NAMESPACE Directive", () => {
 	const createAssembler = (segments: SegmentDefinition[] = DEFAULT_SEGMENTS) => {
 		const mockFileHandler = new MockFileHandler();
-		const logger = new CaptureLogger();
-		const assembler = new Assembler(new Cpu6502Handler(), mockFileHandler, { segments, logger });
-		return { assembler, logger };
+		const sink = new MemorySink();
+		const logger = new Logger({ sink, enabled: true });
+		const assembler = new Assembler(new Cpu6502Handler(), mockFileHandler, { segments, logger, log: { pass1Enabled: true, pass2Enabled: true } });
+		return { assembler, logger, sink };
 	};
 	it("should switch current namespace when given an identifier", () => {
 		const { assembler } = createAssembler();
@@ -70,7 +72,7 @@ describe(".NAMESPACE Directive", () => {
 	});
 
 	it("should pop the NS when .end is encountered", () => {
-		const { assembler, logger } = createAssembler();
+		const { assembler, sink } = createAssembler();
 		const source = `
 			.echo .str(.PASS) + "NS>> global:", .NAMESPACE
 
@@ -89,7 +91,9 @@ describe(".NAMESPACE Directive", () => {
 
 		assembler.assemble(source);
 
-		expect(logger.lines.filter((l) => l.startsWith("1NS>> "))).toEqual([
+		// expect(sink.logs).toEqual("");
+
+		expect(sink.logs.filter((l) => l.startsWith("1NS>> "))).toEqual([
 			"1NS>> global:	global",
 			"1NS>> one:	ONE",
 			"1NS>> global:	global",
@@ -99,7 +103,7 @@ describe(".NAMESPACE Directive", () => {
 	});
 
 	it("should allow access to symbols in a namespace", () => {
-		const { assembler, logger } = createAssembler();
+		const { assembler, sink } = createAssembler();
 		const source = `
 			.NAMESPACE vars
 			one = 45
@@ -113,7 +117,7 @@ describe(".NAMESPACE Directive", () => {
 
 		assembler.assemble(source);
 
-		expect(logger.lines.filter((l) => l.startsWith(">>"))).toEqual([">>	45	56", ">>	45	56"]);
+		expect(sink.logs.filter((l) => l.startsWith(">>"))).toEqual([">>	45	56", ">>	45	56"]);
 	});
 
 	it("should throw an error when trying to access a function's internal label from outside", () => {

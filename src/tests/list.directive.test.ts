@@ -1,7 +1,24 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { Assembler } from "../assembler/polyasm";
 import type { FileHandler } from "../assembler/polyasm.types";
 import { Logger } from "../helpers/logger.class";
+import type { LogSink } from "../helpers/logsink.interface";
+
+class MemorySink implements LogSink {
+	public logs: string[] = [];
+	public warnings: string[] = [];
+	public errors: string[] = [];
+
+	log(message: unknown): void {
+		this.logs.push(String(message));
+	}
+	warn(message: unknown): void {
+		this.warnings.push(String(message));
+	}
+	error(message: unknown): void {
+		this.errors.push(String(message));
+	}
+}
 
 class MockFileHandler implements FileHandler {
 	fullpath = "";
@@ -29,32 +46,10 @@ const fakeCPU = {
 };
 
 describe(".LIST Directive", () => {
-	it("should disable logging with .LIST OFF", () => {
-		const logger = new Logger();
-		const assembler = new Assembler(fakeCPU, new MockFileHandler(), { logger });
-
-		const source = `
-            .LIST OFF
-        `;
-		assembler.assemble(source);
-		expect(assembler.logger.enabled).toBe(false);
-	});
-
-	it("should enable logging with .LIST ON after being disabled", () => {
-		const logger = new Logger(false); // Start with logging disabled
-		const assembler = new Assembler(fakeCPU, new MockFileHandler(), { logger });
-
-		const source = `
-            .LIST ON
-        `;
-		assembler.assemble(source);
-		expect(assembler.logger.enabled).toBe(true);
-	});
-
-	it.skip("should suppress log output when disabled and re-enable it", () => {
-		const logger = new Logger();
-		const assembler = new Assembler(fakeCPU, new MockFileHandler(), { logger });
-		const logSpy = vi.spyOn(logger, "log").mockImplementation(() => {});
+	it("should suppress log output when disabled and re-enable it", () => {
+		const sink = new MemorySink();
+		const logger = new Logger({ sink, enabled: true });
+		const assembler = new Assembler(fakeCPU, new MockFileHandler(), { logger, log: { pass1Enabled: true, pass2Enabled: true } });
 
 		const source = `
 			Start: .DB 1 ; This should log
@@ -66,10 +61,8 @@ describe(".LIST Directive", () => {
 
 		assembler.assemble(source);
 
-		expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("Start"));
-		expect(logSpy).not.toHaveBeenCalledWith(expect.stringContaining("MyLabel"));
-		expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("AnotherLabel"));
-
-		logSpy.mockRestore();
+		expect(sink.logs.filter((l) => l.match("Start:")).length).toEqual(2);
+		expect(sink.logs.filter((l) => l.match("MyLabel:")).length).toEqual(0);
+		expect(sink.logs.filter((l) => l.match("AnotherLabel:")).length).toEqual(2);
 	});
 });
