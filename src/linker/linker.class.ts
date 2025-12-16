@@ -232,6 +232,7 @@ export class Linker {
 					if (directiveToken?.type !== "IDENTIFIER") throw new Error(`Bad directive in line ${token.line} - ${directiveToken.value}`);
 
 					const directiveContext: DirectiveContext = {
+						filename: "linker",
 						isAssembling: true,
 						PC: this.PC,
 						currentLabel,
@@ -250,6 +251,7 @@ export class Linker {
 				case "OPERATOR":
 					if (token.value === "=" && currentLabel) {
 						const directiveContext: DirectiveContext = {
+							filename: "linker",
 							isAssembling: true,
 							PC: this.PC,
 							currentLabel,
