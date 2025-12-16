@@ -1,14 +1,14 @@
 import type { LogSink } from "./logsink.interface";
 
-export class Logger {
-	private readonly sink: LogSink;
+export class Logger<C = unknown> {
+	private readonly sink: LogSink<C>;
 	private readonly buffer: unknown[] = [];
 
 	public enabled: boolean;
 	public cached: boolean;
 
 	constructor(options: {
-		sink: LogSink;
+		sink: LogSink<C>;
 		enabled?: boolean;
 		cached?: boolean;
 	}) {
@@ -29,12 +29,12 @@ export class Logger {
 	}
 
 	warn(message: unknown): void {
-		if (!this.enabled) return;
+		// if (!this.enabled) return;
 		this.sink.warn(message);
 	}
 
 	error(message: unknown): void {
-		if (!this.enabled) return;
+		// if (!this.enabled) return;
 		this.sink.error(message);
 	}
 
@@ -49,52 +49,16 @@ export class Logger {
 	clear(): void {
 		this.buffer.length = 0;
 	}
-}
 
-/*
-export class Logger {
-	public enabled: boolean;
-	public cached: boolean;
-	private warnings: string[] = [];
-	private errors: string[] = [];
-	private logs: string[] = [];
-
-	constructor(enabled = true, cached = false) {
-		this.enabled = enabled;
-		this.cached = cached;
+	pushConfig(config: C): void {
+		this.sink.pushConfig(config);
 	}
 
-	public cache(...args: unknown[]) {
-		if (this.enabled) this.logs.push(...(args as string[]));
+	popConfig(): void {
+		this.sink.popConfig();
 	}
 
-	public flush() {
-		if (this.enabled && this.logs.length > 0) for (const args of this.logs) console.log(args);
-		this.logs = [];
-	}
-
-	public log(message: string): void {
-		if (this.enabled) {
-			console.log(message);
-			this.cache(message);
-		}
-	}
-
-	public warn(message: string): void {
-		this.warnings.push(message);
-		if (this.enabled) console.warn(message);
-	}
-	public error(message: string): void {
-		this.errors.push(message);
-		console.error(message);
-	}
-
-	public getLogs() {
-		return {
-			warnings: this.warnings,
-			errors: this.errors,
-			log: this.logs,
-		};
+	getConfigDepth(): number {
+		return this.sink.getConfigDepth();
 	}
 }
-*/
