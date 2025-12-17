@@ -648,7 +648,7 @@ export class AssemblyLexer {
 
 		const rawValue = this.currentStream.source.slice(rawDataStart, endOfRawData);
 
-		return this.makeToken("RAW_TEXT", rawValue, line, column);
+		return this.makeToken("RAW_TEXT", rawValue, line + 1, column);
 	}
 
 	private scanIdentifier(line: number, column: number): Token {
