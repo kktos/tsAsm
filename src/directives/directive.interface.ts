@@ -1,6 +1,7 @@
 import type { ExpressionEvaluator } from "../assembler/expression";
 import type { EvaluationContext } from "../assembler/expression.types";
 import type { Parser } from "../assembler/parser.class";
+import type { FileHandler } from "../assembler/polyasm.types";
 import type { PASymbolTable } from "../assembler/symbol.class";
 import type { Prettify } from "../cli/schema";
 import type { ILister } from "../helpers/lister.class";
@@ -11,6 +12,8 @@ import type { ScalarToken } from "../shared/lexer/lexer.class";
 export type DirectiveContext = Prettify<
 	EvaluationContext & {
 		emitbytes: (bytes: number[]) => void;
+		readSourceFile?: FileHandler["readSourceFile"];
+		readBinaryFile?: FileHandler["readBinaryFile"];
 		isAssembling: boolean;
 		filename: string;
 	}

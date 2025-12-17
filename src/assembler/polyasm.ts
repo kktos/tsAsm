@@ -267,6 +267,8 @@ export class Assembler {
 						currentLabel: this.lastGlobalLabel,
 						macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
 						emitbytes: this.writeBytes.bind(this),
+						readBinaryFile: this.fileHandler.readBinaryFile.bind(this.fileHandler),
+						readSourceFile: this.fileHandler.readSourceFile.bind(this.fileHandler),
 					};
 
 					if (!this.directiveHandler.handlePassOneDirective(directiveToken, directiveContext))
@@ -289,6 +291,8 @@ export class Assembler {
 							currentLabel: this.lastGlobalLabel,
 							macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
 							emitbytes: this.writeBytes.bind(this),
+							readBinaryFile: this.fileHandler.readBinaryFile.bind(this.fileHandler),
+							readSourceFile: this.fileHandler.readSourceFile.bind(this.fileHandler),
 						};
 						if (!this.directiveHandler.handlePassOneDirective(token, directiveContext))
 							throw new ParserError(`Syntax error - Unexpected directive '${token.value}'`, token);
@@ -315,7 +319,7 @@ export class Assembler {
 
 					// PRIORITY 3: ... OR LABEL
 					// It's not a known instruction, so treat it as a label definition.
-					if (this.lastGlobalLabelLine === token.line)
+					if (this.lastGlobalLabel && this.lastGlobalLabelLine === token.line)
 						throw new ParserError(`Syntax error - (Unknown opcode?) Unexpected label '${token.value}' after ${this.lastGlobalLabel}`, token);
 
 					this.lastGlobalLabel = token.value;
@@ -394,6 +398,8 @@ export class Assembler {
 							macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
 							currentLabel: this.lastGlobalLabel,
 							emitbytes: this.writeBytes.bind(this),
+							readBinaryFile: this.fileHandler.readBinaryFile.bind(this.fileHandler),
+							readSourceFile: this.fileHandler.readSourceFile.bind(this.fileHandler),
 						};
 
 						this.directiveHandler.handlePassTwoDirective(token, directiveContext);
@@ -436,6 +442,8 @@ export class Assembler {
 						macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
 						currentLabel: this.lastGlobalLabel,
 						emitbytes: this.writeBytes.bind(this),
+						readBinaryFile: this.fileHandler.readBinaryFile.bind(this.fileHandler),
+						readSourceFile: this.fileHandler.readSourceFile.bind(this.fileHandler),
 					};
 
 					this.directiveHandler.handlePassTwoDirective(directiveToken, directiveContext);
