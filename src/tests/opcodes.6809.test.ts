@@ -24,7 +24,7 @@ describe("Assembler - 6809 Opcodes", () => {
 			// LDA #$10
 			0x86, 0x10,
 			// LDB $20
-			0x96, 0x20,
+			0xd6, 0x20,
 			// STA $1234
 			0xb7, 0x12, 0x34,
 			// NEGA
