@@ -7,7 +7,7 @@ import type { Prettify } from "../cli/schema";
 import type { ILister } from "../helpers/lister.class";
 import type { Logger } from "../helpers/logger.class";
 import type { Linker } from "../linker/linker.class";
-import type { ScalarToken } from "../shared/lexer/lexer.class";
+import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
 
 export type DirectiveContext = Prettify<
 	EvaluationContext & {
@@ -29,6 +29,8 @@ export interface IDirective {
 
 	handlePassOne(directive: ScalarToken, context: DirectiveContext): void;
 	handlePassTwo(directive: ScalarToken, context: DirectiveContext): void;
+
+	getRawBlock?(parser: Parser, instructionTokens: Token[]): Token | null;
 }
 
 export interface DirectiveRuntime {

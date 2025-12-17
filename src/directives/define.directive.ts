@@ -1,4 +1,4 @@
-import { ParserError } from "../assembler/parser.class";
+import { type Parser, ParserError } from "../assembler/parser.class";
 import type { Assembler } from "../assembler/polyasm";
 import type { SymbolValue } from "../assembler/symbol.class";
 import type { ILister } from "../helpers/lister.class";
@@ -13,6 +13,13 @@ export class DefineDirective implements IDirective {
 		private readonly assembler: Assembler,
 		private readonly lister: ILister,
 	) {}
+
+	getRawBlock(parser: Parser, lineTokens: Token[]): Token | null {
+		// .DEFINE symbol [AS processor] FROM file is inline
+		if (lineTokens.findIndex((token) => token.type === "IDENTIFIER" && token.value === "FROM") >= 0) return null;
+		// .DEFINE symbol [AS processor] .... .END is block
+		return parser.next({ endMarker: ".END" });
+	}
 
 	public handlePassOne(directive: ScalarToken, context: DirectiveContext) {
 		this.handle(directive, context, 1);
@@ -68,17 +75,14 @@ export class DefineDirective implements IDirective {
 			blockContent = context.readSourceFile?.(fromFile as string, context.filename) ?? "";
 		} else {
 			let blockToken: Token | null;
-			if (pass === 1) {
-				blockToken = this.assembler.parser.next({ endMarker: ".END" });
+			// Extract the raw block content from lexer or from token if included file
+			// const token = this.assembler.parser.peek();
+			const token = this.assembler.parser.peekTokenUnbuffered();
+			if (token?.type === "RAW_TEXT") {
+				this.assembler.parser.advance();
+				blockToken = token;
 			} else {
-				// Extract the raw block content from lexer or from token if included file
-				const token = this.assembler.parser.peek();
-				if (token?.type === "RAW_TEXT") {
-					this.assembler.parser.advance();
-					blockToken = token;
-				} else {
-					blockToken = this.assembler.parser.next({ endMarker: ".END" });
-				}
+				blockToken = this.assembler.parser.next({ endMarker: ".END" });
 			}
 			blockContent = (blockToken?.value as string) ?? "";
 		}

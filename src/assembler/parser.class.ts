@@ -3,8 +3,9 @@ import type { PushTokenStreamParams, StreamState } from "../assembler/polyasm.ty
 import type { SymbolValue } from "../assembler/symbol.class";
 import { AssemblyLexer, type IdentifierToken, type NumberToken, type StringToken, type Token } from "../shared/lexer/lexer.class";
 
+type GetRawBlock = (parser: Parser, instructionTokens: Token[]) => Token | null;
 export const blockDirectives: Set<string> = new Set();
-export const rawDirectives: Set<string> = new Set();
+export const rawDirectives: Map<string, GetRawBlock | undefined> = new Map();
 
 export class ParserError extends Error {
 	public token: Token | null = null;
@@ -393,10 +394,11 @@ export class Parser {
 					tokens.push(directive);
 
 					const directiveName = directive.value as string;
-					if (rawDirectives.has(directiveName)) {
+					const getRawBlock = rawDirectives.get(directiveName);
+					if (getRawBlock) {
 						const lineTokens = this.getInstructionTokens(directive);
 						tokens.push(...lineTokens);
-						const block = this.next({ endMarker: ".END" });
+						const block = getRawBlock ? getRawBlock(this, lineTokens) : this.next({ endMarker: ".END" });
 						if (block) tokens.push(block);
 					}
 					break;
@@ -444,10 +446,11 @@ export class Parser {
 				const directive = this.peek(1) as Token;
 				const directiveName = directive.value as string;
 
-				if (rawDirectives.has(directiveName)) {
+				const getRawBlock = rawDirectives.get(directiveName);
+				if (getRawBlock) {
 					const lineTokens = this.getInstructionTokens(directive);
 					tokens.push(...lineTokens);
-					const block = this.next({ endMarker: ".END" });
+					const block = getRawBlock ? getRawBlock(this, lineTokens) : this.next({ endMarker: ".END" });
 					if (block) tokens.push(block);
 					continue;
 				}

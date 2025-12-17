@@ -112,7 +112,7 @@ export class DirectiveHandler {
 
 	public register(name: string, handler: IDirective): void {
 		if (handler.isBlockDirective) blockDirectives.add(name);
-		if (handler.isRawDirective) rawDirectives.add(name);
+		if (handler.isRawDirective) rawDirectives.set(name, handler.getRawBlock);
 
 		this.directiveMap.set(name, handler);
 	}
