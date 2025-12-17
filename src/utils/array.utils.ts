@@ -27,3 +27,16 @@ export function pushNumber(list: number[], value: number, bitSize: 8 | 16 | 32, 
 	const converter = converters[isLittleEndian ? 0 : 1][bitSize];
 	converter(list, value);
 }
+
+const ranges = {
+	8: { min: -128, max: 127 },
+	16: { min: -32768, max: 32767 },
+	32: { min: -2147483648, max: 2147483647 },
+};
+export function pushSignedNumber(list: number[], value: number, bitSize: 8 | 16 | 32, isLittleEndian: boolean) {
+	const { min, max } = ranges[bitSize];
+	if (!Number.isInteger(value) || value < min || value > max) throw new RangeError(`Value ${value} out of range for signed ${bitSize}-bit (${min} to ${max})`);
+	const unsignedValue = value < 0 ? (1 << bitSize) + value : value;
+	const converter = converters[isLittleEndian ? 0 : 1][bitSize];
+	converter(list, unsignedValue);
+}
