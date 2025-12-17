@@ -4,7 +4,8 @@ import { chdir } from "node:process";
 import { name, version } from "../../package.json";
 import { Assembler } from "../assembler/polyasm";
 import type { AssemblerOptions } from "../assembler/polyasm.types";
-import { Cpu6502Handler } from "../cpu/cpu6502.class";
+import handlers from "../cpu";
+import type { CPUHandler } from "../cpu/cpuhandler.interface";
 import type { DirectiveContext } from "../directives/directive.interface";
 import { Logger } from "../helpers/logger.class";
 import { TeeSink } from "../helpers/teesink.class";
@@ -42,7 +43,7 @@ const segments = conf.input.segments;
 const textHandler = (blockContent: string, _context: DirectiveContext) => blockContent;
 const yamlHandler = (blockContent: string, _context: DirectiveContext) => yamlparse(blockContent);
 const jsonHandler = (blockContent: string, _context: DirectiveContext) => JSON.parse(blockContent);
-const handlers = {
+const dataProcessorhandlers = {
 	default: "YAML",
 	map: new Map([
 		["TEXT", textHandler],
@@ -65,7 +66,7 @@ const logger = new Logger({
 
 const options: AssemblerOptions = {
 	logger,
-	rawDataProcessors: handlers,
+	rawDataProcessors: dataProcessorhandlers,
 	log: {
 		pass1Enabled: conf.output?.listing?.passes?.pass1 === true,
 		pass2Enabled: conf.output?.listing?.passes?.pass2 === true,
@@ -74,7 +75,15 @@ const options: AssemblerOptions = {
 if (segments) options.segments = segments;
 
 try {
-	const assembler = new Assembler(new Cpu6502Handler(), fileHandler, options);
+	const cpuName = (conf.input.cpu || "6502").toUpperCase();
+	const CpuHandlerClass = handlers[cpuName];
+	if (!CpuHandlerClass) {
+		console.error(colors.red(`Invalid CPU: ${cpuName}`));
+		process.exit(-1);
+	}
+	const cpuHandler: CPUHandler = new CpuHandlerClass();
+
+	const assembler = new Assembler(cpuHandler, fileHandler, options);
 	const sourceFile = fileHandler.readSourceFile(basename(conf.input.source));
 
 	const segmentList = assembler.assemble(sourceFile);

@@ -1,11 +1,20 @@
 import type { FileHandler } from "../assembler/polyasm.types";
+import handlers from "../cpu";
 import { yamlparse } from "./asm-yaml";
 import { type InferObject, validate } from "./schema";
+
+const availableCpus = Object.keys(handlers);
 
 const confSchema = {
 	input: {
 		type: "object",
 		schema: {
+			cpu: {
+				type: "string",
+				optional: true,
+				validate: (v: unknown) => availableCpus.includes((v as string).toUpperCase()),
+				errorMessage: `Invalid cpu. Available cpus are: ${availableCpus.join(", ")}`,
+			},
 			source: { type: "string" },
 			segments: {
 				type: "array",
