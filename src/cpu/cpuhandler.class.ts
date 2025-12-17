@@ -16,7 +16,7 @@ export interface CPUHandler {
 	resolveAddressingMode(
 		mnemonic: string,
 		operandTokens: OperatorStackToken[],
-		resolveValue: (tokens: OperatorStackToken[], numberMax?: number) => number,
+		resolveValue: (tokens: OperatorStackToken[], numberMax?: number) => number | null,
 	): {
 		mode: AddressingMode;
 		opcode: number;

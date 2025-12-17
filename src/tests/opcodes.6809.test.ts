@@ -70,4 +70,92 @@ describe("Assembler - 6809 Opcodes", () => {
 
 		expect(code.slice(0, expectedBytes.length)).toEqual(expectedBytes);
 	});
+
+	it("should assemble a more complex example", () => {
+		const fileHandler = new MockFileHandler();
+		const assembler = new Assembler(new Cpu6809Handler(), fileHandler, { log: { pass1Enabled: true, pass2Enabled: true } });
+
+		const source = `
+			.SEGMENT CODE { start: 0x4000, size: 0x1000 }
+			;.org $4000
+			.SEGMENT CODE
+
+			start:
+				leay helloworld,pcr
+				jsr print
+				rts
+
+			textscreenbase = $0400
+
+			print:
+				pshs a,x,y
+				ldx #textscreenbase
+			printloop:
+				lda ,y+
+				beq printover
+				cmpa #$40
+				bhs print6847
+				adda #$40
+			print6847:
+				sta ,x+
+				bra printloop
+			printover:
+				puls a,x,y
+				rts
+
+
+			helloworld:
+				.db "HELLO WORLD",0
+        `;
+
+		const segments = assembler.assemble(source);
+		const code = assembler.link(segments);
+
+		const expectedBytes = [
+			0x31,
+			0x8d,
+			0x00,
+			0x1a, //	LEAY $401E,PCR
+			0xbd,
+			0x40,
+			0x08, //	JSR PRINT
+			0x39, // RTS
+			0x34,
+			0x32, // PSHS A,X,Y
+			0x8e,
+			0x04,
+			0x00, // LDX #$0400
+			0xa6,
+			0xa0, // LDA ,Y+
+			0x27,
+			0x0a, // BEQ PRINTOVER
+			0x81,
+			0x40, // CMPA #$40
+			0x24,
+			0x02, // BCC PRINT6847
+			0x8b,
+			0x40, // ADDA #$40
+			0xa7,
+			0x80, // STA ,X+
+			0x20,
+			0xf2, // BRA PRINTLOOP
+			0x35,
+			0x32, // PULS A,X,Y
+			0x39, // RTS
+			0x48,
+			0x45,
+			0x4c,
+			0x4c,
+			0x4f,
+			0x20,
+			0x57,
+			0x4f,
+			0x52,
+			0x4c,
+			0x44,
+			0x00,
+		];
+
+		expect(code.slice(0, expectedBytes.length)).toEqual(expectedBytes);
+	});
 });
