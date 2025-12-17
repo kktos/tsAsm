@@ -37,6 +37,7 @@ export class Assembler {
 	private filenameStack: { path: string; name: string }[] = [];
 
 	public lastGlobalLabel: string | null = null;
+	private lastGlobalLabelLine: string | number = 0;
 	public namelessLabels: NamelessLabels = new NamelessLabels();
 
 	public macroDefinitions: Map<string, MacroDefinition> = new Map();
@@ -68,6 +69,7 @@ export class Assembler {
 
 		this.linker = new Linker();
 		this.PC = this.linker.PC;
+		this.PC.value = DEFAULT_PC;
 
 		if (options?.rawDataProcessors) {
 			this.rawDataProcessors = options.rawDataProcessors.map;
@@ -313,7 +315,11 @@ export class Assembler {
 
 					// PRIORITY 3: ... OR LABEL
 					// It's not a known instruction, so treat it as a label definition.
+					if (this.lastGlobalLabelLine === token.line)
+						throw new ParserError(`Syntax error - (Unknown opcode?) Unexpected label '${token.value}' after ${this.lastGlobalLabel}`, token);
+
 					this.lastGlobalLabel = token.value;
+					this.lastGlobalLabelLine = token.line;
 					if (!this.parser.isOperator("=") && !this.parser.isDirective("EQU")) {
 						this.symbolTable.defineConstant(token.value, this.PC.value);
 						this.lister.label(token.raw ?? token.value, this.PC.value);
