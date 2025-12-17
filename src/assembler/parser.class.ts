@@ -318,6 +318,8 @@ export class Parser {
 		if (!startToken || startToken.type === "EOF") return tokens;
 		if (instructionToken && instructionToken.line !== startToken.line) return tokens;
 
+		let lastToken = startToken;
+
 		this.advance(1);
 		tokens.push(startToken);
 
@@ -325,6 +327,9 @@ export class Parser {
 		if (startToken.value === ")") parenDepth--;
 
 		const startLine = instructionToken ? instructionToken.line : startToken.line;
+
+		const currentTokens = new Set(["IDENTIFIER", "NUMBER", "STRING", "LABEL", "LOCAL_LABEL", "ANONYMOUS_LABEL_REF", "ARRAY"]);
+		const previousTokens = new Set(["OPERATOR", "COMMA", "DOT"]);
 		while (true) {
 			const token = this.peek();
 			if (!token || token.line !== startLine || token.type === "LBRACE" || token.type === "RBRACE" || token.type === "EOF") break;
@@ -332,6 +337,10 @@ export class Parser {
 			if (token.value === "(") parenDepth++;
 			else if (token.value === ")") parenDepth--;
 			else if (token.type === "COMMA" && parenDepth <= 0) break;
+
+			if (currentTokens.has(token.type) && !previousTokens.has(lastToken.type)) break;
+
+			lastToken = token;
 
 			this.advance(1);
 			tokens.push(token);
