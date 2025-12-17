@@ -1,5 +1,5 @@
 import { EventEmitter } from "node:events";
-import type { CPUHandler } from "../cpu/cpuhandler.class";
+import type { CPUHandler } from "../cpu/cpuhandler.interface";
 import type { DirectiveContext, DirectiveRuntime } from "../directives/directive.interface";
 import { DirectiveHandler } from "../directives/handler";
 import { MacroHandler } from "../directives/macro/handler";

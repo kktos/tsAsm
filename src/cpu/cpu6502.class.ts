@@ -1,5 +1,5 @@
 import type { OperatorStackToken, Token } from "../shared/lexer/lexer.class";
-import type { AddressingMode, CPUHandler } from "./cpuhandler.class";
+import type { AddressingMode, CPUHandler } from "./cpuhandler.interface";
 
 export class Cpu6502Handler implements CPUHandler {
 	cpuType = "6502" as const;

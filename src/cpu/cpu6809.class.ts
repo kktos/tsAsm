@@ -1,6 +1,6 @@
 import type { OperatorStackToken } from "../shared/lexer/lexer.class";
 import { pushNumber, pushSignedNumber } from "../utils/array.utils";
-import type { AddressingMode, CPUHandler } from "./cpuhandler.class";
+import type { AddressingMode, CPUHandler } from "./cpuhandler.interface";
 
 // Helper structure for opcode details
 interface OpcodeInfo {
@@ -80,7 +80,7 @@ export class Cpu6809Handler implements CPUHandler {
 		this.addInstruction(page1, "ADDB", DIRECT, 0xdb, 2);
 		this.addInstruction(page1, "ADDB", INDEXED, 0xeb, 2);
 		this.addInstruction(page1, "ADDB", EXTENDED, 0xfb, 3);
-		
+
 		this.addInstruction(page1, "ANDA", IMMEDIATE, 0x84, 2);
 		this.addInstruction(page1, "ANDA", DIRECT, 0x94, 2);
 		this.addInstruction(page1, "ANDA", INDEXED, 0xa4, 2);
@@ -118,20 +118,20 @@ export class Cpu6809Handler implements CPUHandler {
 		this.addInstruction(page1, "ORB", EXTENDED, 0xfa, 3);
 
 		this.addInstruction(page1, "LDA", IMMEDIATE, 0x86, 2);
-		this.addInstruction(page1, "LDA", DIRECT,    0x96, 2);
-		this.addInstruction(page1, "LDA", INDEXED,   0xa6, 2);
-		this.addInstruction(page1, "LDA", EXTENDED,  0xb6, 3);
+		this.addInstruction(page1, "LDA", DIRECT, 0x96, 2);
+		this.addInstruction(page1, "LDA", INDEXED, 0xa6, 2);
+		this.addInstruction(page1, "LDA", EXTENDED, 0xb6, 3);
 		this.addInstruction(page1, "LDB", IMMEDIATE, 0xc6, 2);
-		this.addInstruction(page1, "LDB", DIRECT,    0xd6, 2);
-		this.addInstruction(page1, "LDB", INDEXED,   0xe6, 2);
-		this.addInstruction(page1, "LDB", EXTENDED,  0xf6, 3);
+		this.addInstruction(page1, "LDB", DIRECT, 0xd6, 2);
+		this.addInstruction(page1, "LDB", INDEXED, 0xe6, 2);
+		this.addInstruction(page1, "LDB", EXTENDED, 0xf6, 3);
 
-		this.addInstruction(page1, "STA", DIRECT,    0x97, 2);
-		this.addInstruction(page1, "STA", INDEXED,   0xa7, 2);
-		this.addInstruction(page1, "STA", EXTENDED,  0xb7, 3);
-		this.addInstruction(page1, "STB", DIRECT,    0xd7, 2);
-		this.addInstruction(page1, "STB", INDEXED,   0xe7, 2);
-		this.addInstruction(page1, "STB", EXTENDED,  0xf7, 3);
+		this.addInstruction(page1, "STA", DIRECT, 0x97, 2);
+		this.addInstruction(page1, "STA", INDEXED, 0xa7, 2);
+		this.addInstruction(page1, "STA", EXTENDED, 0xb7, 3);
+		this.addInstruction(page1, "STB", DIRECT, 0xd7, 2);
+		this.addInstruction(page1, "STB", INDEXED, 0xe7, 2);
+		this.addInstruction(page1, "STB", EXTENDED, 0xf7, 3);
 
 		this.addInstruction(page1, "JSR", DIRECT, 0x9d, 2);
 		this.addInstruction(page1, "JSR", INDEXED, 0xad, 2);
@@ -165,7 +165,7 @@ export class Cpu6809Handler implements CPUHandler {
 		this.addInstruction(page1, "NEG", DIRECT, 0x00, 2);
 		this.addInstruction(page1, "NEG", INDEXED, 0x60, 2);
 		this.addInstruction(page1, "NEG", EXTENDED, 0x70, 3);
-		
+
 		this.addInstruction(page1, "JMP", DIRECT, 0x0e, 2);
 		this.addInstruction(page1, "JMP", INDEXED, 0x6e, 2);
 		this.addInstruction(page1, "JMP", EXTENDED, 0x7e, 3);
@@ -263,7 +263,7 @@ export class Cpu6809Handler implements CPUHandler {
 		this.addInstruction(page2, "CMPD", DIRECT, 0x93, 3);
 		this.addInstruction(page2, "CMPD", INDEXED, 0xa3, 3);
 		this.addInstruction(page2, "CMPD", EXTENDED, 0xb3, 4);
-		
+
 		// Page 3 Instructions (0x11 prefix)
 		this.addInstruction(page3, "CMPU", IMMEDIATE, 0x83, 4);
 		this.addInstruction(page3, "CMPU", DIRECT, 0x93, 3);
@@ -321,17 +321,17 @@ export class Cpu6809Handler implements CPUHandler {
 		if (accOffsetMatch) {
 			const acc = accOffsetMatch[1];
 			const reg = accOffsetMatch[2] as "x" | "y" | "u" | "s";
-			const rr = ({ x: 0, y: 1, u: 2, s: 3 }[reg]) << 5;
+			const rr = { x: 0, y: 1, u: 2, s: 3 }[reg] << 5;
 			let postByte = 0b10000000 | rr;
-		
+
 			switch (acc) {
-				case 'a':
+				case "a":
 					postByte |= 0b00110;
 					break;
-				case 'b':
+				case "b":
 					postByte |= 0b00101;
 					break;
-				case 'd':
+				case "d":
 					postByte |= 0b01011;
 					break;
 			}
@@ -342,7 +342,7 @@ export class Cpu6809Handler implements CPUHandler {
 		const constantOffsetMatch = operandString.match(/^([^,]+),([xyus])$/i);
 		if (constantOffsetMatch) {
 			const reg = constantOffsetMatch[2] as "x" | "y" | "u" | "s";
-			const rr = ({ x: 0, y: 1, u: 2, s: 3 }[reg]) << 5;
+			const rr = { x: 0, y: 1, u: 2, s: 3 }[reg] << 5;
 
 			const commaIndex = operandTokens.findIndex((t) => t.value === ",");
 			const offsetTokens = operandTokens.slice(0, commaIndex);
@@ -530,7 +530,8 @@ export class Cpu6809Handler implements CPUHandler {
 
 		if (modeInfo.postByte !== undefined) bytes.push(modeInfo.postByte);
 
-		if (modeInfo.postByte === 0x8c || modeInfo.postByte === 0x8d) { // PCR relative
+		if (modeInfo.postByte === 0x8c || modeInfo.postByte === 0x8d) {
+			// PCR relative
 			const instructionSize = modeInfo.bytes;
 			const offset = modeInfo.resolvedAddress - (modeInfo.pc + instructionSize);
 			const isShort = modeInfo.postByte === 0x8c;

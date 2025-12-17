@@ -56,7 +56,7 @@ export type OperatorToken = StringValueToken<"OPERATOR">;
 export type FunctionToken = StringValueToken<"FUNCTION">;
 export type NumberToken = StringValueToken<"NUMBER">;
 export type StringToken = StringValueToken<"STRING">;
-export type OperatorStackToken = OperatorToken | FunctionToken | NumberToken;
+export type OperatorStackToken = OperatorToken | FunctionToken | NumberToken | IdentifierToken;
 export type IdentifierToken = StringValueToken<"IDENTIFIER">;
 export type PropAccessToken = StringValueToken<"PROPERTY_ACCESS">;
 

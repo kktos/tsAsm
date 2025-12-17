@@ -1,5 +1,5 @@
 import type { OperatorStackToken, Token } from "../shared/lexer/lexer.class";
-import type { AddressingMode, CPUHandler } from "./cpuhandler.class";
+import type { AddressingMode, CPUHandler } from "./cpuhandler.interface";
 export class CpuArmRiscHandler implements CPUHandler {
 	cpuType = "ARM_RISC" as const;
 
