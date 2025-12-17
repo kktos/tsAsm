@@ -28,128 +28,130 @@ describe(".DEFINE Directive", () => {
 		segments: SegmentDefinition[] = DEFAULT_SEGMENTS,
 	) => {
 		const mockFileHandler = new MockFileHandler();
-		return new Assembler(fakeCPU, mockFileHandler, { segments, rawDataProcessors: defineSymbolHandlers });
+		const assembler = new Assembler(fakeCPU, mockFileHandler, { segments, rawDataProcessors: defineSymbolHandlers });
+		return { assembler, mockFileHandler };
 	};
 
-	it("should call the external handler and define the symbol", () => {
-		// 1. Create a mock handler function
-		const textHandler = vi.fn((blockContent: string, _context: DirectiveContext) => blockContent);
-		const handlers = { default: "text", map: new Map([["text", textHandler]]) };
+	describe(".DEFINE inline", () => {
+		it("should call the external handler and define the symbol", () => {
+			// 1. Create a mock handler function
+			const textHandler = vi.fn((blockContent: string, _context: DirectiveContext) => blockContent);
+			const handlers = { default: "text", map: new Map([["text", textHandler]]) };
 
-		// 2. Create assembler with the handler
-		const assembler = createAssembler(handlers);
+			// 2. Create assembler with the handler
+			const { assembler } = createAssembler(handlers);
 
-		// 3. Assemble source with the .DEFINE directive
-		const source = `
+			// 3. Assemble source with the .DEFINE directive
+			const source = `
             .DEFINE MY_SYMBOL
                 This is some complex data
                 that the handler will process.
             .END
         `;
-		assembler.assemble(source);
+			assembler.assemble(source);
 
-		// 5. Verify the symbol was defined with the handler's return value
-		const symbolValue = assembler.symbolTable.lookupSymbol("MY_SYMBOL");
-		expect(symbolValue).toBe(`                This is some complex data
+			// 5. Verify the symbol was defined with the handler's return value
+			const symbolValue = assembler.symbolTable.lookupSymbol("MY_SYMBOL");
+			expect(symbolValue).toBe(`                This is some complex data
                 that the handler will process.`);
-	});
+		});
 
-	it("should throw an error for a duplicate define", () => {
-		// 1. Create a mock handler function
-		const textHandler = vi.fn((blockContent: string, _context: DirectiveContext) => blockContent);
-		const handlers = { default: "text", map: new Map([["text", textHandler]]) };
+		it("should throw an error for a duplicate define", () => {
+			// 1. Create a mock handler function
+			const textHandler = vi.fn((blockContent: string, _context: DirectiveContext) => blockContent);
+			const handlers = { default: "text", map: new Map([["text", textHandler]]) };
 
-		const assembler = createAssembler(handlers);
-		const source = `
+			const { assembler } = createAssembler(handlers);
+			const source = `
 			.DEFINE MY_SYMBOL
 			.END
 			.DEFINE MY_SYMBOL
 			.END
 		`;
-		expect(() => assembler.assemble(source)).toThrow(/Cannot redefine symbol 'MY_SYMBOL'/);
-	});
+			expect(() => assembler.assemble(source)).toThrow(/Cannot redefine symbol 'MY_SYMBOL'/);
+		});
 
-	it("should throw an error for an already defined variable", () => {
-		// 1. Create a mock handler function
-		const textHandler = vi.fn((blockContent: string, _context: DirectiveContext) => blockContent);
-		const handlers = { default: "text", map: new Map([["text", textHandler]]) };
+		it("should throw an error for an already defined variable", () => {
+			// 1. Create a mock handler function
+			const textHandler = vi.fn((blockContent: string, _context: DirectiveContext) => blockContent);
+			const handlers = { default: "text", map: new Map([["text", textHandler]]) };
 
-		const assembler = createAssembler(handlers);
-		const source = `
+			const { assembler } = createAssembler(handlers);
+			const source = `
 			MY_SYMBOL = 0
 			.DEFINE MY_SYMBOL
 			.END
 		`;
-		expect(() => assembler.assemble(source)).toThrow(/Cannot redefine symbol 'MY_SYMBOL'/);
-	});
+			expect(() => assembler.assemble(source)).toThrow(/Cannot redefine symbol 'MY_SYMBOL'/);
+		});
 
-	it("should throw an error for an already defined constant", () => {
-		// 1. Create a mock handler function
-		const textHandler = vi.fn((blockContent: string, _context: DirectiveContext) => blockContent);
-		const handlers = { default: "text", map: new Map([["text", textHandler]]) };
+		it("should throw an error for an already defined constant", () => {
+			// 1. Create a mock handler function
+			const textHandler = vi.fn((blockContent: string, _context: DirectiveContext) => blockContent);
+			const handlers = { default: "text", map: new Map([["text", textHandler]]) };
 
-		const assembler = createAssembler(handlers);
-		const source = `
+			const { assembler } = createAssembler(handlers);
+			const source = `
 			MY_SYMBOL .EQU 0
 			.DEFINE MY_SYMBOL
 			.END
 		`;
-		expect(() => assembler.assemble(source)).toThrow(/Cannot redefine symbol 'MY_SYMBOL'/);
-	});
+			expect(() => assembler.assemble(source)).toThrow(/Cannot redefine symbol 'MY_SYMBOL'/);
+		});
 
-	it("should throw an error for an unknown handler", () => {
-		// 1. Create a mock handler function
-		const textHandler = vi.fn((blockContent: string, _context: DirectiveContext) => blockContent);
-		const handlers = { default: "text", map: new Map([["text", textHandler]]) };
+		it("should throw an error for an unknown handler", () => {
+			// 1. Create a mock handler function
+			const textHandler = vi.fn((blockContent: string, _context: DirectiveContext) => blockContent);
+			const handlers = { default: "text", map: new Map([["text", textHandler]]) };
 
-		const assembler = createAssembler(handlers);
-		const source = `
+			const { assembler } = createAssembler(handlers);
+			const source = `
 			.DEFINE MY_SYMBOL AS TOML
 			.END
 		`;
-		expect(() => assembler.assemble(source)).toThrow("'.DEFINE' directive on line 2; unknown Data Processor 'TOML'.");
-	});
+			expect(() => assembler.assemble(source)).toThrow("[:2:5] Error: Unknown Data Processor 'TOML'. - pass 1");
+		});
 
-	it("should return a text with a TEXT processor", () => {
-		const textHandler = vi.fn((blockContent: string, _context: DirectiveContext) => blockContent);
-		const handlers = { default: "TEXT", map: new Map([["TEXT", textHandler]]) };
-		const assembler = createAssembler(handlers);
+		it("should return a text with a TEXT processor", () => {
+			const textHandler = vi.fn((blockContent: string, _context: DirectiveContext) => blockContent);
+			const handlers = { default: "TEXT", map: new Map([["TEXT", textHandler]]) };
+			const { assembler } = createAssembler(handlers);
 
-		const source = `
+			const source = `
 			.DEFINE MY_SYMBOL AS TEXT
 			toto
 			.END
 		`;
-		assembler.assemble(source);
+			assembler.assemble(source);
 
-		const symbolValue = assembler.symbolTable.lookupSymbol("MY_SYMBOL");
-		expect(symbolValue?.toString().trim()).toBe("toto");
-	});
+			const symbolValue = assembler.symbolTable.lookupSymbol("MY_SYMBOL");
+			expect(symbolValue?.toString().trim()).toBe("toto");
+		});
 
-	it("should return an object with a JSON processor", () => {
-		const jsonHandler = vi.fn((blockContent: string, _context: DirectiveContext) => JSON.parse(blockContent));
-		const handlers = { default: "JSON", map: new Map([["JSON", jsonHandler]]) };
-		const assembler = createAssembler(handlers);
+		it("should return an object with a JSON processor", () => {
+			const jsonHandler = vi.fn((blockContent: string, _context: DirectiveContext) => JSON.parse(blockContent));
+			const handlers = { default: "JSON", map: new Map([["JSON", jsonHandler]]) };
+			const { assembler } = createAssembler(handlers);
 
-		const source = `
+			const source = `
 			.DEFINE MY_SYMBOL AS JSON
 			{
 				"name": "tata"
 			}
 			.END
 		`;
-		assembler.assemble(source);
+			assembler.assemble(source);
 
-		const symbolValue = assembler.symbolTable.lookupSymbol("MY_SYMBOL");
-		expect(symbolValue).toEqual({ name: "tata" });
-	});
+			const symbolValue = assembler.symbolTable.lookupSymbol("MY_SYMBOL");
+			expect(symbolValue).toEqual({ name: "tata" });
+		});
 
-	it("should return an object with a JSON processor 2", () => {
-		const jsonHandler = vi.fn((blockContent: string, _context: DirectiveContext) => JSON.parse(blockContent));
-		const handlers = { default: "JSON", map: new Map([["JSON", jsonHandler]]) };
-		const assembler = createAssembler(handlers);
+		it("should return an object with a JSON processor 2", () => {
+			const jsonHandler = vi.fn((blockContent: string, _context: DirectiveContext) => JSON.parse(blockContent));
+			const handlers = { default: "JSON", map: new Map([["JSON", jsonHandler]]) };
+			const { assembler } = createAssembler(handlers);
 
-		const source = `
+			const source = `
 			.DEFINE list AS JSON
 			{
 				"count": 16
@@ -157,17 +159,17 @@ describe(".DEFINE Directive", () => {
 			.END
 			.db list.count
 		`;
-		assembler.assemble(source);
-		const machineCode = assembler.link();
-		expect(machineCode).toEqual([16]);
-	});
+			assembler.assemble(source);
+			const machineCode = assembler.link();
+			expect(machineCode).toEqual([16]);
+		});
 
-	it("should return a plain text", () => {
-		const textHandler = vi.fn((blockContent: string, _context: DirectiveContext) => blockContent);
-		const handlers = { default: "TEXT", map: new Map([["TEXT", textHandler]]) };
-		const assembler = createAssembler(handlers);
+		it("should return a plain text", () => {
+			const textHandler = vi.fn((blockContent: string, _context: DirectiveContext) => blockContent);
+			const handlers = { default: "TEXT", map: new Map([["TEXT", textHandler]]) };
+			const { assembler } = createAssembler(handlers);
 
-		const source = `
+			const source = `
 			.define spriteList
 			- { id: $55, x: $0d, y: $30, name:"text key"}
 			- { id: $27, x: 15, y: 60, name:"img key"}
@@ -183,11 +185,11 @@ describe(".DEFINE Directive", () => {
 			- { id: $1e, x: $40, y: $9b, name:"img extra sword"}
 			.end
 		`;
-		assembler.assemble(source);
+			assembler.assemble(source);
 
-		const blockContent = textHandler.mock.calls[0]?.[0];
+			const blockContent = textHandler.mock.calls[0]?.[0];
 
-		const expectedContent = `			- { id: $55, x: $0d, y: $30, name:"text key"}
+			const expectedContent = `			- { id: $55, x: $0d, y: $30, name:"text key"}
 			- { id: $27, x: 15, y: 60, name:"img key"}
 			- { id: $57, x: $31, y: $27, name:"text locked door"}
 			- { id: $5C, x: $3A, y: $3C, name:"img locked door"}
@@ -200,16 +202,16 @@ describe(".DEFINE Directive", () => {
 			- { id: $5b, x: $2e, y: $88, name:"text extra sword"}
 			- { id: $1e, x: $40, y: $9b, name:"img extra sword"}`;
 
-		expect(blockContent).toBe(expectedContent);
-		expect(assembler.symbolTable.lookupSymbol("spriteList")).toBe(expectedContent);
-	});
+			expect(blockContent).toBe(expectedContent);
+			expect(assembler.symbolTable.lookupSymbol("spriteList")).toBe(expectedContent);
+		});
 
-	it("should return a yaml object", () => {
-		const yamlHandler = vi.fn((blockContent: string, _context: DirectiveContext) => yamlparse(blockContent) as object);
-		const handlers = { default: "YAML", map: new Map([["YAML", yamlHandler]]) };
-		const assembler = createAssembler(handlers);
+		it("should return a yaml object", () => {
+			const yamlHandler = vi.fn((blockContent: string, _context: DirectiveContext) => yamlparse(blockContent) as object);
+			const handlers = { default: "YAML", map: new Map([["YAML", yamlHandler]]) };
+			const { assembler } = createAssembler(handlers);
 
-		const source = `
+			const source = `
 			.define spriteList
 - { id: $55, x: $0d, y: $30, name: "text key"}
 - { id: $27, x: 15, y: 60, name: "img key"}
@@ -225,11 +227,11 @@ describe(".DEFINE Directive", () => {
 - { id: $1e, x: $40, y: $9b, name: "img extra sword"}
 			.end
 		`;
-		assembler.assemble(source);
+			assembler.assemble(source);
 
-		const blockContent = yamlHandler.mock.calls[0]?.[0];
+			const blockContent = yamlHandler.mock.calls[0]?.[0];
 
-		const expectedContent = `- { id: $55, x: $0d, y: $30, name: "text key"}
+			const expectedContent = `- { id: $55, x: $0d, y: $30, name: "text key"}
 - { id: $27, x: 15, y: 60, name: "img key"}
 - { id: $57, x: $31, y: $27, name: "text locked door"}
 - { id: $5C, x: $3A, y: $3C, name: "img locked door"}
@@ -242,7 +244,44 @@ describe(".DEFINE Directive", () => {
 - { id: $5b, x: $2e, y: $88, name: "text extra sword"}
 - { id: $1e, x: $40, y: $9b, name: "img extra sword"}`;
 
-		expect(blockContent).toBe(expectedContent);
-		// expect(assembler.symbolTable.lookupSymbol("spriteList")).toBe(expectedContent);
+			expect(blockContent).toBe(expectedContent);
+			// expect(assembler.symbolTable.lookupSymbol("spriteList")).toBe(expectedContent);
+		});
+	});
+
+	describe(".DEFINE from file", () => {
+		it("should load the file and define the symbol", () => {
+			// 1. Create a mock handler function
+			const textHandler = vi.fn((blockContent: string, _context: DirectiveContext) => blockContent);
+			const handlers = { default: "TEXT", map: new Map([["TEXT", textHandler]]) };
+
+			// 2. Create assembler with the handler
+			const { assembler, mockFileHandler } = createAssembler(handlers);
+
+			const includedFile = `
+.INCLUDE "included.asm" ; include this file
+test = 99
+			`;
+
+			const mockReadSource = vi.fn(function (this: MockFileHandler, filename: string): string {
+				this.fullpath = filename;
+				return includedFile;
+			});
+
+			vi.spyOn(mockFileHandler, "readSourceFile").mockImplementation(mockReadSource);
+
+			// 3. Assemble source with the .DEFINE directive
+			const source = `
+            .DEFINE MY_SYMBOL from "file.txt" as text
+        `;
+			assembler.assemble(source);
+
+			// 5. Verify the symbol was defined with the handler's return value
+			const symbolValue = assembler.symbolTable.lookupSymbol("MY_SYMBOL");
+			expect(symbolValue).toBe(`
+.INCLUDE "included.asm" ; include this file
+test = 99
+			`);
+		});
 	});
 });

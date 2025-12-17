@@ -1,4 +1,6 @@
+import { ParserError } from "../assembler/parser.class";
 import type { Assembler } from "../assembler/polyasm";
+import type { SymbolValue } from "../assembler/symbol.class";
 import type { ILister } from "../helpers/lister.class";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
 import type { DirectiveContext, IDirective } from "./directive.interface";
@@ -13,69 +15,77 @@ export class DefineDirective implements IDirective {
 	) {}
 
 	public handlePassOne(directive: ScalarToken, context: DirectiveContext) {
-		const symbolNameToken = this.assembler.parser.identifier();
-		if (!symbolNameToken) throw new Error(`'.DEFINE' directive on line ${directive.line} requires a symbol name.`);
-
-		let processorName: string | undefined;
-
-		let token = this.assembler.parser.peekTokenUnbuffered();
-		if (token?.type === "IDENTIFIER" && token.value === "AS") {
-			this.assembler.parser.advance();
-			token = this.assembler.parser.identifier();
-			if (!token) throw new Error(`'.DEFINE' directive on line ${directive.line} requires a Data Processor name.`);
-			processorName = token.value;
-		}
-
-		const processor = this.assembler.getDataProcessor(processorName);
-		if (!processor) throw new Error(`'.DEFINE' directive on line ${directive.line}; unknown Data Processor '${processorName}'.`);
-
-		if (this.assembler.symbolTable.hasSymbolInScope(symbolNameToken.value)) throw `line ${directive.line}; Cannot redefine symbol '${symbolNameToken.value}'.`;
-
-		// this.assembler.symbolTable.assignVariable(symbolNameToken.value, 0);
-
-		const blockToken = this.assembler.parser.next({ endMarker: ".END" });
-		const blockContent = (blockToken?.value as string) ?? "";
-		const value = processor ? processor(blockContent, context) : blockContent;
-		this.assembler.symbolTable.defineVariable(symbolNameToken.value, value);
-
-		this.lister.directive(directive, symbolNameToken.value);
+		this.handle(directive, context, 1);
 	}
 
 	public handlePassTwo(directive: ScalarToken, context: DirectiveContext) {
-		// Parse the directive arguments: .DEFINE <symbolName> <handlerName>
+		this.handle(directive, context, 2);
+	}
+
+	public handle(directive: ScalarToken, context: DirectiveContext, pass: 1 | 2 = 1) {
 		const symbolNameToken = this.assembler.parser.identifier();
-		if (!symbolNameToken) throw new Error(`'.DEFINE' directive on line ${directive.line} requires a symbol name.`);
+		if (!symbolNameToken) throw new ParserError(".DEFINE requires a symbol name.", directive);
 
 		let processorName: string | undefined;
+		let fromFile: SymbolValue | undefined;
 
-		if (this.assembler.parser.isIdentifier("AS")) {
-			this.assembler.parser.advance();
-			const nameToken = this.assembler.parser.identifier();
-			if (!nameToken) throw new Error(`'.DEFINE' directive on line ${directive.line} requires a Data Processor name.`);
-			processorName = nameToken.value;
+		while (true) {
+			let token = this.assembler.parser.peekTokenUnbuffered();
+			if (!token || token?.line !== directive.line) break;
+
+			if (token.type !== "IDENTIFIER") throw new ParserError("Syntax Error - Unexpected token in .DEFINE", directive);
+
+			switch (token.value) {
+				case "AS":
+					this.assembler.parser.advance();
+					token = this.assembler.parser.identifier();
+					if (!token) throw new ParserError(".DEFINE requires a Data Processor name.", directive);
+					processorName = token.value;
+					break;
+				case "FROM": {
+					this.assembler.parser.advance();
+					const expressionTokens = this.assembler.parser.getExpressionTokens();
+					fromFile = this.assembler.expressionEvaluator.evaluate(expressionTokens, context);
+					if (typeof fromFile !== "string") throw new ParserError(".DEFINE FROM requires a string argument.", directive);
+					break;
+				}
+				default:
+					throw new ParserError("Syntax Error - Unknown option in .DEFINE", directive);
+			}
 		}
 
 		const processor = this.assembler.getDataProcessor(processorName);
-		if (!processor) throw new Error(`'.DEFINE' directive on line ${directive.line}; unknown Data Processor '${processorName}'.`);
+		if (!processor) throw new ParserError(`Unknown Data Processor '${processorName}'.`, directive);
 
-		// Extract the raw block content from lexer or from token if included file
-		let blockToken: Token | null;
-		const token = this.assembler.parser.peek();
-		if (token?.type === "RAW_TEXT") {
-			this.assembler.parser.advance();
-			blockToken = token;
+		if (pass === 1 && this.assembler.symbolTable.hasSymbolInScope(symbolNameToken.value))
+			throw new ParserError(`Cannot redefine symbol '${symbolNameToken.value}'.`, directive);
+
+		// this.assembler.symbolTable.assignVariable(symbolNameToken.value, 0);
+
+		let blockContent: string;
+
+		if (fromFile) {
+			blockContent = context.readSourceFile?.(fromFile as string, context.filename) ?? "";
 		} else {
-			blockToken = this.assembler.parser.next({ endMarker: ".END" });
+			let blockToken: Token | null;
+			if (pass === 1) {
+				blockToken = this.assembler.parser.next({ endMarker: ".END" });
+			} else {
+				// Extract the raw block content from lexer or from token if included file
+				const token = this.assembler.parser.peek();
+				if (token?.type === "RAW_TEXT") {
+					this.assembler.parser.advance();
+					blockToken = token;
+				} else {
+					blockToken = this.assembler.parser.next({ endMarker: ".END" });
+				}
+			}
+			blockContent = (blockToken?.value as string) ?? "";
 		}
 
-		// Join the raw text of the tokens inside the block.
-		const blockContent = (blockToken?.value as string) ?? "";
-
-		// Call the external handler function with the block content
 		const value = processor ? processor(blockContent, context) : blockContent;
-
-		// In functions, the scope is lost between the passes
-		this.assembler.symbolTable.assignVariable(symbolNameToken.value, value);
+		if (pass === 1) this.assembler.symbolTable.defineVariable(symbolNameToken.value, value);
+		else this.assembler.symbolTable.assignVariable(symbolNameToken.value, value);
 
 		this.lister.directive(directive, symbolNameToken.value);
 	}
