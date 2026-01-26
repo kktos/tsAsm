@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import type { FileHandler } from "../assembler/polyasm.types";
 import { Linker } from "./linker.class";
 
 describe("Linker", () => {
@@ -302,6 +303,129 @@ describe("Linker", () => {
 
 			// Map access: 0x10, 0x20. Array iteration: 0x10, 0x20.
 			expect(result.data).toEqual([0x10, 0x20, 0x10, 0x20]);
+		});
+	});
+
+	describe("Linker Scripting with Includes", () => {
+		let linker: Linker;
+		let mockFileHandler: FileHandler;
+		const mockFiles = new Map<string, string>();
+
+		beforeEach(() => {
+			mockFiles.clear();
+			mockFileHandler = {
+				fullpath: "C:\\test\\",
+				filename: "main.asm",
+				readSourceFile: (filename: string, _from?: string): string => {
+					// simple mock, doesn't handle relative paths from 'from' for now
+					if (mockFiles.has(filename)) {
+						// When a file is "read", we need to update the file handler's state
+						// so the StreamManager can pick up the new filename/path.
+						mockFileHandler.filename = filename;
+						mockFileHandler.fullpath = `C:\\test\\${filename}`;
+						return mockFiles.get(filename) as string;
+					}
+					throw new Error(`Mock file not found: ${filename}`);
+				},
+				readBinaryFile: (_filename: string, _from?: string): number[] => {
+					throw new Error("readBinaryFile not implemented in mock.");
+				},
+			};
+			// The linker needs the file handler to support .INCLUDE
+			linker = new Linker(0, mockFileHandler);
+		});
+
+		it("should process an .INCLUDE directive in a linker script", () => {
+			// 1. Setup assembler output (segments)
+			linker.addModule("MAIN");
+			linker.addSegment("CODE", 0, 2);
+			linker.useSegment("CODE");
+			linker.writeBytes(0, [0xaa, 0xbb]);
+
+			linker.addSegment("DATA", 0, 2);
+			linker.useSegment("DATA");
+			linker.writeBytes(0, [0xcc, 0xdd]);
+
+			// 2. Setup mock linker script files
+			const mainScript = `
+				.OUTPUT "test.bin"
+				.WRITE SEGMENT "CODE"
+				.INCLUDE "included.ld"
+				.WRITE SEGMENT "DATA"
+			`;
+			const includedScript = `
+				# This comes from the included file
+				.WRITE BYTE 0xEE
+				.WRITE BYTE 0xFF
+			`;
+			mockFiles.set("included.ld", includedScript);
+
+			// 3. Run the linker
+			const logger = { log: () => {}, warn: () => {}, error: (m: any) => console.error(m) } as any;
+			const result = linker.link(mainScript, undefined, logger);
+
+			// 4. Assert the output
+			// Expected: [CODE segment], [included bytes], [DATA segment]
+			expect(result.data).toEqual([0xaa, 0xbb, 0xee, 0xff, 0xcc, 0xdd]);
+		});
+	});
+
+	describe("Linker Scripting with Macros", () => {
+		beforeEach(() => {
+			// A simple linker is enough, no file handler needed for this test.
+			linker = new Linker(0);
+		});
+
+		it("should define and expand a macro in a linker script", () => {
+			// 1. Setup linker script with a macro
+			const script = `
+				.OUTPUT "test.bin"
+
+				.MACRO WRITE_TWO_BYTES b1, b2
+					.WRITE BYTE(b1)
+					.WRITE BYTE(b2)
+				.END
+
+				.WRITE BYTE(0xAA)
+				WRITE_TWO_BYTES 0xBB, 0xCC
+				.WRITE BYTE(0xDD)
+			`;
+
+			// 2. Run the linker
+			const logger = { log: () => {}, warn: () => {}, error: (m: any) => console.error(m) } as any;
+			const result = linker.link(script, undefined, logger);
+
+			// 3. Assert the output
+			expect(result.data).toEqual([0xaa, 0xbb, 0xcc, 0xdd]);
+		});
+	});
+
+	describe("Linker Scripting with .ALIGN and Expressions", () => {
+		beforeEach(() => {
+			// A simple linker is enough, no file handler needed for this test.
+			linker = new Linker(0);
+		});
+
+		it("should handle .ALIGN with an expression involving an array", () => {
+			// 1. Setup linker script with .ALIGN and an array expression
+			const script = `
+				.OUTPUT "test.bin"
+
+				blocks = .ARRAY(1, 2, 3)
+
+				.WRITE BYTE 0xAA
+				.FILL blocks[0] * 16
+				.WRITE BYTE 0xBB
+			`;
+
+			// 2. Run the linker
+			const logger = { log: () => {}, warn: () => {}, error: (m: any) => console.error(m) } as any;
+			const result = linker.link(script, undefined, logger);
+
+			// 3. Assert the output
+			// .ALIGN 1 * 16 = 16. So, the first byte should be at offset 16.
+			const expected = [0xaa, ...Array(16).fill(0), 0xbb];
+			expect(result.data).toEqual(expected);
 		});
 	});
 });

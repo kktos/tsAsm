@@ -5,9 +5,11 @@
  */
 
 import type { PASymbolTable, SymbolValue } from "../assembler/symbol.class";
-import { functionDispatcher } from "../shared/functions/dispatcher";
+import { functionDispatcher } from "../shared/functions/function.dispatcher";
 import type { FunctionToken, OperatorStackToken, OperatorToken, ScalarToken, Token } from "../shared/lexer/lexer.class";
 import { type EvaluationContext, PRECEDENCE } from "./expression.types";
+
+const UNARY_TEST_OPERATORS = new Set([")", "]"]);
 
 export class ExpressionEvaluator {
 	constructor(
@@ -102,7 +104,7 @@ export class ExpressionEvaluator {
 	/** Handles all operator tokens, including parentheses and unary operators. Returns a potentially modified token. */
 	private handleOperator(token: OperatorToken, outputQueue: Token[], operatorStack: OperatorStackToken[], lastToken: Token | undefined): Token {
 		const op = token.value;
-		const isUnary = !lastToken || lastToken.value === "(" || (lastToken.type === "OPERATOR" && lastToken.value !== ")");
+		const isUnary = !lastToken || (lastToken.type === "OPERATOR" && (lastToken.value === "(" || !UNARY_TEST_OPERATORS.has(lastToken.value as string)));
 
 		switch (op) {
 			case "[": // Array access
@@ -412,8 +414,7 @@ export class ExpressionEvaluator {
 				}
 
 				case "FUNCTION": {
-					const argCount = token.argCount ?? 0;
-					functionDispatcher(token.value.toUpperCase(), stack, token, this.symbolTable, argCount);
+					functionDispatcher(token.value.toUpperCase(), stack, token, this.symbolTable, token.argCount);
 					break;
 				}
 

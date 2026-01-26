@@ -48,7 +48,7 @@ functions.set("JOIN", { handler: joinFunction, minArgs: 2, maxArgs: 2 });
 functions.set("LOBYTE", { handler: lobyteFunction, minArgs: 1, maxArgs: 1 });
 functions.set("HIBYTE", { handler: hibyteFunction, minArgs: 1, maxArgs: 1 });
 
-export function functionDispatcher(name: string, stack: EvaluationStack, token: Token, symbolTable: PASymbolTable, argCount: number): void {
+export function functionDispatcher(name: string, stack: EvaluationStack, token: Token, symbolTable: PASymbolTable, argCount = 0): void {
 	const funcDef = functions.get(name.toUpperCase());
 	if (!funcDef) throw new Error(`Unknown function '${name}' on line ${token.line}.`);
 
