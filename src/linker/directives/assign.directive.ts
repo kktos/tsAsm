@@ -9,7 +9,7 @@ export class AssignDirective implements IDirective {
 
 	public handlePassTwo(directive: ScalarToken, context: DirectiveContext): void {
 		const label = context.currentLabel;
-		if (!label) throw `Syntax error in line ${directive.line} - Missing symbol name before =`;
+		if (!label) throw new Error(`Syntax error in line ${directive.line} - Missing symbol name before =`);
 
 		const expressionTokens = this.runtime.parser.getInstructionTokens();
 		const value = this.runtime.evaluator.evaluate(expressionTokens, context);
