@@ -11,6 +11,7 @@ import { StringDirective } from "../../directives/string.directive";
 import type { ScalarToken } from "../../shared/lexer/lexer.class";
 import { AssignDirective } from "./assign.directive";
 import { EndianDirective } from "./endian.directive";
+import { LinkerIncludeDirective } from "./include.directive";
 import { LinkerMacroDirective } from "./linkermacro.directive";
 import { OutputDirective } from "./output.directive";
 import { SectionDirective } from "./segment.directive";
@@ -25,7 +26,10 @@ export class Dispatcher {
 		const loopHandler = new LoopDirective(runtime);
 		this.register("FOR", loopHandler);
 		this.register("REPEAT", loopHandler);
+		this.register("IF", new IfDirective(runtime));
+		this.register("END", new EndDirective(runtime));
 		this.register("MACRO", new LinkerMacroDirective(runtime));
+		this.register("INCLUDE", new LinkerIncludeDirective(runtime));
 
 		this.register("=", new AssignDirective(runtime));
 
@@ -44,8 +48,6 @@ export class Dispatcher {
 		this.register("CSTRING", new StringDirective(runtime, "CSTR"));
 
 		this.register("SECTION", new SectionDirective(runtime));
-		this.register("IF", new IfDirective(runtime));
-		this.register("END", new EndDirective(runtime));
 
 		this.register("ENDIAN", new EndianDirective(runtime));
 		this.register("OUTPUT", new OutputDirective(runtime));
