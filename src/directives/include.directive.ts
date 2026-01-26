@@ -31,20 +31,20 @@ export class IncludeDirective implements IDirective {
 
 			// console.log("INCLUDE", logConfigDepth, filename);
 
-			this.assembler.startNewStream(filename);
+			this.assembler.streamManager.startNewStream(filename);
 			this.assembler.parser.pushTokenStream({
 				newTokens: this.assembler.parser.lexer.getBufferedTokens(),
-				cacheName: this.assembler.fileHandler.fullpath,
+				cacheName: this.assembler.streamManager.currentFilepath,
 				onEndOfStream: () => {
 					// console.log("END", this.assembler.logger.getConfigDepth(), logConfigDepth, this.assembler.fileHandler.fullpath);
 
 					// cleanup the log config if a .LIST file was included
 					if (logConfigDepth < this.assembler.logger.getConfigDepth()) this.assembler.logger.popConfig();
-					this.assembler.endCurrentStream();
+					this.assembler.streamManager.endCurrentStream();
 				},
 			});
 
-			this.lister.directive(directive, this.assembler.fileHandler.fullpath);
+			this.lister.directive(directive, this.assembler.streamManager.currentFilepath);
 		} catch (e) {
 			throw `including file ${filename} on line ${directive.line}: ${e}`;
 		}
@@ -56,17 +56,17 @@ export class IncludeDirective implements IDirective {
 		if (typeof filename !== "string") throw new Error(`.INCLUDE requires a string argument on line ${directive.line}.`);
 
 		const logConfigDepth = this.assembler.logger.getConfigDepth();
-		this.assembler.startNewStream(filename);
+		this.assembler.streamManager.startNewStream(filename, false);
 		this.assembler.parser.pushTokenStream({
-			cacheName: this.assembler.currentFilepath,
+			cacheName: this.assembler.streamManager.currentFilepath,
 			newTokens: [],
 			onEndOfStream: () => {
 				// cleanup the log config if a .LIST file was included
 				if (logConfigDepth < this.assembler.logger.getConfigDepth()) this.assembler.logger.popConfig();
-				this.assembler.endCurrentStream();
+				this.assembler.streamManager.endCurrentStream();
 			},
 		});
 
-		this.lister.directive(directive, this.assembler.fileHandler.fullpath);
+		this.lister.directive(directive, this.assembler.streamManager.currentFilepath);
 	}
 }
