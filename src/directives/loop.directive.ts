@@ -63,8 +63,9 @@ export class LoopDirective implements IDirective {
 		const indexIteratorToken = asIndex < exprHeader.length ? (exprHeader[asIndex + 1] as IdentifierToken) : undefined;
 
 		// Resolve the array from the symbol table
-		const arrayValue = this.runtime.evaluator.evaluate(expressionTokens, context);
-		if (!Array.isArray(arrayValue))
+		const arrayValue = this.runtime.evaluator.evaluate(expressionTokens, context) as SymbolValue[];
+		// if (!Array.isArray(arrayValue))
+		if (typeof arrayValue !== "object" || typeof arrayValue[Symbol.iterator] !== "function")
 			throw `line ${directive.line} The expression in the .FOR loop did not evaluate to an array.\nvalue: ${typeof arrayValue}\n${arrayValue}\n`;
 
 		this.runtime.lister.directive(directive, itemIteratorToken, ofToken, exprHeader);

@@ -11,7 +11,7 @@ describe("Linker Script: = - variable assignment", () => {
 	beforeEach(() => {
 		sink = new MemorySink();
 		logger = new Logger({ sink, enabled: true });
-		linker = new Linker();
+		linker = new Linker(0);
 	});
 
 	it("should define a variable", () => {

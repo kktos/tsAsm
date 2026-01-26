@@ -30,6 +30,9 @@ export class Linker {
 	public segments: Segment[] = [];
 	public linkerSections: Segment[] = [];
 
+	private modules: Map<string, Segment[]> = new Map();
+	public currentModule: Segment[] | null = null;
+
 	private finalSegment: Segment = { name: "", start: 0, size: Number.POSITIVE_INFINITY, data: [], resizable: true };
 	public currentSegment: Segment = this.finalSegment;
 
@@ -39,6 +42,8 @@ export class Linker {
 
 	constructor(PC: number) {
 		this.PC = { value: PC };
+		this.currentModule = [];
+		this.modules.set("__MAIN__", this.currentModule);
 	}
 
 	public addSegment(name: string, start: number, size: number, padValue = 0, resizable = false) {
@@ -64,12 +69,44 @@ export class Linker {
 		this.PC.value = this.finalSegment.data.length;
 	}
 
+	public addModule(name: string) {
+		let module = this.modules.get("__MAIN__");
+		if (module) {
+			if (this.currentModule?.length) throw new Error("Segments were used before any module was defined.");
+			this.modules.delete("__MAIN__");
+		}
+
+		module = this.modules.get(name);
+		if (module) throw new Error(`Module already defined: ${name}`);
+		this.currentModule = [];
+		this.modules.set(name, this.currentModule);
+	}
+
+	public useModule(name: string) {
+		const module = this.modules.get(name);
+		if (!module) throw new Error(`Module not found: ${name}`);
+
+		this.currentModule = module;
+	}
+
+	public resetModules() {
+		const keys = [...this.modules.keys()];
+		this.modules.clear();
+		// biome-ignore lint/suspicious/useIterableCallbackReturn: <ok>
+		keys.forEach((k) => this.modules.set(k, []));
+	}
+
 	/** Selects a segment by name and makes it the active segment for subsequent writes. */
 	public useSegment(name: string) {
 		const seg = this.segments.find((s) => s.name === name);
 		if (!seg) throw new Error(`Segment not found: ${name}`);
-		this.currentSegment = seg;
 
+		if (!this.currentModule) throw new Error(`No Module defined for segment: ${name}`);
+		if (this.currentModule.find((s) => s.name === name)) throw new Error(`Segment already used in module: ${name}`);
+
+		this.currentModule.push(seg);
+
+		this.currentSegment = seg;
 		this.PC.value = seg.start;
 
 		return seg.start;
@@ -223,6 +260,14 @@ export class Linker {
 		const segmentsHybrid: any = [...this.segments];
 		for (const seg of this.segments) segmentsHybrid[seg.name] = seg;
 		symbolTable.defineConstant("SEGMENTS", segmentsHybrid);
+
+		const modulesHybrid: any = [];
+		for (const [name, segments] of this.modules.entries()) {
+			modulesHybrid.push({ name, segments });
+			modulesHybrid[name] = segments;
+		}
+		symbolTable.defineConstant("MODULES", modulesHybrid);
+
 		this.currentSegment = this.finalSegment;
 		this.PC.value = 0;
 		if (outputPath) this.setOutputFile(outputPath);

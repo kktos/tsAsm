@@ -28,6 +28,7 @@ import { ListDirective } from "./list.directive";
 import { LogDirective } from "./log.directive";
 import { LoopDirective } from "./loop.directive";
 import { MacroDirective } from "./macro/macro.directive";
+import { ModuleDirective } from "./module.directive";
 import { NamespaceDirective } from "./namespace.directive";
 import { OptionDirective } from "./option.directive";
 import { OrgDirective } from "./org.directive";
@@ -100,6 +101,7 @@ export class DirectiveHandler {
 		this.register("ALIGN", new AlignDirective(runtime));
 
 		this.register("SEGMENT", new SegmentDirective(runtime));
+		this.register("MODULE", new ModuleDirective(runtime));
 
 		const cpuDirective = new CpuDirective(assembler, runtime.lister);
 		this.register("CPU", cpuDirective);

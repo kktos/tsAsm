@@ -5,7 +5,7 @@ describe("Linker", () => {
 	let linker: Linker;
 
 	beforeEach(() => {
-		linker = new Linker();
+		linker = new Linker(0);
 	});
 
 	it("should be created", () => {
@@ -45,6 +45,7 @@ describe("Linker", () => {
 	describe("useSegment", () => {
 		it("should select an existing segment", () => {
 			linker.addSegment("CODE", 0x100, 0x10);
+			linker.addModule("MAIN");
 			linker.useSegment("CODE");
 			expect(linker.currentSegment).toBeDefined();
 			expect(linker.currentSegment?.name).toBe("CODE");
@@ -66,22 +67,26 @@ describe("Linker", () => {
 		});
 
 		it("should write a byte to the current segment", () => {
+			linker.addModule("MAIN");
 			linker.useSegment("CODE");
 			linker.writeBytes(0x105, [0x42]);
 			expect(linker.currentSegment?.data[5]).toBe(0x42);
 		});
 
 		it("should throw when writing below segment start", () => {
+			linker.addModule("MAIN");
 			linker.useSegment("CODE");
 			expect(() => linker.writeBytes(0xff, [0x42])).toThrow("Write out of bounds: address $FF is below segment 'CODE' start $100.");
 		});
 
 		it("should throw when writing outside a fixed segment", () => {
+			linker.addModule("MAIN");
 			linker.useSegment("CODE");
 			expect(() => linker.writeBytes(0x110, [0x42])).toThrow("Write out of bounds: address $110 outside fixed segment 'CODE' (start $100, size 16).");
 		});
 
 		it("should resize a resizable segment when writing past its end", () => {
+			linker.addModule("MAIN");
 			linker.useSegment("BSS");
 			linker.writeBytes(0x200, [0xaa]);
 			linker.writeBytes(0x201, [0xbb]);
@@ -93,6 +98,7 @@ describe("Linker", () => {
 		});
 
 		it("should handle non-sequential writes in resizable segment", () => {
+			linker.addModule("MAIN");
 			linker.useSegment("BSS");
 			linker.writeBytes(0x204, [0xcc]);
 			const seg = linker.segments.find((s) => s.name === "BSS");
@@ -109,6 +115,7 @@ describe("Linker", () => {
 		});
 
 		it("should link a single segment", () => {
+			linker.addModule("MAIN");
 			linker.addSegment("CODE", 0x100, 4, 0);
 			linker.useSegment("CODE");
 			linker.writeBytes(0x100, [1]);
@@ -119,6 +126,7 @@ describe("Linker", () => {
 		});
 
 		it("should link multiple segments, filling gaps with zeros", () => {
+			linker.addModule("MAIN");
 			linker.addSegment("SEG1", 0x10, 2);
 			linker.useSegment("SEG1");
 			linker.writeBytes(0x10, [0xaa]);
@@ -137,6 +145,7 @@ describe("Linker", () => {
 		});
 
 		it("should handle overlapping segments, last segment wins", () => {
+			linker.addModule("MAIN");
 			linker.addSegment("SEG1", 0x10, 4);
 			linker.useSegment("SEG1");
 			linker.writeBytes(0x10, [1]);
@@ -155,6 +164,7 @@ describe("Linker", () => {
 		});
 
 		it("should use padValue for unfilled parts of segments", () => {
+			linker.addModule("MAIN");
 			linker.addSegment("DATA", 0x100, 5, 0xff);
 			linker.useSegment("DATA");
 			linker.writeBytes(0x100, [0xda]);
@@ -165,6 +175,7 @@ describe("Linker", () => {
 
 	describe("Inline Sections", () => {
 		it("should append data correctly between segments", () => {
+			linker.addModule("MAIN");
 			linker.addSegment("SEG1", 0x100, 2);
 			linker.useSegment("SEG1");
 			linker.writeBytes(0x100, [0xaa, 0xbb]);
@@ -191,6 +202,7 @@ describe("Linker", () => {
 
 	describe("Script Execution", () => {
 		it("should handle .SECTION directives correctly in a script", () => {
+			linker.addModule("MAIN");
 			linker.addSegment("CODE", 0, 2);
 			linker.useSegment("CODE");
 			linker.writeBytes(0, [0xaa, 0xbb]);
@@ -229,6 +241,7 @@ describe("Linker", () => {
 
 	describe("Stateful Segments", () => {
 		it("should track emitted status and expose UNWRITTEN_SEGMENTS", () => {
+			linker.addModule("MAIN");
 			linker.addSegment("BOOT", 0, 1);
 			linker.useSegment("BOOT");
 			linker.writeBytes(0, [0xaa]);
@@ -263,6 +276,7 @@ describe("Linker", () => {
 
 	describe("Hybrid SEGMENTS Variable", () => {
 		it("should behave as both an array and a map", () => {
+			linker.addModule("MAIN");
 			linker.addSegment("SEG_A", 0x10, 1);
 			linker.addSegment("SEG_B", 0x20, 1);
 
