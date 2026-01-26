@@ -1,21 +1,26 @@
-import type { Assembler } from "../../assembler/polyasm";
+import type { Parser } from "../../assembler/parser.class";
+import type { PASymbolTable } from "../../assembler/symbol.class";
+import type { ILister } from "../../helpers/lister.class";
 import type { ScalarToken, Token } from "../../shared/lexer/lexer.class";
+import type { MacroDefinition } from "./macro.interface";
 
 export class MacroHandler {
-	private assembler: Assembler;
+	public macroDefinitions = new Map<string, MacroDefinition>();
 
-	constructor(assembler: Assembler) {
-		this.assembler = assembler;
-	}
+	constructor(
+		private readonly parser: Parser,
+		private readonly symbolTable: PASymbolTable,
+		private readonly lister: ILister,
+	) {}
 
 	public isMacro(name: string): boolean {
-		return this.assembler.macroDefinitions.has(name);
+		return this.macroDefinitions.has(name);
 	}
 
 	/** Pass 2: Expands a macro by injecting its tokens into the stream with argument substitution. */
 	public expandMacro(macroToken: ScalarToken) {
 		const macroName = macroToken.value;
-		const definition = this.assembler.macroDefinitions.get(macroName);
+		const definition = this.macroDefinitions.get(macroName);
 
 		if (!definition) throw new Error(`ERROR: Macro '${macroName}' not defined.`);
 
@@ -23,7 +28,7 @@ export class MacroHandler {
 		const macroArgs = new Map<string, Token[]>();
 
 		const scopeName = `@@macro_${macroName}_${macroToken.line}__`;
-		this.assembler.symbolTable.pushScope(scopeName);
+		this.symbolTable.pushScope(scopeName);
 
 		// Argument validation and mapping
 		if (definition.restParameter) {
@@ -66,9 +71,9 @@ export class MacroHandler {
 			line: `${macroToken.line}.${bodyToken.line}`,
 		}));
 
-		this.assembler.lister.macro(macroToken.raw as string, passedArgsArray);
+		this.lister.macro(macroToken.raw as string, passedArgsArray);
 
-		this.assembler.parser.pushTokenStream({ newTokens, macroArgs, onEndOfStream: () => this.assembler.symbolTable.popScope() });
+		this.parser.pushTokenStream({ newTokens, macroArgs, onEndOfStream: () => this.symbolTable.popScope() });
 	}
 
 	/**
@@ -81,19 +86,19 @@ export class MacroHandler {
 		let currentArgTokens: Token[] = [];
 		let parenDepth = 0;
 
-		const firstPeek = this.assembler.parser.peek();
+		const firstPeek = this.parser.peek();
 		if (!firstPeek || firstPeek.type === "EOF") return [];
 		const hasParens = firstPeek.type === "OPERATOR" && firstPeek.value === "(";
 		const callLineNum = callLine ?? firstPeek.line;
 
 		if (hasParens) {
 			// consume opening '('
-			this.assembler.parser.advance(1);
+			this.parser.advance(1);
 			parenDepth = 1;
 			while (true) {
-				const token = this.assembler.parser.peek();
+				const token = this.parser.peek();
 				if (!token || token.type === "EOF") break;
-				this.assembler.parser.advance(1);
+				this.parser.advance(1);
 
 				if (token.type === "OPERATOR" && token.value === "(") {
 					parenDepth++;
@@ -123,19 +128,19 @@ export class MacroHandler {
 		} else {
 			// No parentheses: only take tokens on the same line as the macro call
 			while (true) {
-				const token = this.assembler.parser.peek();
+				const token = this.parser.peek();
 				if (!token || token.type === "EOF" || token.line !== callLineNum) break;
 
 				// Handle angle-bracketed arguments
 				if (token.type === "OPERATOR" && token.value === "<") {
-					this.assembler.parser.advance(1); // consume '<'
+					this.parser.advance(1); // consume '<'
 					let bracketDepth = 1;
 					while (bracketDepth > 0) {
-						const innerToken = this.assembler.parser.peek();
+						const innerToken = this.parser.peek();
 						if (!innerToken || innerToken.type === "EOF" || innerToken.line !== callLineNum) {
 							throw new Error(`Unmatched '<' in macro arguments on line ${callLineNum}.`);
 						}
-						this.assembler.parser.advance(1);
+						this.parser.advance(1);
 						if (innerToken.type === "OPERATOR") {
 							if (innerToken.value === "<") bracketDepth++;
 							if (innerToken.value === ">") bracketDepth--;
@@ -146,7 +151,7 @@ export class MacroHandler {
 						}
 					}
 				} else {
-					this.assembler.parser.advance(1);
+					this.parser.advance(1);
 					if (token.type === "COMMA") {
 						argsArray.push(currentArgTokens);
 						currentArgTokens = [];

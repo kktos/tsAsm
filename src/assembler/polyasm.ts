@@ -3,7 +3,6 @@ import type { CPUHandler } from "../cpu/cpuhandler.interface";
 import type { DirectiveContext, DirectiveRuntime } from "../directives/directive.interface";
 import { DirectiveHandler } from "../directives/handler";
 import { MacroHandler } from "../directives/macro/handler";
-import type { MacroDefinition } from "../directives/macro/macro.interface";
 import { ConsoleSink } from "../helpers/consolesink.class";
 import { Lister } from "../helpers/lister.class";
 import { Logger } from "../helpers/logger.class";
@@ -40,7 +39,6 @@ export class Assembler {
 	private lastGlobalLabelLine: string | number = 0;
 	public namelessLabels: NamelessLabels = new NamelessLabels();
 
-	public macroDefinitions: Map<string, MacroDefinition> = new Map();
 	private options: Map<string, string> = new Map();
 
 	public pass: number;
@@ -82,10 +80,10 @@ export class Assembler {
 		const resolveSysValue = (nameToken: Token) => this.resolveSysValue(nameToken);
 		this.expressionEvaluator = new ExpressionEvaluator(this.symbolTable, this.namelessLabels.findNearest.bind(this.namelessLabels), resolveSysValue);
 
-		this.macroHandler = new MacroHandler(this);
-
 		this.emitter = new EventEmitter();
 		this.parser = new Parser(this.emitter);
+
+		this.macroHandler = new MacroHandler(this.parser, this.symbolTable, this.lister);
 
 		const runtime: DirectiveRuntime = {
 			parser: this.parser,
@@ -94,6 +92,7 @@ export class Assembler {
 			lister: this.lister,
 			logger: this.logger,
 			linker: this.linker,
+			macroHandler: this.macroHandler,
 		};
 		this.directiveHandler = new DirectiveHandler(this, runtime);
 

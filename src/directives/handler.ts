@@ -40,7 +40,7 @@ export class DirectiveHandler {
 		this.directiveMap = new Map();
 
 		this.register("ORG", new OrgDirective(assembler, runtime.logger));
-		this.register("MACRO", new MacroDirective(assembler));
+		this.register("MACRO", new MacroDirective(runtime));
 
 		this.register("NAMESPACE", new NamespaceDirective(assembler));
 		this.register("EXPORT", new ExportDirective(assembler, runtime.lister));

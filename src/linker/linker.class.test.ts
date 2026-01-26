@@ -162,4 +162,132 @@ describe("Linker", () => {
 			expect(linker.rawBinaryLink()).toEqual([0xda, 0xdb, 0xff, 0xff, 0xff]);
 		});
 	});
+
+	describe("Inline Sections", () => {
+		it("should append data correctly between segments", () => {
+			linker.addSegment("SEG1", 0x100, 2);
+			linker.useSegment("SEG1");
+			linker.writeBytes(0x100, [0xaa, 0xbb]);
+
+			linker.addSegment("SEG2", 0x200, 2);
+			linker.useSegment("SEG2");
+			linker.writeBytes(0x200, [0xcc, 0xdd]);
+
+			// 1. Emit SEG1
+			linker.emitSegment("SEG1");
+
+			// 2. Inline Section
+			linker.addInlineSection("MIDDLE");
+			linker.emitByte(0x11);
+			linker.emitByte(0x22);
+
+			// 3. Emit SEG2
+			linker.emitSegment("SEG2");
+
+			// Verify final output
+			expect(linker.currentSegment.data).toEqual([0xaa, 0xbb, 0x11, 0x22, 0xcc, 0xdd]);
+		});
+	});
+
+	describe("Script Execution", () => {
+		it("should handle .SECTION directives correctly in a script", () => {
+			linker.addSegment("CODE", 0, 2);
+			linker.useSegment("CODE");
+			linker.writeBytes(0, [0xaa, 0xbb]);
+
+			linker.addSegment("DATA", 0, 2);
+			linker.useSegment("DATA");
+			linker.writeBytes(0, [0xcc, 0xdd]);
+
+			const script = `
+				.OUTPUT "test.bin"
+				.WRITE SEGMENT "CODE"
+
+				.WRITE BYTE 0x11
+				.WRITE BYTE 0x22
+
+				.SECTION INLINE
+				.WRITE BYTE 0x33
+
+				.WRITE SEGMENT "DATA"
+
+				.SECTION OVERLAY AT 0x01
+				.WRITE BYTE 0xFF
+			`;
+			const logger = {
+				log: () => {},
+				warn: () => {},
+				error: (m: any) => {
+					throw new Error(m);
+				},
+			} as any;
+			const result = linker.link(script, undefined, logger);
+
+			expect(result.data).toEqual([0xaa, 0xff, 0x11, 0x22, 0x33, 0xcc, 0xdd]);
+		});
+	});
+
+	describe("Stateful Segments", () => {
+		it("should track emitted status and expose UNWRITTEN_SEGMENTS", () => {
+			linker.addSegment("BOOT", 0, 1);
+			linker.useSegment("BOOT");
+			linker.writeBytes(0, [0xaa]);
+
+			linker.addSegment("CODE", 0, 1);
+			linker.useSegment("CODE");
+			linker.writeBytes(0, [0xbb]);
+
+			linker.addSegment("DATA", 0, 1);
+			linker.useSegment("DATA");
+			linker.writeBytes(0, [0xcc]);
+
+			const script = `
+				.OUTPUT "test.bin"
+				.WRITE SEGMENT "BOOT"
+				.FOR s OF .UNWRITTEN_SEGMENTS
+					.WRITE SEGMENT(s.name)
+				.END
+			`;
+			const logger = {
+				log: () => {},
+				warn: () => {},
+				error: (m: any) => {
+					throw new Error(m);
+				},
+			} as any;
+			const result = linker.link(script, undefined, logger);
+
+			expect(result.data).toEqual([0xaa, 0xbb, 0xcc]);
+		});
+	});
+
+	describe("Hybrid SEGMENTS Variable", () => {
+		it("should behave as both an array and a map", () => {
+			linker.addSegment("SEG_A", 0x10, 1);
+			linker.addSegment("SEG_B", 0x20, 1);
+
+			const script = `
+				.OUTPUT "test.bin"
+				# Map access
+				.WRITE BYTE(SEGMENTS.SEG_A.start)
+				.WRITE BYTE(SEGMENTS.SEG_B.start)
+
+				# Array iteration
+				.FOR s OF SEGMENTS
+					.WRITE BYTE(s.start)
+				.END
+			`;
+			const logger = {
+				log: () => {},
+				warn: () => {},
+				error: (m: any) => {
+					throw new Error(m);
+				},
+			} as any;
+			const result = linker.link(script, undefined, logger);
+
+			// Map access: 0x10, 0x20. Array iteration: 0x10, 0x20.
+			expect(result.data).toEqual([0x10, 0x20, 0x10, 0x20]);
+		});
+	});
 });

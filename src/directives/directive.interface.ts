@@ -8,6 +8,7 @@ import type { ILister } from "../helpers/lister.class";
 import type { Logger } from "../helpers/logger.class";
 import type { Linker } from "../linker/linker.class";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
+import type { MacroHandler } from "./macro/handler";
 
 export type DirectiveContext = Prettify<
 	EvaluationContext & {
@@ -40,4 +41,5 @@ export interface DirectiveRuntime {
 	logger: Logger;
 	lister: ILister;
 	linker: Linker;
+	macroHandler: MacroHandler;
 }

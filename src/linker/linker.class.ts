@@ -4,6 +4,7 @@ import type { ValueHolder } from "../assembler/expression.types";
 import { Parser } from "../assembler/parser.class";
 import { PASymbolTable } from "../assembler/symbol.class";
 import type { DirectiveContext, DirectiveRuntime } from "../directives/directive.interface";
+import { MacroHandler } from "../directives/macro/handler";
 import { NullLister } from "../helpers/lister.class";
 import type { Logger } from "../helpers/logger.class";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
@@ -21,11 +22,13 @@ export interface Segment {
 	resizable?: boolean;
 	/** Value used to pad the segment to its declared size when linking. Default: 0. */
 	padValue?: number;
+	/** Whether this segment has been emitted to the final image. */
+	emitted?: boolean;
 }
 
 export class Linker {
 	public segments: Segment[] = [];
-	public linkerSegments: Segment[] = [];
+	public linkerSections: Segment[] = [];
 
 	private finalSegment: Segment = { name: "", start: 0, size: Number.POSITIVE_INFINITY, data: [], resizable: true };
 	public currentSegment: Segment = this.finalSegment;
@@ -39,17 +42,22 @@ export class Linker {
 		if (seg) throw new Error(`Segment already defined : ${name}`);
 
 		// If size is zero, create an empty data array. If resizable is true, the segment will grow on writes.
-		const newSeg: Segment = { name, start, size, data: size > 0 ? new Array(size).fill(padValue) : [], resizable, padValue };
+		const newSeg: Segment = { name, start, size, data: size > 0 ? new Array(size).fill(padValue) : [], resizable, padValue, emitted: false };
 		this.segments.push(newSeg);
 	}
 
-	public addLinkerSegment(name: string, offset: number) {
+	public addLinkerSection(name: string, offset: number) {
 		const seg = this.segments.find((s) => s.name === name);
 		if (seg) throw new Error(`Segment already defined : ${name}`);
 
 		const newSeg: Segment = { name, start: offset, size: 0, data: [] };
-		this.linkerSegments.push(newSeg);
+		this.linkerSections.push(newSeg);
 		this.currentSegment = newSeg;
+	}
+
+	public addInlineSection(_name: string) {
+		this.currentSegment = this.finalSegment;
+		this.PC.value = this.finalSegment.data.length;
 	}
 
 	/** Selects a segment by name and makes it the active segment for subsequent writes. */
@@ -188,12 +196,14 @@ export class Linker {
 		this.finalSegment.data.push(...seg.data);
 		if (!seg.resizable) this.finalSegment.data.push(...new Array(seg.size - seg.data.length).fill(seg.padValue ?? 0));
 		this.PC.value += this.finalSegment.data.length - startOffset;
+		seg.emitted = true;
 	}
 
 	public link(script: string, outputPath: string | undefined, logger: Logger) {
 		const lister = new NullLister();
 		const symbolTable = new PASymbolTable(lister);
 		const parser = new Parser(new EventEmitter());
+		const macroHandler = new MacroHandler(parser, symbolTable, lister);
 		const runtime: DirectiveRuntime = {
 			parser,
 			symbolTable,
@@ -201,10 +211,14 @@ export class Linker {
 			logger,
 			lister,
 			linker: this,
+			macroHandler,
 		};
 		const dispatcher = new Dispatcher(runtime);
 
-		symbolTable.defineConstant("segments", this.segments);
+		// biome-ignore lint/suspicious/noExplicitAny: <a bit of a hack>
+		const segmentsHybrid: any = [...this.segments];
+		for (const seg of this.segments) segmentsHybrid[seg.name] = seg;
+		symbolTable.defineConstant("SEGMENTS", segmentsHybrid);
 		this.currentSegment = this.finalSegment;
 		this.PC.value = 0;
 		if (outputPath) this.setOutputFile(outputPath);
@@ -245,6 +259,10 @@ export class Linker {
 					break;
 				}
 				case "IDENTIFIER":
+					if (runtime.macroHandler.isMacro(token.value)) {
+						runtime.macroHandler.expandMacro(token);
+						break;
+					}
 					currentLabel = token.value;
 					break;
 
@@ -270,12 +288,12 @@ export class Linker {
 		if (!this.finalSegment.resizable)
 			this.finalSegment.data.push(...new Array(this.finalSegment.size - this.finalSegment.data.length).fill(this.finalSegment.padValue ?? 0));
 
-		for (const segment of this.linkerSegments) this.finalSegment.data.splice(segment.start, segment.data.length, ...segment.data);
+		for (const section of this.linkerSections) this.finalSegment.data.splice(section.start, section.data.length, ...section.data);
 
 		if (this.finalSegment.data.length > this.finalSegment.size)
-			throw `Output file is too large. Max size is ${this.finalSegment.size} bytes, but the linker output is ${this.finalSegment.data.length} bytes`;
+			throw new Error(`Output file is too large. Max size is ${this.finalSegment.size} bytes, but the linker output is ${this.finalSegment.data.length} bytes`);
 
-		runtime.logger.log(`\nOUPUT FILE: ${this.finalSegment.name}`);
+		runtime.logger.log(`\nOUTPUT FILE: ${this.finalSegment.name}`);
 		runtime.logger.log("\n--- Linker End ---");
 
 		return this.finalSegment;
@@ -293,6 +311,9 @@ export class Linker {
 
 			case "IMAGE_END":
 				return this.finalSegment.resizable ? this.finalSegment.data.length : this.finalSegment.size;
+
+			case "UNWRITTEN_SEGMENTS":
+				return this.segments.filter((s) => !s.emitted);
 
 			default:
 				throw new Error(`Unknown system variable: ${nameToken.value} on line ${nameToken.line}.`);
