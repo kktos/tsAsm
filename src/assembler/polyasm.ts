@@ -65,9 +65,8 @@ export class Assembler {
 			});
 		this.lister = new Lister(this.logger);
 
-		this.linker = new Linker();
+		this.linker = new Linker(DEFAULT_PC);
 		this.PC = this.linker.PC;
-		this.PC.value = DEFAULT_PC;
 
 		if (options?.rawDataProcessors) {
 			this.rawDataProcessors = options.rawDataProcessors.map;

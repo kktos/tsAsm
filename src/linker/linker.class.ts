@@ -35,7 +35,11 @@ export class Linker {
 
 	private isLittleEndian = true;
 
-	public PC: ValueHolder = { value: 0 };
+	public PC: ValueHolder;
+
+	constructor(PC: number) {
+		this.PC = { value: PC };
+	}
 
 	public addSegment(name: string, start: number, size: number, padValue = 0, resizable = false) {
 		const seg = this.segments.find((s) => s.name === name);
