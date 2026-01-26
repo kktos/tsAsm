@@ -2,11 +2,13 @@ import { EventEmitter } from "node:events";
 import { ExpressionEvaluator } from "../assembler/expression";
 import type { ValueHolder } from "../assembler/expression.types";
 import { Parser } from "../assembler/parser.class";
+import type { FileHandler, StreamState } from "../assembler/polyasm.types";
 import { PASymbolTable } from "../assembler/symbol.class";
 import type { DirectiveContext, DirectiveRuntime } from "../directives/directive.interface";
 import { MacroHandler } from "../directives/macro/handler";
 import { NullLister } from "../helpers/lister.class";
 import type { Logger } from "../helpers/logger.class";
+import { StreamManager } from "../helpers/stream-manager.class";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
 import { pushNumber } from "../utils/array.utils";
 import { getHex } from "../utils/hex.util";
@@ -31,6 +33,7 @@ export class Linker {
 	public linkerSections: Segment[] = [];
 
 	private modules: Map<string, Segment[]> = new Map();
+	public streamManager?: StreamManager;
 	public currentModule: Segment[] | null = null;
 
 	private finalSegment: Segment = { name: "", start: 0, size: Number.POSITIVE_INFINITY, data: [], resizable: true };
@@ -40,7 +43,10 @@ export class Linker {
 
 	public PC: ValueHolder;
 
-	constructor(PC: number) {
+	constructor(
+		PC: number,
+		private fileHandler?: FileHandler,
+	) {
 		this.PC = { value: PC };
 		this.currentModule = [];
 		this.modules.set("__MAIN__", this.currentModule);
@@ -244,6 +250,8 @@ export class Linker {
 		const lister = new NullLister();
 		const symbolTable = new PASymbolTable(lister);
 		const parser = new Parser(new EventEmitter());
+		if (this.fileHandler) this.streamManager = new StreamManager(this.fileHandler, parser);
+
 		const macroHandler = new MacroHandler(parser, symbolTable, lister);
 		const runtime: DirectiveRuntime = {
 			parser,
@@ -256,18 +264,6 @@ export class Linker {
 		};
 		const dispatcher = new Dispatcher(runtime);
 
-		// biome-ignore lint/suspicious/noExplicitAny: <a bit of a hack>
-		const segmentsHybrid: any = [...this.segments];
-		for (const seg of this.segments) segmentsHybrid[seg.name] = seg;
-		symbolTable.defineConstant("SEGMENTS", segmentsHybrid);
-
-		const modulesHybrid: any = [];
-		for (const [name, segments] of this.modules.entries()) {
-			modulesHybrid.push({ name, segments });
-			modulesHybrid[name] = segments;
-		}
-		symbolTable.defineConstant("MODULES", modulesHybrid);
-
 		this.currentSegment = this.finalSegment;
 		this.PC.value = 0;
 		if (outputPath) this.setOutputFile(outputPath);
@@ -275,7 +271,11 @@ export class Linker {
 		runtime.logger.log("--- Linker Begin---\n");
 
 		parser.lexer.commentChar = "#";
-		parser.start(script);
+		if (this.streamManager && this.fileHandler) {
+			this.streamManager.start(script, this.fileHandler.fullpath, this.fileHandler.filename);
+		} else {
+			parser.start(script);
+		}
 
 		let currentLabel: string | undefined;
 
@@ -295,13 +295,15 @@ export class Linker {
 					if (directiveToken?.type !== "IDENTIFIER") throw new Error(`Bad directive in line ${token.line} - ${directiveToken.value}`);
 
 					const directiveContext: DirectiveContext = {
-						filename: "linker",
+						filename: this.streamManager?.currentFilepath ?? "linker",
 						isAssembling: true,
 						PC: this.PC,
 						currentLabel,
+						macroArgs: (parser.tokenStreamStack[parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
 						emitbytes: (bytes: number[]) => {
 							this.emitBytes(bytes);
 						},
+						readSourceFile: this.fileHandler?.readSourceFile.bind(this.fileHandler),
 					};
 					if (!dispatcher.dispatch(directiveToken, directiveContext))
 						throw new Error(`Syntax error in line ${token.line} - Unexpected directive '${directiveToken.value}'`);
@@ -318,10 +320,11 @@ export class Linker {
 				case "OPERATOR":
 					if (token.value === "=" && currentLabel) {
 						const directiveContext: DirectiveContext = {
-							filename: "linker",
+							filename: this.streamManager?.currentFilepath ?? "linker",
 							isAssembling: true,
 							PC: this.PC,
 							currentLabel,
+							macroArgs: (parser.tokenStreamStack[parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
 							emitbytes: (_bytes: number[]) => {},
 						};
 						if (!dispatcher.dispatch(token, directiveContext)) throw new Error(`Syntax error in line ${token.line} - Unexpected directive '${token.value}'`);
@@ -334,8 +337,10 @@ export class Linker {
 			}
 		}
 
-		if (!this.finalSegment.resizable)
-			this.finalSegment.data.push(...new Array(this.finalSegment.size - this.finalSegment.data.length).fill(this.finalSegment.padValue ?? 0));
+		if (!this.finalSegment.resizable && this.finalSegment.data.length) {
+			const padding = new Array(this.finalSegment.size - this.finalSegment.data.length).fill(this.finalSegment.padValue ?? 0);
+			this.finalSegment.data = this.finalSegment.data.concat(padding);
+		}
 
 		for (const section of this.linkerSections) this.finalSegment.data.splice(section.start, section.data.length, ...section.data);
 
@@ -356,10 +361,20 @@ export class Linker {
 				return this.currentSegment;
 
 			case "FILENAME":
-				return this.finalSegment.name;
+				return this.streamManager?.currentFilename ?? this.finalSegment.name;
 
 			case "IMAGE_END":
 				return this.finalSegment.resizable ? this.finalSegment.data.length : this.finalSegment.size;
+
+			case "MODULES_LIST": {
+				const modulesHybrid = [];
+				for (const [name, segments] of this.modules.entries()) modulesHybrid.push({ name, segments });
+				return modulesHybrid;
+			}
+
+			case "SEGMENTS_LIST": {
+				return this.segments;
+			}
 
 			case "UNWRITTEN_SEGMENTS":
 				return this.segments.filter((s) => !s.emitted);

@@ -6,6 +6,7 @@ import { MacroHandler } from "../directives/macro/handler";
 import { ConsoleSink } from "../helpers/consolesink.class";
 import { Lister } from "../helpers/lister.class";
 import { Logger } from "../helpers/logger.class";
+import { StreamManager } from "../helpers/stream-manager.class";
 import { Linker, type Segment } from "../linker/linker.class";
 import type { OperatorStackToken, ScalarToken, Token } from "../shared/lexer/lexer.class";
 import { formatLogPrefix } from "../utils/error.utils";
@@ -24,16 +25,13 @@ export class Assembler {
 	public lister: Lister;
 	public parser: Parser;
 	public linker: Linker;
+	public streamManager: StreamManager;
 	private cpuHandler: CPUHandler;
 	public fileHandler: FileHandler;
 
 	public symbolTable: PASymbolTable;
 	private isAssembling = true;
 	private PC: ValueHolder = { value: 0 };
-
-	public currentFilepath = "";
-	public currentFilename = "";
-	private filenameStack: { path: string; name: string }[] = [];
 
 	public lastGlobalLabel: string | null = null;
 	private lastGlobalLabelLine: string | number = 0;
@@ -65,7 +63,7 @@ export class Assembler {
 			});
 		this.lister = new Lister(this.logger);
 
-		this.linker = new Linker(DEFAULT_PC);
+		this.linker = new Linker(DEFAULT_PC, this.fileHandler);
 		this.PC = this.linker.PC;
 
 		if (options?.rawDataProcessors) {
@@ -81,6 +79,7 @@ export class Assembler {
 
 		this.emitter = new EventEmitter();
 		this.parser = new Parser(this.emitter);
+		this.streamManager = new StreamManager(this.fileHandler, this.parser);
 
 		this.macroHandler = new MacroHandler(this.parser, this.symbolTable, this.lister);
 
@@ -122,10 +121,10 @@ export class Assembler {
 				return this.linker.currentSegment;
 
 			case "FILENAME":
-				return this.currentFilename;
+				return this.streamManager.currentFilename;
 
 			case "FILEPATH":
-				return this.currentFilepath;
+				return this.streamManager.currentFilepath;
 
 			default:
 				throw new Error(`Unknown system variable: ${nameToken.value} on line ${nameToken.line}.`);
@@ -168,22 +167,6 @@ export class Assembler {
 		return this.options.get(name);
 	}
 
-	public startNewStream(filename: string) {
-		this.filenameStack.push({ path: this.currentFilepath, name: this.currentFilename });
-		const rawContent = this.fileHandler.readSourceFile(filename, this.currentFilepath);
-		this.currentFilepath = this.fileHandler.fullpath;
-		this.currentFilename = this.fileHandler.filename;
-		if (this.pass === 1) this.parser.lexer.startStream(rawContent);
-	}
-
-	public endCurrentStream() {
-		const file = this.filenameStack.pop();
-		if (file) {
-			this.currentFilepath = file.path;
-			this.currentFilename = file.name;
-		}
-	}
-
 	public setCPUHandler(handler: CPUHandler) {
 		this.cpuHandler = handler;
 	}
@@ -199,7 +182,7 @@ export class Assembler {
 		this.setOption("local_label_char", ":");
 
 		// Initialize or re-initialize the lexer
-		this.parser.start(source);
+		this.streamManager.start(source, this.fileHandler.fullpath, this.fileHandler.filename);
 
 		try {
 			this.passOne();
@@ -221,9 +204,9 @@ export class Assembler {
 			this.logger.enabled = isLogEnabled;
 		} catch (e) {
 			if (e instanceof ParserError)
-				throw `${formatLogPrefix({ column: e.token?.column ?? 0, line: e.token?.line ?? 0 }, { filename: this.currentFilepath })}${e} - pass ${this.pass}`;
+				throw `${formatLogPrefix({ column: e.token?.column ?? 0, line: e.token?.line ?? 0 }, { filename: this.streamManager.currentFilepath })}${e} - pass ${this.pass}`;
 
-			throw `${formatLogPrefix({ column: 0, line: "" }, { filename: this.currentFilepath })}${e} - pass ${this.pass}`;
+			throw `${formatLogPrefix({ column: 0, line: "" }, { filename: this.streamManager.currentFilepath })}${e} - pass ${this.pass}`;
 		}
 
 		this.logger.log("\n--- Assembly Complete ---");
@@ -260,7 +243,7 @@ export class Assembler {
 					if (directiveToken?.type !== "IDENTIFIER") throw new Error(`Bad directive in line ${token.line} - ${directiveToken.value}`);
 
 					const directiveContext: DirectiveContext = {
-						filename: this.currentFilepath,
+						filename: this.streamManager.currentFilepath,
 						isAssembling: this.isAssembling,
 						PC: this.PC,
 						allowForwardRef: true,
@@ -284,7 +267,7 @@ export class Assembler {
 
 					if (token.value === "=" && this.lastGlobalLabel) {
 						const directiveContext: DirectiveContext = {
-							filename: this.currentFilepath,
+							filename: this.streamManager.currentFilepath,
 							isAssembling: this.isAssembling,
 							PC: this.PC,
 							allowForwardRef: true,
@@ -346,7 +329,7 @@ export class Assembler {
 				}
 
 				case "ANONYMOUS_LABEL_DEF": {
-					this.namelessLabels.add({ address: this.PC.value, ...token, file: this.currentFilepath });
+					this.namelessLabels.add({ address: this.PC.value, ...token, file: this.streamManager.currentFilepath });
 					break;
 				}
 
@@ -392,7 +375,7 @@ export class Assembler {
 
 					if (token.value === "=" && this.lastGlobalLabel) {
 						const directiveContext: DirectiveContext = {
-							filename: this.currentFilepath,
+							filename: this.streamManager.currentFilepath,
 							isAssembling: this.isAssembling,
 							PC: this.PC,
 							macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
@@ -436,7 +419,7 @@ export class Assembler {
 
 					const streamBefore = this.parser.tokenStreamStack.length;
 					const directiveContext: DirectiveContext = {
-						filename: this.currentFilepath,
+						filename: this.streamManager.currentFilepath,
 						isAssembling: this.isAssembling,
 						PC: this.PC,
 						macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
@@ -469,7 +452,7 @@ export class Assembler {
 				}
 
 				case "ANONYMOUS_LABEL_DEF":
-					this.namelessLabels.add({ address: this.PC.value, ...token, file: this.currentFilepath });
+					this.namelessLabels.add({ address: this.PC.value, ...token, file: this.streamManager.currentFilepath });
 
 					break;
 			}
