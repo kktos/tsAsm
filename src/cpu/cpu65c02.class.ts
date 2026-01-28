@@ -524,6 +524,7 @@ export class Cpu65C02Handler implements CPUHandler {
 					resolvedAddress,
 				};
 			}
+			throw new Error(`Invalid addressing mode for instruction ${mnemonic}`);
 		}
 
 		// 4. Absolute/Zero Page Indexed Modes (e.g., LDA $1234,X or LDA $40,Y)
@@ -536,7 +537,7 @@ export class Cpu65C02Handler implements CPUHandler {
 				const expressionTokens = operandTokens.slice(0, numTokens - 2);
 				const resolvedAddress = resolveValue(expressionTokens);
 
-				const isZP = resolvedAddress >= 0x00 && resolvedAddress <= 0xff;
+				const isZP = resolvedAddress !== null && resolvedAddress >= 0x00 && resolvedAddress <= 0xff;
 
 				let mode: AddressingMode;
 				if (forcedSize === "ZP" || (forcedSize === null && isZP)) {

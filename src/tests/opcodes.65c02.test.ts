@@ -114,4 +114,23 @@ describe("65C02 Opcodes", () => {
 		const data = assembleAndGetCode(source);
 		expect(data).toEqual([0x04, 0x44, 0x0c, 0x34, 0x12, 0x14, 0x55, 0x1c, 0x78, 0x56]);
 	});
+
+	it("should raise an error for invalid addressing modes", () => {
+		const source = `
+        	cmp ($02),x
+        `;
+		expect(() => assembleAndGetCode(source)).toThrow(/Invalid addressing mode for instruction CMP/);
+	});
+
+	it("should have pass 1 defaulting to Absolute Indexed Mode", () => {
+		const source = `
+        	lda data,x
+			rts
+
+			data:
+
+        `;
+		const data = assembleAndGetCode(source);
+		expect(data).toEqual([0xbd, 0x04, 0x80, 0x60]);
+	});
 });
