@@ -242,6 +242,8 @@ export class Parser {
 		// Save current position and arguments
 		if (this.tokenStreamStack.length > 0) (this.tokenStreamStack[this.tokenStreamStack.length - 1] as StreamState).index = this.getPosition();
 
+		const newStreamId = ++this.streamIdCounter;
+
 		if (cacheName) {
 			const cachedStream = this.tokenStreamCache.get(cacheName);
 			if (cachedStream) {
@@ -252,8 +254,6 @@ export class Parser {
 				return cachedStream.id;
 			}
 		}
-
-		const newStreamId = ++this.streamIdCounter;
 
 		if (onEndOfStream) this.emitter.once(`endOfStream:${newStreamId}`, onEndOfStream);
 
