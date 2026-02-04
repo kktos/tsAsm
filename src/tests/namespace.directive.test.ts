@@ -110,4 +110,47 @@ describe(".NAMESPACE Directive", () => {
 
 		expect(code).toEqual([0x60, 0x4c, 0x00, 0x10]);
 	});
+
+	describe("Metadata", () => {
+		it("should parse and store metadata", () => {
+			const { assembler } = createAssembler();
+			const source = `.NAMESPACE myns id=1, name="test"`;
+			assembler.assemble(source);
+
+			const meta = assembler.symbolTable.getNamespaceMetadata("MYNS");
+			expect(meta).toEqual({ ID: 1, NAME: "test" });
+		});
+
+		it("should evaluate expressions in metadata", () => {
+			const { assembler } = createAssembler();
+			const source = `
+				val = 10
+				.NAMESPACE myns calc=val*2
+			`;
+			assembler.assemble(source);
+
+			const meta = assembler.symbolTable.getNamespaceMetadata("MYNS");
+			expect(meta).toEqual({ CALC: 20 });
+		});
+
+		it("should merge metadata", () => {
+			const { assembler } = createAssembler();
+			const source = `
+				.NAMESPACE myns a=1
+				.NAMESPACE myns b=2
+			`;
+			assembler.assemble(source);
+
+			const meta = assembler.symbolTable.getNamespaceMetadata("MYNS");
+			expect(meta).toEqual({ A: 1, B: 2 });
+		});
+
+		it("should raises a syntax error", () => {
+			const { assembler } = createAssembler();
+			const source = `
+				.NAMESPACE myns calc=2 test=2
+			`;
+			expect(() => assembler.assemble(source)).toThrowError();
+		});
+	});
 });

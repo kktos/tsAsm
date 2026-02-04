@@ -19,6 +19,7 @@ export class PASymbolTable {
 	private scopeStack: string[] = [];
 	private scopeCounter = 0;
 	private savedSymbols: Map<string, Map<string, PASymbol>> = new Map();
+	private namespaceMetadata: Map<string, Record<string, SymbolValue>> = new Map();
 
 	constructor(private readonly lister: ILister) {
 		this.scopeStack.push(INTERNAL_GLOBAL);
@@ -51,7 +52,7 @@ export class PASymbolTable {
 	}
 
 	/** Changes the current active namespace. */
-	setNamespace(name: string): void {
+	setNamespace(name: string, metadata?: Record<string, SymbolValue>): void {
 		// Reset to INTERNAL_GLOBAL base, then optionally push a named namespace on top.
 		this.scopeStack = [INTERNAL_GLOBAL];
 
@@ -60,6 +61,10 @@ export class PASymbolTable {
 		const nsRaw = name.toLowerCase() || "global";
 
 		this.lister.directive(`Set namespace: ${nsRaw}`);
+
+		if (metadata) {
+			this.addNamespaceMetadata(nsRaw === "global" ? INTERNAL_GLOBAL : nsRaw, metadata);
+		}
 
 		if (nsRaw === "global") return;
 
@@ -71,13 +76,17 @@ export class PASymbolTable {
 	 * Pushes a named namespace onto the stack without destroying existing namespaces.
 	 * Named namespaces are persistent (their symbol maps are not deleted on pop).
 	 */
-	pushNamespace(name: string): void {
+	pushNamespace(name: string, metadata?: Record<string, SymbolValue>): void {
 		if (name.toLowerCase() === "global") {
-			this.setNamespace("global");
+			this.setNamespace("global", metadata);
 			return;
 		}
 		if (!this.symbols.has(name)) this.symbols.set(name, new Map());
 		this.scopeStack.push(name);
+
+		if (metadata) {
+			this.addNamespaceMetadata(name, metadata);
+		}
 
 		this.lister.directive(`Set namespace: ${name}`);
 	}
@@ -97,6 +106,16 @@ export class PASymbolTable {
 		this.scopeStack.pop();
 
 		this.lister.directive(`Set namespace: ${this.getCurrentNamespace()}`);
+	}
+
+	private addNamespaceMetadata(name: string, metadata: Record<string, SymbolValue>) {
+		const existing = this.namespaceMetadata.get(name) || {};
+		this.namespaceMetadata.set(name, { ...existing, ...metadata });
+	}
+
+	public getNamespaceMetadata(name: string) {
+		const ns = name.toLowerCase() === "global" ? INTERNAL_GLOBAL : name;
+		return this.namespaceMetadata.get(ns);
 	}
 
 	/** Retrieves the current active namespace. */
