@@ -5,18 +5,22 @@
  */
 
 import type { PASymbolTable, SymbolValue } from "../assembler/symbol.class";
-import { functionDispatcher } from "../shared/functions/function.dispatcher";
+import { FunctionDispatcher } from "../shared/functions/function.dispatcher";
 import type { FunctionToken, OperatorStackToken, OperatorToken, ScalarToken, Token } from "../shared/lexer/lexer.class";
 import { type EvaluationContext, PRECEDENCE } from "./expression.types";
 
 const UNARY_TEST_OPERATORS = new Set([")", "]"]);
 
 export class ExpressionEvaluator {
+	public readonly functionDispatcher: FunctionDispatcher;
+
 	constructor(
 		private readonly symbolTable: PASymbolTable,
 		private readonly findNearestLabel: (address: number, distance: number) => number | null,
 		private readonly resolveSysValue: (nameToken: Token) => SymbolValue | undefined,
-	) {}
+	) {
+		this.functionDispatcher = new FunctionDispatcher();
+	}
 
 	/**
 	 * Resolves an array of tokens into a single numeric value using the
@@ -382,7 +386,8 @@ export class ExpressionEvaluator {
 		for (const token of rpnTokens) {
 			switch (token.type) {
 				case "NUMBER": {
-					const num = Number.parseInt(token.value, 10);
+					// const num = Number.parseInt(token.value, 10);
+					const num = Number.parseFloat(token.value);
 					if (context.numberMax && num > context.numberMax) throw new Error(`Number Overflow '${num}'>${context.numberMax}' .`);
 					stack.push(num);
 					break;
@@ -414,7 +419,7 @@ export class ExpressionEvaluator {
 				}
 
 				case "FUNCTION": {
-					functionDispatcher(token.value.toUpperCase(), stack, token, this.symbolTable, token.argCount);
+					this.functionDispatcher.dispatch(token.value.toUpperCase(), stack, token, this.symbolTable, token.argCount);
 					break;
 				}
 
@@ -585,7 +590,8 @@ export class ExpressionEvaluator {
 				break;
 			case "/":
 				if (right === 0) throw new Error("Division by zero.");
-				stack.push(Math.floor(left / right)); // Integer division
+				// stack.push(Math.floor(left / right)); // Integer division
+				stack.push(left / right);
 				break;
 			case "&":
 				stack.push(left & right);
