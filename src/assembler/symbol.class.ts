@@ -365,12 +365,20 @@ export class PASymbolTable {
 	public getDict() {
 		//return this.symbols;
 
-		const dict: Record<string, Record<string, SymbolValue>> = {};
+		const dict: Record<string, Record<string | symbol, SymbolValue>> = {};
 
 		for (const [namespace, symbolDict] of this.symbols.entries()) {
-			let nsDict = dict[namespace];
-			if (!nsDict) nsDict = {};
+			let displayName = namespace;
+			const metadata = this.namespaceMetadata.get(namespace);
+			if (metadata) {
+				const metaStr = Object.entries(metadata)
+					.map(([k, v]) => `${k}=${v}`)
+					.join(", ");
+				if (metaStr) displayName = `${namespace} [${metaStr}]`;
+			}
 
+			let nsDict = dict[displayName];
+			if (!nsDict) nsDict = {};
 			for (const symbol of symbolDict.values()) {
 				if (symbol.name === "*") continue;
 				let value = "";
@@ -391,21 +399,9 @@ export class PASymbolTable {
 				}
 				nsDict[symbol.name] = value;
 			}
-			dict[namespace] = nsDict;
+			dict[displayName] = nsDict;
 		}
 
-		// const dict: Record<string, SymbolValue[]> = {};
-		// for (const scope of this.symbols.values()) {
-		// 	for (const symbol of scope.values()) {
-		// 		if (symbol.name === "*") continue;
-		// 		const key = getHex(symbol.value);
-		// 		const currentEntry = dict[symbol.name];
-		// 		let ns = symbol.namespace;
-		// 		if (ns === INTERNAL_GLOBAL) ns = "global";
-		// 		if (currentEntry) currentEntry.push(`${ns}::${symbol.value}`);
-		// 		else dict[symbol.name] = [`${ns}::${symbol.value}`];
-		// 	}
-		// }
 		return dict;
 	}
 }
