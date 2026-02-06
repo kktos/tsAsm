@@ -196,7 +196,7 @@ export class PASymbolTable {
 		});
 	}
 
-	assignVariable(variableName: string, value: SymbolValue) {
+	assignVariable(variableName: string, value: SymbolValue, nonVolatile = false) {
 		const symbolData = this.findSymbol(variableName);
 
 		let scope: Map<string, PASymbol> | undefined;
@@ -210,7 +210,19 @@ export class PASymbolTable {
 			symbol = symbolData.symbol;
 			namespaceKey = symbol.namespace;
 		} else {
-			namespaceKey = this.scopeStack[this.scopeStack.length - 1] as string;
+			if (nonVolatile) {
+				// Find the first non-volatile scope (bottom-up search)
+				for (let i = this.scopeStack.length - 1; i >= 0; i--) {
+					const key = this.scopeStack[i] as string;
+					const isVolatile = key.startsWith("@@") && !key.startsWith("@@function") && !key.startsWith("@@macro");
+					if (!isVolatile) {
+						namespaceKey = key;
+						break;
+					}
+				}
+			}
+			if (!namespaceKey) namespaceKey = this.scopeStack[this.scopeStack.length - 1] as string;
+
 			scope = this.symbols.get(namespaceKey);
 			if (!scope) throw `PASymbol ${this.getCurrentNamespace()} doesn't exist.`;
 			name = variableName.toUpperCase();
@@ -227,7 +239,7 @@ export class PASymbolTable {
 		});
 	}
 
-	updateSymbol(symbolName: string, value: SymbolValue) {
+	updateSymbol(symbolName: string, value: SymbolValue, nonVolatile = false) {
 		let scope: Map<string, PASymbol> | undefined;
 		let name = "";
 		let ns = "";
@@ -237,7 +249,19 @@ export class PASymbolTable {
 			scope = ns.toLowerCase() === "global" ? this.symbols.get(INTERNAL_GLOBAL) : this.symbols.get(ns);
 			if (scope?.has(name)) return { scope: scope, symbol: scope.get(name) as PASymbol };
 		} else {
-			ns = this.scopeStack[this.scopeStack.length - 1] as string;
+			if (nonVolatile) {
+				// Find the first non-volatile scope (bottom-up search)
+				for (let i = this.scopeStack.length - 1; i >= 0; i--) {
+					const key = this.scopeStack[i] as string;
+					const isVolatile = key.startsWith("@@") && !key.startsWith("@@function") && !key.startsWith("@@macro");
+					if (!isVolatile) {
+						ns = key;
+						break;
+					}
+				}
+			}
+			if (!ns) ns = this.scopeStack[this.scopeStack.length - 1] as string;
+
 			scope = this.symbols.get(ns);
 			name = symbolName;
 		}

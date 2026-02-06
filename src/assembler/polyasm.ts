@@ -8,6 +8,7 @@ import { Lister } from "../helpers/lister.class";
 import { Logger } from "../helpers/logger.class";
 import { StreamManager } from "../helpers/stream-manager.class";
 import { Linker, type Segment } from "../linker/linker.class";
+import type { FunctionHandler } from "../shared/functions/types";
 import type { OperatorStackToken, ScalarToken, Token } from "../shared/lexer/lexer.class";
 import { formatLogPrefix } from "../utils/error.utils";
 import { getHex } from "../utils/hex.util";
@@ -76,6 +77,8 @@ export class Assembler {
 
 		const resolveSysValue = (nameToken: Token) => this.resolveSysValue(nameToken);
 		this.expressionEvaluator = new ExpressionEvaluator(this.symbolTable, this.namelessLabels.findNearest.bind(this.namelessLabels), resolveSysValue);
+
+		this.addFunctions();
 
 		this.emitter = new EventEmitter();
 		this.parser = new Parser(this.emitter);
@@ -231,6 +234,7 @@ export class Assembler {
 			const token = this.parser.next();
 			// If no token or EOF, pop the active stream
 			if (!token || token.type === "EOF") {
+				this.lastGlobalLabelLine = -1;
 				const poppedStream = this.parser.popTokenStream(false); // Don't emit event yet
 				if (this.parser.tokenStreamStack.length === 0) break;
 				if (poppedStream) this.emitter.emit(`endOfStream:${poppedStream.id}`);
@@ -315,6 +319,7 @@ export class Assembler {
 				}
 				case "LABEL": {
 					this.lastGlobalLabel = token.value;
+					this.lastGlobalLabelLine = token.line;
 					this.symbolTable.defineConstant(token.value, this.PC.value);
 					this.lister.label(token.raw ?? token.value, this.PC.value);
 					break;
@@ -487,7 +492,7 @@ export class Assembler {
 			});
 		} catch (e) {
 			const errorMessage = e instanceof Error ? e.message : String(e);
-			throw `line ${mnemonicToken.line}: Could not determine size of instruction '${mnemonicToken.value}'.${errorMessage}`;
+			throw `line ${mnemonicToken.line}: ${errorMessage}\nCould not determine size of instruction '${mnemonicToken.value}'.`;
 		}
 	}
 
@@ -612,5 +617,16 @@ export class Assembler {
 			result.push(...(macroArgs.get(token.value) ?? []));
 		}
 		return result;
+	}
+
+	private addFunctions() {
+		const segHandler: FunctionHandler = (stack, token, _symbolTable, _argCount) => {
+			const segName = stack.pop();
+			if (typeof segName !== "string") throw new Error(`Argument to .SEGMENT() must be a string on line ${token.line}.`);
+			const seg = this.linker.segments.find((s) => s.name === segName);
+			if (!seg) throw new Error(`Segment '${segName}' not found on line ${token.line}.`);
+			stack.push(seg);
+		};
+		this.expressionEvaluator.functionDispatcher.register("SEGMENT", { handler: segHandler, minArgs: 1, maxArgs: 1 });
 	}
 }

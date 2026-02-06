@@ -419,7 +419,30 @@ export class ExpressionEvaluator {
 				}
 
 				case "FUNCTION": {
-					this.functionDispatcher.dispatch(token.value.toUpperCase(), stack, token, this.symbolTable, token.argCount);
+					const resolver = (name: string) => {
+						if (name === "*") return context.PC.value;
+
+						// 1. Macro Args
+						if (context.macroArgs?.has(name)) {
+							const tokens = context.macroArgs.get(name);
+							if (tokens) return this.evaluate(tokens, context);
+						}
+
+						// 2. Symbol Table (Identifier)
+						let val = this.symbolTable.lookupSymbol(name);
+						if (Array.isArray(val) && val[0]?.type) return this.evaluate(val as Token[], context);
+						if (val !== undefined) return val;
+
+						// 3. Local Label
+						if (context.currentLabel) {
+							const qualified = `${context.currentLabel}.${name}`;
+							val = this.symbolTable.lookupSymbol(qualified);
+							if (val !== undefined) return val;
+						}
+
+						return context.allowForwardRef ? null : undefined;
+					};
+					this.functionDispatcher.dispatch(token.value.toUpperCase(), stack, token, this.symbolTable, token.argCount, resolver);
 					break;
 				}
 

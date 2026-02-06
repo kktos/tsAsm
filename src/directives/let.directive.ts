@@ -35,14 +35,17 @@ export class LetDirective implements IDirective {
 		else name = this.assembler.expressionEvaluator.evaluate(nameTokens, context);
 		if (typeof name !== "string") throw "Expected a string for symbol name";
 
-		if (!this.assembler.parser.lexer.isValidIdentifier(name)) throw `Invalid identifier for symbol name : ${name}`;
+		// const parts = name.split("::");
+		// parts.forEach((part) => {
+		// 	if (!this.assembler.parser.lexer.isValidIdentifier(part)) throw `Invalid identifier for symbol name : ${name}`;
+		// });
 
 		const expressionTokens = lineTokens.slice(index + 1);
 		const value = this.assembler.expressionEvaluator.evaluate(expressionTokens, context);
 
 		this.lister.symbol(name, value);
 
-		if (this.assembler.pass === 1) this.assembler.symbolTable.assignVariable(name, value);
-		else this.assembler.symbolTable.updateSymbol(name, value);
+		if (this.assembler.pass === 1) this.assembler.symbolTable.assignVariable(name, value, true);
+		else this.assembler.symbolTable.updateSymbol(name, value, true);
 	}
 }

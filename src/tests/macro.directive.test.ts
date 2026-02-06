@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Assembler } from "../assembler/polyasm";
 import type { SegmentDefinition } from "../assembler/polyasm.types";
-import { Cpu6502Handler } from "../cpu/cpu6502.class";
+import { Cpu65C02Handler } from "../cpu/cpu65c02.class";
 import type { Token } from "../shared/lexer/lexer.class";
 import { MockFileHandler } from "./mockfilehandler.class";
 
@@ -9,7 +9,7 @@ const DEFAULT_SEGMENTS: SegmentDefinition[] = [{ name: "CODE", start: 0x1000, si
 
 describe("Macro Handling", () => {
 	const setup = () => {
-		const assembler = new Assembler(new Cpu6502Handler(), new MockFileHandler(), { segments: DEFAULT_SEGMENTS });
+		const assembler = new Assembler(new Cpu65C02Handler(), new MockFileHandler(), { segments: DEFAULT_SEGMENTS });
 		const { symbolTable, expressionEvaluator: evaluator } = assembler;
 		const lexer = assembler.parser.lexer;
 		const tokenize = (expr: string) => lexer.tokenize(expr).filter((t) => t.type !== "EOF");
@@ -115,6 +115,37 @@ describe("Macro Handling", () => {
 			const machineCode6502 = assembler.link();
 
 			expect(machineCode6502).toEqual([0x42, 0xff, 0x41, 0x42, 0x43, 0x44, 0x00, 0x01, 0x00, 0x10]);
+		});
+
+		it("tests macro with label definitions", () => {
+			const { assembler } = setup();
+			const src = `
+				.macro delRegions(...list) {
+					brk
+					.db $04
+					.db .len(list)
+
+					.for name of list as idx {
+						.dw .label("region" + .str(idx))
+					}
+
+					bra :+
+
+					.for name of list as idx {
+						.let "region" + .str(idx) = *
+						.cstr name
+					}
+
+			:
+				}
+
+				delRegions "AB", "CD", "EF"
+			`;
+			assembler.assemble(src);
+
+			expect(assembler.symbolTable.findSymbol("region0")?.symbol.value).toBe(0x1000 + 3 + 3 * 2 + 2);
+			expect(assembler.symbolTable.findSymbol("region1")?.symbol.value).toBe(0x1000 + 3 + 3 * 2 + 2 + 2 + 1);
+			expect(assembler.symbolTable.findSymbol("region2")?.symbol.value).toBe(0x1000 + 3 + 3 * 2 + 2 + 2 + 2 + 2);
 		});
 	});
 
