@@ -165,10 +165,10 @@ export class PASymbolTable {
 			name = constantName;
 		}
 
-		if (!scope) throw `PASymbol Namespace "${ns}" doesn't exist.`;
+		if (!scope) throw new Error(`defineConstant: PASymbol Namespace "${ns}" doesn't exist.`);
 
 		name = name.toUpperCase();
-		if (scope.has(name)) throw `PASymbol ${ns === INTERNAL_GLOBAL ? "global" : ns}::${name} redefined.`;
+		if (scope.has(name)) throw new Error(`PASymbol ${ns === INTERNAL_GLOBAL ? "global" : ns}::${name} redefined.`);
 
 		scope.set(name, {
 			name,
@@ -214,7 +214,8 @@ export class PASymbolTable {
 				// Find the first non-volatile scope (bottom-up search)
 				for (let i = this.scopeStack.length - 1; i >= 0; i--) {
 					const key = this.scopeStack[i] as string;
-					const isVolatile = key.startsWith("@@") && !key.startsWith("@@function") && !key.startsWith("@@macro");
+					// const isVolatile = key.startsWith("@@") && !key.startsWith("@@function") && !key.startsWith("@@macro");
+					const isVolatile = key.startsWith("@@") && !key.startsWith("@@function");
 					if (!isVolatile) {
 						namespaceKey = key;
 						break;
@@ -253,7 +254,8 @@ export class PASymbolTable {
 				// Find the first non-volatile scope (bottom-up search)
 				for (let i = this.scopeStack.length - 1; i >= 0; i--) {
 					const key = this.scopeStack[i] as string;
-					const isVolatile = key.startsWith("@@") && !key.startsWith("@@function") && !key.startsWith("@@macro");
+					// const isVolatile = key.startsWith("@@") && !key.startsWith("@@function") && !key.startsWith("@@macro");
+					const isVolatile = key.startsWith("@@") && !key.startsWith("@@function");
 					if (!isVolatile) {
 						ns = key;
 						break;
@@ -266,11 +268,11 @@ export class PASymbolTable {
 			name = symbolName;
 		}
 
-		if (!scope) throw `PASymbol Namespace "${ns}" doesn't exist.`;
+		if (!scope) throw new Error(`updateSymbol: PASymbol Namespace "${ns}" doesn't exist.`);
 
 		name = name.toUpperCase();
 		const symbol = scope.get(name);
-		if (!symbol) throw `Unknown symbol "${ns === INTERNAL_GLOBAL ? "global" : ns}::${name}".`;
+		if (!symbol) throw new Error(`Unknown symbol "${ns === INTERNAL_GLOBAL ? "global" : ns}::${name}".`);
 
 		scope.set(name, { name, value, isConstant: symbol.isConstant, namespace: ns });
 	}
