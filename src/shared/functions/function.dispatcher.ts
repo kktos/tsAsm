@@ -9,6 +9,7 @@ import { hibyteFunction } from "./hibyte.function";
 import { iifFunction } from "./iif.function";
 import { joinFunction } from "./join.function";
 import { jsonFunction } from "./json.function";
+import { labelFunction } from "./label.function";
 import { lenFunction } from "./len.function";
 import { lobyteFunction } from "./lobyte.function";
 import { popFunction } from "./pop.function";
@@ -17,7 +18,7 @@ import { roundFunction } from "./round.function";
 import { splitFunction } from "./split.function";
 import { strFunction } from "./str.function";
 import { typeFunction } from "./type.function";
-import type { EvaluationStack, IFunctionDef } from "./types";
+import type { EvaluationStack, IFunctionDef, SymbolResolver } from "./types";
 
 export class FunctionDispatcher {
 	private readonly functions = new Map<string, IFunctionDef>();
@@ -33,6 +34,7 @@ export class FunctionDispatcher {
 	private registerDefaultFunctions(): void {
 		// Register functions with their argument constraints
 		this.register("LEN", { handler: lenFunction, minArgs: 1, maxArgs: 1 });
+		this.register("LABEL", { handler: labelFunction, minArgs: 1, maxArgs: 1 });
 		this.register("DEF", { handler: defFunction, minArgs: 1, maxArgs: 1 });
 		this.register("UNDEF", { handler: undefFunction, minArgs: 1, maxArgs: 1 });
 		this.register("STR", { handler: strFunction, minArgs: 1, maxArgs: 2 });
@@ -61,7 +63,7 @@ export class FunctionDispatcher {
 		this.register("ROUND", { handler: roundFunction, minArgs: 1, maxArgs: 1 });
 	}
 
-	public dispatch(name: string, stack: EvaluationStack, token: Token, symbolTable: PASymbolTable, argCount = 0): void {
+	public dispatch(name: string, stack: EvaluationStack, token: Token, symbolTable: PASymbolTable, argCount = 0, resolver?: SymbolResolver): void {
 		const funcDef = this.functions.get(name.toUpperCase());
 		if (!funcDef) throw new Error(`Unknown function '${name}' on line ${token.line}.`);
 
@@ -69,6 +71,6 @@ export class FunctionDispatcher {
 		if (argCount < funcDef.minArgs || argCount > funcDef.maxArgs)
 			throw new Error(`Function '${name}' expects between ${funcDef.minArgs} and ${funcDef.maxArgs} arguments, but got ${argCount} on line ${token.line}.`);
 
-		funcDef.handler(stack, token, symbolTable, argCount);
+		funcDef.handler(stack, token, symbolTable, argCount, resolver);
 	}
 }
