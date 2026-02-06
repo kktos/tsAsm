@@ -419,28 +419,41 @@ export class Cpu65C02Handler implements CPUHandler {
 		const numTokens = operandTokens.length;
 
 		// 1. Implied Mode (e.g., RTS) - no operands
-		if (numTokens === 0) {
-			const [opcode, bytes] = instructionModes.get(this.M65C02_MODES.IMPLIED) || [0x00, 1];
-			return {
-				mode: this.M65C02_MODES.IMPLIED,
-				opcode,
-				bytes,
-				resolvedAddress: 0,
-			};
+		// 1. Accumulator - no operands or just "A"
+		if (numTokens < 2) {
+			let mode: AddressingMode = this.M65C02_MODES.IMPLIED;
+			let op = instructionModes.get(mode);
+			if (numTokens > 0 && op) throw new Error(`Invalid addressing mode for ${mnemonic}`);
+
+			if (!op) {
+				mode = this.M65C02_MODES.ACCUMULATOR;
+				op = instructionModes.get(mode);
+				if (numTokens === 1 && operandTokens[0]?.value.toUpperCase() !== "A") op = undefined;
+			}
+
+			if (op)
+				return {
+					mode,
+					opcode: op[0],
+					bytes: op[1],
+					resolvedAddress: 0,
+				};
+
+			if (numTokens === 0) throw new Error(`Invalid addressing mode for ${mnemonic}`);
 		}
 
 		// Accumulator
-		if (numTokens === 1 && operandTokens[0]?.value.toUpperCase() === "A") {
-			const op = instructionModes.get(this.M65C02_MODES.ACCUMULATOR);
-			if (!op) throw new Error(`Invalid addressing mode 'A' for ${mnemonic}`);
-			const [opcode, bytes] = op;
-			return {
-				mode: this.M65C02_MODES.ACCUMULATOR,
-				opcode,
-				bytes,
-				resolvedAddress: 0,
-			};
-		}
+		// if (numTokens === 1 && operandTokens[0]?.value.toUpperCase() === "A") {
+		// 	const op = instructionModes.get(this.M65C02_MODES.ACCUMULATOR);
+		// 	if (!op) throw new Error(`Invalid addressing mode 'A' for ${mnemonic}`);
+		// 	const [opcode, bytes] = op;
+		// 	return {
+		// 		mode: this.M65C02_MODES.ACCUMULATOR,
+		// 		opcode,
+		// 		bytes,
+		// 		resolvedAddress: 0,
+		// 	};
+		// }
 
 		// 2. Immediate Mode (e.g., LDA #$42)
 		if (operandTokens[0]?.value === "#") {
