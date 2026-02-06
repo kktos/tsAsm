@@ -13,7 +13,8 @@ export class DataDirective implements IDirective {
 
 	public handlePassOne(directive: ScalarToken, context: DirectiveContext) {
 		if (context.isAssembling) {
-			const byteCount = this.calculateDirectiveSize();
+			// const byteCount = this.calculateDirectiveSize();
+			const byteCount = this.calculateDirectiveSize(directive, context);
 			context.PC.value += byteCount;
 			this.runtime.lister.directive(directive, `<${byteCount} bytes>`);
 		}
@@ -26,35 +27,36 @@ export class DataDirective implements IDirective {
 		}
 	}
 
-	private calculateDirectiveSize(): number {
-		if (this.bytesPerElement === 0) {
-			// Special case for .TEXT or similar string-only directives
-		}
-
-		const argTokens = this.runtime.parser.getInstructionTokens();
-		if (argTokens.length === 0) return 0;
-
+	private calculateDirectiveSize(directive: ScalarToken, context: DirectiveContext): number {
 		let totalSize = 0;
-		let isElement = false;
 
-		for (const token of argTokens) {
-			switch (token.type) {
-				case "STRING":
-					totalSize += token.value.length;
-					isElement = true;
+		while (true) {
+			const exprTokens = this.runtime.parser.getExpressionTokens(directive);
+			if (exprTokens.length === 0) break;
+
+			const value = this.runtime.evaluator.evaluate(exprTokens, context);
+
+			switch (typeof value) {
+				case "object": {
+					if (value !== null) throw new Error(`Unexpected object value ${value}.`);
+					totalSize += this.bytesPerElement;
 					break;
-				case "COMMA":
-					// Comma resets the flag, so the next non-comma token starts a new element
-					isElement = false;
+				}
+				case "string": {
+					totalSize += value.length;
 					break;
+				}
+				case "number": {
+					totalSize += this.bytesPerElement;
+					break;
+				}
 				default:
-					if (!isElement) {
-						// This is the start of a new numeric element
-						totalSize += this.bytesPerElement;
-						isElement = true;
-					}
-					break;
+					throw new Error(`Unexpected value type ${typeof value}.`);
 			}
+
+			if (this.runtime.parser.isEOS() || !this.runtime.parser.is("COMMA")) break;
+
+			this.runtime.parser.advance();
 		}
 
 		return totalSize;
@@ -69,12 +71,6 @@ export class DataDirective implements IDirective {
 			const exprTokens = this.runtime.parser.getExpressionTokens(directive);
 			if (exprTokens.length === 0) break;
 
-			// const value = this.assembler.expressionEvaluator.evaluate(exprTokens, {
-			// 	pc: this.assembler.currentPC,
-			// 	allowForwardRef: this.assembler.pass === 1,
-			// 	currentLabel: this.assembler.lastGlobalLabel,
-			// 	macroArgs: (this.assembler.parser.tokenStreamStack[this.assembler.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
-			// });
 			const value = this.runtime.evaluator.evaluate(exprTokens, context);
 
 			switch (typeof value) {

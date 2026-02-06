@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { Assembler } from "../assembler/polyasm";
 import type { SegmentDefinition } from "../assembler/polyasm.types";
+import { Cpu65C02Handler } from "../cpu/cpu65c02.class";
+import { Logger } from "../helpers/logger.class";
+import { MemorySink } from "../helpers/memorysink.class";
 import { MockFileHandler } from "./mockfilehandler.class";
 
 // Minimal fake CPU handler
 const fakeCPU = {
-	cpuType: "FakeCPU",
+	cpuType: "6502" as const,
 	isInstruction: () => false,
 	resolveAddressingMode: () => ({
 		mode: "",
@@ -104,5 +107,24 @@ describe("Data Directives", () => {
 		const machineCode = assembler.link();
 		// The segment starts at 0x1000. The .DW is at 0x1000. 'target' is at 0x1002.
 		expect(machineCode).toEqual([0x02, 0x10, 0x00]);
+	});
+
+	it("should compute the data size in pass one and in pass two", () => {
+		const sink = new MemorySink();
+		const logger = new Logger({ sink, enabled: true });
+		const assembler = new Assembler(new Cpu65C02Handler(), new MockFileHandler(), { logger, log: { pass1Enabled: true, pass2Enabled: true } });
+
+		const source = `
+				bra test
+				.dw .label("test")
+			test:
+				rts
+		`;
+		assembler.assemble(source);
+
+		// expect(sink.logs).toEqual(2);
+
+		const machineCode = assembler.link();
+		expect(machineCode).toEqual([0x80, 0x02, 0x04, 0x10, 0x60]);
 	});
 });
