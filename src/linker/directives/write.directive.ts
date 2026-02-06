@@ -10,7 +10,7 @@ export class WriteDirective implements IDirective {
 	public handlePassTwo(directive: ScalarToken, context: DirectiveContext) {
 		const parser = this.runtime.parser;
 
-		if (!parser.isIdentifier(["BYTE", "BYTES", "WORD", "LONG", "STRING", "SEGMENT"])) throw new Error("Invalid write directive");
+		if (!parser.isIdentifier(["BYTE", "BYTES", "WORD", "LONG", "STRING", "SEGMENT", "MODULE"])) throw new Error("Invalid write directive");
 		const cmd = parser.identifier().value;
 
 		const value = this.runtime.evaluator.evaluate(parser.getExpressionTokens(directive, true), context);
@@ -49,6 +49,10 @@ export class WriteDirective implements IDirective {
 			case "SEGMENT":
 				if (typeof value !== "string") throw new Error(`Invalid write segment directive - ${value} is not a segment name`);
 				this.runtime.linker.emitSegment(value, offset);
+				break;
+			case "MODULE":
+				if (typeof value !== "string") throw new Error(`Invalid write module directive - ${value} is not a module name`);
+				this.runtime.linker.emitModule(value, offset);
 				break;
 		}
 	}

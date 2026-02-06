@@ -1,6 +1,5 @@
 import type { SymbolValue } from "../assembler/symbol.class";
 import type { ScalarToken } from "../shared/lexer/lexer.class";
-import { getHex } from "../utils/hex.util";
 import type { DirectiveContext, DirectiveRuntime, IDirective } from "./directive.interface";
 
 export class ModuleDirective implements IDirective {
@@ -24,7 +23,7 @@ export class ModuleDirective implements IDirective {
 		}
 
 		this.runtime.linker.addModule(name);
-		this.runtime.lister.directive(directive, name, `ORG $${getHex(context.PC.value)}`);
+		this.runtime.lister.directive(directive, name);
 	}
 
 	public handlePassTwo(directive: ScalarToken, context: DirectiveContext) {

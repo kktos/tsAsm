@@ -9,6 +9,7 @@ import { MacroHandler } from "../directives/macro/handler";
 import { NullLister } from "../helpers/lister.class";
 import type { Logger } from "../helpers/logger.class";
 import { StreamManager } from "../helpers/stream-manager.class";
+import type { FunctionHandler } from "../shared/functions/types";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
 import { pushNumber } from "../utils/array.utils";
 import { getHex } from "../utils/hex.util";
@@ -33,6 +34,7 @@ export class Linker {
 	public linkerSections: Segment[] = [];
 
 	private modules: Map<string, Segment[]> = new Map();
+	private emittedModules: Set<string> = new Set();
 	public streamManager?: StreamManager;
 	public currentModule: Segment[] | null = null;
 
@@ -246,17 +248,36 @@ export class Linker {
 		seg.emitted = true;
 	}
 
+	public emitModule(name: string, _offset?: number) {
+		const module = this.modules.get(name);
+		if (!module) throw new Error(`Module not found: ${name}`);
+
+		for (const segment of module) this.emitSegment(segment.name);
+		this.emittedModules.add(name);
+	}
+
 	public link(script: string, outputPath: string | undefined, logger: Logger) {
 		const lister = new NullLister();
 		const symbolTable = new PASymbolTable(lister);
 		const parser = new Parser(new EventEmitter());
 		if (this.fileHandler) this.streamManager = new StreamManager(this.fileHandler, parser);
 
+		const evaluator = new ExpressionEvaluator(symbolTable, () => null, this.resolveSysValue.bind(this));
+
+		const segHandler: FunctionHandler = (stack, token, _symbolTable, _argCount) => {
+			const segName = stack.pop();
+			if (typeof segName !== "string") throw new Error(`Argument to .SEGMENT() must be a string on line ${token.line}.`);
+			const seg = this.segments.find((s) => s.name === segName);
+			if (!seg) throw new Error(`Segment '${segName}' not found on line ${token.line}.`);
+			stack.push(seg);
+		};
+		evaluator.functionDispatcher.register("SEGMENT", { handler: segHandler, minArgs: 1, maxArgs: 1 });
+
 		const macroHandler = new MacroHandler(parser, symbolTable, lister);
 		const runtime: DirectiveRuntime = {
 			parser,
 			symbolTable,
-			evaluator: new ExpressionEvaluator(symbolTable, () => null, this.resolveSysValue.bind(this)),
+			evaluator,
 			logger,
 			lister,
 			linker: this,
@@ -368,7 +389,10 @@ export class Linker {
 
 			case "MODULES_LIST": {
 				const modulesHybrid = [];
-				for (const [name, segments] of this.modules.entries()) modulesHybrid.push({ name, segments });
+				for (const [name, segments] of this.modules.entries()) {
+					const size = segments.reduce((acc, seg) => acc + seg.size, 0);
+					modulesHybrid.push({ name, segments, size });
+				}
 				return modulesHybrid;
 			}
 
@@ -378,6 +402,16 @@ export class Linker {
 
 			case "UNWRITTEN_SEGMENTS":
 				return this.segments.filter((s) => !s.emitted);
+
+			case "UNWRITTEN_MODULES": {
+				const unwrittenModules = [];
+				for (const [name, segments] of this.modules.entries()) {
+					if (this.emittedModules.has(name)) continue;
+					const size = segments.reduce((acc, seg) => acc + seg.size, 0);
+					unwrittenModules.push({ name, segments, size });
+				}
+				return unwrittenModules;
+			}
 
 			default:
 				throw new Error(`Unknown system variable: ${nameToken.value} on line ${nameToken.line}.`);

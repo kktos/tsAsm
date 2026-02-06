@@ -74,9 +74,9 @@ export class SegmentDirective implements IDirective {
 		const pad = params.pad;
 
 		const size = end - start + 1;
-		if (size <= 0) throw new Error(`ERROR on line ${directive.line}: .SEGMENT 'end' address must be greater than or equal to 'start' address.`);
+		if (size < 0) throw new Error(`ERROR on line ${directive.line}: .SEGMENT 'end' address must be greater than or equal to 'start' address.`);
 
-		this.runtime.linker.addSegment(name, start, size, pad);
+		this.runtime.linker.addSegment(name, start, size, pad, size === 0);
 
 		this.runtime.lister.directive(directive, `${name.padEnd(16)} { start: $${getHex(start)}, end: $${getHex(end)}, pad: $${getHex(pad ?? 0)} }`);
 	}

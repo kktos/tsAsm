@@ -428,4 +428,63 @@ describe("Linker", () => {
 			expect(result.data).toEqual(expected);
 		});
 	});
+
+	describe("Linker Scripting with Modules", () => {
+		it("should handle .WRITE MODULE directive", () => {
+			// Setup segments for two modules
+			linker.addSegment("MOD1_CODE", 0, 2);
+			linker.addSegment("MOD1_DATA", 0, 2);
+			linker.addSegment("MOD2_CODE", 0, 2);
+
+			linker.addModule("MODULE1");
+			linker.useSegment("MOD1_CODE");
+			linker.writeBytes(0, [0x11, 0x11]);
+			linker.useSegment("MOD1_DATA");
+			linker.writeBytes(0, [0x22, 0x22]);
+
+			linker.addModule("MODULE2");
+			linker.useSegment("MOD2_CODE");
+			linker.writeBytes(0, [0x33, 0x33]);
+
+			const script = `
+				.OUTPUT "test.bin"
+				.WRITE MODULE("MODULE2")
+				.WRITE BYTE 0xFF
+				.WRITE MODULE("MODULE1")
+			`;
+			const logger = { log: () => {}, warn: () => {}, error: (m: any) => console.error(m) } as any;
+			const result = linker.link(script, undefined, logger);
+
+			// Expected: MOD2_CODE, 0xFF, MOD1_CODE, MOD1_DATA
+			expect(result.data).toEqual([0x33, 0x33, 0xff, 0x11, 0x11, 0x22, 0x22]);
+		});
+	});
+
+	describe("Unwritten Modules", () => {
+		it("should track emitted modules and expose UNWRITTEN_MODULES", () => {
+			linker.addSegment("MOD1_CODE", 0, 2);
+			linker.addSegment("MOD2_CODE", 0, 2);
+
+			linker.addModule("MODULE1");
+			linker.useSegment("MOD1_CODE");
+			linker.writeBytes(0, [0x11, 0x11]);
+
+			linker.addModule("MODULE2");
+			linker.useSegment("MOD2_CODE");
+			linker.writeBytes(0, [0x22, 0x22]);
+
+			const script = `
+				.OUTPUT "test.bin"
+				.WRITE MODULE("MODULE1")
+				.FOR m OF .UNWRITTEN_MODULES
+					.WRITE MODULE(m.name)
+				.END
+			`;
+			const logger = { log: () => {}, warn: () => {}, error: (m: any) => console.error(m) } as any;
+			const result = linker.link(script, undefined, logger);
+
+			// Expected: MODULE1 (0x11, 0x11) then MODULE2 (0x22, 0x22) via loop
+			expect(result.data).toEqual([0x11, 0x11, 0x22, 0x22]);
+		});
+	});
 });
