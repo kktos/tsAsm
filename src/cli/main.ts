@@ -15,8 +15,8 @@ import colors from "./colors";
 import { readConf } from "./conf";
 import { NodeFileHandler } from "./file";
 import type { ValidationError } from "./schema";
+import { ColoredConsoleSink } from "./sinks/coloredconsolesink.class";
 import { ConsoleErrorSink } from "./sinks/consoleerrorsink.class";
-import { ColoredConsoleSink } from "./sinks/consolesink.class";
 import { FileSink } from "./sinks/filesink.class";
 
 console.log(colors.cyan(`${name} v${version}`));
