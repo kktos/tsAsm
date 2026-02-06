@@ -1,7 +1,7 @@
 import type { Assembler } from "../assembler/polyasm";
 import type { ILister } from "../helpers/lister.class";
 import type { Logger } from "../helpers/logger.class";
-import type { ScalarToken } from "../shared/lexer/lexer.class";
+import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class HexDirective implements IDirective {
@@ -55,7 +55,11 @@ export class HexDirective implements IDirective {
 	 * @returns A tuple of [hexDataString, endIndex].
 	 */
 	private extractHexData(directive: ScalarToken) {
-		const hexTokens = this.assembler.parser.getDirectiveBlockTokens(directive.value);
+		let hexTokens: Token[] | undefined;
+
+		if (!this.assembler.parser.is("LBRACE")) hexTokens = this.assembler.parser.getInstructionTokens(directive);
+
+		if (!hexTokens || hexTokens.length === 0) hexTokens = this.assembler.parser.getDirectiveBlockTokens(directive.value);
 
 		// The lexer will tokenize '0E' as NUMBER '0' and IDENTIFIER 'E', and '60' as NUMBER '60'.
 		// We must join their values back together to form a single string of hex digits,

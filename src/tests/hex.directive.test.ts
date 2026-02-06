@@ -62,4 +62,20 @@ describe(".HEX Directive", () => {
         `;
 		expect(() => assembler.assemble(sourceWithInvalidChars)).toThrow('Invalid hexadecimal character sequence: "GG"');
 	});
+
+	it("should handle .HEX directive inline", () => {
+		const assembler = createAssembler();
+
+		const source = `
+			.hex 84 80 84 80 84 80 84 80 84 80 88 80 88 80 88 80
+			.hex 88 80 88 80 90 80 90 80 90 80 90 80 90 80 A0 80
+        `;
+
+		assembler.assemble(source);
+		const machineCode = assembler.link();
+		expect(machineCode).toEqual([
+			0x84, 0x80, 0x84, 0x80, 0x84, 0x80, 0x84, 0x80, 0x84, 0x80, 0x88, 0x80, 0x88, 0x80, 0x88, 0x80, 0x88, 0x80, 0x88, 0x80, 0x90, 0x80, 0x90, 0x80, 0x90,
+			0x80, 0x90, 0x80, 0x90, 0x80, 0xa0, 0x80,
+		]);
+	});
 });
