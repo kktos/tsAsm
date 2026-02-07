@@ -27,7 +27,7 @@ describe("Function .LABEL()", () => {
 
 	it("should resolve a global label", () => {
 		const { evaluator, tokenize, symbolTable } = setup();
-		symbolTable.assignVariable("MyLabel", 0x1234);
+		symbolTable.defineVariable("MyLabel", 0x1234, { filename: "test", line: 0, column: 0 });
 
 		const tokens = tokenize('.LABEL("MyLabel")');
 		const result = evaluator.evaluateAsNumber(tokens, { PC: { value: 0 } });
@@ -36,8 +36,8 @@ describe("Function .LABEL()", () => {
 
 	it("should resolve a global label constructed dynamically", () => {
 		const { evaluator, tokenize, symbolTable } = setup();
-		symbolTable.assignVariable("MyLabel_1", 0x100);
-		symbolTable.assignVariable("MyLabel_2", 0x200);
+		symbolTable.defineVariable("MyLabel_1", 0x100, { filename: "test", line: 0, column: 0 });
+		symbolTable.defineVariable("MyLabel_2", 0x200, { filename: "test", line: 0, column: 0 });
 
 		const tokens = tokenize('.LABEL("MyLabel_" + "2")');
 		const result = evaluator.evaluateAsNumber(tokens, { PC: { value: 0 } });
@@ -47,9 +47,9 @@ describe("Function .LABEL()", () => {
 	it("should resolve a local label", () => {
 		const { evaluator, tokenize, symbolTable } = setup();
 		// Define global label
-		symbolTable.defineConstant("Global", 0x1000);
+		symbolTable.defineConstant("Global", 0x1000, { filename: "test", line: 0, column: 0 });
 		// Define local label Global.Local
-		symbolTable.defineConstant("Global.Local", 0x1004);
+		symbolTable.defineConstant("Global.Local", 0x1004, { filename: "test", line: 0, column: 0 });
 
 		const tokens = tokenize('.LABEL("Local")');
 		// We must provide currentLabel in context for local label resolution

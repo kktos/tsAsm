@@ -30,6 +30,13 @@ describe(".EQU - constant assignment", () => {
 		expect(symbol).toBe(123);
 	});
 
+	it("should define a constant with namespace", () => {
+		const src = "global::foo .EQU 123";
+		asm.assemble(src);
+		const symbol = asm.symbolTable.lookupSymbol("foo");
+		expect(symbol).toBe(123);
+	});
+
 	it("should forbid to change its value", () => {
 		const src = `
 				foo .EQU 123

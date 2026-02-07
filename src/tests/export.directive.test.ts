@@ -55,6 +55,6 @@ describe("Directive .EXPORT", () => {
 			.export foo
 			.end namespace
 		`;
-		expect(() => asm.assemble(src)).toThrow(/Can't export variable symbol FOO - PASymbol global::FOO redefined./);
+		expect(() => asm.assemble(src)).toThrow(/Can't export variable symbol FOO - Error: PASymbol global::FOO redefined./);
 	});
 });

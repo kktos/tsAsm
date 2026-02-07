@@ -36,7 +36,7 @@ export class Linker {
 	private modules: Map<string, Segment[]> = new Map();
 	private emittedModules: Set<string> = new Set();
 	public streamManager?: StreamManager;
-	public currentModule: Segment[] | null = null;
+	public currentModule: Segment[] = [];
 
 	private finalSegment: Segment = { name: "", start: 0, size: Number.POSITIVE_INFINITY, data: [], resizable: true };
 	public currentSegment: Segment = this.finalSegment;
@@ -50,7 +50,6 @@ export class Linker {
 		private fileHandler?: FileHandler,
 	) {
 		this.PC = { value: PC };
-		this.currentModule = [];
 		this.modules.set("__MAIN__", this.currentModule);
 	}
 
@@ -80,7 +79,7 @@ export class Linker {
 	public addModule(name: string) {
 		let module = this.modules.get("__MAIN__");
 		if (module) {
-			if (this.currentModule?.length) throw new Error("Segments were used before any module was defined.");
+			if (this.currentModule.length) throw new Error("Segments were used before any module was defined.");
 			this.modules.delete("__MAIN__");
 		}
 
@@ -110,9 +109,9 @@ export class Linker {
 		if (!seg) throw new Error(`Segment not found: ${name}`);
 
 		if (!this.currentModule) throw new Error(`No Module defined for segment: ${name}`);
-		if (this.currentModule.find((s) => s.name === name)) throw new Error(`Segment already used in module: ${name}`);
 
-		this.currentModule.push(seg);
+		// if (this.currentModule.find((s) => s.name === name)) throw new Error(`Segment already used in module: ${name}`);
+		if (!this.currentModule.find((s) => s.name === name)) this.currentModule.push(seg);
 
 		this.currentSegment = seg;
 		this.PC.value = seg.start;

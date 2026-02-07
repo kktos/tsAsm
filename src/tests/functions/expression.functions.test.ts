@@ -28,7 +28,7 @@ describe("ExpressionEvaluator", () => {
 	describe("Functions", () => {
 		it("should evaluate .DEF() on a defined symbol", () => {
 			const { evaluator, tokenize, symbolTable } = setup();
-			symbolTable.assignVariable("MySymbol", 123);
+			symbolTable.defineVariable("MySymbol", 123, { filename: "test", line: 1, column: 1 });
 			const tokens = tokenize(".DEF(MySymbol)");
 			const result = evaluator.evaluateAsNumber(tokens, { PC: { value: 0 } });
 			expect(result).toBe(1);

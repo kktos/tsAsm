@@ -31,7 +31,7 @@ describe("Linker Script: .FOR loop", () => {
 				segOffsets = .PUSH(segOffsets,.pc)
 			.END
 			`;
-		assembler.symbolTable.defineVariable("segments", [1, 2, 3]);
+		assembler.symbolTable.defineVariable("segments", [1, 2, 3], { filename: "", line: 0, column: 0 });
 		assembler.assemble(source);
 		const segOffsets = assembler.symbolTable.lookupSymbol("segOffsets");
 		expect(segOffsets).toEqual([4096, 4096, 4096]);

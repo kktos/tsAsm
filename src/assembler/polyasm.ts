@@ -312,7 +312,11 @@ export class Assembler {
 					this.lastGlobalLabel = token.value;
 					this.lastGlobalLabelLine = token.line;
 					if (!this.parser.isOperator("=") && !this.parser.isDirective("EQU")) {
-						this.symbolTable.defineConstant(token.value, this.PC.value);
+						this.symbolTable.defineConstant(token.value, this.PC.value, {
+							filename: this.streamManager.currentFilepath,
+							line: token.line,
+							column: token.column,
+						});
 						this.lister.label(token.raw ?? token.value, this.PC.value);
 					}
 					break;
@@ -320,7 +324,7 @@ export class Assembler {
 				case "LABEL": {
 					this.lastGlobalLabel = token.value;
 					this.lastGlobalLabelLine = token.line;
-					this.symbolTable.defineConstant(token.value, this.PC.value);
+					this.symbolTable.defineConstant(token.value, this.PC.value, { filename: this.streamManager.currentFilepath, line: token.line, column: token.column });
 					this.lister.label(token.raw ?? token.value, this.PC.value);
 					break;
 				}
@@ -329,7 +333,11 @@ export class Assembler {
 					if (!this.lastGlobalLabel) throw new ParserError(`ERROR: Local label ':${token.value}' defined without a preceding global label.`, token);
 
 					const qualifiedName = `${this.lastGlobalLabel}.${token.value}`;
-					this.symbolTable.defineConstant(qualifiedName, this.PC.value);
+					this.symbolTable.defineConstant(qualifiedName, this.PC.value, {
+						filename: this.streamManager.currentFilepath,
+						line: token.line,
+						column: token.column,
+					});
 					break;
 				}
 
@@ -412,7 +420,12 @@ export class Assembler {
 					if (!this.parser.isOperator("=") && !this.parser.isDirective("EQU")) {
 						// In functions, the scope is lost between the passes
 						if (this.symbolTable.hasSymbolInScope(token.value)) this.symbolTable.updateSymbol(token.value, this.PC.value);
-						else this.symbolTable.defineConstant(token.value, this.PC.value);
+						else
+							this.symbolTable.defineConstant(token.value, this.PC.value, {
+								filename: this.streamManager.currentFilepath,
+								line: token.line,
+								column: token.column,
+							});
 						this.lister.label(token.raw ?? token.value, this.PC.value);
 					}
 					break;
@@ -449,7 +462,12 @@ export class Assembler {
 					// TODO : this is not true anymore
 					// In functions, the scope is lost between the passes
 					if (this.symbolTable.hasSymbolInScope(token.value)) this.symbolTable.updateSymbol(token.value, this.PC.value);
-					else this.symbolTable.defineConstant(token.value, this.PC.value);
+					else
+						this.symbolTable.defineConstant(token.value, this.PC.value, {
+							filename: this.streamManager.currentFilepath,
+							line: token.line,
+							column: token.column,
+						});
 
 					this.lister.label(token.raw ?? token.value, this.PC.value);
 

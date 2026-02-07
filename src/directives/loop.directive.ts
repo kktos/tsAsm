@@ -90,6 +90,21 @@ export class LoopDirective implements IDirective {
 			body: bodyTokens,
 		});
 
+		// Define the main iterator variable
+		if (indexIteratorToken)
+			this.runtime.symbolTable.defineVariable(indexIteratorToken.value, 0, {
+				filename: context.filename,
+				line: directive.line,
+				column: directive.column,
+			});
+
+		// Define the item iterator variable
+		this.runtime.symbolTable.defineVariable(itemIteratorToken.value, 0, {
+			filename: context.filename,
+			line: directive.line,
+			column: directive.column,
+		});
+
 		// Kick off the first iteration.
 		this.runNextLoopIteration(loopId, context);
 	}
@@ -118,6 +133,14 @@ export class LoopDirective implements IDirective {
 			repeatTotal: count,
 			body: bodyTokens,
 		});
+
+		// Define the main iterator variable
+		if (iteratorToken)
+			this.runtime.symbolTable.defineVariable(iteratorToken.value, 0, {
+				filename: context.filename,
+				line: directive.line,
+				column: directive.column,
+			});
 
 		// kick off iteration
 		this.runNextLoopIteration(loopId, context);

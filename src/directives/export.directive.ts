@@ -12,7 +12,7 @@ export class ExportDirective implements IDirective {
 		private readonly lister: ILister,
 	) {}
 
-	public handlePassOne(directive: ScalarToken, _context: DirectiveContext): void {
+	public handlePassOne(directive: ScalarToken, context: DirectiveContext): void {
 		const symbolToken = this.assembler.parser.identifier();
 
 		this.lister.directive(directive, symbolToken.value);
@@ -20,7 +20,11 @@ export class ExportDirective implements IDirective {
 		const symbol = this.assembler.symbolTable.findSymbol(symbolToken.value);
 
 		try {
-			this.assembler.symbolTable.defineConstant(`global::${symbolToken.value}`, symbol?.symbol.value ?? 0);
+			this.assembler.symbolTable.defineConstant(`global::${symbolToken.value}`, symbol?.symbol.value ?? 0, {
+				filename: context.filename,
+				line: directive.line,
+				column: directive.column,
+			});
 		} catch (e) {
 			throw `line ${directive.line}: Can't export variable symbol ${symbolToken.value} - ${e}`;
 		}

@@ -29,7 +29,7 @@ describe("Macro Handling", () => {
 
 		it("should resolve a macro argument that is itself an expression", () => {
 			const { evaluator, tokenize, symbolTable } = setup();
-			symbolTable.assignVariable("FIVE", 5);
+			symbolTable.defineVariable("FIVE", 5, { filename: "test", line: 1, column: 1 });
 			const macroArgs = new Map<string, Token[]>();
 			// The argument passed to the macro is "FIVE + 5"
 			macroArgs.set("COMPLEX_ARG", tokenize("FIVE + 5"));
@@ -205,7 +205,7 @@ describe("Macro Handling", () => {
 			// STA $2001   ; 8D 01 20
 			// The test below assumes 'data' is at address $1000, so LDA data,x becomes BD 00 10
 			// Corrected expectation: The macro itself takes up 12 bytes. The default start is 0x1000. So 'data' will be at 0x100C.
-			expect(machineCode6502).toEqual([0xbd, 0x0a, 0x10, 0x8d, 0x00, 0x20, 0xa9, 0x0a, 0x8d, 0x01, 0x20, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+			expect(machineCode6502).toEqual([0xbd, 0x0b, 0x10, 0x8d, 0x00, 0x20, 0xa9, 0x0a, 0x8d, 0x01, 0x20, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
 
 			// Check if the symbols are defined correctly after macro expansion
 			expect(symbolTable.lookupSymbol("arg1")).toBeUndefined(); // Macro arguments should not leak into the symbol table

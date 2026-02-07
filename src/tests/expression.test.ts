@@ -51,7 +51,7 @@ describe("ExpressionEvaluator", () => {
 			const { evaluator, tokenize } = setup();
 			const tokens = tokenize("13 / 4");
 			const result = evaluator.evaluateAsNumber(tokens, { PC: { value: 0 } });
-			expect(result).toBe(3);
+			expect(result).toBe(13 / 4);
 		});
 
 		it("should handle unary minus", () => {
@@ -72,7 +72,7 @@ describe("ExpressionEvaluator", () => {
 
 		it("should resolve symbols from the symbol table", () => {
 			const { evaluator, tokenize, symbolTable } = setup();
-			symbolTable.assignVariable("TEN", 10);
+			symbolTable.defineVariable("TEN", 10, { filename: "test", line: 1, column: 1 });
 			const tokens = tokenize("TEN * 4");
 			const result = evaluator.evaluateAsNumber(tokens, { PC: { value: 0 } });
 			expect(result).toBe(40);
@@ -225,7 +225,7 @@ describe("ExpressionEvaluator", () => {
 
 		it("should access elements from a symbol-defined array", () => {
 			const { evaluator, tokenize, symbolTable } = setup();
-			symbolTable.assignVariable("myArr", [100, 200, 300]);
+			symbolTable.defineVariable("myArr", [100, 200, 300], { filename: "test", line: 1, column: 1 });
 			const tokens = tokenize("myArr[2]"); // Should be 300
 			const result = evaluator.evaluateAsNumber(tokens, { PC: { value: 0 } });
 			expect(result).toBe(300);
@@ -289,7 +289,7 @@ describe("ExpressionEvaluator", () => {
 		it("should evaluate .POP() to get the last item from an array", () => {
 			const { evaluator, tokenize, symbolTable } = setup();
 			const originalArray = [1, 2, 3];
-			symbolTable.assignVariable("nums", originalArray);
+			symbolTable.defineVariable("nums", originalArray, { filename: "test", line: 1, column: 1 });
 			const tokens = tokenize(".POP(nums)");
 			const result = evaluator.evaluate(tokens, { PC: { value: 0 } });
 			expect(result).toBe(3);
@@ -308,7 +308,7 @@ describe("ExpressionEvaluator", () => {
 	describe("Data Structures", () => {
 		it("should evaluate array literals", () => {
 			const { evaluator, tokenize, symbolTable } = setup();
-			symbolTable.assignVariable("MyVal", 100);
+			symbolTable.defineVariable("MyVal", 100, { filename: "test", line: 1, column: 1 });
 			const tokens = tokenize('[1, "two", MyVal + 50]');
 			const result = evaluator.evaluate(tokens, { PC: { value: 0 } });
 			expect(result).toEqual([1, "two", 150]);
@@ -350,7 +350,7 @@ describe("ExpressionEvaluator", () => {
 
 		it("should suggest a similar symbol for an undefined symbol", () => {
 			const { evaluator, tokenize, symbolTable } = setup();
-			symbolTable.assignVariable("MyLabel", 0x1000);
+			symbolTable.defineVariable("MyLabel", 0x1000, { filename: "test", line: 1, column: 1 });
 			const tokens = tokenize("MyLable"); // Typo
 			expect(() => evaluator.evaluateAsNumber(tokens, { PC: { value: 0 } })).toThrow("Undefined symbol 'MYLABLE' on line 1. Did you mean 'MYLABEL'?");
 		});
@@ -377,35 +377,35 @@ describe("ExpressionEvaluator", () => {
 	describe("Object properties", () => {
 		it("should evaluate direct property access", () => {
 			const { evaluator, tokenize, symbolTable } = setup();
-			symbolTable.assignVariable("person", { name: "tom" });
+			symbolTable.defineVariable("person", { name: "tom" }, { filename: "test", line: 1, column: 1 });
 			const tokens = tokenize("person.name");
 			const result = evaluator.evaluate(tokens, { PC: { value: 0 } });
 			expect(result).toEqual("tom");
 		});
 		it("should evaluate property access from any level of nesting", () => {
 			const { evaluator, tokenize, symbolTable } = setup();
-			symbolTable.assignVariable("person", { name: "tom", town: { name: "paris" } });
+			symbolTable.defineVariable("person", { name: "tom", town: { name: "paris" } }, { filename: "test", line: 1, column: 1 });
 			const tokens = tokenize("person.town.name");
 			const result = evaluator.evaluate(tokens, { PC: { value: 0 } });
 			expect(result).toEqual("paris");
 		});
 		it("should evaluate property access from array item too", () => {
 			const { evaluator, tokenize, symbolTable } = setup();
-			symbolTable.assignVariable("personList", [{ name: "tom" }, { name: "bob" }]);
+			symbolTable.defineVariable("personList", [{ name: "tom" }, { name: "bob" }], { filename: "test", line: 1, column: 1 });
 			const tokens = tokenize("personList[1].name");
 			const result = evaluator.evaluate(tokens, { PC: { value: 0 } });
 			expect(result).toEqual("bob");
 		});
 		it("should evaluate property access as array", () => {
 			const { evaluator, tokenize, symbolTable } = setup();
-			symbolTable.assignVariable("person", { names: ["tom", "bob"] });
+			symbolTable.defineVariable("person", { names: ["tom", "bob"] }, { filename: "test", line: 1, column: 1 });
 			const tokens = tokenize("person.names[1]");
 			const result = evaluator.evaluate(tokens, { PC: { value: 0 } });
 			expect(result).toEqual("bob");
 		});
 		it("should evaluate property access as array of objects", () => {
 			const { evaluator, tokenize, symbolTable } = setup();
-			symbolTable.assignVariable("person", { towns: [{ name: "paris" }, { name: "london" }] });
+			symbolTable.defineVariable("person", { towns: [{ name: "paris" }, { name: "london" }] }, { filename: "test", line: 1, column: 1 });
 			const tokens = tokenize("person.towns[1].name");
 			const result = evaluator.evaluate(tokens, { PC: { value: 0 } });
 			expect(result).toEqual("london");

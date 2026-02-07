@@ -34,7 +34,7 @@ describe("Function LEN()", () => {
 
 	it("should evaluate .LEN() on a string symbol", () => {
 		const { evaluator, tokenize, symbolTable } = setup();
-		symbolTable.assignVariable("MyString", "hello");
+		symbolTable.defineVariable("MyString", "hello", { filename: "test", line: 1, column: 1 });
 		const tokens = tokenize(".LEN(MyString)");
 		const result = evaluator.evaluateAsNumber(tokens, { PC: { value: 0 } });
 		expect(result).toBe(5);
@@ -42,7 +42,7 @@ describe("Function LEN()", () => {
 
 	it("should evaluate .LEN() on an array literal", () => {
 		const { evaluator, tokenize, symbolTable } = setup();
-		symbolTable.assignVariable("MyArr", [10, 20, 30]);
+		symbolTable.defineVariable("MyArr", [10, 20, 30], { filename: "test", line: 1, column: 1 });
 		const tokens = tokenize(".LEN([1, 2, 3])");
 		const result = evaluator.evaluateAsNumber(tokens, { PC: { value: 0 } });
 		expect(result).toBe(3);
@@ -50,7 +50,7 @@ describe("Function LEN()", () => {
 
 	it("should evaluate .LEN() on an array symbol", () => {
 		const { evaluator, tokenize, symbolTable } = setup();
-		symbolTable.assignVariable("MyArr", [1, 2, 3, 4]);
+		symbolTable.defineVariable("MyArr", [1, 2, 3, 4], { filename: "test", line: 1, column: 1 });
 		const tokens = tokenize(".LEN(MyArr)");
 		const result = evaluator.evaluateAsNumber(tokens, { PC: { value: 0 } });
 		expect(result).toBe(4);
@@ -58,7 +58,7 @@ describe("Function LEN()", () => {
 
 	it("should fail on types other than string and array", () => {
 		const { evaluator, tokenize, symbolTable } = setup();
-		symbolTable.assignVariable("MyObject", { name: "" });
+		symbolTable.defineVariable("MyObject", { name: "" }, { filename: "test", line: 1, column: 1 });
 		const tokens = tokenize(".LEN(MyObject)");
 		expect(() => evaluator.evaluateAsNumber(tokens, { PC: { value: 0 } })).toThrow(/.LEN\(\) requires a string or array argument on line 1./);
 	});

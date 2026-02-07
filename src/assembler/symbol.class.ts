@@ -7,11 +7,19 @@ const INTERNAL_GLOBAL = "%%GLOBAL";
 
 export type SymbolValue = number | string | object | Token[] | SymbolValue[];
 
+type SymbolSource = {
+	filename: string;
+	line: number | string;
+	column: number;
+};
 interface PASymbol {
 	name: string;
 	value: SymbolValue;
-	isConstant: boolean | undefined;
+	isConstant: boolean;
 	namespace: string;
+	source: string;
+	line: number | string;
+	column: number;
 }
 
 export class PASymbolTable {
@@ -130,6 +138,11 @@ export class PASymbolTable {
 		return this.symbols.get(current);
 	}
 
+	isVolatileScope() {
+		const current = this.scopeStack[this.scopeStack.length - 1] as string;
+		return current.startsWith("@@");
+	}
+
 	findSymbol(symbolName: string) {
 		const name = symbolName.toUpperCase();
 
@@ -151,7 +164,7 @@ export class PASymbolTable {
 		return undefined;
 	}
 
-	defineConstant(constantName: string, value: SymbolValue) {
+	defineConstant(constantName: string, value: SymbolValue, source: SymbolSource) {
 		let scope: Map<string, PASymbol> | undefined;
 		let name = "";
 		let ns = "";
@@ -175,56 +188,64 @@ export class PASymbolTable {
 			value,
 			isConstant: true,
 			namespace: ns,
+			source: source.filename,
+			line: source.line,
+			column: source.column,
 		});
 	}
 
-	defineVariable(variableName: string, value: SymbolValue) {
-		const namespaceKey = this.scopeStack[this.scopeStack.length - 1] as string;
-		const scope = this.symbols.get(namespaceKey);
-		if (!scope) throw `PASymbol ${this.getCurrentNamespace()} doesn't exist.`;
+	defineVariable(variableName: string, value: SymbolValue, source: SymbolSource, nonVolatile = false) {
+		let ns = "";
+
+		if (nonVolatile) {
+			// Find the first non-volatile scope (bottom-up search)
+			for (let i = this.scopeStack.length - 1; i >= 0; i--) {
+				const key = this.scopeStack[i] as string;
+				const isVolatile = key.startsWith("@@") && !key.startsWith("@@function");
+				if (!isVolatile) {
+					ns = key;
+					break;
+				}
+			}
+		}
+		if (!ns) ns = this.scopeStack[this.scopeStack.length - 1] as string;
+
+		const scope = this.symbols.get(ns);
+		if (!scope) throw `PASymbol ${ns} doesn't exist.`;
 
 		const name = variableName.toUpperCase();
 
 		const symbol = scope.get(name);
-		if (symbol?.isConstant) throw `Can't redefine constant symbol ${this.getCurrentNamespace()}::${variableName}.`;
+		if (symbol?.isConstant) throw `Can't redefine constant symbol ${ns === INTERNAL_GLOBAL ? "global" : ns}::${variableName}.`;
 
 		scope.set(name, {
 			name,
 			value,
 			isConstant: false,
-			namespace: namespaceKey,
+			namespace: ns,
+			source: source.filename,
+			line: source.line,
+			column: source.column,
 		});
 	}
 
-	assignVariable(variableName: string, value: SymbolValue, nonVolatile = false) {
+	assignVariable(variableName: string, value: SymbolValue) {
 		const symbolData = this.findSymbol(variableName);
 
 		let scope: Map<string, PASymbol> | undefined;
 		let name = "";
 		let symbol: PASymbol | undefined;
-		let namespaceKey = "";
+		let ns = "";
 
 		if (symbolData) {
 			scope = symbolData.scope;
 			name = symbolData.symbol.name;
 			symbol = symbolData.symbol;
-			namespaceKey = symbol.namespace;
+			ns = symbol.namespace;
 		} else {
-			if (nonVolatile) {
-				// Find the first non-volatile scope (bottom-up search)
-				for (let i = this.scopeStack.length - 1; i >= 0; i--) {
-					const key = this.scopeStack[i] as string;
-					// const isVolatile = key.startsWith("@@") && !key.startsWith("@@function") && !key.startsWith("@@macro");
-					const isVolatile = key.startsWith("@@") && !key.startsWith("@@function");
-					if (!isVolatile) {
-						namespaceKey = key;
-						break;
-					}
-				}
-			}
-			if (!namespaceKey) namespaceKey = this.scopeStack[this.scopeStack.length - 1] as string;
+			ns = this.scopeStack[this.scopeStack.length - 1] as string;
 
-			scope = this.symbols.get(namespaceKey);
+			scope = this.symbols.get(ns);
 			if (!scope) throw `PASymbol ${this.getCurrentNamespace()} doesn't exist.`;
 			name = variableName.toUpperCase();
 			symbol = scope.get(name);
@@ -232,12 +253,16 @@ export class PASymbolTable {
 
 		if (symbol?.isConstant) throw `Can't redefine constant symbol ${this.getCurrentNamespace()}::${variableName}.`;
 
-		scope.set(name, {
-			name,
-			value,
-			isConstant: false,
-			namespace: namespaceKey,
-		});
+		if (!symbol) throw new Error(`assignVariable: Unknown symbol "${ns === INTERNAL_GLOBAL ? "global" : ns}::${name}".`);
+
+		scope.set(name, { ...symbol, value });
+
+		// scope.set(name, {
+		// 	name,
+		// 	value,
+		// 	isConstant: false,
+		// 	namespace: namespaceKey,
+		// });
 	}
 
 	updateSymbol(symbolName: string, value: SymbolValue, nonVolatile = false) {
@@ -274,7 +299,7 @@ export class PASymbolTable {
 		const symbol = scope.get(name);
 		if (!symbol) throw new Error(`Unknown symbol "${ns === INTERNAL_GLOBAL ? "global" : ns}::${name}".`);
 
-		scope.set(name, { name, value, isConstant: symbol.isConstant, namespace: ns });
+		scope.set(name, { ...symbol, value });
 	}
 
 	lookupSymbolInScope(symbolName: string) {
@@ -423,7 +448,7 @@ export class PASymbolTable {
 						value = "undefined";
 						break;
 				}
-				nsDict[symbol.name] = value;
+				nsDict[symbol.name] = `${value} ;${symbol.source}:${symbol.line}:${symbol.column}`;
 			}
 			dict[displayName] = nsDict;
 		}

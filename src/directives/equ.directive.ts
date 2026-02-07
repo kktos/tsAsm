@@ -29,7 +29,7 @@ export class EquDirective implements IDirective {
 
 		this.lister.symbol(label, value);
 
-		this.assembler.symbolTable.defineConstant(label, value);
+		this.assembler.symbolTable.defineConstant(label, value, { filename: context.filename, line: directive.line, column: directive.column });
 	}
 
 	public handlePassTwo(directive: ScalarToken, context: DirectiveContext): void {
