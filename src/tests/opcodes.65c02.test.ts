@@ -115,11 +115,41 @@ describe("65C02 Opcodes", () => {
 		expect(data).toEqual([0x04, 0x44, 0x0c, 0x34, 0x12, 0x14, 0x55, 0x1c, 0x78, 0x56]);
 	});
 
-	it("should raise an error for invalid addressing modes", () => {
+	it("should raise an error for invalid addressing modes: CMP", () => {
 		const source = `
         	cmp ($02),x
         `;
 		expect(() => assembleAndGetCode(source)).toThrow(/Invalid addressing mode for instruction CMP/);
+	});
+
+	it("should raise an error for invalid addressing modes: JSR", () => {
+		const source = `
+        	jsr ($02)
+        `;
+		expect(() => assembleAndGetCode(source)).toThrow(/Invalid addressing mode for instruction JSR/);
+	});
+	it("should raise an error for invalid addressing modes: STA Immediate", () => {
+		expect(() => assembleAndGetCode("STA #$00")).toThrow(/Invalid addressing mode for instruction STA/);
+	});
+
+	it("should raise an error for invalid addressing modes: LDA Implied (no operand)", () => {
+		expect(() => assembleAndGetCode("LDA")).toThrow(/Invalid addressing mode for instruction LDA/);
+	});
+
+	it("should raise an error for invalid addressing modes: STX Indirect Y", () => {
+		expect(() => assembleAndGetCode("STX ($10),Y")).toThrow(/Invalid addressing mode for instruction STX/);
+	});
+
+	it("should raise an error for invalid addressing modes: BIT Indirect X", () => {
+		expect(() => assembleAndGetCode("BIT ($10,X)")).toThrow(/Invalid addressing mode for instruction BIT/);
+	});
+
+	it("should raise an error for invalid addressing modes: INC Zero Page Indirect", () => {
+		expect(() => assembleAndGetCode("INC ($10)")).toThrow(/Invalid addressing mode for instruction INC/);
+	});
+
+	it("should raise an error for invalid addressing modes: JMP Absolute X", () => {
+		expect(() => assembleAndGetCode("JMP $1234,X")).toThrow(/Invalid addressing mode for instruction JMP/);
 	});
 
 	it("should have pass 1 defaulting to Absolute Indexed Mode", () => {

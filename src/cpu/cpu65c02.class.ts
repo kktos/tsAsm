@@ -410,6 +410,12 @@ export class Cpu65C02Handler implements CPUHandler {
 		const instructionModes = this.instructionMap.get(baseMnemonic);
 		if (!instructionModes) throw new Error(`Unknown instruction mnemonic: ${mnemonic}`);
 
+		const getOpcode = (mode: AddressingMode) => {
+			const op = instructionModes.get(mode);
+			if (!op) throw new Error(`Invalid addressing mode for instruction ${mnemonic}`);
+			return op;
+		};
+
 		const sizeSuffix = parts.length > 1 ? parts[1] : "";
 
 		let forcedSize: "ZP" | "ABS" | null = null;
@@ -423,7 +429,7 @@ export class Cpu65C02Handler implements CPUHandler {
 		if (numTokens < 2) {
 			let mode: AddressingMode = this.M65C02_MODES.IMPLIED;
 			let op = instructionModes.get(mode);
-			if (numTokens > 0 && op) throw new Error(`Invalid addressing mode for ${mnemonic}`);
+			if (numTokens > 0 && op) throw new Error(`Invalid addressing mode for instruction ${mnemonic}`);
 
 			if (!op) {
 				mode = this.M65C02_MODES.ACCUMULATOR;
@@ -439,7 +445,7 @@ export class Cpu65C02Handler implements CPUHandler {
 					resolvedAddress: 0,
 				};
 
-			if (numTokens === 0) throw new Error(`Invalid addressing mode for ${mnemonic}`);
+			if (numTokens === 0) throw new Error(`Invalid addressing mode for instruction ${mnemonic}`);
 		}
 
 		// Accumulator
@@ -459,7 +465,7 @@ export class Cpu65C02Handler implements CPUHandler {
 		if (operandTokens[0]?.value === "#") {
 			const expressionTokens = operandTokens.slice(1);
 			const resolvedAddress = resolveValue(expressionTokens, 256);
-			const [opcode, bytes] = instructionModes.get(this.M65C02_MODES.IMMEDIATE) || [0x00, 2];
+			const [opcode, bytes] = getOpcode(this.M65C02_MODES.IMMEDIATE);
 			return {
 				mode: this.M65C02_MODES.IMMEDIATE,
 				opcode,
@@ -476,7 +482,7 @@ export class Cpu65C02Handler implements CPUHandler {
 			if (lastToken?.value.toUpperCase() === "Y" && operandTokens[numTokens - 2]?.value === ",") {
 				const expressionTokens = this.extractTokensBetween(operandTokens, "(", ")");
 				const resolvedAddress = resolveValue(expressionTokens);
-				const [opcode, bytes] = instructionModes.get(this.M65C02_MODES.INDIRECT_Y) || [0x00, 2];
+				const [opcode, bytes] = getOpcode(this.M65C02_MODES.INDIRECT_Y);
 				return {
 					mode: this.M65C02_MODES.INDIRECT_Y,
 					opcode,
@@ -492,7 +498,7 @@ export class Cpu65C02Handler implements CPUHandler {
 				if (baseMnemonic === "JMP" && secondToLast?.value.toUpperCase() === "X" && operandTokens[numTokens - 3]?.value === ",") {
 					const expressionTokens = this.extractTokensBetween(operandTokens, "(", ",");
 					const resolvedAddress = resolveValue(expressionTokens);
-					const [opcode, bytes] = instructionModes.get(this.M65C02_MODES.ABSOLUTE_INDIRECT_X) || [0x00, 3];
+					const [opcode, bytes] = getOpcode(this.M65C02_MODES.ABSOLUTE_INDIRECT_X);
 					return {
 						mode: this.M65C02_MODES.ABSOLUTE_INDIRECT_X,
 						opcode,
@@ -505,7 +511,7 @@ export class Cpu65C02Handler implements CPUHandler {
 				if (secondToLast?.value.toUpperCase() === "X" && operandTokens[numTokens - 3]?.value === ",") {
 					const expressionTokens = this.extractTokensBetween(operandTokens, "(", ",");
 					const resolvedAddress = resolveValue(expressionTokens);
-					const [opcode, bytes] = instructionModes.get(this.M65C02_MODES.INDIRECT_X) || [0x00, 2];
+					const [opcode, bytes] = getOpcode(this.M65C02_MODES.INDIRECT_X);
 					return {
 						mode: this.M65C02_MODES.INDIRECT_X,
 						opcode,
@@ -519,7 +525,7 @@ export class Cpu65C02Handler implements CPUHandler {
 
 				// Indirect JMP: ($addr)
 				if (baseMnemonic === "JMP") {
-					const [opcode, bytes] = instructionModes.get(this.M65C02_MODES.INDIRECT) || [0x00, 3];
+					const [opcode, bytes] = getOpcode(this.M65C02_MODES.INDIRECT);
 					return {
 						mode: this.M65C02_MODES.INDIRECT,
 						opcode,
@@ -528,8 +534,8 @@ export class Cpu65C02Handler implements CPUHandler {
 					};
 				}
 
-				// New: Zero Page Indirect: (zp)
-				const [opcode, bytes] = instructionModes.get(this.M65C02_MODES.ZEROPAGE_INDIRECT) || [0x00, 2];
+				// Zero Page Indirect: (zp)
+				const [opcode, bytes] = getOpcode(this.M65C02_MODES.ZEROPAGE_INDIRECT);
 				return {
 					mode: this.M65C02_MODES.ZEROPAGE_INDIRECT,
 					opcode,
@@ -583,7 +589,7 @@ export class Cpu65C02Handler implements CPUHandler {
 		// 5. Relative Mode (Branches)
 		if (this.branchMnemonics.has(baseMnemonic)) {
 			const resolvedAddress = resolveValue(operandTokens);
-			const [opcode, bytes] = instructionModes.get(this.M65C02_MODES.RELATIVE) || [0x00, 2];
+			const [opcode, bytes] = getOpcode(this.M65C02_MODES.RELATIVE);
 			return {
 				mode: this.M65C02_MODES.RELATIVE,
 				opcode,
