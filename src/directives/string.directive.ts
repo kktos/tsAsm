@@ -29,7 +29,7 @@ export class StringDirective implements IDirective {
 		this.runtime.lister.bytes({
 			addr: context.PC.value,
 			bytes,
-			text: `.${directive.value} ${strings.map((s) => `"${s}"`).join(" ")}`,
+			text: `.${directive.value.toLowerCase()} ${strings.map((s) => `"${s}"`).join(" ")}`,
 			hasText: true,
 		});
 
