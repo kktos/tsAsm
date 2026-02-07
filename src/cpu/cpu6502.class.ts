@@ -361,6 +361,12 @@ export class Cpu6502Handler implements CPUHandler {
 		const instructionModes = this.instructionMap.get(baseMnemonic);
 		if (!instructionModes) throw new Error(`Unknown instruction mnemonic: ${mnemonic}`);
 
+		const getOpcode = (mode: AddressingMode) => {
+			const op = instructionModes.get(mode);
+			if (!op) throw new Error(`Invalid addressing mode for instruction ${mnemonic}`);
+			return op;
+		};
+
 		const sizeSuffix = parts.length > 1 ? parts[1] : "";
 
 		// ... (rest of the mode detection logic is the same) ...
@@ -372,7 +378,7 @@ export class Cpu6502Handler implements CPUHandler {
 
 		// 1. Implied Mode (e.g., RTS) - no operands
 		if (numTokens === 0) {
-			const [opcode, bytes] = instructionModes.get(this.M6502_MODES.IMPLIED) || [0x00, 1];
+			const [opcode, bytes] = getOpcode(this.M6502_MODES.IMPLIED);
 			return {
 				mode: this.M6502_MODES.IMPLIED,
 				opcode,
@@ -383,9 +389,7 @@ export class Cpu6502Handler implements CPUHandler {
 
 		// Accumulator
 		if (numTokens === 1 && operandTokens[0]?.value.toUpperCase() === "A") {
-			const op = instructionModes.get(this.M6502_MODES.ACCUMULATOR);
-			if (!op) throw new Error(`Invalid addressing mode 'A' for ${mnemonic}`);
-			const [opcode, bytes] = op;
+			const [opcode, bytes] = getOpcode(this.M6502_MODES.ACCUMULATOR);
 			return {
 				mode: this.M6502_MODES.ACCUMULATOR,
 				opcode,
@@ -398,7 +402,7 @@ export class Cpu6502Handler implements CPUHandler {
 		if (operandTokens[0]?.value === "#") {
 			const expressionTokens = operandTokens.slice(1);
 			const resolvedAddress = resolveValue(expressionTokens);
-			const [opcode, bytes] = instructionModes.get(this.M6502_MODES.IMMEDIATE) || [0x00, 2];
+			const [opcode, bytes] = getOpcode(this.M6502_MODES.IMMEDIATE);
 			return {
 				mode: this.M6502_MODES.IMMEDIATE,
 				opcode,
@@ -415,7 +419,7 @@ export class Cpu6502Handler implements CPUHandler {
 			if (lastToken?.value.toUpperCase() === "Y" && operandTokens[numTokens - 2]?.value === ",") {
 				const expressionTokens = this.extractTokensBetween(operandTokens, "(", ")");
 				const resolvedAddress = resolveValue(expressionTokens);
-				const [opcode, bytes] = instructionModes.get(this.M6502_MODES.INDIRECT_Y) || [0x00, 2];
+				const [opcode, bytes] = getOpcode(this.M6502_MODES.INDIRECT_Y);
 				return {
 					mode: this.M6502_MODES.INDIRECT_Y,
 					opcode,
@@ -430,7 +434,7 @@ export class Cpu6502Handler implements CPUHandler {
 				if (secondToLast?.value.toUpperCase() === "X" && operandTokens[numTokens - 3]?.value === ",") {
 					const expressionTokens = this.extractTokensBetween(operandTokens, "(", ",");
 					const resolvedAddress = resolveValue(expressionTokens);
-					const [opcode, bytes] = instructionModes.get(this.M6502_MODES.INDIRECT_X) || [0x00, 2];
+					const [opcode, bytes] = getOpcode(this.M6502_MODES.INDIRECT_X);
 					return {
 						mode: this.M6502_MODES.INDIRECT_X,
 						opcode,
@@ -441,7 +445,7 @@ export class Cpu6502Handler implements CPUHandler {
 				// Indirect JMP: ($addr)
 				const expressionTokens = this.extractTokensBetween(operandTokens, "(", ")");
 				const resolvedAddress = resolveValue(expressionTokens);
-				const [opcode, bytes] = instructionModes.get(this.M6502_MODES.INDIRECT) || [0x00, 3];
+				const [opcode, bytes] = getOpcode(this.M6502_MODES.INDIRECT);
 				return {
 					mode: this.M6502_MODES.INDIRECT,
 					opcode,
@@ -470,7 +474,7 @@ export class Cpu6502Handler implements CPUHandler {
 					mode = indexReg === "X" ? this.M6502_MODES.ABSOLUTE_X : this.M6502_MODES.ABSOLUTE_Y;
 				}
 
-				const [opcode, bytes] = instructionModes.get(mode) || [0x00, mode.includes("ZERO") ? 2 : 3];
+				const [opcode, bytes] = getOpcode(mode);
 				return { mode, opcode, bytes, resolvedAddress };
 			}
 		}
@@ -478,7 +482,7 @@ export class Cpu6502Handler implements CPUHandler {
 		// 5. Relative Mode (Branches)
 		if (this.branchMnemonics.has(baseMnemonic)) {
 			const resolvedAddress = resolveValue(operandTokens);
-			const [opcode, bytes] = instructionModes.get(this.M6502_MODES.RELATIVE) || [0x00, 2];
+			const [opcode, bytes] = getOpcode(this.M6502_MODES.RELATIVE);
 			return {
 				mode: this.M6502_MODES.RELATIVE,
 				opcode,
