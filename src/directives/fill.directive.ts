@@ -1,3 +1,4 @@
+import type { SymbolValue } from "../assembler/symbol.class";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
 import type { DirectiveContext, DirectiveRuntime, IDirective } from "./directive.interface";
 
@@ -14,8 +15,9 @@ export class FillDirective implements IDirective {
 
 		if (countTokens.length > 0) {
 			try {
-				const count = this.runtime.evaluator.evaluateAsNumber(countTokens, context);
-				context.PC.value += count;
+				const byteCount = this.runtime.evaluator.evaluateAsNumber(countTokens, context);
+				context.PC.value += byteCount;
+				this.runtime.lister.directive(directive, `<${byteCount} bytes>`);
 			} catch (e) {
 				// Error evaluating in pass one, but we must continue. Assume 0 size.
 				this.runtime.logger.warn(`Warning on line ${directive.line}: Could not evaluate .FILL count. ${e}`);
@@ -25,21 +27,31 @@ export class FillDirective implements IDirective {
 
 	public handlePassTwo(directive: ScalarToken, context: DirectiveContext): void {
 		const argTokens = this.runtime.parser.getInstructionTokens(directive);
-
 		const [countTokens, valueTokens] = this.parseArguments(argTokens);
-
 		const count = this.runtime.evaluator.evaluateAsNumber(countTokens, context);
+
+		// If not assembling, just advance PC
+		if (!context.isAssembling) {
+			context.PC.value += count;
+			return;
+		}
+
 		const fillerValue = valueTokens.length > 0 ? this.runtime.evaluator.evaluateAsNumber(valueTokens, context) : 0;
 
-		if (context.isAssembling && count > 0) {
+		if (count > 0) {
 			// Ensure filler value is a single byte
 			const byteValue = fillerValue & 0xff;
 			const bytes = new Array(count).fill(byteValue);
 			context.emitbytes(bytes);
-		}
 
-		// Advance PC if not assembling; writeBytes already advances PC when assembling
-		if (!context.isAssembling) context.PC.value += count;
+			this.runtime.lister.directiveWithBytes({
+				addr: context.PC.value,
+				bytes,
+				pragma: directive,
+				params: [count as SymbolValue, fillerValue as SymbolValue] as SymbolValue[][],
+				hasText: false,
+			});
+		}
 	}
 
 	/**
