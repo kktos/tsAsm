@@ -160,4 +160,17 @@ describe("String Directives", () => {
 		const expected = expectedString.split("").map((c) => c.charCodeAt(0));
 		expect(machineCode).toEqual(expected);
 	});
+
+	it("should handle multiple expressions", () => {
+		const assembler = createAssembler();
+		const source = `
+			mystring = "hello"
+            .TEXT "{", .hex(16,4), "}"
+        `;
+		assembler.assemble(source);
+		const machineCode = assembler.link();
+		const expectedString = "{$0010}";
+		const expected = expectedString.split("").map((c) => c.charCodeAt(0));
+		expect(machineCode).toEqual(expected);
+	});
 });

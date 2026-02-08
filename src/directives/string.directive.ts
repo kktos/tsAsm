@@ -1,4 +1,4 @@
-import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
+import type { ScalarToken } from "../shared/lexer/lexer.class";
 import type { DirectiveContext, DirectiveRuntime, IDirective } from "./directive.interface";
 
 export type StringFormat = "TEXT" | "CSTR" | "PSTR" | "PSTRL";
@@ -37,27 +37,18 @@ export class StringDirective implements IDirective {
 	}
 
 	private getStrings(directive: ScalarToken, context: DirectiveContext): string[] {
-		const argTokens = this.runtime.parser.getInstructionTokens();
 		const strings: string[] = [];
-		let currentExpression: Token[] = [];
 
-		const evaluateAndPush = () => {
-			if (currentExpression.length === 0) return;
-
-			const value = this.runtime.evaluator.evaluate(currentExpression, context) as string;
+		while (!this.runtime.parser.isEOS()) {
+			const exprTokens = this.runtime.parser.getExpressionTokens(directive);
+			const value = this.runtime.evaluator.evaluate(exprTokens, context) as string;
 			if (!context.allowForwardRef && typeof value !== "string")
 				throw new Error(`Data directive expression must evaluate to a string on line ${directive.line}.`);
-
 			strings.push(value);
-			currentExpression = [];
-		};
-
-		for (const token of argTokens) {
-			if (token.type === "COMMA") evaluateAndPush();
-			else currentExpression.push(token);
+			if (!this.runtime.parser.is("COMMA")) break;
+			this.runtime.parser.next();
 		}
 
-		evaluateAndPush();
 		return strings;
 	}
 
