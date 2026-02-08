@@ -16,7 +16,6 @@ import { DefineDirective } from "./define.directive";
 import type { DirectiveContext, DirectiveRuntime, IDirective } from "./directive.interface";
 import { EndDirective } from "./end.directive";
 import { EquDirective } from "./equ.directive";
-import { ExportDirective } from "./export.directive";
 import { FillDirective } from "./fill.directive";
 import { FunctionDirective } from "./function.directive";
 import { HexDirective } from "./hex.directive";
@@ -44,7 +43,6 @@ export class DirectiveHandler {
 		this.register("MACRO", new MacroDirective(runtime));
 
 		this.register("NAMESPACE", new NamespaceDirective(assembler));
-		this.register("EXPORT", new ExportDirective(assembler, runtime.lister));
 
 		const functionDirective = new FunctionDirective(assembler, runtime.lister);
 		this.register("FUNCTION", functionDirective);
