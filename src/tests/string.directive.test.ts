@@ -1,28 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { Assembler } from "../assembler/polyasm";
 import type { SegmentDefinition } from "../assembler/polyasm.types";
+import { Cpu65C02Handler } from "../cpu/cpu65c02.class";
 import { MockFileHandler } from "./mockfilehandler.class";
-
-// Minimal fake CPU handler
-const fakeCPU = {
-	cpuType: "6502" as const,
-	isInstruction: () => false,
-	resolveAddressingMode: () => ({
-		mode: "",
-		opcode: 0,
-		bytes: 0,
-		resolvedAddress: 0,
-	}),
-	encodeInstruction: () => [],
-	getPCSize: () => 8,
-};
 
 const DEFAULT_SEGMENTS = [{ name: "CODE", start: 0x1000, size: 0, resizable: true }];
 
 describe("String Directives", () => {
 	const createAssembler = (segments: SegmentDefinition[] = DEFAULT_SEGMENTS) => {
 		const mockFileHandler = new MockFileHandler();
-		return new Assembler(fakeCPU, mockFileHandler, { segments });
+		return new Assembler(new Cpu65C02Handler(), mockFileHandler, { segments });
 	};
 
 	it("should handle .TEXT directive with single and multiple strings", () => {
@@ -164,7 +151,6 @@ describe("String Directives", () => {
 	it("should handle multiple expressions", () => {
 		const assembler = createAssembler();
 		const source = `
-			mystring = "hello"
             .TEXT "{", .hex(16,4), "}"
         `;
 		assembler.assemble(source);
@@ -172,5 +158,21 @@ describe("String Directives", () => {
 		const expectedString = "{$0010}";
 		const expected = expectedString.split("").map((c) => c.charCodeAt(0));
 		expect(machineCode).toEqual(expected);
+	});
+
+	it("should handle assembing and not assembling", () => {
+		const assembler = createAssembler();
+		const source = `
+				.org $1000
+				lda #<test
+				lda #>test
+				.IF 0
+					.TEXT "{", .hex(16,4), "}"
+				.END
+			test:
+        `;
+		assembler.assemble(source);
+		const machineCode = assembler.link();
+		expect(machineCode).toEqual([0xa9, 0x04, 0xa9, 0x10]);
 	});
 });

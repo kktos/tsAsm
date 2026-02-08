@@ -64,7 +64,10 @@ export class DirectiveHandler {
 		this.register("DL", new DataDirective(runtime, 4)); // Define Long (4 bytes)
 		this.register("LONG", new DataDirective(runtime, 4)); // Define Long (4 bytes)
 
-		this.register("TEXT", new StringDirective(runtime, "TEXT"));
+		const strHandler = new StringDirective(runtime, "TEXT");
+		this.register("TEXT", strHandler);
+		this.register("STR", strHandler);
+		this.register("STRING", strHandler);
 		const cstrHandler = new StringDirective(runtime, "CSTR");
 		this.register("CSTR", cstrHandler);
 		this.register("CSTRING", cstrHandler);

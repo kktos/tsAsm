@@ -30,12 +30,6 @@ export class FillDirective implements IDirective {
 		const [countTokens, valueTokens] = this.parseArguments(argTokens);
 		const count = this.runtime.evaluator.evaluateAsNumber(countTokens, context);
 
-		// If not assembling, just advance PC
-		if (!context.isAssembling) {
-			context.PC.value += count;
-			return;
-		}
-
 		const fillerValue = valueTokens.length > 0 ? this.runtime.evaluator.evaluateAsNumber(valueTokens, context) : 0;
 
 		if (count > 0) {

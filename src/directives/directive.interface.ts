@@ -15,7 +15,6 @@ export type DirectiveContext = Prettify<
 		emitbytes: (bytes: number[]) => void;
 		readSourceFile?: FileHandler["readSourceFile"];
 		readBinaryFile?: FileHandler["readBinaryFile"];
-		isAssembling: boolean;
 		filename: string;
 	}
 >;

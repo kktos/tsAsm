@@ -39,13 +39,11 @@ export class AlignDirective implements IDirective {
 			const newPC = (context.PC.value + boundary - 1) & ~(boundary - 1);
 			const paddingBytes = newPC - context.PC.value;
 
-			if (context.isAssembling && paddingBytes > 0) {
+			if (paddingBytes > 0) {
 				// Ensure filler value is a single byte
 				const filler = fillerValue & 0xff;
 				const bytes = new Array(paddingBytes).fill(filler);
 				context.emitbytes(bytes);
-			} else {
-				context.PC.value = newPC;
 			}
 		} catch (e) {
 			this.runtime.logger.error(`ERROR on line ${directive.line}: Failed to evaluate .ALIGN expression. ${e}`);

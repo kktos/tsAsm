@@ -31,7 +31,6 @@ export class Assembler {
 	public fileHandler: FileHandler;
 
 	public symbolTable: PASymbolTable;
-	private isAssembling = true;
 	private PC: ValueHolder = { value: 0 };
 
 	public lastGlobalLabel: string | null = null;
@@ -248,7 +247,6 @@ export class Assembler {
 
 					const directiveContext: DirectiveContext = {
 						filename: this.streamManager.currentFilepath,
-						isAssembling: this.isAssembling,
 						PC: this.PC,
 						allowForwardRef: true,
 						currentLabel: this.lastGlobalLabel,
@@ -272,7 +270,6 @@ export class Assembler {
 					if (token.value === "=" && this.lastGlobalLabel) {
 						const directiveContext: DirectiveContext = {
 							filename: this.streamManager.currentFilepath,
-							isAssembling: this.isAssembling,
 							PC: this.PC,
 							allowForwardRef: true,
 							currentLabel: this.lastGlobalLabel,
@@ -389,7 +386,6 @@ export class Assembler {
 					if (token.value === "=" && this.lastGlobalLabel) {
 						const directiveContext: DirectiveContext = {
 							filename: this.streamManager.currentFilepath,
-							isAssembling: this.isAssembling,
 							PC: this.PC,
 							macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
 							currentLabel: this.lastGlobalLabel,
@@ -438,7 +434,6 @@ export class Assembler {
 					const streamBefore = this.parser.tokenStreamStack.length;
 					const directiveContext: DirectiveContext = {
 						filename: this.streamManager.currentFilepath,
-						isAssembling: this.isAssembling,
 						PC: this.PC,
 						macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
 						currentLabel: this.lastGlobalLabel,
@@ -523,41 +518,36 @@ export class Assembler {
 			const currentStream = this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState;
 			if (currentStream.macroArgs) operandTokens = this.substituteTokens(operandTokens, currentStream.macroArgs) as OperatorStackToken[];
 
-			if (this.isAssembling) {
-				try {
-					// 1. Resolve Mode & Address
-					const modeInfo = this.cpuHandler.resolveAddressingMode(mnemonicToken.value, operandTokens, (exprTokens, numberMax = 0) =>
-						this.expressionEvaluator.evaluateAsNumber(exprTokens, {
-							PC: this.PC,
-							macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
-							currentLabel: this.lastGlobalLabel,
-							numberMax,
-						}),
-					);
+			try {
+				// 1. Resolve Mode & Address
+				const modeInfo = this.cpuHandler.resolveAddressingMode(mnemonicToken.value, operandTokens, (exprTokens, numberMax = 0) =>
+					this.expressionEvaluator.evaluateAsNumber(exprTokens, {
+						PC: this.PC,
+						macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
+						currentLabel: this.lastGlobalLabel,
+						numberMax,
+					}),
+				);
 
-					// 2. Encode Bytes using resolved info
-					const encodedBytes = this.cpuHandler.encodeInstruction([mnemonicToken, ...operandTokens], {
-						...modeInfo,
-						pc: this.PC.value,
-					});
+				// 2. Encode Bytes using resolved info
+				const encodedBytes = this.cpuHandler.encodeInstruction([mnemonicToken, ...operandTokens], {
+					...modeInfo,
+					pc: this.PC.value,
+				});
 
-					// 3. LOGGING (New location)
-					const operandString = operandTokens.map((t) => (t.type === "NUMBER" ? `$${getHex(Number(t.value))}` : t.value)).join("");
-					this.lister.bytes({
-						addr: instructionPC,
-						bytes: encodedBytes,
-						text: `${mnemonicToken.value} ${operandString}`,
-					});
+				// 3. LOGGING (New location)
+				const operandString = operandTokens.map((t) => (t.type === "NUMBER" ? `$${getHex(Number(t.value))}` : t.value)).join("");
+				this.lister.bytes({
+					addr: instructionPC,
+					bytes: encodedBytes,
+					text: `${mnemonicToken.value} ${operandString}`,
+				});
 
-					this.linker.writeBytes(this.PC.value, encodedBytes);
-					this.PC.value += encodedBytes.length;
-				} catch (e) {
-					const errorMessage = e instanceof Error ? e.message : String(e);
-					throw new Error(`line ${mnemonicToken.line}: Invalid instruction syntax or unresolved symbol. Error: ${errorMessage}`);
-				}
-			} else {
-				// Not assembling: just advance PC
-				this.PC.value += this.getInstructionSize();
+				this.linker.writeBytes(this.PC.value, encodedBytes);
+				this.PC.value += encodedBytes.length;
+			} catch (e) {
+				const errorMessage = e instanceof Error ? e.message : String(e);
+				throw new Error(`line ${mnemonicToken.line}: Invalid instruction syntax or unresolved symbol. Error: ${errorMessage}`);
 			}
 		}
 	}

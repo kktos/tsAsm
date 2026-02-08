@@ -42,9 +42,7 @@ export class HexDirective implements IDirective {
 			bytes.push(byte);
 		}
 
-		if (context.isAssembling && bytes.length > 0) context.emitbytes(bytes);
-
-		if (!context.isAssembling) context.PC.value += bytes.length;
+		if (bytes.length > 0) context.emitbytes(bytes);
 
 		this.lister.directive(directive, `<${bytes.length} bytes>`);
 	}

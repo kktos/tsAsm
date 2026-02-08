@@ -17,12 +17,6 @@ export class StringDirective implements IDirective {
 	}
 
 	public handlePassTwo(directive: ScalarToken, context: DirectiveContext) {
-		// If not assembling, just advance PC
-		if (!context.isAssembling) {
-			context.PC.value += this.calculateSize(directive, context);
-			return;
-		}
-
 		const strings = this.getStrings(directive, context);
 		const bytes = this.encodeData(directive, strings);
 

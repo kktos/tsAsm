@@ -12,19 +12,15 @@ export class DataDirective implements IDirective {
 	) {}
 
 	public handlePassOne(directive: ScalarToken, context: DirectiveContext) {
-		if (context.isAssembling) {
-			// const byteCount = this.calculateDirectiveSize();
-			const byteCount = this.calculateDirectiveSize(directive, context);
-			context.PC.value += byteCount;
-			this.runtime.lister.directive(directive, `<${byteCount} bytes>`);
-		}
+		// const byteCount = this.calculateDirectiveSize();
+		const byteCount = this.calculateDirectiveSize(directive, context);
+		context.PC.value += byteCount;
+		this.runtime.lister.directive(directive, `<${byteCount} bytes>`);
 	}
 
 	public handlePassTwo(directive: ScalarToken, context: DirectiveContext) {
-		if (context.isAssembling) {
-			const bytes = this.encodeDataDirective(directive, context);
-			context.emitbytes(bytes);
-		}
+		const bytes = this.encodeDataDirective(directive, context);
+		context.emitbytes(bytes);
 	}
 
 	private calculateDirectiveSize(directive: ScalarToken, context: DirectiveContext): number {
