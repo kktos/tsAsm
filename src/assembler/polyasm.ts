@@ -552,25 +552,6 @@ export class Assembler {
 		}
 	}
 
-	public getInstructionSize(): number {
-		try {
-			const instructionTokens = this.parser.getInstructionTokens();
-			const mnemonicToken = instructionTokens[0] as ScalarToken;
-			const operandTokens = instructionTokens.slice(1) as OperatorStackToken[];
-
-			const sizeInfo = this.cpuHandler.resolveAddressingMode(mnemonicToken.value, operandTokens, (exprTokens) =>
-				this.expressionEvaluator.evaluateAsNumber(exprTokens, {
-					PC: this.PC,
-					macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
-					currentLabel: this.lastGlobalLabel, // Added for instruction size evaluation
-				}),
-			);
-			return sizeInfo.bytes;
-		} catch (_e) {
-			return this.cpuHandler.cpuType === "ARM_RISC" ? 4 : 3; // Robust default based on CPU type
-		}
-	}
-
 	private substituteTokens(tokens: Token[], macroArgs: Map<string, Token[]>): Token[] {
 		const result: Token[] = [];
 		for (let i = 0; i < tokens.length; i++) {

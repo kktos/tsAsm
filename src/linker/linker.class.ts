@@ -316,7 +316,6 @@ export class Linker {
 
 					const directiveContext: DirectiveContext = {
 						filename: this.streamManager?.currentFilepath ?? "linker",
-						isAssembling: true,
 						PC: this.PC,
 						currentLabel,
 						macroArgs: (parser.tokenStreamStack[parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
@@ -341,7 +340,6 @@ export class Linker {
 					if (token.value === "=" && currentLabel) {
 						const directiveContext: DirectiveContext = {
 							filename: this.streamManager?.currentFilepath ?? "linker",
-							isAssembling: true,
 							PC: this.PC,
 							currentLabel,
 							macroArgs: (parser.tokenStreamStack[parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
