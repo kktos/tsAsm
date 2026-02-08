@@ -273,7 +273,6 @@ export class PASymbolTable {
 		if (symbolName.includes("::")) {
 			[ns, name] = symbolName.split("::") as [string, string];
 			scope = ns.toLowerCase() === "global" ? this.symbols.get(INTERNAL_GLOBAL) : this.symbols.get(ns);
-			if (scope?.has(name)) return { scope: scope, symbol: scope.get(name) as PASymbol };
 		} else {
 			if (nonVolatile) {
 				// Find the first non-volatile scope (bottom-up search)
