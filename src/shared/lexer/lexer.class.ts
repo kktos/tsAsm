@@ -380,7 +380,7 @@ export class AssemblyLexer {
 		}
 
 		// String literals
-		if (ch === '"') return this.scanString(startLine, startColumn);
+		if (ch === '"' || ch === "'") return this.scanString(startLine, startColumn, ch);
 
 		// Numbers (hex $FF, binary %1010, decimal 42)
 		if (this.isDigit(ch) || ch === "$") {
@@ -459,63 +459,68 @@ export class AssemblyLexer {
 		return null; // this.makeToken("COMMENT", value, line, column);
 	}
 
-	private scanString(line: number, column: number): Token {
+	private scanEscapeChar() {
+		let value = "";
+		this.advance(); // skip escape char
+		const escaped = this.peek();
+		this.advance(); // consume escaped char
+		switch (escaped) {
+			case "n":
+				value += "\n";
+				break;
+			case "r":
+				value += "\r";
+				break;
+			case "t":
+				value += "\t";
+				break;
+			case "b":
+				value += "\b";
+				break;
+			case "f":
+				value += "\f";
+				break;
+			case "'":
+				value += "'";
+				break;
+			case '"':
+				value += '"';
+				break;
+			case "\\":
+				value += "\\";
+				break;
+			case "x": {
+				const hexCode = this.currentStream.source.substring(this.currentStream.pos, this.currentStream.pos + 2);
+				if (hexCode.length === 2 && /^[0-9a-fA-F]+$/.test(hexCode)) {
+					value += String.fromCharCode(Number.parseInt(hexCode, 16));
+					this.advance();
+					this.advance();
+				} else {
+					value += "x"; // Not a valid hex escape, treat literally
+				}
+				break;
+			}
+			default:
+				value += escaped; // Unknown escape sequence, treat literally
+		}
+		return value;
+	}
+
+	private scanString(line: number, column: number, delimiter: string): Token {
 		let value = "";
 		this.advance(); // skip opening "
 
-		while (this.peek() !== '"' && this.peek() !== "\n" && this.currentStream.pos < this.currentStream.length) {
-			if (this.peek() === "\\") {
-				this.advance(); // skip escape char
-				const escaped = this.peek();
-				this.advance(); // consume escaped char
-				switch (escaped) {
-					case "n":
-						value += "\n";
-						break;
-					case "r":
-						value += "\r";
-						break;
-					case "t":
-						value += "\t";
-						break;
-					case "b":
-						value += "\b";
-						break;
-					case "f":
-						value += "\f";
-						break;
-					case "'":
-						value += "'";
-						break;
-					case '"':
-						value += '"';
-						break;
-					case "\\":
-						value += "\\";
-						break;
-					case "x": {
-						const hexCode = this.currentStream.source.substring(this.currentStream.pos, this.currentStream.pos + 2);
-						if (hexCode.length === 2 && /^[0-9a-fA-F]+$/.test(hexCode)) {
-							value += String.fromCharCode(Number.parseInt(hexCode, 16));
-							this.advance();
-							this.advance();
-						} else {
-							value += "x"; // Not a valid hex escape, treat literally
-						}
-						break;
-					}
-					default:
-						value += escaped; // Unknown escape sequence, treat literally
-				}
-			} else {
+		while (this.peek() !== delimiter && this.peek() !== "\n" && this.currentStream.pos < this.currentStream.length) {
+			if (this.peek() === "\\") value += this.scanEscapeChar();
+			else {
 				value += this.peek();
 				this.advance();
 			}
 		}
 
-		if (this.peek() === '"') this.advance(); // skip closing "
+		if (this.peek() === delimiter) this.advance(); // skip closing "
 
-		return this.makeToken("STRING", value, line, column);
+		return this.makeToken("STRING", value, line, column, delimiter);
 	}
 
 	private scanNumber(line: number, column: number, negative = false): Token {
