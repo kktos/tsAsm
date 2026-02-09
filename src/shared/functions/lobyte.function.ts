@@ -4,7 +4,13 @@ import type { EvaluationStack, FunctionHandler } from "./types";
 export const lobyteFunction: FunctionHandler = (stack: EvaluationStack, token: Token): void => {
 	const arg = stack.pop();
 
-	if (typeof arg !== "number") throw new Error(`.LOBYTE() requires a number argument on line ${token.line}.`);
+	// this is probably a label not yet resolved (pass 1)
+	if (arg === null) {
+		stack.push(null);
+		return;
+	}
+
+	if (typeof arg !== "number") throw new Error(`.LOBYTE() requires a number argument on line ${token.line}.\n${typeof arg}:${arg}`);
 
 	stack.push(arg & 0xff);
 };
