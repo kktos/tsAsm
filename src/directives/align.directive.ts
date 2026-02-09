@@ -1,3 +1,4 @@
+import type { SymbolValue } from "../assembler/symbol.class";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
 import { getHex } from "../utils/hex.util";
 import type { DirectiveContext, DirectiveRuntime, IDirective } from "./directive.interface";
@@ -20,7 +21,11 @@ export class AlignDirective implements IDirective {
 			if ((boundary & 1) !== 0) this.runtime.logger.warn(`Warning on line ${directive.line}: .ALIGN boundary $${getHex(boundary)} is not a power of two.`);
 
 			const newPC = (context.PC.value + boundary - 1) & ~(boundary - 1);
+			const paddingBytesCount = newPC - context.PC.value;
+
 			context.PC.value = newPC;
+
+			this.runtime.lister.directive(directive, `${boundary} <${paddingBytesCount} bytes>`);
 		} catch (e) {
 			this.runtime.logger.warn(`Warning on line ${directive.line}: Could not evaluate .ALIGN expression. ${e}`);
 		}
@@ -36,14 +41,24 @@ export class AlignDirective implements IDirective {
 
 			const fillerValue = valueTokens.length > 0 ? this.runtime.evaluator.evaluateAsNumber(valueTokens, context) : 0; // Default to 0 if no value is provided
 
-			const newPC = (context.PC.value + boundary - 1) & ~(boundary - 1);
-			const paddingBytes = newPC - context.PC.value;
+			const oldPC = context.PC.value;
 
-			if (paddingBytes > 0) {
+			const newPC = (context.PC.value + boundary - 1) & ~(boundary - 1);
+			const paddingBytesCount = newPC - context.PC.value;
+
+			if (paddingBytesCount > 0) {
 				// Ensure filler value is a single byte
 				const filler = fillerValue & 0xff;
-				const bytes = new Array(paddingBytes).fill(filler);
+				const bytes = new Array(paddingBytesCount).fill(filler);
 				context.emitbytes(bytes);
+
+				this.runtime.lister.directiveWithBytes({
+					addr: oldPC,
+					bytes,
+					pragma: directive,
+					params: [boundary, paddingBytesCount, fillerValue as SymbolValue] as SymbolValue[][],
+					hasText: false,
+				});
 			}
 		} catch (e) {
 			this.runtime.logger.error(`ERROR on line ${directive.line}: Failed to evaluate .ALIGN expression. ${e}`);
