@@ -184,4 +184,13 @@ describe("65C02 Opcodes", () => {
 		const data = assembleAndGetCode(source);
 		expect(data).toEqual([0x60, 0x0a, 0x0a, 0x4a, 0x4a, 0x1a, 0x1a, 0xe6, 0x02, 0x3a, 0x3a, 0x2a, 0x2a, 0x6a, 0x6a]);
 	});
+
+	it("should accept 1 char string as 8-bit value", () => {
+		const source = `
+			lda #"A"
+			lda #'A'
+        `;
+		const data = assembleAndGetCode(source);
+		expect(data).toEqual([0xa9, 0x41, 0xa9, 0x41]);
+	});
 });
