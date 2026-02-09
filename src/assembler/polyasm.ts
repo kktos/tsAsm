@@ -37,8 +37,6 @@ export class Assembler {
 	private lastGlobalLabelLine: string | number = 0;
 	public namelessLabels: NamelessLabels = new NamelessLabels();
 
-	private options: Map<string, string> = new Map();
-
 	public pass: number;
 
 	private wannaLogPass1 = false;
@@ -159,14 +157,9 @@ export class Assembler {
 	}
 
 	public setOption(name: string, value: string) {
-		this.options.set(name, value);
 		const key = `option:${name}`;
 		this.emitter.emit(key, value);
 		this.lister.directive("option", `${name} = "${value}"`);
-	}
-
-	public getOption(name: string) {
-		return this.options.get(name);
 	}
 
 	public setCPUHandler(handler: CPUHandler) {
@@ -523,7 +516,6 @@ export class Assembler {
 				const modeInfo = this.cpuHandler.resolveAddressingMode(mnemonicToken.value, operandTokens, (exprTokens, numberMax = 0) =>
 					this.expressionEvaluator.evaluateAsNumber(exprTokens, {
 						PC: this.PC,
-						macroArgs: (this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
 						currentLabel: this.lastGlobalLabel,
 						numberMax,
 					}),

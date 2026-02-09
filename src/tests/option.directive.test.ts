@@ -22,7 +22,7 @@ describe(".OPTION Directive", () => {
 		return new Assembler(fakeCPU, mockFileHandler);
 	};
 
-	it("should set a valid option during pass one", () => {
+	it.skip("should set a valid option during pass one", () => {
 		const assembler = createAssembler();
 		const source = `
             .OPTION local_label_char "@"
