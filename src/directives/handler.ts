@@ -46,6 +46,9 @@ export class DirectiveHandler {
 
 		const functionDirective = new FunctionDirective(assembler, runtime.lister);
 		this.register("FUNCTION", functionDirective);
+		this.register("FN", functionDirective);
+		this.register("PROC", functionDirective);
+		this.register("PROCEDURE", functionDirective);
 
 		this.register("DEFINE", new DefineDirective(assembler, runtime.lister));
 		this.register("EQU", new EquDirective(assembler, runtime.lister));
