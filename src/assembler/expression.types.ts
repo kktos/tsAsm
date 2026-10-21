@@ -13,42 +13,37 @@ export const PRECEDENCE: Record<string, number> = {
 	// High precedence for array indexing
 	ARRAY_ACCESS: 9,
 
-	// Multiplicative
+	// Binary operators follow ca65's precedence (https://cc65.github.io/doc/ca65.html#ss5.5).
+	// Unlike ca65, `!` stays a high-precedence unary operator (above).
+
+	// Multiplicative, bitwise AND / XOR, shifts
 	"*": 8,
 	"/": 8,
 	"%": 8,
+	"&": 8,
+	"^": 8,
+	"<<": 8,
+	">>": 8,
 
-	// Additive
+	// Additive, bitwise OR
 	"+": 7,
 	"-": 7,
+	"|": 7,
 
-	// Bitwise shifts
-	"<<": 6,
-	">>": 6,
-
-	// Relational
-	"<": 5,
-	">": 5,
-	"<=": 5,
-	">=": 5,
-
-	// Equality
-	"=": 4,
-	"==": 4,
-	"!=": 4,
-
-	// Bitwise AND
-	"&": 3,
+	// Comparisons
+	"<": 6,
+	">": 6,
+	"<=": 6,
+	">=": 6,
+	"=": 6,
+	"==": 6,
+	"!=": 6,
 
 	// Logical AND
-	"&&": 2,
+	"&&": 5,
 
-	// Bitwise XOR
-	"^": 1,
-
-	// Bitwise OR / Logical OR (lowest precedence)
-	"|": 0,
-	"||": 0,
+	// Logical OR (lowest precedence)
+	"||": 4,
 };
 
 export type ValueHolder = { value: number };

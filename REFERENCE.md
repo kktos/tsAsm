@@ -95,6 +95,17 @@ Arrays and objects also come from [`.define`](#structured-data-define) blocks, w
 | `<` `>` (unary) | Low byte and high byte of a 16-bit value |
 | `+` on strings | Concatenation: `"A" + "B"` is `"AB"` |
 
+Precedence follows [ca65](https://cc65.github.io/doc/ca65.html#ss5.5), from the tightest binding to the loosest. Operators on the same line are evaluated left to right.
+
+1. Unary `-`, `<`, `>`, `!`
+2. `*` `/` `%` `&` `^` `<<` `>>`
+3. `+` `-` `|`
+4. Comparisons: `=` `==` `!=` `<` `<=` `>` `>=`
+5. `&&`
+6. `||`
+
+So `1 + 2 << 1` is `5` and `2 ^ 3 && 1` is `1`. Unlike ca65, `!` only applies to the value right after it: `!0 && 0` is `0`.
+
 Parentheses group sub-expressions.
 
 ```as

@@ -62,6 +62,24 @@ describe("ExpressionEvaluator", () => {
 		});
 	});
 
+	describe("ca65 precedence", () => {
+		// Binary operators follow https://cc65.github.io/doc/ca65.html#ss5.5; ! stays a tight unary operator.
+		it.each([
+			["2 ^ 3 && 1", 1], // ^ binds like *, above &&
+			["1 | 2 && 0", 0], // | binds like +, above &&
+			["1 + 2 << 1", 5], // << binds like *
+			["8 >> 1 * 2", 8], // >> and * at the same level, left to right
+			["6 & 3 + 1", 3], // & binds like *
+			["6 & 3 == 2", 1], // & above comparisons
+			["$F0 | 1 * 2", 0xf2],
+			["1 || 0 && 0", 1], // && above ||
+			["!0 && 0", 0], // ! applies to its operand only
+		])("%s = %d", (expression, expected) => {
+			const { evaluator, tokenize } = setup();
+			expect(evaluator.evaluateAsNumber(tokenize(expression as string), { PC: { value: 0 } })).toBe(expected);
+		});
+	});
+
 	describe("Number Formats and Symbols", () => {
 		it("should evaluate different number formats (hex, binary, decimal)", () => {
 			const { evaluator, tokenize } = setup();
@@ -110,11 +128,10 @@ describe("ExpressionEvaluator", () => {
 			expect(evaluator.evaluateAsNumber(tokenize('"A" | $80'), { PC: { value: 0 } })).toBe(0xc1);
 		});
 
-		it("should respect bitwise operator precedence (& > ^ > |)", () => {
+		it("should respect bitwise operator precedence (& and ^ above |)", () => {
 			const { evaluator, tokenize } = setup();
 			// Expression: 12 & 10 ^ 6 | 3
-			// (12 & 10) = 8
-			// (8 ^ 6) = 14
+			// (12 & 10) = 8, then (8 ^ 6) = 14: same level, left to right
 			// (14 | 3) = 15
 			const tokens = tokenize("12 & 10 ^ 6 | 3");
 			const result = evaluator.evaluateAsNumber(tokens, { PC: { value: 0 } });
