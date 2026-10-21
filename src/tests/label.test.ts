@@ -160,6 +160,24 @@ describe("Label References", () => {
 		});
 	});
 
+	describe("Local labels in macros", () => {
+		it("should resolve a local label in a macro expanded twice", () => {
+			const { assembler } = setup();
+			const source = `
+			.macro wait
+			delay:
+			:loop
+				dex
+				bne :loop
+			.end
+				wait
+				wait
+			`;
+			assembler.assemble(source);
+			expect(assembler.link()).toEqual([0xca, 0xd0, 0xfd, 0xca, 0xd0, 0xfd]);
+		});
+	});
+
 	describe("Local Labels with different prefixes", () => {
 		it("should resolve nameless label with a custom prefix from .OPTION", () => {
 			const { assembler } = setup();
@@ -230,6 +248,19 @@ describe("Label References", () => {
 			zp = $10
 			`;
 			expect(() => assembler.assemble(source)).toThrow("Phase error: label 'LBL' is $1006 in pass 1 but $1005 in pass 2");
+		});
+
+		it("should throw when a local label moves between the passes", () => {
+			const { assembler } = setup();
+			const source = `
+			main:
+				lda zp
+				jmp :done
+			:done
+				rts
+			zp = $10
+			`;
+			expect(() => assembler.assemble(source)).toThrow("Phase error: local label 'done' of 'MAIN' is $1006 in pass 1 but $1005 in pass 2");
 		});
 
 		it("should assemble when the symbol is defined before its use", () => {

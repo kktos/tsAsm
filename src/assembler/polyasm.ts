@@ -411,7 +411,7 @@ export class Assembler {
 					if (!this.parser.isOperator("=") && !this.parser.isDirective("EQU")) {
 						// In functions, the scope is lost between the passes
 						if (this.symbolTable.hasSymbolInScope(token.value)) {
-							this.checkLabelPhase(token);
+							this.checkLabelPhase(token.value);
 							this.symbolTable.updateSymbol(token.value, this.PC.value);
 						} else
 							this.symbolTable.defineConstant(token.value, this.PC.value, {
@@ -454,7 +454,7 @@ export class Assembler {
 					// TODO : this is not true anymore
 					// In functions, the scope is lost between the passes
 					if (this.symbolTable.hasSymbolInScope(token.value)) {
-						this.checkLabelPhase(token);
+						this.checkLabelPhase(token.value);
 						this.symbolTable.updateSymbol(token.value, this.PC.value);
 					} else
 						this.symbolTable.defineConstant(token.value, this.PC.value, {
@@ -465,6 +465,21 @@ export class Assembler {
 
 					this.lister.label(token.raw ?? token.value, this.PC.value);
 
+					break;
+				}
+
+				case "LOCAL_LABEL": {
+					// Same as a global label, under the name pass 1 gave it.
+					const qualifiedName = `${this.lastGlobalLabel}.${token.value}`;
+					if (this.symbolTable.hasSymbolInScope(qualifiedName)) {
+						this.checkLabelPhase(qualifiedName, `local label '${token.raw ?? token.value}' of '${this.lastGlobalLabel}'`);
+						this.symbolTable.updateSymbol(qualifiedName, this.PC.value);
+					} else
+						this.symbolTable.defineConstant(qualifiedName, this.PC.value, {
+							filename: this.streamManager.currentFilepath,
+							line: token.line,
+							column: token.column,
+						});
 					break;
 				}
 
@@ -480,11 +495,11 @@ export class Assembler {
 	 * Pass 2: a label must have the same address as in pass 1. If it moved, code before it changed size
 	 * between the passes, and every forward reference to it was assembled with the pass-1 address.
 	 */
-	private checkLabelPhase(token: ScalarToken) {
-		const pass1Value = this.symbolTable.lookupSymbol(token.value);
+	private checkLabelPhase(symbolName: string, description = `label '${symbolName}'`) {
+		const pass1Value = this.symbolTable.lookupSymbol(symbolName);
 		if (typeof pass1Value === "number" && pass1Value !== this.PC.value)
 			throw new Error(
-				`Phase error: label '${token.value}' is $${getHex(pass1Value)} in pass 1 but $${getHex(this.PC.value)} in pass 2. Code before it changed size between the passes, usually because a symbol is used before it is defined: define that symbol earlier.`,
+				`Phase error: ${description} is $${getHex(pass1Value)} in pass 1 but $${getHex(this.PC.value)} in pass 2. Code before it changed size between the passes, usually because a symbol is used before it is defined: define that symbol earlier.`,
 			);
 	}
 
