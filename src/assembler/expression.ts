@@ -146,7 +146,9 @@ export class ExpressionEvaluator {
 							...token,
 							value: "UNARY_MINUS",
 						};
-						this.pushOperatorWithPrecedence(unaryToken, outputQueue, operatorStack);
+						// A prefix operator has no left operand: it never pops another operator still waiting
+						// for its operand, so it's pushed as is (`-<x` is -(<x)).
+						operatorStack.push(unaryToken);
 					}
 					// Unary '+' is a no-op, so we do nothing.
 				} else {
@@ -156,7 +158,7 @@ export class ExpressionEvaluator {
 
 			case "!":
 				if (!isUnary) throw new Error(`Operator '!' must be unary on line ${token.line}.`);
-				this.pushOperatorWithPrecedence(token, outputQueue, operatorStack);
+				operatorStack.push(token); // prefix operator, see UNARY_MINUS
 				break;
 
 			case "*":
@@ -172,7 +174,7 @@ export class ExpressionEvaluator {
 			case "<":
 				if (isUnary) {
 					const unaryToken: OperatorToken = { ...token, value: "UNARY_LSB" };
-					this.pushOperatorWithPrecedence(unaryToken, outputQueue, operatorStack);
+					operatorStack.push(unaryToken); // prefix operator, see UNARY_MINUS
 					break;
 				}
 				this.pushOperatorWithPrecedence(token, outputQueue, operatorStack);
@@ -181,7 +183,7 @@ export class ExpressionEvaluator {
 			case ">":
 				if (isUnary) {
 					const unaryToken: OperatorToken = { ...token, value: "UNARY_MSB" };
-					this.pushOperatorWithPrecedence(unaryToken, outputQueue, operatorStack);
+					operatorStack.push(unaryToken); // prefix operator, see UNARY_MINUS
 					break;
 				}
 				this.pushOperatorWithPrecedence(token, outputQueue, operatorStack);
