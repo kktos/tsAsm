@@ -41,6 +41,8 @@ export class Linker {
 	private finalSegment: Segment = { name: "", start: 0, size: Number.POSITIVE_INFINITY, data: [], resizable: true };
 	/** The segment being written to: none until useSegment() (or link(), which selects the output image). */
 	public currentSegment: Segment | undefined;
+	/** Where each segment's code continues when it's selected again. */
+	private resumePC = new Map<Segment, number>();
 
 	private isLittleEndian = true;
 
@@ -63,6 +65,7 @@ export class Linker {
 		this.emittedModules = new Set();
 		this.finalSegment = { name: "", start: 0, size: Number.POSITIVE_INFINITY, data: [], resizable: true };
 		this.currentSegment = undefined;
+		this.resumePC.clear();
 		this.isLittleEndian = true;
 		this.PC.value = this.startPC;
 	}
@@ -127,10 +130,18 @@ export class Linker {
 		// if (this.currentModule.find((s) => s.name === name)) throw new Error(`Segment already used in module: ${name}`);
 		if (!this.currentModule.find((s) => s.name === name)) this.currentModule.push(seg);
 
-		this.currentSegment = seg;
-		this.PC.value = seg.start;
+		// Leaving a segment: remember where its code continues. Selecting it again resumes there, as other assemblers do.
+		if (this.currentSegment) this.resumePC.set(this.currentSegment, this.PC.value);
 
-		return seg.start;
+		this.currentSegment = seg;
+		this.PC.value = this.resumePC.get(seg) ?? seg.start;
+
+		return this.PC.value;
+	}
+
+	/** At the start of each pass, every segment starts again from its start address. */
+	public resetSegmentPositions() {
+		this.resumePC.clear();
 	}
 
 	public writeBytes(addr: number, values: number[]): void {

@@ -137,4 +137,30 @@ describe("Segments", () => {
 			expect(() => assembler.assemble(".segment S { start: $2000, size: 2 }\n.db 1\n.segment S\n.db 2")).toThrow("No active segment for the bytes at $1000");
 		});
 	});
+
+	describe("selecting a segment again", () => {
+		const assemble = (source: string) => {
+			const assembler = new Assembler(new Cpu6502Handler(), new MockFileHandler(), {
+				segments: [
+					{ name: "A", start: 0x1000, size: 0, resizable: true },
+					{ name: "B", start: 0x1008, size: 0, resizable: true },
+				],
+			});
+			assembler.assemble(source);
+			return assembler.link();
+		};
+
+		it("should continue where the segment left off", () => {
+			expect(assemble(".db 1\n.segment B\n.db 2\n.segment A\n.db 3")).toEqual([0x01, 0x03, 0, 0, 0, 0, 0, 0, 0x02]);
+		});
+
+		it("should continue after an .org", () => {
+			expect(assemble(".org $1004\n.db 9\n.segment B\n.db 2\n.segment A\n.db 3")).toEqual([0, 0, 0, 0, 0x09, 0x03, 0, 0, 0x02]);
+		});
+
+		it("should resolve labels across the switches", () => {
+			// a2 follows a1 in A ($1001); b1 is B's start ($1008)
+			expect(assemble("a1: .db 1\n.segment B\nb1: jmp a2\n.segment A\na2: jmp b1")).toEqual([0x01, 0x4c, 0x08, 0x10, 0, 0, 0, 0, 0x4c, 0x01, 0x10]);
+		});
+	});
 });
