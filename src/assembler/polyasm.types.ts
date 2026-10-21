@@ -10,6 +10,8 @@ export interface StreamState {
 	index: number;
 	macroArgs?: Map<string, Token[]>;
 	cacheName?: string;
+	/** Set on the stream of a macro expansion: the macro's name. */
+	macroName?: string;
 }
 
 export interface FileHandler {
@@ -38,6 +40,7 @@ export interface PushTokenStreamParams {
 	newTokens: Token[];
 	macroArgs?: Map<string, Token[]>;
 	cacheName?: string;
+	macroName?: string;
 	onEndOfStream?: () => void;
 }
 
@@ -49,4 +52,6 @@ export interface AssemblerOptions {
 		pass2Enabled?: boolean;
 	};
 	rawDataProcessors?: { default: string; map: Map<string, DataProcessor> };
+	/** Maximum number of nested macro expansions, to stop runaway recursion (default: 32). */
+	maxMacroDepth?: number;
 }
