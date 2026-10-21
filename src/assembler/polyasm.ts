@@ -410,8 +410,10 @@ export class Assembler {
 					this.lastGlobalLabel = token.value;
 					if (!this.parser.isOperator("=") && !this.parser.isDirective("EQU")) {
 						// In functions, the scope is lost between the passes
-						if (this.symbolTable.hasSymbolInScope(token.value)) this.symbolTable.updateSymbol(token.value, this.PC.value);
-						else
+						if (this.symbolTable.hasSymbolInScope(token.value)) {
+							this.checkLabelPhase(token);
+							this.symbolTable.updateSymbol(token.value, this.PC.value);
+						} else
 							this.symbolTable.defineConstant(token.value, this.PC.value, {
 								filename: this.streamManager.currentFilepath,
 								line: token.line,
@@ -451,8 +453,10 @@ export class Assembler {
 					this.lastGlobalLabel = token.value;
 					// TODO : this is not true anymore
 					// In functions, the scope is lost between the passes
-					if (this.symbolTable.hasSymbolInScope(token.value)) this.symbolTable.updateSymbol(token.value, this.PC.value);
-					else
+					if (this.symbolTable.hasSymbolInScope(token.value)) {
+						this.checkLabelPhase(token);
+						this.symbolTable.updateSymbol(token.value, this.PC.value);
+					} else
 						this.symbolTable.defineConstant(token.value, this.PC.value, {
 							filename: this.streamManager.currentFilepath,
 							line: token.line,
@@ -470,6 +474,18 @@ export class Assembler {
 					break;
 			}
 		}
+	}
+
+	/**
+	 * Pass 2: a label must have the same address as in pass 1. If it moved, code before it changed size
+	 * between the passes, and every forward reference to it was assembled with the pass-1 address.
+	 */
+	private checkLabelPhase(token: ScalarToken) {
+		const pass1Value = this.symbolTable.lookupSymbol(token.value);
+		if (typeof pass1Value === "number" && pass1Value !== this.PC.value)
+			throw new Error(
+				`Phase error: label '${token.value}' is $${getHex(pass1Value)} in pass 1 but $${getHex(this.PC.value)} in pass 2. Code before it changed size between the passes, usually because a symbol is used before it is defined: define that symbol earlier.`,
+			);
 	}
 
 	private handleInstructionPassOne(mnemonicToken: ScalarToken): void {
