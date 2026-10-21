@@ -28,6 +28,10 @@ export class MacroDirective implements IDirective {
 
 		const macroName = nameToken.value;
 
+		// Pass 2 skips a definition by looking it up by name, so a name can only be defined once.
+		if (this.runtime.macroHandler.macroDefinitions.has(macroName))
+			throw `ERROR: Macro '${nameToken.raw ?? macroName}' redefined on line ${directive.line}: a macro can only be defined once.`;
+
 		const { parameters, restParameter } = this.handleMacroParametersDefinition(directive);
 
 		const bodyTokens = this.runtime.parser.getDirectiveBlockTokens(directive.value);

@@ -293,6 +293,8 @@ colours = ["red", "green", "blue"]
     print welcome
 ```
 
+A macro name can only be defined once: defining it again is an error.
+
 The parameters can also be written in parentheses, and the body in braces:
 
 ```as
