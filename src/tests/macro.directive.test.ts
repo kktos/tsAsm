@@ -239,6 +239,93 @@ describe("Macro Handling", () => {
 		});
 	});
 
+	describe("Macro parameter forwarding", () => {
+		const assemble = (source: string) => {
+			const { assembler } = setup();
+			assembler.assemble(source);
+			return assembler.link();
+		};
+
+		it("should forward a parameter to a nested macro, in directives and instructions", () => {
+			expect(
+				assemble(`
+					.macro inner v
+						.db v
+						lda #v
+					.end
+					.macro outer a
+						inner a
+						inner a+1
+					.end
+					outer 9
+				`),
+			).toEqual([0x09, 0xa9, 0x09, 0x0a, 0xa9, 0x0a]);
+		});
+
+		it("should forward parameters whose names clash with the nested macro's", () => {
+			expect(
+				assemble(`
+					.macro inner a, b
+						.db a, b
+					.end
+					.macro outer a, b
+						inner b, a
+					.end
+					outer 1, 2
+				`),
+			).toEqual([0x02, 0x01]);
+		});
+
+		it("should forward an indexed rest parameter and an addressing mode", () => {
+			expect(
+				assemble(`
+					.macro load src
+						lda src
+					.end
+					.macro emit v
+						.db v
+					.end
+					.macro pick ...p
+						emit p[1]
+						load p[0]
+					.end
+					table: .db 0
+					pick <table,x>, 5
+				`),
+			).toEqual([0x00, 0x05, 0xbd, 0x00, 0x10]);
+		});
+
+		it("should forward from inside a .repeat block", () => {
+			expect(
+				assemble(`
+					.macro inner v
+						.db v
+					.end
+					.macro outer a
+						.repeat 2 AS i
+							inner a+i
+						.end
+					.end
+					outer 10
+				`),
+			).toEqual([0x0b, 0x0c]);
+		});
+
+		it("should support recursion with an end condition", () => {
+			expect(
+				assemble(`
+					.macro down n
+						.if n > 0
+							.db n
+							down n-1
+						.end
+					.end
+					down 5
+				`),
+			).toEqual([5, 4, 3, 2, 1]);
+		});
+	});
+
 	describe("Macro nesting depth", () => {
 		const nested = `
 			.macro m3
@@ -262,6 +349,12 @@ describe("Macro Handling", () => {
 			const assembler = new Assembler(new Cpu65C02Handler(), new MockFileHandler(), { segments: DEFAULT_SEGMENTS, maxMacroDepth: 3 });
 			assembler.assemble(nested);
 			expect(assembler.link()).toEqual([3]);
+		});
+
+		it("should stop a recursive macro with an end condition at maxMacroDepth", () => {
+			const { assembler } = setup();
+			const down = (n: number) => `.macro down n\n.if n > 0\ndown n-1\n.end\n.end\n down ${n}`;
+			expect(() => assembler.assemble(down(40))).toThrow("Macro 'DOWN' nested more than 32 levels deep");
 		});
 
 		it("should throw beyond maxMacroDepth", () => {
