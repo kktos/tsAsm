@@ -127,4 +127,29 @@ describe("Data Directives", () => {
 		const machineCode = assembler.link();
 		expect(machineCode).toEqual([0x80, 0x02, 0x04, 0x10, 0x60]);
 	});
+
+	describe("value ranges", () => {
+		const assemble = (source: string) => {
+			const assembler = createAssembler();
+			assembler.assemble(source);
+			return assembler.link();
+		};
+
+		it("should accept signed and unsigned values at the limits", () => {
+			expect(assemble(".DB 255, -128\n.DW $FFFF, -32768\n.DL $FFFFFFFF, -1")).toEqual([
+				0xff, 0x80, 0xff, 0xff, 0x00, 0x80, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+			]);
+		});
+
+		it.each([
+			[".DB 256", ".DB value on line 1: 256 doesn't fit in a byte (-128..255)."],
+			[".DB -129", ".DB value on line 1: -129 doesn't fit in a byte (-128..255)."],
+			[".DW $10000", ".DW value on line 1: 65536 doesn't fit in 2 bytes (-32768..65535)."],
+			[".DL $100000000", ".DL value on line 1: 4294967296 doesn't fit in 4 bytes (-2147483648..4294967295)."],
+			[".FILL 2, 256", ".FILL value on line 1: 256 doesn't fit in a byte (-128..255)."],
+			[".DB 1\n.ALIGN 4, 256", ".ALIGN value on line 2: 256 doesn't fit in a byte (-128..255)."],
+		])("should throw on an out-of-range value: %s", (source, message) => {
+			expect(() => assemble(source)).toThrow(message);
+		});
+	});
 });

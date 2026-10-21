@@ -1,5 +1,6 @@
 import type { SymbolValue } from "../assembler/symbol.class";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
+import { assertFitsInBytes } from "../utils/number.utils";
 import type { DirectiveContext, DirectiveRuntime, IDirective } from "./directive.interface";
 
 export class FillDirective implements IDirective {
@@ -31,6 +32,7 @@ export class FillDirective implements IDirective {
 		const count = this.runtime.evaluator.evaluateAsNumber(countTokens, context);
 
 		const fillerValue = valueTokens.length > 0 ? this.runtime.evaluator.evaluateAsNumber(valueTokens, context) : 0;
+		assertFitsInBytes(fillerValue, 1, `.${directive.value} value on line ${directive.line}:`);
 
 		if (count > 0) {
 			// Ensure filler value is a single byte
