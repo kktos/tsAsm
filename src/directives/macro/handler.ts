@@ -15,6 +15,8 @@ export class MacroHandler {
 		private readonly lister: ILister,
 		/** Maximum number of nested macro expansions. */
 		private readonly maxDepth = DEFAULT_MAX_MACRO_DEPTH,
+		/** Replaces macro parameters in tokens by their arguments. Needed to forward parameters to a nested macro call. */
+		private readonly substituteArgs?: (tokens: Token[], macroArgs: Map<string, Token[]>) => Token[],
 	) {}
 
 	public isMacro(name: string): boolean {
@@ -35,7 +37,14 @@ export class MacroHandler {
 				`Macro '${macroName}' nested more than ${this.maxDepth} levels deep on line ${macroToken.line}. Is it recursive without an end condition?`,
 			);
 
-		const passedArgsArray = this.parseMacroArguments(macroToken.line);
+		let passedArgsArray = this.parseMacroArguments(macroToken.line);
+
+		// Called from inside another macro: the arguments can use that macro's parameters.
+		// Replace them now, as arguments are evaluated without any macro parameters in scope.
+		const callerArgs = this.parser.tokenStreamStack.at(-1)?.macroArgs;
+		const substituteArgs = this.substituteArgs;
+		if (callerArgs && substituteArgs) passedArgsArray = passedArgsArray.map((argTokens) => substituteArgs(argTokens, callerArgs));
+
 		const macroArgs = new Map<string, Token[]>();
 
 		const scopeName = `@@macro_${macroName}_${macroToken.line}__`;

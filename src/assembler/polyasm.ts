@@ -81,7 +81,9 @@ export class Assembler {
 		this.parser = new Parser(this.emitter);
 		this.streamManager = new StreamManager(this.fileHandler, this.parser);
 
-		this.macroHandler = new MacroHandler(this.parser, this.symbolTable, this.lister, options?.maxMacroDepth);
+		this.macroHandler = new MacroHandler(this.parser, this.symbolTable, this.lister, options?.maxMacroDepth, (tokens, macroArgs) =>
+			this.substituteTokens(tokens, macroArgs),
+		);
 
 		const runtime: DirectiveRuntime = {
 			parser: this.parser,
