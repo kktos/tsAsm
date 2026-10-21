@@ -80,6 +80,19 @@ describe("ExpressionEvaluator", () => {
 		});
 	});
 
+	describe("Chained unary operators", () => {
+		it.each([
+			["-<$1234", -0x34],
+			["<>$1234", 0x12],
+			["!!5", 1],
+			["!!0", 0],
+			["-<$1234 * 2", -0x68], // unary operators still bind tighter than binary ones
+		])("%s = %d", (expression, expected) => {
+			const { evaluator, tokenize } = setup();
+			expect(evaluator.evaluateAsNumber(tokenize(expression as string), { PC: { value: 0 } })).toBe(expected);
+		});
+	});
+
 	describe("Number Formats and Symbols", () => {
 		it("should evaluate different number formats (hex, binary, decimal)", () => {
 			const { evaluator, tokenize } = setup();
