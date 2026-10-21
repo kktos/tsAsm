@@ -217,4 +217,32 @@ describe("Label References", () => {
 			expect(machineCode).toEqual([0xad, 0x70, 0xc0, 0xa0, 0x00, 0xea, 0xea, 0xbd, 0x64, 0xc0, 0x10, 0x04, 0xc8, 0xd0, 0xf8, 0x88, 0x60]);
 		});
 	});
+
+	describe("Phase errors", () => {
+		it("should throw when a label moves between the passes", () => {
+			const { assembler } = setup();
+			// pass 1 sizes 'lda zp' as absolute (zp unknown yet), pass 2 as zero page: lbl moves from $1006 to $1005
+			const source = `
+				lda zp
+				jmp lbl
+			lbl:
+				rts
+			zp = $10
+			`;
+			expect(() => assembler.assemble(source)).toThrow("Phase error: label 'LBL' is $1006 in pass 1 but $1005 in pass 2");
+		});
+
+		it("should assemble when the symbol is defined before its use", () => {
+			const { assembler } = setup();
+			const source = `
+			zp = $10
+				lda zp
+				jmp lbl
+			lbl:
+				rts
+			`;
+			assembler.assemble(source);
+			expect(assembler.link()).toEqual([0xa5, 0x10, 0x4c, 0x05, 0x10, 0x60]);
+		});
+	});
 });
