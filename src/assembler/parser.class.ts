@@ -417,10 +417,13 @@ export class Parser {
 		return tokens;
 	}
 
-	private getKeywordBlock(_startDirective: string, terminators: string[]): Token[] {
+	private getKeywordBlock(startDirective: string, terminators: string[]): Token[] {
 		const tokens: Token[] = [];
 		let nestingDepth = 0;
 		let braceDepth = 0;
+		let terminated = false;
+		// The block starts after its directive's line: the previous token is on that line.
+		const startLine = this.ensureToken(this.getPosition() - 1)?.line;
 
 		if (!terminators.includes("END")) terminators.push("END");
 
@@ -470,6 +473,7 @@ export class Parser {
 				// Only consider terminators at OUR level (depth 0)
 				if (nestingDepth === 0 && terminators.includes(directiveName)) {
 					this.advance(2);
+					terminated = true;
 					break;
 				}
 
@@ -481,6 +485,7 @@ export class Parser {
 						nestingDepth--;
 					} else {
 						// This END belongs to us - we're done, but we consumed it
+						terminated = true;
 						break;
 					}
 					tokens.push(current);
@@ -492,6 +497,9 @@ export class Parser {
 			tokens.push(current);
 			this.advance();
 		}
+
+		// Reaching the end of the source means the block's .END is missing: don't silently take the rest of the file.
+		if (!terminated) throw new Error(`Missing .END for the .${startDirective} block on line ${startLine}.`);
 
 		return tokens;
 	}
