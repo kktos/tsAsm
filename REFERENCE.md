@@ -88,7 +88,7 @@ Arrays and objects also come from [`.define`](#structured-data-define) blocks, w
 | `+` `-` `*` `/` `%` | Arithmetic. `/` is not an integer division: `7 / 2` is `3.5` (see `.floor`, `.ceil`, `.round`). |
 | `-` (unary) | Negation |
 | `<<` `>>` | Shifts |
-| `&` `\|` `^` | Bitwise AND, OR, XOR |
+| `&` `\|` `^` | Bitwise AND, OR, XOR. Bitwise and shift results are 32-bit: unsigned when the operands are not negative (`$80000000 >> 4` is `$08000000`), signed (two's complement) when one is (`-8 >> 1` is `-4`). |
 | `=` or `==`, `!=` | Equality. Works on numbers and on strings. |
 | `<` `<=` `>` `>=` | Numeric comparison |
 | `!` `&&` `\|\|` | Logical NOT, AND, OR. The result is `1` (true) or `0` (false). |

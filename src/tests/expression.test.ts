@@ -150,6 +150,22 @@ describe("ExpressionEvaluator", () => {
 			const result = evaluator.evaluateAsNumber(tokens, { PC: { value: 0 } });
 			expect(result).toBe(15);
 		});
+
+		it.each([
+			// non-negative operands: unsigned 32-bit result, logical right shift
+			["$FFFFFFFF | 0", 0xffffffff],
+			["$FFFFFFFF & $FFFFFFFF", 0xffffffff],
+			["$F0000000 ^ 0", 0xf0000000],
+			["1 << 31", 0x80000000],
+			["$80000000 >> 4", 0x08000000],
+			// a negative operand: signed, as two's complement
+			["-1 | 0", -1],
+			["-8 >> 1", -4],
+			["-1 << 4", -16],
+		])("should give 32-bit results signed only for negative operands: %s", (expression, expected) => {
+			const { evaluator, tokenize } = setup();
+			expect(evaluator.evaluateAsNumber(tokenize(expression as string), { PC: { value: 0 } })).toBe(expected);
+		});
 	});
 
 	describe("Comparison Operators", () => {
