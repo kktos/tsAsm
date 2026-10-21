@@ -35,33 +35,30 @@ export class AlignDirective implements IDirective {
 		const alignExpressionTokens = this.runtime.parser.getInstructionTokens();
 		const [boundaryTokens, valueTokens] = this.parseArguments(alignExpressionTokens);
 
-		try {
-			const boundary = this.runtime.evaluator.evaluateAsNumber(boundaryTokens, context);
-			if (boundary <= 0) return;
+		// All symbols are known in pass 2, so an evaluation error is a real error: let it propagate.
+		const boundary = this.runtime.evaluator.evaluateAsNumber(boundaryTokens, context);
+		if (boundary <= 0) return;
 
-			const fillerValue = valueTokens.length > 0 ? this.runtime.evaluator.evaluateAsNumber(valueTokens, context) : 0; // Default to 0 if no value is provided
+		const fillerValue = valueTokens.length > 0 ? this.runtime.evaluator.evaluateAsNumber(valueTokens, context) : 0; // Default to 0 if no value is provided
 
-			const oldPC = context.PC.value;
+		const oldPC = context.PC.value;
 
-			const newPC = (context.PC.value + boundary - 1) & ~(boundary - 1);
-			const paddingBytesCount = newPC - context.PC.value;
+		const newPC = (context.PC.value + boundary - 1) & ~(boundary - 1);
+		const paddingBytesCount = newPC - context.PC.value;
 
-			if (paddingBytesCount > 0) {
-				// Ensure filler value is a single byte
-				const filler = fillerValue & 0xff;
-				const bytes = new Array(paddingBytesCount).fill(filler);
-				context.emitbytes(bytes);
+		if (paddingBytesCount > 0) {
+			// Ensure filler value is a single byte
+			const filler = fillerValue & 0xff;
+			const bytes = new Array(paddingBytesCount).fill(filler);
+			context.emitbytes(bytes);
 
-				this.runtime.lister.directiveWithBytes({
-					addr: oldPC,
-					bytes,
-					pragma: directive,
-					params: [boundary, paddingBytesCount, fillerValue as SymbolValue] as SymbolValue[][],
-					hasText: false,
-				});
-			}
-		} catch (e) {
-			this.runtime.logger.error(`ERROR on line ${directive.line}: Failed to evaluate .ALIGN expression. ${e}`);
+			this.runtime.lister.directiveWithBytes({
+				addr: oldPC,
+				bytes,
+				pragma: directive,
+				params: [boundary, paddingBytesCount, fillerValue as SymbolValue] as SymbolValue[][],
+				hasText: false,
+			});
 		}
 	}
 

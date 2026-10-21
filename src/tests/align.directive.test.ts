@@ -106,4 +106,18 @@ describe(".ALIGN", () => {
 		expect(sink.warnings.length).toBe(1);
 		expect(sink.warnings[0]).toContain("not a power of two");
 	});
+
+	it("should throw if the boundary can't be evaluated", () => {
+		const logger = new Logger({ sink: new MemorySink(), enabled: true });
+		const segments = [{ name: "CODE", start: 0x1000, size: 0, resizable: true }];
+		const assembler = createAssembler(segments, logger);
+		expect(() => assembler.assemble(".align undefinedSym")).toThrow("Undefined symbol 'UNDEFINEDSYM'");
+	});
+
+	it("should throw if the fill value can't be evaluated", () => {
+		const logger = new Logger({ sink: new MemorySink(), enabled: true });
+		const segments = [{ name: "CODE", start: 0x1001, size: 0, resizable: true }];
+		const assembler = createAssembler(segments, logger);
+		expect(() => assembler.assemble(".org $1001\n.align 4, undefinedSym")).toThrow("Undefined symbol 'UNDEFINEDSYM'");
+	});
 });
