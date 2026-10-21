@@ -623,24 +623,26 @@ export class ExpressionEvaluator {
 				// stack.push(Math.floor(left / right)); // Integer division
 				stack.push(left / right);
 				break;
+			// Bitwise results are 32-bit. With non-negative operands they're unsigned ($80000000 >> 4 is $08000000);
+			// with a negative operand they stay signed, as two's complement (-8 >> 1 is -4).
 			case "&":
-				stack.push(left & right);
+				stack.push(left >= 0 && right >= 0 ? (left & right) >>> 0 : left & right);
 				break;
 			case "|":
-				stack.push(left | right);
+				stack.push(left >= 0 && right >= 0 ? (left | right) >>> 0 : left | right);
 				break;
 			case "^":
-				stack.push(left ^ right);
+				stack.push(left >= 0 && right >= 0 ? (left ^ right) >>> 0 : left ^ right);
 				break;
 			case "%":
 				if (right === 0) throw new Error("Modulo by zero.");
 				stack.push(left % right);
 				break;
 			case "<<":
-				stack.push(left << right);
+				stack.push(left >= 0 ? (left << right) >>> 0 : left << right);
 				break;
 			case ">>":
-				stack.push(left >> right);
+				stack.push(left >= 0 ? left >>> right : left >> right);
 				break;
 			case "&&":
 				stack.push(left !== 0 && right !== 0 ? 1 : 0);
