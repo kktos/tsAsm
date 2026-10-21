@@ -131,4 +131,5 @@ try {
 	}
 } catch (e) {
 	logger.error(e);
+	process.exitCode = 1;
 }
