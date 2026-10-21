@@ -1,6 +1,7 @@
 import type { SymbolValue } from "../assembler/symbol.class";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
 import { getHex } from "../utils/hex.util";
+import { assertFitsInBytes } from "../utils/number.utils";
 import type { DirectiveContext, DirectiveRuntime, IDirective } from "./directive.interface";
 
 export class AlignDirective implements IDirective {
@@ -40,6 +41,7 @@ export class AlignDirective implements IDirective {
 		if (boundary <= 0) return;
 
 		const fillerValue = valueTokens.length > 0 ? this.runtime.evaluator.evaluateAsNumber(valueTokens, context) : 0; // Default to 0 if no value is provided
+		assertFitsInBytes(fillerValue, 1, `.${directive.value} value on line ${directive.line}:`);
 
 		const oldPC = context.PC.value;
 

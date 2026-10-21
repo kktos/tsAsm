@@ -1,5 +1,6 @@
 import type { SymbolValue } from "../assembler/symbol.class";
 import type { ScalarToken } from "../shared/lexer/lexer.class";
+import { assertFitsInBytes } from "../utils/number.utils";
 import type { DirectiveContext, DirectiveRuntime, IDirective } from "./directive.interface";
 
 export class DataDirective implements IDirective {
@@ -77,6 +78,7 @@ export class DataDirective implements IDirective {
 					break;
 				}
 				case "number": {
+					assertFitsInBytes(value, this.bytesPerElement, `.${directive.value} value on line ${directive.line}:`);
 					for (let i = 0; i < this.bytesPerElement; i++) outputBytes.push((value >> (i * 8)) & 0xff);
 					params.push(value);
 					break;
