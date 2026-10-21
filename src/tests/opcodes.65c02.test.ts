@@ -193,4 +193,30 @@ describe("65C02 Opcodes", () => {
 		const data = assembleAndGetCode(source);
 		expect(data).toEqual([0xa9, 0x41, 0xa9, 0x41]);
 	});
+
+	describe("operand ranges", () => {
+		it("should accept operands at the limits, and < > on any 16-bit value", () => {
+			const source = `
+				LDA #255
+				LDA #-128
+				LDA #<$1232
+				LDA #>$1232
+				LDA $FFFF
+				LDA ($FF),Y
+			`;
+			expect(assembleAndGetCode(source)).toEqual([0xa9, 0xff, 0xa9, 0x80, 0xa9, 0x32, 0xa9, 0x12, 0xad, 0xff, 0xff, 0xb1, 0xff]);
+		});
+
+		it.each([
+			["LDA #256", "Immediate value 256 doesn't fit in a byte (-128..255)."],
+			["LDA #$80+$80", "Immediate value 256 doesn't fit in a byte (-128..255)."],
+			["LDA #big\nbig = $1234", "Immediate value 4660 doesn't fit in a byte (-128..255)."],
+			["LDA $10000", "Address 65536 is out of range ($0..$FFFF)."],
+			["LDA $12345,X", "Address 74565 is out of range ($0..$FFFF)."],
+			["JMP ($10000)", "Address 65536 is out of range ($0..$FFFF)."],
+			["LDA ($1234),Y", "Zero page address 4660 is out of range ($0..$FF)."],
+		])("should throw on an out-of-range operand: %s", (source, message) => {
+			expect(() => assembleAndGetCode(source)).toThrow(message);
+		});
+	});
 });

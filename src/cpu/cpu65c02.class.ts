@@ -1,5 +1,6 @@
 import type { OperatorStackToken, Token } from "../shared/lexer/lexer.class";
 import { getHex } from "../utils/hex.util";
+import { assertFitsInBytes } from "../utils/number.utils";
 import type { AddressingMode, CPUHandler } from "./cpuhandler.interface";
 
 export class Cpu65C02Handler implements CPUHandler {
@@ -385,6 +386,12 @@ export class Cpu65C02Handler implements CPUHandler {
 	}
 
 	/** Extracts tokens between two delimiters (e.g., inside parentheses). */
+	/** Throws unless an address operand is within 0..max. In pass 1, a forward reference is null and is checked in pass 2. */
+	private checkAddress(address: number | null, max: 0xff | 0xffff) {
+		if (address !== null && (address < 0 || address > max))
+			throw new Error(`${max === 0xff ? "Zero page address" : "Address"} ${address} is out of range ($0..$${getHex(max)}).`);
+	}
+
 	private extractTokensBetween(tokens: OperatorStackToken[], startVal: string, endVal: string) {
 		const start = tokens.findIndex((t) => t.value === startVal);
 		const end = tokens.findIndex((t) => t.value === endVal);
@@ -465,6 +472,7 @@ export class Cpu65C02Handler implements CPUHandler {
 		if (operandTokens[0]?.value === "#") {
 			const expressionTokens = operandTokens.slice(1);
 			const resolvedAddress = resolveValue(expressionTokens, 256);
+			if (resolvedAddress !== null) assertFitsInBytes(resolvedAddress, 1, "Immediate value");
 			const [opcode, bytes] = getOpcode(this.M65C02_MODES.IMMEDIATE);
 			return {
 				mode: this.M65C02_MODES.IMMEDIATE,
@@ -482,6 +490,7 @@ export class Cpu65C02Handler implements CPUHandler {
 			if (lastToken?.value.toUpperCase() === "Y" && operandTokens[numTokens - 2]?.value === ",") {
 				const expressionTokens = this.extractTokensBetween(operandTokens, "(", ")");
 				const resolvedAddress = resolveValue(expressionTokens);
+				this.checkAddress(resolvedAddress, 0xff);
 				const [opcode, bytes] = getOpcode(this.M65C02_MODES.INDIRECT_Y);
 				return {
 					mode: this.M65C02_MODES.INDIRECT_Y,
@@ -498,6 +507,7 @@ export class Cpu65C02Handler implements CPUHandler {
 				if (baseMnemonic === "JMP" && secondToLast?.value.toUpperCase() === "X" && operandTokens[numTokens - 3]?.value === ",") {
 					const expressionTokens = this.extractTokensBetween(operandTokens, "(", ",");
 					const resolvedAddress = resolveValue(expressionTokens);
+					this.checkAddress(resolvedAddress, 0xffff);
 					const [opcode, bytes] = getOpcode(this.M65C02_MODES.ABSOLUTE_INDIRECT_X);
 					return {
 						mode: this.M65C02_MODES.ABSOLUTE_INDIRECT_X,
@@ -511,6 +521,7 @@ export class Cpu65C02Handler implements CPUHandler {
 				if (secondToLast?.value.toUpperCase() === "X" && operandTokens[numTokens - 3]?.value === ",") {
 					const expressionTokens = this.extractTokensBetween(operandTokens, "(", ",");
 					const resolvedAddress = resolveValue(expressionTokens);
+					this.checkAddress(resolvedAddress, 0xff);
 					const [opcode, bytes] = getOpcode(this.M65C02_MODES.INDIRECT_X);
 					return {
 						mode: this.M65C02_MODES.INDIRECT_X,
@@ -525,6 +536,7 @@ export class Cpu65C02Handler implements CPUHandler {
 
 				// Indirect JMP: ($addr)
 				if (baseMnemonic === "JMP") {
+					this.checkAddress(resolvedAddress, 0xffff);
 					const [opcode, bytes] = getOpcode(this.M65C02_MODES.INDIRECT);
 					return {
 						mode: this.M65C02_MODES.INDIRECT,
@@ -535,6 +547,7 @@ export class Cpu65C02Handler implements CPUHandler {
 				}
 
 				// Zero Page Indirect: (zp)
+				this.checkAddress(resolvedAddress, 0xff);
 				const [opcode, bytes] = getOpcode(this.M65C02_MODES.ZEROPAGE_INDIRECT);
 				return {
 					mode: this.M65C02_MODES.ZEROPAGE_INDIRECT,
@@ -555,6 +568,7 @@ export class Cpu65C02Handler implements CPUHandler {
 			if (comma === ",") {
 				const expressionTokens = operandTokens.slice(0, numTokens - 2);
 				const resolvedAddress = resolveValue(expressionTokens);
+				this.checkAddress(resolvedAddress, 0xffff);
 
 				const isZP = resolvedAddress !== null && resolvedAddress >= 0x00 && resolvedAddress <= 0xff;
 
@@ -600,6 +614,7 @@ export class Cpu65C02Handler implements CPUHandler {
 
 		// 6. Absolute/Zero Page Direct (e.g., LDA $1234 or LDA MyLabel)
 		const resolvedAddress = resolveValue(operandTokens);
+		this.checkAddress(resolvedAddress, 0xffff);
 		const isZP = resolvedAddress !== null && resolvedAddress >= 0x00 && resolvedAddress <= 0xff;
 
 		let mode: AddressingMode;

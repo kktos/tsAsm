@@ -388,7 +388,6 @@ export class ExpressionEvaluator {
 				case "NUMBER": {
 					// const num = Number.parseInt(token.value, 10);
 					const num = Number.parseFloat(token.value);
-					if (context.numberMax && num > context.numberMax) throw new Error(`Number Overflow '${num}'>${context.numberMax}' .`);
 					stack.push(num);
 					break;
 				}
