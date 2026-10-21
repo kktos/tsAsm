@@ -334,7 +334,7 @@ export class Assembler {
 				}
 
 				case "ANONYMOUS_LABEL_DEF": {
-					this.namelessLabels.add({ address: this.PC.value, ...token, file: this.streamManager.currentFilepath });
+					this.namelessLabels.add(this.PC.value);
 					break;
 				}
 
@@ -355,6 +355,7 @@ export class Assembler {
 	private passTwo(): void {
 		this.logger.log("\n--- Starting Pass 2: Code Generation ---");
 		this.pass = 2;
+		this.namelessLabels.rewind();
 		if (this.linker.segments.length) this.PC.value = this.linker.segments[0] ? this.linker.segments[0].start : DEFAULT_PC;
 
 		this.symbolTable.setNamespace("global");
@@ -483,10 +484,11 @@ export class Assembler {
 					break;
 				}
 
-				case "ANONYMOUS_LABEL_DEF":
-					this.namelessLabels.add({ address: this.PC.value, ...token, file: this.streamManager.currentFilepath });
-
+				case "ANONYMOUS_LABEL_DEF": {
+					const pass1Address = this.namelessLabels.update(this.PC.value);
+					if (pass1Address !== undefined && pass1Address !== this.PC.value) throw this.phaseError(`anonymous label on line ${token.line}`, pass1Address);
 					break;
+				}
 			}
 		}
 	}
@@ -497,10 +499,13 @@ export class Assembler {
 	 */
 	private checkLabelPhase(symbolName: string, description = `label '${symbolName}'`) {
 		const pass1Value = this.symbolTable.lookupSymbol(symbolName);
-		if (typeof pass1Value === "number" && pass1Value !== this.PC.value)
-			throw new Error(
-				`Phase error: ${description} is $${getHex(pass1Value)} in pass 1 but $${getHex(this.PC.value)} in pass 2. Code before it changed size between the passes, usually because a symbol is used before it is defined: define that symbol earlier.`,
-			);
+		if (typeof pass1Value === "number" && pass1Value !== this.PC.value) throw this.phaseError(description, pass1Value);
+	}
+
+	private phaseError(description: string, pass1Value: number) {
+		return new Error(
+			`Phase error: ${description} is $${getHex(pass1Value)} in pass 1 but $${getHex(this.PC.value)} in pass 2. Code before it changed size between the passes, usually because a symbol is used before it is defined: define that symbol earlier.`,
+		);
 	}
 
 	private handleInstructionPassOne(mnemonicToken: ScalarToken): void {
