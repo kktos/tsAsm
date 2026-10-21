@@ -282,4 +282,8 @@ describe("AssemblyLexer", () => {
 			{ type: "IDENTIFIER", value: "START", raw: "START" },
 		]);
 	});
+
+	test.each(["LDA $", "LDA #$x", "LDA $_", ".DB $, 1"])("should throw on '$' without hex digits: %s", (source) => {
+		expect(() => lexer.tokenize(source)).toThrow("'$' must be followed by hexadecimal digits");
+	});
 });
