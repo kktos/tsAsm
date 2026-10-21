@@ -72,8 +72,13 @@ export class ExpressionEvaluator {
 			}
 		};
 
+		// Only commas at the top level separate elements: not those of a nested array or of a function call.
+		let depth = 0;
 		for (const token of tokens) {
-			if (token.type === "COMMA") {
+			if (token.type === "OPERATOR" && (token.value === "(" || token.value === "[")) depth++;
+			else if (token.type === "OPERATOR" && (token.value === ")" || token.value === "]")) depth--;
+
+			if (token.type === "COMMA" && depth === 0) {
 				evaluateAndPush();
 			} else {
 				currentExpression.push(token);
@@ -265,7 +270,8 @@ export class ExpressionEvaluator {
 					lastToken.type === "LOCAL_LABEL" ||
 					lastToken.type === "ANONYMOUS_LABEL_REF" ||
 					lastToken.type === "ARRAY" ||
-					lastToken.value === ")"); // closing parenthesis of a sub-expression or array access
+					lastToken.value === ")" || // closing parenthesis of a sub-expression
+					lastToken.value === "]"); // closing bracket of an array access: `t[1][0]` indexes again
 
 			if (processedToken?.value === "[" && !isPrecededByOperand) {
 				// Array literal detection

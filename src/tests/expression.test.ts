@@ -280,6 +280,30 @@ describe("ExpressionEvaluator", () => {
 		});
 	});
 
+	describe("Nested arrays", () => {
+		it.each([
+			[
+				"[[1,2],[3,4]]",
+				[
+					[1, 2],
+					[3, 4],
+				],
+			],
+			["[[1,[2,3]],4]", [[1, [2, 3]], 4]],
+			["[.hex(10, 4), .iif(1, 2, 3)]", ["$000A", 2]], // commas of a function call don't split the array
+			["[[1,2],[3,4]][1][0]", 3],
+		])("%s", (expression, expected) => {
+			const { evaluator, tokenize } = setup();
+			expect(evaluator.evaluate(tokenize(expression as string), { PC: { value: 0 } })).toEqual(expected);
+		});
+
+		it("should index a nested array twice", () => {
+			const { assembler } = setup();
+			assembler.assemble("t = [[1,2],[3,4]]\nv = t[0][1] + t[1][1]");
+			expect(assembler.symbolTable.lookupSymbol("V")).toBe(6);
+		});
+	});
+
 	describe("Array Functions", () => {
 		it("should evaluate .SPLIT() with default delimiter", () => {
 			const { evaluator, tokenize } = setup();
