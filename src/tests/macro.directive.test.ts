@@ -44,17 +44,14 @@ describe("Macro Handling", () => {
 		it("should perform a full macro expansion with argument substitution", () => {
 			const { assembler, symbolTable } = setup();
 
-			// Define a simple macro
+			// Define a simple macro, then use it (each assemble() call starts afresh)
 			assembler.assemble(`.MACRO MY_MACRO(arg1, arg2)
 				LDA #arg1
 				STA $2000
 				LDA #arg2
 				STA $2001
-				.END`);
-
-			// Now, use the macro
-			const source = "MY_MACRO(10, 20)";
-			assembler.assemble(source);
+				.END
+				MY_MACRO(10, 20)`);
 
 			const machineCode6502 = assembler.link();
 			expect(machineCode6502).toEqual([0xa9, 0x0a, 0x8d, 0x00, 0x20, 0xa9, 0x14, 0x8d, 0x01, 0x20]);
@@ -153,7 +150,7 @@ describe("Macro Handling", () => {
 		it("should perform a full argument substitution", () => {
 			const { assembler, symbolTable } = setup();
 
-			// Define a simple macro
+			// Define a simple macro, then use it (each assemble() call starts afresh)
 			assembler.assemble(`
 				.MACRO MY_MACRO arg1, arg2
 					LDA arg1
@@ -161,11 +158,8 @@ describe("Macro Handling", () => {
 					LDA arg2
 					STA $2001
 				.END
+				MY_MACRO #$10, $300
 			`);
-
-			// Now, use the macro
-			const source = "MY_MACRO #$10, $300";
-			assembler.assemble(source);
 
 			const machineCode6502 = assembler.link();
 			expect(machineCode6502).toEqual([0xa9, 0x10, 0x8d, 0x00, 0x20, 0xad, 0x0, 0x3, 0x8d, 0x01, 0x20]);
@@ -178,7 +172,7 @@ describe("Macro Handling", () => {
 		it("should work with indexed addressing mode", () => {
 			const { assembler, symbolTable } = setup();
 
-			// Define a simple macro
+			// Define a simple macro, then use it (each assemble() call starts afresh)
 			assembler.assemble(`
 				.MACRO save arg1, arg2
 					LDA arg1
@@ -186,16 +180,12 @@ describe("Macro Handling", () => {
 					LDA arg2
 					STA $2001
 				.END
-			`);
 
-			// Now, use the macro
-			const source = `
 				.org $1000
 				save <data,x>, #10 ; Call macro with '<data,x>' and '#10'
 
 				data: .db 0,1,2,3,4,5,6,7,8,9
-			`;
-			assembler.assemble(source);
+			`);
 
 			const machineCode6502 = assembler.link();
 			// The macro expands to:

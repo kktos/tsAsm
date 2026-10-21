@@ -16,7 +16,7 @@ import { ExpressionEvaluator } from "./expression";
 import type { ValueHolder } from "./expression.types";
 import { NamelessLabels } from "./namelesslabels.class";
 import { Parser, ParserError } from "./parser.class";
-import type { AssemblerOptions, DataProcessor, FileHandler, StreamState } from "./polyasm.types";
+import type { AssemblerOptions, DataProcessor, FileHandler, SegmentDefinition, StreamState } from "./polyasm.types";
 import { PASymbolTable } from "./symbol.class";
 
 const DEFAULT_PC = 0x1000;
@@ -28,6 +28,10 @@ export class Assembler {
 	public linker: Linker;
 	public streamManager: StreamManager;
 	private cpuHandler: CPUHandler;
+	/** The CPU and segments given to the constructor: each assemble() starts from them. */
+	private readonly initialCpuHandler: CPUHandler;
+	private readonly segmentDefinitions: SegmentDefinition[];
+	private hasAssembled = false;
 	public fileHandler: FileHandler;
 
 	public symbolTable: PASymbolTable;
@@ -51,6 +55,8 @@ export class Assembler {
 
 	constructor(handler: CPUHandler, fileHandler: FileHandler, options?: AssemblerOptions) {
 		this.cpuHandler = handler;
+		this.initialCpuHandler = handler;
+		this.segmentDefinitions = options?.segments ?? [];
 		this.fileHandler = fileHandler;
 		this.logger =
 			options?.logger ??
@@ -98,10 +104,7 @@ export class Assembler {
 
 		this.pass = -1;
 
-		if (options?.segments) {
-			for (const seg of options.segments) this.linker.addSegment(seg.name, seg.start, seg.size, seg.padValue, seg.resizable);
-			if (options.segments[0]) this.linker.useSegment(options.segments[0].name);
-		}
+		this.addConfiguredSegments();
 
 		if (options?.log?.pass1Enabled) this.wannaLogPass1 = true;
 		if (options?.log?.pass2Enabled) this.wannaLogPass2 = true;
@@ -172,7 +175,28 @@ export class Assembler {
 		return this.cpuHandler;
 	}
 
+	private addConfiguredSegments() {
+		for (const seg of this.segmentDefinitions) this.linker.addSegment(seg.name, seg.start, seg.size, seg.padValue, seg.resizable);
+		if (this.segmentDefinitions[0]) this.linker.useSegment(this.segmentDefinitions[0].name);
+	}
+
+	/** Back to the state after construction: no symbols, macros or emitted code, the initial CPU and segments. */
+	private reset() {
+		this.symbolTable.reset();
+		this.macroHandler.macroDefinitions.clear();
+		this.linker.reset();
+		this.addConfiguredSegments();
+		this.cpuHandler = this.initialCpuHandler;
+	}
+
 	public assemble(source: string): Segment[] {
+		// Each call is independent: the same instance can assemble again, or assemble another source.
+		// Setup done before the first call (e.g. predefined symbols) is kept.
+		if (this.hasAssembled) this.reset();
+		this.hasAssembled = true;
+		// Reading included files moves the file handler's current file: restore it when done.
+		const { fullpath, filename } = this.fileHandler;
+
 		const isLogEnabled = this.logger.enabled;
 		this.logger.enabled = isLogEnabled && this.wannaLogPass1;
 
@@ -204,6 +228,9 @@ export class Assembler {
 				throw `${formatLogPrefix({ column: e.token?.column ?? 0, line: e.token?.line ?? 0 }, { filename: this.streamManager.currentFilepath })}${e} - pass ${this.pass}`;
 
 			throw `${formatLogPrefix({ column: 0, line: "" }, { filename: this.streamManager.currentFilepath })}${e} - pass ${this.pass}`;
+		} finally {
+			this.fileHandler.fullpath = fullpath;
+			this.fileHandler.filename = filename;
 		}
 
 		this.logger.log("\n--- Assembly Complete ---");
