@@ -326,6 +326,22 @@ describe("Macro Handling", () => {
 		});
 	});
 
+	describe("Macro redefinition", () => {
+		it("should throw when a macro is defined twice", () => {
+			const { assembler } = setup();
+			const source = `
+				.macro m
+					nop
+				.end
+				.db 7
+				.macro m
+					rts
+				.end
+			`;
+			expect(() => assembler.assemble(source)).toThrow("Macro 'm' redefined on line 6: a macro can only be defined once.");
+		});
+	});
+
 	describe("Macro nesting depth", () => {
 		const nested = `
 			.macro m3
