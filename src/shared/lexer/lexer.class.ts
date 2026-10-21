@@ -526,6 +526,7 @@ export class AssemblyLexer {
 	private scanNumber(line: number, column: number, negative = false): Token {
 		const firstChar = this.peek();
 		const secondChar = this.peek(1).toLowerCase();
+		const prefixStart = this.currentStream.pos;
 		let radix: number;
 
 		// Determine radix and skip prefix
@@ -546,11 +547,13 @@ export class AssemblyLexer {
 
 		const numberString = this.currentStream.source.slice(start, this.currentStream.pos).replace(/_/g, "");
 		if (numberString === "") {
-			// This can happen if a prefix is not followed by any digits (e.g., just '$')
-			// We can treat it as an operator or throw an error. For now, let's assume it's not a number.
-			// We need to rewind the position to before the prefix was scanned.
-			this.currentStream.pos = start - (radix === 10 ? 0 : radix === 16 && secondChar === "x" ? 2 : 1);
-			return this.scanIdentifier(line, column); // Re-evaluate as something else
+			// A prefix not followed by any digits (e.g. '$', '$x', '0xZZ').
+			// '$' can't start anything else: re-scanning it would never advance, so it's an error.
+			if (firstChar === "$") throw new Error(`Invalid number on line ${line}: '$' must be followed by hexadecimal digits.`);
+
+			// Rewind before the prefix and re-evaluate as something else.
+			this.currentStream.pos = prefixStart;
+			return this.scanIdentifier(line, column);
 		}
 
 		let numericValue = Number.parseInt(numberString, radix);
