@@ -135,7 +135,7 @@ export class Linker {
 
 	public writeBytes(addr: number, values: number[]): void {
 		const active = this.currentSegment;
-		if (!active) throw new Error("Internal error: no active segment.");
+		if (!active) throw new Error(`No active segment for the bytes at $${getHex(addr)}: select a segment with .SEGMENT before emitting code or data.`);
 
 		const offset = addr - active.start;
 		if (offset < 0)

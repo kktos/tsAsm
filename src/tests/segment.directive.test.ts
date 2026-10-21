@@ -134,7 +134,7 @@ describe("Segments", () => {
 
 		it("should not write code placed before any segment is selected", () => {
 			const assembler = new Assembler(new Cpu6502Handler(), new MockFileHandler());
-			expect(() => assembler.assemble(".segment S { start: $2000, size: 2 }\n.db 1\n.segment S\n.db 2")).toThrow("no active segment");
+			expect(() => assembler.assemble(".segment S { start: $2000, size: 2 }\n.db 1\n.segment S\n.db 2")).toThrow("No active segment for the bytes at $1000");
 		});
 	});
 });

@@ -64,7 +64,9 @@ describe("Linker", () => {
 		});
 
 		it("should throw if no segment is active", () => {
-			expect(() => linker.writeBytes(0x100, [0x42])).toThrow("Internal error: no active segment.");
+			expect(() => linker.writeBytes(0x100, [0x42])).toThrow(
+				"No active segment for the bytes at $0100: select a segment with .SEGMENT before emitting code or data.",
+			);
 		});
 
 		it("should write a byte to the current segment", () => {
