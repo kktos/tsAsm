@@ -184,7 +184,7 @@ Code is assembled into segments. The command line tool defines them in the proje
 .segment DATA { start: $2000, size: $100, pad: $FF }
 ```
 
-`.segment <name>` selects a segment: the following code is assembled into it, starting at its start address.
+`.segment <name>` selects a segment: the following code is assembled into it, starting at its start address the first time, and where it left off when the segment is selected again.
 
 ```as
 .segment BOOT

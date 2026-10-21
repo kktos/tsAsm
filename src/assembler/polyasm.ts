@@ -255,6 +255,7 @@ export class Assembler {
 
 		if (this.linker.segments.length) this.PC.value = this.linker.segments[0] ? this.linker.segments[0].start : DEFAULT_PC;
 		this.passStart = { segment: this.linker.currentSegment, PC: this.PC.value };
+		this.linker.resetSegmentPositions();
 
 		while (this.parser.tokenStreamStack.length > 0) {
 			const token = this.parser.next();
@@ -391,6 +392,7 @@ export class Assembler {
 		// Start where pass 1 started, not where it ended (the last .segment used) nor at a segment the source defined.
 		this.linker.currentSegment = this.passStart.segment;
 		this.PC.value = this.passStart.PC;
+		this.linker.resetSegmentPositions();
 
 		this.symbolTable.setNamespace("global");
 
