@@ -59,7 +59,7 @@ describe("AssemblyLexer", () => {
 		expect(stripLocation(tokens)).toEqual([
 			{ type: "NUMBER", value: "768", raw: "$300" },
 			{ type: "COMMA", value: ",", raw: undefined },
-			{ type: "STRING", value: "<", raw: undefined },
+			{ type: "STRING", value: "<", raw: '"' }, // raw holds the delimiter
 			{ type: "COMMA", value: ",", raw: undefined },
 			{ type: "OPERATOR", value: "#", raw: undefined },
 			{ type: "NUMBER", value: "130", raw: "130" },
@@ -92,7 +92,7 @@ describe("AssemblyLexer", () => {
 			{ type: "NUMBER", value: "32768", raw: "$8000" },
 			{ type: "DOT", value: ".", raw: undefined },
 			{ type: "IDENTIFIER", value: "BYTE", raw: "BYTE" },
-			{ type: "STRING", value: "Hello, World!", raw: undefined },
+			{ type: "STRING", value: "Hello, World!", raw: '"' }, // raw holds the delimiter
 			{ type: "COMMA", value: ",", raw: undefined },
 			{ type: "NUMBER", value: "13", raw: "$0D" },
 			{ type: "COMMA", value: ",", raw: undefined },
