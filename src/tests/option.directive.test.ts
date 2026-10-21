@@ -22,13 +22,16 @@ describe(".OPTION Directive", () => {
 		return new Assembler(fakeCPU, mockFileHandler);
 	};
 
-	it.skip("should set a valid option during pass one", () => {
+	it("should set a valid option during pass one", () => {
 		const assembler = createAssembler();
+		// Options aren't stored: they're broadcast as "option:<name>" events.
+		const values: string[] = [];
+		assembler.emitter.on("option:local_label_char", (value: string) => values.push(value));
 		const source = `
             .OPTION local_label_char "@"
         `;
 		assembler.assemble(source);
-		expect(assembler.getOption("local_label_char")).toBe("@");
+		expect(values.at(-1)).toBe("@");
 	});
 
 	it("should not turn the option's arguments into a label", () => {
