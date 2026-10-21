@@ -62,6 +62,8 @@ export class HexDirective implements IDirective {
 		// The lexer will tokenize '0E' as NUMBER '0' and IDENTIFIER 'E', and '60' as NUMBER '60'.
 		// We must join their values back together to form a single string of hex digits,
 		// while ignoring any comments that might be inside the block.
+		if (hexTokens?.some((t) => t.type === "STRING")) throw new Error(".HEX does not accept strings; write the hex digits without quotes.");
+
 		const hexString = hexTokens?.map((t) => t.raw ?? t.value).join("");
 
 		return hexString ?? "";

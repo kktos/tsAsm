@@ -45,6 +45,12 @@ describe(".HEX Directive", () => {
 		expect(machineCode).toEqual([0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0xff]);
 	});
 
+	it("should throw error for string data", () => {
+		expect(() => createAssembler().assemble(`.HEX { "0A0B" }`)).toThrow(".HEX does not accept strings");
+		expect(() => createAssembler().assemble(`.HEX { '0C 0D' }`)).toThrow(".HEX does not accept strings");
+		expect(() => createAssembler().assemble('.HEX\n  01 "02"\n.END')).toThrow(".HEX does not accept strings");
+	});
+
 	it("should throw error for invalid .HEX number", () => {
 		const assembler = createAssembler();
 
