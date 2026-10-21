@@ -74,18 +74,19 @@ export class PASymbolTable {
 
 		if (!this.symbols.has(INTERNAL_GLOBAL)) this.symbols.set(INTERNAL_GLOBAL, new Map());
 
-		const nsRaw = name.toLowerCase() || "global";
-
-		this.lister.directive(`Set namespace: ${nsRaw}`);
-
-		if (metadata) {
-			this.addNamespaceMetadata(nsRaw === "global" ? INTERNAL_GLOBAL : nsRaw, metadata);
+		if (!name || name.toLowerCase() === "global") {
+			this.lister.directive("Set namespace: global");
+			if (metadata) this.addNamespaceMetadata(INTERNAL_GLOBAL, metadata);
+			return;
 		}
 
-		if (nsRaw === "global") return;
+		// Named namespaces are keyed in upper case, as lookups of `ns::symbol` are.
+		const ns = name.toUpperCase();
+		this.lister.directive(`Set namespace: ${ns}`);
+		if (metadata) this.addNamespaceMetadata(ns, metadata);
 
-		if (!this.symbols.has(nsRaw)) this.symbols.set(nsRaw, new Map());
-		this.scopeStack.push(nsRaw);
+		if (!this.symbols.has(ns)) this.symbols.set(ns, new Map());
+		this.scopeStack.push(ns);
 	}
 
 	/**
@@ -97,14 +98,16 @@ export class PASymbolTable {
 			this.setNamespace("global", metadata);
 			return;
 		}
-		if (!this.symbols.has(name)) this.symbols.set(name, new Map());
-		this.scopeStack.push(name);
+		// Same key as setNamespace and the lookups: upper case.
+		const ns = name.toUpperCase();
+		if (!this.symbols.has(ns)) this.symbols.set(ns, new Map());
+		this.scopeStack.push(ns);
 
 		if (metadata) {
-			this.addNamespaceMetadata(name, metadata);
+			this.addNamespaceMetadata(ns, metadata);
 		}
 
-		this.lister.directive(`Set namespace: ${name}`);
+		this.lister.directive(`Set namespace: ${ns}`);
 	}
 
 	/**
@@ -130,7 +133,7 @@ export class PASymbolTable {
 	}
 
 	public getNamespaceMetadata(name: string) {
-		const ns = name.toLowerCase() === "global" ? INTERNAL_GLOBAL : name;
+		const ns = name.toLowerCase() === "global" ? INTERNAL_GLOBAL : name.toUpperCase();
 		return this.namespaceMetadata.get(ns);
 	}
 
@@ -331,13 +334,15 @@ export class PASymbolTable {
 
 	// test is a symbol is defined in the current NS or a specific one
 	hasSymbolInScope(symbolName: string) {
-		if (symbolName.includes("::")) {
-			const [ns, symName] = symbolName.split("::") as [string, string];
+		// Upper case the whole name, namespace included, as lookupSymbol does.
+		const name = symbolName.toUpperCase();
+		if (name.includes("::")) {
+			const [ns, symName] = name.split("::") as [string, string];
 			const targetScope = ns.toLowerCase() === "global" ? this.symbols.get(INTERNAL_GLOBAL) : this.symbols.get(ns);
 			return targetScope?.has(symName);
 		}
 		const currentScope = this.getCurrentScope();
-		return currentScope?.has(symbolName.toUpperCase());
+		return currentScope?.has(name);
 	}
 
 	lookupSymbol(symbolName: string) {
