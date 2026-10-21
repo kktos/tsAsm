@@ -39,7 +39,8 @@ export class Linker {
 	public currentModule: Segment[] = [];
 
 	private finalSegment: Segment = { name: "", start: 0, size: Number.POSITIVE_INFINITY, data: [], resizable: true };
-	public currentSegment: Segment = this.finalSegment;
+	/** The segment being written to: none until useSegment() (or link(), which selects the output image). */
+	public currentSegment: Segment | undefined;
 
 	private isLittleEndian = true;
 
@@ -61,7 +62,7 @@ export class Linker {
 		this.modules = new Map([["__MAIN__", this.currentModule]]);
 		this.emittedModules = new Set();
 		this.finalSegment = { name: "", start: 0, size: Number.POSITIVE_INFINITY, data: [], resizable: true };
-		this.currentSegment = this.finalSegment;
+		this.currentSegment = undefined;
 		this.isLittleEndian = true;
 		this.PC.value = this.startPC;
 	}
@@ -159,26 +160,24 @@ export class Linker {
 		if (active.resizable && active.size < active.data.length) active.size = active.data.length;
 	}
 
+	/**
+	 * Links the segments into a flat binary, each one at its address relative to the lowest one.
+	 * Gaps between segments are filled with 0; where segments overlap, the later one wins.
+	 * Empty segments are ignored.
+	 */
 	public rawBinaryLink(segments?: Segment[]): number[] {
-		const segs = segments ?? this.segments;
-		if (!segs || segs.length === 0) return [];
+		const segs = (segments ?? this.segments).filter((s) => s.size > 0);
+		if (segs.length === 0) return [];
 
-		let minStart = Number.POSITIVE_INFINITY;
-		let maxEnd = Number.NEGATIVE_INFINITY;
-		for (const s of segs) {
-			minStart = Math.min(minStart, s.start);
-			maxEnd = Math.max(maxEnd, s.start + s.size);
-		}
+		const minStart = Math.min(...segs.map((s) => s.start));
+		const maxEnd = Math.max(...segs.map((s) => s.start + s.size));
 
 		console.log("");
 		console.log("Linker");
 
-		// const outSize = maxEnd - minStart;
-		// const out = new Array(outSize).fill(0);
-		const out = [];
-		let offset = 0;
+		const out: number[] = new Array(maxEnd - minStart).fill(0);
 		for (const s of segs) {
-			// const offset = s.start - minStart;
+			const offset = s.start - minStart;
 
 			console.log("-", s.name, `offset: $${getHex(offset)}`, `addr: $${getHex(s.start)}`, `size: $${getHex(s.size)}`, `len: $${getHex(s.data.length)}`);
 
@@ -187,8 +186,6 @@ export class Linker {
 				if (i < s.data.length) out[offset + i] = s.data[i] ?? pad;
 				else out[offset + i] = pad;
 			}
-
-			offset += s.size;
 		}
 		return out;
 	}
@@ -207,32 +204,38 @@ export class Linker {
 		if (maxSize !== undefined) this.finalSegment.size = maxSize;
 	}
 
+	/** The segment the linker script writes to. */
+	private activeSegment(): Segment {
+		if (!this.currentSegment) throw new Error("Internal error: no active segment.");
+		return this.currentSegment;
+	}
+
 	public emitString(value: string, _offset?: number) {
-		this.currentSegment.data.push(...stringToASCIICharCodes(value));
+		this.activeSegment().data.push(...stringToASCIICharCodes(value));
 		this.PC.value += value.length;
 	}
 	public emitByte(value: number, offset?: number) {
 		if (offset !== undefined) {
-			this.currentSegment.data[offset] = value;
+			this.activeSegment().data[offset] = value;
 			return;
 		}
-		pushNumber(this.currentSegment.data, value, 8, this.isLittleEndian);
+		pushNumber(this.activeSegment().data, value, 8, this.isLittleEndian);
 		this.PC.value += 1;
 	}
 	public emitWord(value: number, offset?: number) {
 		if (offset !== undefined) {
-			this.currentSegment.data[offset] = value;
+			this.activeSegment().data[offset] = value;
 			return;
 		}
-		pushNumber(this.currentSegment.data, value, 16, this.isLittleEndian);
+		pushNumber(this.activeSegment().data, value, 16, this.isLittleEndian);
 		this.PC.value += 2;
 	}
 	public emitLong(value: number, offset?: number) {
 		if (offset !== undefined) {
-			this.currentSegment.data[offset] = value;
+			this.activeSegment().data[offset] = value;
 			return;
 		}
-		pushNumber(this.currentSegment.data, value, 32, this.isLittleEndian);
+		pushNumber(this.activeSegment().data, value, 32, this.isLittleEndian);
 		this.PC.value += 4;
 	}
 	public emitBytes(value: number[], _offset?: number) {
@@ -240,7 +243,7 @@ export class Linker {
 		// 	this.finalObj[offset] = value;
 		// 	return;
 		// }
-		this.currentSegment.data.push(...value);
+		this.activeSegment().data.push(...value);
 		this.PC.value += value.length;
 	}
 
