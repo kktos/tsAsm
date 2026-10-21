@@ -4,6 +4,8 @@ import type { ILister } from "../../helpers/lister.class";
 import type { ScalarToken, Token } from "../../shared/lexer/lexer.class";
 import type { MacroDefinition } from "./macro.interface";
 
+const DEFAULT_MAX_MACRO_DEPTH = 32;
+
 export class MacroHandler {
 	public macroDefinitions = new Map<string, MacroDefinition>();
 
@@ -11,6 +13,8 @@ export class MacroHandler {
 		private readonly parser: Parser,
 		private readonly symbolTable: PASymbolTable,
 		private readonly lister: ILister,
+		/** Maximum number of nested macro expansions. */
+		private readonly maxDepth = DEFAULT_MAX_MACRO_DEPTH,
 	) {}
 
 	public isMacro(name: string): boolean {
@@ -23,6 +27,13 @@ export class MacroHandler {
 		const definition = this.macroDefinitions.get(macroName);
 
 		if (!definition) throw new Error(`ERROR: Macro '${macroName}' not defined.`);
+
+		// Stop runaway recursion before it exhausts memory.
+		const activeExpansions = this.parser.tokenStreamStack.filter((stream) => stream.macroName).length;
+		if (activeExpansions >= this.maxDepth)
+			throw new Error(
+				`Macro '${macroName}' nested more than ${this.maxDepth} levels deep on line ${macroToken.line}. Is it recursive without an end condition?`,
+			);
 
 		const passedArgsArray = this.parseMacroArguments(macroToken.line);
 		const macroArgs = new Map<string, Token[]>();
@@ -74,7 +85,7 @@ export class MacroHandler {
 		this.lister.macro(macroToken.raw as string, passedArgsArray);
 
 		// let's try to keep between pass 1 and 2 the symbol table
-		this.parser.pushTokenStream({ newTokens, macroArgs, onEndOfStream: () => this.symbolTable.popScope() });
+		this.parser.pushTokenStream({ newTokens, macroArgs, macroName, onEndOfStream: () => this.symbolTable.popScope() });
 		// this.parser.pushTokenStream({ newTokens, macroArgs });
 	}
 

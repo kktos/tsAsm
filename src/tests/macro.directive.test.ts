@@ -239,6 +239,37 @@ describe("Macro Handling", () => {
 		});
 	});
 
+	describe("Macro nesting depth", () => {
+		const nested = `
+			.macro m3
+				.db 3
+			.end
+			.macro m2
+				m3
+			.end
+			.macro m1
+				m2
+			.end
+			m1
+		`;
+
+		it("should throw on a recursive macro instead of running out of memory", () => {
+			const { assembler } = setup();
+			expect(() => assembler.assemble(".macro m\n m\n.end\n m")).toThrow("Macro 'M' nested more than 32 levels deep");
+		});
+
+		it("should allow nesting up to maxMacroDepth", () => {
+			const assembler = new Assembler(new Cpu65C02Handler(), new MockFileHandler(), { segments: DEFAULT_SEGMENTS, maxMacroDepth: 3 });
+			assembler.assemble(nested);
+			expect(assembler.link()).toEqual([3]);
+		});
+
+		it("should throw beyond maxMacroDepth", () => {
+			const assembler = new Assembler(new Cpu65C02Handler(), new MockFileHandler(), { segments: DEFAULT_SEGMENTS, maxMacroDepth: 2 });
+			expect(() => assembler.assemble(nested)).toThrow("Macro 'M3' nested more than 2 levels deep");
+		});
+	});
+
 	describe("Macro and Namespace", () => {
 		it("should resolve a simple numeric macro argument in an expression", () => {
 			const { assembler } = setup();

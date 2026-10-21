@@ -238,7 +238,7 @@ export class Parser {
 	}
 
 	/** Pushes the current stream state and activates a new stream (macro/loop body). */
-	public pushTokenStream({ newTokens, macroArgs, cacheName, onEndOfStream }: PushTokenStreamParams): number {
+	public pushTokenStream({ newTokens, macroArgs, cacheName, macroName, onEndOfStream }: PushTokenStreamParams): number {
 		// Save current position and arguments
 		if (this.tokenStreamStack.length > 0) (this.tokenStreamStack[this.tokenStreamStack.length - 1] as StreamState).index = this.getPosition();
 
@@ -264,6 +264,7 @@ export class Parser {
 			index: 0,
 			macroArgs,
 			cacheName,
+			macroName,
 		});
 
 		// Activate new stream

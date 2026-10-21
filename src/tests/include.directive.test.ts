@@ -139,4 +139,36 @@ describe("File Directive .INCLUDE", () => {
 		const found = sink.logs.find((l) => l === "7900 =	$7900");
 		expect(found).toBeDefined();
 	});
+
+	describe("include cycles", () => {
+		const files: Record<string, string> = {
+			"self.asm": '.include "self.asm"',
+			"a.asm": '.include "b.asm"',
+			"b.asm": '.include "a.asm"',
+			"leaf.asm": ".db 1",
+		};
+		const withFiles = () => {
+			const { assembler, mockFileHandler } = createAssembler();
+			vi.spyOn(mockFileHandler, "readSourceFile").mockImplementation(function (this: MockFileHandler, filename: string) {
+				this.fullpath = filename;
+				this.filename = filename;
+				return files[filename] ?? "";
+			});
+			return assembler;
+		};
+
+		it("should throw when a file includes itself", () => {
+			expect(() => withFiles().assemble('.include "self.asm"')).toThrow("Include cycle: self.asm -> self.asm");
+		});
+
+		it("should throw on an indirect include cycle", () => {
+			expect(() => withFiles().assemble('.include "a.asm"')).toThrow("Include cycle: a.asm -> b.asm -> a.asm");
+		});
+
+		it("should still allow including the same file several times", () => {
+			const assembler = withFiles();
+			assembler.assemble('.include "leaf.asm"\n.include "leaf.asm"');
+			expect(assembler.link()).toEqual([1, 1]);
+		});
+	});
 });
