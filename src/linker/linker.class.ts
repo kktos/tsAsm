@@ -46,11 +46,24 @@ export class Linker {
 	public PC: ValueHolder;
 
 	constructor(
-		PC: number,
+		private readonly startPC: number,
 		private fileHandler?: FileHandler,
 	) {
-		this.PC = { value: PC };
+		this.PC = { value: startPC };
 		this.modules.set("__MAIN__", this.currentModule);
+	}
+
+	/** Back to the state after construction: no segments, sections or modules, an empty output. Keeps the same PC object. */
+	public reset() {
+		this.segments = [];
+		this.linkerSections = [];
+		this.currentModule = [];
+		this.modules = new Map([["__MAIN__", this.currentModule]]);
+		this.emittedModules = new Set();
+		this.finalSegment = { name: "", start: 0, size: Number.POSITIVE_INFINITY, data: [], resizable: true };
+		this.currentSegment = this.finalSegment;
+		this.isLittleEndian = true;
+		this.PC.value = this.startPC;
 	}
 
 	public addSegment(name: string, start: number, size: number, padValue = 0, resizable = false) {

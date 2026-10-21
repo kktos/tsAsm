@@ -28,6 +28,8 @@ export class Parser {
 
 	public start(source: string): void {
 		this.lexer.reset();
+		// A new source: included files are read and tokenized again.
+		this.tokenStreamCache.clear();
 
 		// Start streaming tokens instead of tokenizing the entire source.
 		this.lexer.startStream(source);

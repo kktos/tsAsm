@@ -30,8 +30,16 @@ export class PASymbolTable {
 	private namespaceMetadata: Map<string, Record<string, SymbolValue>> = new Map();
 
 	constructor(private readonly lister: ILister) {
-		this.scopeStack.push(INTERNAL_GLOBAL);
-		this.symbols.set(INTERNAL_GLOBAL, new Map());
+		this.reset();
+	}
+
+	/** Forgets every symbol, namespace and scope: back to an empty global scope. */
+	reset(): void {
+		this.symbols = new Map([[INTERNAL_GLOBAL, new Map()]]);
+		this.scopeStack = [INTERNAL_GLOBAL];
+		this.scopeCounter = 0;
+		this.savedSymbols = new Map();
+		this.namespaceMetadata = new Map();
 	}
 
 	/** Pushes a new scope onto the stack, making it the current scope. */
