@@ -32,6 +32,8 @@ export class Assembler {
 	private readonly initialCpuHandler: CPUHandler;
 	private readonly segmentDefinitions: SegmentDefinition[];
 	private hasAssembled = false;
+	/** Where pass 1 started: pass 2 starts with the same current segment and PC. */
+	private passStart: { segment: Segment | undefined; PC: number } = { segment: undefined, PC: DEFAULT_PC };
 	public fileHandler: FileHandler;
 
 	public symbolTable: PASymbolTable;
@@ -212,6 +214,8 @@ export class Assembler {
 			if (!this.linker.segments || this.linker.segments.length === 0) {
 				this.linker.addSegment("CODE", DEFAULT_PC, 0, 0, true);
 				this.linker.useSegment("CODE");
+				// Pass 1 started at DEFAULT_PC with no segment: this one stands for it.
+				this.passStart.segment = this.linker.currentSegment;
 			}
 
 			this.linker.resetModules();
@@ -250,6 +254,7 @@ export class Assembler {
 		let blockDepth = 0;
 
 		if (this.linker.segments.length) this.PC.value = this.linker.segments[0] ? this.linker.segments[0].start : DEFAULT_PC;
+		this.passStart = { segment: this.linker.currentSegment, PC: this.PC.value };
 
 		while (this.parser.tokenStreamStack.length > 0) {
 			const token = this.parser.next();
@@ -383,7 +388,9 @@ export class Assembler {
 		this.logger.log("\n--- Starting Pass 2: Code Generation ---");
 		this.pass = 2;
 		this.namelessLabels.rewind();
-		if (this.linker.segments.length) this.PC.value = this.linker.segments[0] ? this.linker.segments[0].start : DEFAULT_PC;
+		// Start where pass 1 started, not where it ended (the last .segment used) nor at a segment the source defined.
+		this.linker.currentSegment = this.passStart.segment;
+		this.PC.value = this.passStart.PC;
 
 		this.symbolTable.setNamespace("global");
 

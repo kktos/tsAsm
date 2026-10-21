@@ -110,4 +110,31 @@ describe("Segments", () => {
 
 		expect(() => assembler.assemble(source)).toThrow(/Segment already defined : SEG -/);
 	});
+
+	describe("pass 2 starts where pass 1 started", () => {
+		const createAssembler = () =>
+			new Assembler(new Cpu6502Handler(), new MockFileHandler(), {
+				segments: [
+					{ name: "A", start: 0x1000, size: 0, resizable: true },
+					{ name: "B", start: 0x1004, size: 0, resizable: true },
+				],
+			});
+
+		it("should start pass 2 in the first segment, not the last one used", () => {
+			const assembler = createAssembler();
+			assembler.assemble(".db 1\n.segment B\n.db 2");
+			expect(assembler.link()).toEqual([0x01, 0, 0, 0, 0x02]);
+		});
+
+		it("should resolve a forward label in another segment", () => {
+			const assembler = createAssembler();
+			assembler.assemble(" jmp b1\n.segment B\nb1: rts");
+			expect(assembler.link()).toEqual([0x4c, 0x04, 0x10, 0, 0x60]);
+		});
+
+		it("should not write code placed before any segment is selected", () => {
+			const assembler = new Assembler(new Cpu6502Handler(), new MockFileHandler());
+			expect(() => assembler.assemble(".segment S { start: $2000, size: 2 }\n.db 1\n.segment S\n.db 2")).toThrow("no active segment");
+		});
+	});
 });
