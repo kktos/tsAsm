@@ -422,10 +422,10 @@ export class ExpressionEvaluator {
 					const resolver = (name: string) => {
 						if (name === "*") return context.PC.value;
 
-						// 1. Macro Args
+						// 1. Macro Args (evaluated without the macro's own args, see resolveValue)
 						if (context.macroArgs?.has(name)) {
 							const tokens = context.macroArgs.get(name);
-							if (tokens) return this.evaluate(tokens, context);
+							if (tokens) return this.evaluate(tokens, { ...context, macroArgs: undefined });
 						}
 
 						// 2. Symbol Table (Identifier)
@@ -660,8 +660,9 @@ export class ExpressionEvaluator {
 				// PRIORITY 1: Check if it's a macro argument from the current stream context.
 				const macroArgTokens = context.macroArgs?.get(token.value);
 				if (macroArgTokens)
-					// Recursively evaluate the tokens passed as the argument.
-					return this.evaluate(macroArgTokens, context);
+					// Evaluate the tokens passed as the argument. They come from the call site, so they
+					// must not see the macro's own parameters: `m b, 2` with parameters `a, b` gives a = global b.
+					return this.evaluate(macroArgTokens, { ...context, macroArgs: undefined });
 
 				const value = this.symbolTable.lookupSymbol(token.value);
 
