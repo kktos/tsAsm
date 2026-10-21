@@ -625,6 +625,7 @@ export class ExpressionEvaluator {
 				stack.push(left ^ right);
 				break;
 			case "%":
+				if (right === 0) throw new Error("Modulo by zero.");
 				stack.push(left % right);
 				break;
 			case "<<":

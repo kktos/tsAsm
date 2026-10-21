@@ -359,6 +359,12 @@ describe("ExpressionEvaluator", () => {
 			expect(() => evaluator.evaluateAsNumber(tokens, { PC: { value: 0 } })).toThrow("Division by zero.");
 		});
 
+		it("should throw on modulo by zero", () => {
+			const { evaluator, tokenize } = setup();
+			const tokens = tokenize("100 % 0");
+			expect(() => evaluator.evaluateAsNumber(tokens, { PC: { value: 0 } })).toThrow("Modulo by zero.");
+		});
+
 		it("should throw on undefined symbol when forward refs are not allowed", () => {
 			const { evaluator, tokenize } = setup();
 			const tokens = tokenize("UndefinedSymbol");
