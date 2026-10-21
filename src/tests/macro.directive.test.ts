@@ -211,6 +211,32 @@ describe("Macro Handling", () => {
 			expect(symbolTable.lookupSymbol("arg1")).toBeUndefined(); // Macro arguments should not leak into the symbol table
 			expect(symbolTable.lookupSymbol("arg2")).toBeUndefined();
 		});
+
+		it("should evaluate an argument in the caller's scope, not against the macro's parameters", () => {
+			const { assembler } = setup();
+			assembler.assemble(`
+				.macro m a, b
+					.db a, b
+					lda #a
+				.end
+				b = 7
+				m b, 2
+			`);
+			// a is the global b (7), not the parameter b (2)
+			expect(assembler.link()).toEqual([0x07, 0x02, 0xa9, 0x07]);
+		});
+
+		it("should accept an argument with the same name as its parameter", () => {
+			const { assembler } = setup();
+			assembler.assemble(`
+				.macro m a
+					.db a
+				.end
+				a = 5
+				m a
+			`);
+			expect(assembler.link()).toEqual([0x05]);
+		});
 	});
 
 	describe("Macro and Namespace", () => {
