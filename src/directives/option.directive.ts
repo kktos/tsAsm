@@ -16,7 +16,10 @@ export class OptionDirective implements IDirective {
 		this.setOption(directive, context);
 	}
 
-	public handlePassTwo(_directive: ScalarToken, _context: DirectiveContext) {}
+	public handlePassTwo(_directive: ScalarToken, _context: DirectiveContext) {
+		// The option is applied in pass 1; only skip its arguments, so they aren't parsed as a statement.
+		this.assembler.parser.getInstructionTokens();
+	}
 
 	private setOption(directive: ScalarToken, context: DirectiveContext): void {
 		const argTokens = this.assembler.parser.getInstructionTokens();

@@ -31,6 +31,14 @@ describe(".OPTION Directive", () => {
 		expect(assembler.getOption("local_label_char")).toBe("@");
 	});
 
+	it("should not turn the option's arguments into a label", () => {
+		const assembler = createAssembler();
+		assembler.assemble(`
+            .OPTION local_label_char "!"
+        `);
+		expect(assembler.symbolTable.lookupSymbol("LOCAL_LABEL_CHAR")).toBeUndefined();
+	});
+
 	it("should log a warning for an unknown option", () => {
 		const assembler = createAssembler();
 		const loggerSpy = vi.spyOn(assembler.logger, "warn").mockImplementation(() => {});
