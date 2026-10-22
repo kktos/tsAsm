@@ -16,8 +16,10 @@
 	"scripts": {
 		"check": "tsc --noEmit",
 		"build": "rimraf ./dist && rollup -c rollup.config.js",
-		"build:cli": "set TARGET=cli&&rollup -c rollup.config.js",
-		"build:lib": "set TARGET=lib&&rollup -c rollup.config.js",
+		"build:cli": "rollup -c rollup.config.js --environment TARGET:cli",
+		"build:lib": "rollup -c rollup.config.js --environment TARGET:lib",
+		"install:cli": "node scripts/install-cli.js",
+		"uninstall:cli": "node scripts/install-cli.js --uninstall",
 		"test": "vitest",
 		"lint:ci": "biome ci ./src",
 		"lint:fix": "biome check --write --unsafe ./src",
@@ -27,6 +29,7 @@
 	"devDependencies": {
 		"@biomejs/biome": "2.3.7",
 		"@rollup/plugin-json": "^6.1.0",
+		"@rollup/plugin-node-resolve": "^16.0.3",
 		"@rollup/plugin-terser": "^0.4.4",
 		"@rollup/plugin-typescript": "^12.3.0",
 		"@types/js-yaml": "^4.0.9",

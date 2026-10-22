@@ -89,6 +89,8 @@ function validateInternal(
 			continue;
 		}
 
+		const errorCount = errors.length;
+
 		// Type check
 		switch (spec.type) {
 			case "string":
@@ -148,8 +150,8 @@ function validateInternal(
 				break;
 		}
 
-		// Custom constraint
-		if (spec.validate && !spec.validate(value)) {
+		// Custom constraint, only on a value of the expected type
+		if (spec.validate && errors.length === errorCount && !spec.validate(value)) {
 			errors.push({
 				path,
 				message: spec.errorMessage ?? "Custom validation failed",

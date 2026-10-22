@@ -1,6 +1,7 @@
 // rollup.config.js
 
 import json from "@rollup/plugin-json";
+import { nodeResolve } from "@rollup/plugin-node-resolve";
 import terser from "@rollup/plugin-terser";
 import typescript from "@rollup/plugin-typescript";
 import { defineConfig } from "rollup";
@@ -16,6 +17,8 @@ const configs = {
 			sourcemap: false,
 		},
 		plugins: [
+			// bundle dependencies (js-yaml) so the CLI is a single file needing only node
+			nodeResolve({ preferBuiltins: true }),
 			typescript(),
 			json(),
 			terser({
