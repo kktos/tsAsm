@@ -72,6 +72,8 @@ Strings use double or single quotes: `"Hello"` or `'Hello'`. A string ends on it
 
 Escape sequences: `\n`, `\r`, `\t`, `\b`, `\f`, `\'`, `\"`, `\\`, and `\xHH` for a character code in hexadecimal.
 
+Each character becomes one byte, its code: a character above 255 (like `€`) doesn't fit and is an error.
+
 ```as
 .text "Line1\nLine2"
 .text "\x41"    ; "A"

@@ -188,4 +188,18 @@ describe("String Directives", () => {
 	it("should throw in pass 1 when the value isn't a string", () => {
 		expect(() => createAssembler().assemble(".text 65")).toThrow("Data directive expression must evaluate to a string on line 1. - pass 1");
 	});
+
+	it.each([
+		['.text "€"', ".TEXT on line 1: '€' (U+20AC)"],
+		['.cstr "é€"', ".CSTR on line 1: '€' (U+20AC)"],
+		['.pstr "😀"', ".PSTR on line 1: '😀' (U+1F600)"],
+	])("should throw on a character above 255: %j", (source, message) => {
+		expect(() => createAssembler().assemble(source)).toThrow(`${message} doesn't fit in a byte.`);
+	});
+
+	it("should write characters up to 255 as bytes", () => {
+		const assembler = createAssembler();
+		assembler.assemble('.pstr "café"');
+		expect(assembler.link()).toEqual([4, 0x63, 0x61, 0x66, 0xe9]);
+	});
 });

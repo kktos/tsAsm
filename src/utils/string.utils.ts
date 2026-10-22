@@ -1,6 +1,10 @@
-export function stringToASCIICharCodes(str: string) {
-	const len = str.length;
-	const result = new Uint8Array(len);
-	for (let i = 0; i < len; i++) result[i] = str.charCodeAt(i);
-	return result;
+/** The bytes of a string, one per character: a character above 255 doesn't fit in a byte, so it's an error. */
+export function stringToBytes(str: string, description: string): number[] {
+	const bytes: number[] = [];
+	for (const char of str) {
+		const code = char.codePointAt(0) as number;
+		if (code > 0xff) throw new Error(`${description} '${char}' (U+${code.toString(16).toUpperCase().padStart(4, "0")}) doesn't fit in a byte.`);
+		bytes.push(code);
+	}
+	return bytes;
 }

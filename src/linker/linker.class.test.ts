@@ -69,6 +69,12 @@ describe("Linker", () => {
 			);
 		});
 
+		it("should throw when a string has a character above 255", () => {
+			linker.addModule("MAIN");
+			linker.useSegment("CODE");
+			expect(() => linker.emitString("a€")).toThrow("Invalid write string directive - '€' (U+20AC) doesn't fit in a byte.");
+		});
+
 		it("should write a byte to the current segment", () => {
 			linker.addModule("MAIN");
 			linker.useSegment("CODE");
