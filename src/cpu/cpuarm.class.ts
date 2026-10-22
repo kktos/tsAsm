@@ -65,7 +65,7 @@ export class CpuArmRiscHandler implements CPUHandler {
 	 * Resolves addressing mode for ARM instructions.
 	 * Simplification: only handles MOV Rdest, #Imm and B Label.
 	 */
-	resolveAddressingMode(mnemonic: string, operandTokens: OperatorStackToken[], resolveValue: (tokens: OperatorStackToken[]) => number): ModeInfo {
+	resolveAddressingMode(mnemonic: string, operandTokens: OperatorStackToken[], resolveValue: (tokens: OperatorStackToken[]) => number | null): ModeInfo {
 		const baseMnemonic = mnemonic.toUpperCase().match(/^[A-Z]+/)?.[0];
 		if (!baseMnemonic) {
 			// THROW here to signal a potential label to the Assembler engine
@@ -77,7 +77,7 @@ export class CpuArmRiscHandler implements CPUHandler {
 			throw new Error(`Unknown ARM instruction: ${mnemonic}`);
 		}
 
-		let resolvedAddress = 0;
+		let resolvedAddress: number | null = 0;
 		let mode: AddressingMode = "";
 
 		// 1. Handle MOV Rdest, #Immediate (Data Processing)
@@ -92,7 +92,8 @@ export class CpuArmRiscHandler implements CPUHandler {
 					mode = this.ARM_MODES.DATA_PROC;
 					opcode = this.instructionBases.get("MOV") as number;
 					opcode |= Rd << 12;
-					opcode |= resolvedAddress & 0xff;
+					// Unknown in pass 1 (defined later): the size is 4 bytes anyway, pass 2 adds the value.
+					if (resolvedAddress !== null) opcode |= resolvedAddress & 0xff;
 				} else {
 					throw new Error("Only MOV Immediate is supported in this mock.");
 				}
