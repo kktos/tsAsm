@@ -204,7 +204,7 @@ Code is assembled into segments. The command line tool defines them in the proje
 | `.dw` / `.word` | 16-bit values, little-endian |
 | `.dl` / `.long` | 32-bit values, little-endian |
 | `.fill` / `.ds` / `.res` `<count> [, <value>]` | `count` bytes of `value` (default `0`) |
-| `.align <boundary> [, <value>]` | `value` bytes (default `0`) up to the next multiple of `boundary` |
+| `.align <boundary> [, <value>]` | `value` bytes (default `0`) up to the next multiple of `boundary`, which must be a power of two |
 | `.hex` | Bytes written as hexadecimal digits |
 | `.incbin "<file>"` | The content of a binary file |
 
