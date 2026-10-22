@@ -32,6 +32,7 @@ start:  lda #$00    ; load 0
 
 - Directives start with a dot: `.db`, `.macro`, … Their names are case-insensitive.
 - Symbol names are case-insensitive: `Loop` and `LOOP` are the same symbol.
+- Outside comments and strings, a character the assembler doesn't recognise is an error, even in code that isn't assembled (a false `.if`). A byte order mark at the start of a file is ignored.
 - Blocks (`.if`, `.repeat`, `.for`, `.macro`, `.function`, `.define`, …) end with `.end`, or can be written with braces:
 
 ```as

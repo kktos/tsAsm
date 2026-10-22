@@ -286,4 +286,26 @@ describe("AssemblyLexer", () => {
 	test.each(["LDA $", "LDA #$x", "LDA $_", ".DB $, 1"])("should throw on '$' without hex digits: %s", (source) => {
 		expect(() => lexer.tokenize(source)).toThrow("'$' must be followed by hexadecimal digits");
 	});
+
+	test.each([
+		["LDA @X", "'@' (U+0040) on line 1, column 5"],
+		[".DB ~0", "'~' (U+007E) on line 1, column 5"],
+		["CAFÉ = 1", "'É' (U+00C9) on line 1, column 4"],
+		["NOP\n  LDA #1 ` X", "'`' (U+0060) on line 2, column 10"],
+		[".DB 1", "' ' (U+00A0) on line 1, column 4"],
+		[".DB 1​", "'​' (U+200B) on line 1, column 6"],
+		[".DB 1 😀", "'😀' (U+1F600) on line 1, column 7"],
+	])("should throw on an unknown character: %j", (source, message) => {
+		expect(() => lexer.tokenize(source)).toThrow(`Unexpected character ${message}.`);
+	});
+
+	test("should accept unknown characters in comments and strings", () => {
+		const tokens = lexer.tokenize('.DB "@~É" ; @~É');
+		expect(tokens.map((t) => t.value)).toEqual([".", "DB", "@~É"]);
+	});
+
+	test("should skip a byte order mark at the start of the source only", () => {
+		expect(lexer.tokenize("﻿NOP")).toEqual([{ type: "IDENTIFIER", value: "NOP", raw: "NOP", line: 1, column: 1 }]);
+		expect(() => lexer.tokenize("NOP﻿")).toThrow("Unexpected character '﻿' (U+FEFF) on line 1, column 4.");
+	});
 });

@@ -119,7 +119,8 @@ export class AssemblyLexer {
 	public startStream(source: string) {
 		this.currentStream = {
 			source,
-			pos: 0,
+			// A byte order mark is an encoding marker, not source: skip it at the start of a source only.
+			pos: source.startsWith("﻿") ? 1 : 0,
 			line: 1,
 			column: 1,
 			length: source.length,
@@ -409,9 +410,10 @@ export class AssemblyLexer {
 			return this.scanIdentifier(startLine, startColumn);
 		}
 
-		// Unknown character - skip
-		this.advance();
-		return null;
+		// Unknown character: always an error, never skipped silently
+		const codePoint = this.currentStream.source.codePointAt(this.currentStream.pos) as number;
+		const code = `U+${codePoint.toString(16).toUpperCase().padStart(4, "0")}`;
+		throw new Error(`Unexpected character '${String.fromCodePoint(codePoint)}' (${code}) on line ${startLine}, column ${startColumn}.`);
 	}
 
 	private scanComment(_line: number, _column: number) {
