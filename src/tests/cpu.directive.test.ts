@@ -60,6 +60,8 @@ describe("CpuDirective", () => {
 		// const codeSegment = segments.find((s) => s.name === "CODE");
 		// expect(codeSegment?.data).toEqual([0x64, 0x44]);
 
-		expect(() => assembler.assemble(source)).toThrow("[:2:8] Error: Syntax error : NUMBER 68 - pass 1");
+		expect(() => assembler.assemble(source)).toThrow(
+			expect.objectContaining({ message: "Syntax error : NUMBER 68", location: { file: "", line: 2, column: 8 } }),
+		);
 	});
 });

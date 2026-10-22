@@ -185,8 +185,8 @@ describe("String Directives", () => {
 		expect(() => createAssembler().assemble(source)).toThrow(`${message} must be defined before it is used here (its length is needed to place what follows).`);
 	});
 
-	it("should throw in pass 1 when the value isn't a string", () => {
-		expect(() => createAssembler().assemble(".text 65")).toThrow("Data directive expression must evaluate to a string on line 1. - pass 1");
+	it("should throw when the value isn't a string", () => {
+		expect(() => createAssembler().assemble(".text 65")).toThrow("Data directive expression must evaluate to a string on line 1.");
 	});
 
 	it.each([

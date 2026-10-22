@@ -2,16 +2,18 @@ import type { EventEmitter } from "node:events";
 import type { PushTokenStreamParams, StreamState } from "../assembler/polyasm.types";
 import type { SymbolValue } from "../assembler/symbol.class";
 import { AssemblyLexer, type IdentifierToken, type NumberToken, type StringToken, type Token } from "../shared/lexer/lexer.class";
+import { AsmError } from "../utils/error.utils";
 
 /** Called right after a raw directive's name: returns the rest of the directive's tokens, raw text included. */
 type GetRawBlock = (parser: Parser, directive: Token) => Token[];
 export const blockDirectives: Set<string> = new Set();
 export const rawDirectives: Map<string, GetRawBlock | undefined> = new Map();
 
-export class ParserError extends Error {
+/** An error at a token: its line and column are where it is reported. */
+export class ParserError extends AsmError {
 	public token: Token | null = null;
 	public constructor(message: string, token?: Token | null) {
-		super(message);
+		super(message, token ? { line: token.line, column: token.column } : {});
 		if (token !== undefined) this.token = token;
 	}
 }

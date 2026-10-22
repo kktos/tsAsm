@@ -108,7 +108,7 @@ describe("Segments", () => {
 		  .SEGMENT SEG { start: $A00, size: $100 }
 		`;
 
-		expect(() => assembler.assemble(source)).toThrow(/Segment already defined : SEG -/);
+		expect(() => assembler.assemble(source)).toThrow(/Segment already defined : SEG/);
 	});
 
 	describe("pass 2 starts where pass 1 started", () => {

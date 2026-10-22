@@ -1,4 +1,5 @@
 import type { LogSink } from "../../helpers/logsink.interface";
+import { AsmError } from "../../utils/error.utils";
 import colors from "../colors";
 
 export class ConsoleErrorSink implements LogSink<null> {
@@ -11,7 +12,8 @@ export class ConsoleErrorSink implements LogSink<null> {
 	}
 
 	error(message: unknown): void {
-		console.error(colors.red(`Error: ${message}`));
+		// An AsmError says "error:" itself, in the `file:line:column: error: message` format editors recognise.
+		console.error(colors.red(message instanceof AsmError ? message.format() : `Error: ${message}`));
 	}
 
 	pushConfig(): void {}
