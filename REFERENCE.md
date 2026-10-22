@@ -51,6 +51,8 @@ lda #0  ; end-of-line comment
    over several lines */
 ```
 
+A block comment without its closing `*/` is an error.
+
 ## Values and expressions
 
 ### Numbers

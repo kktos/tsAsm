@@ -309,6 +309,20 @@ describe("AssemblyLexer", () => {
 		expect(() => lexer.tokenize(source)).toThrow(`Unterminated string on ${message}`);
 	});
 
+	test.each([
+		["LDA #1 /* ABC", "line 1, column 8"],
+		[".DB 1 /*", "line 1, column 7"],
+		[".DB 1 /* AB*", "line 1, column 7"],
+		["NOP\n/* A\nB\n.DB 2", "line 2, column 1"],
+	])("should throw on an unterminated comment: %j", (source, position) => {
+		expect(() => lexer.tokenize(source)).toThrow(`Unterminated comment on ${position}: missing closing */.`);
+	});
+
+	test("should skip a closed block comment", () => {
+		const tokens = lexer.tokenize(".DB 1 /* A\nB */, 2 /**/");
+		expect(tokens.map((t) => t.value)).toEqual([".", "DB", "1", ",", "2"]);
+	});
+
 	test("should accept unknown characters in comments and strings", () => {
 		const tokens = lexer.tokenize('.DB "@~É" ; @~É');
 		expect(tokens.map((t) => t.value)).toEqual([".", "DB", "@~É"]);

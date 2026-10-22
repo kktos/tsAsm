@@ -434,7 +434,7 @@ export class AssemblyLexer {
 		return null; // this.makeToken("COMMENT", value, line, column);
 	}
 
-	private scanMultiLineComment(_line: number, _column: number) {
+	private scanMultiLineComment(line: number, column: number) {
 		// const start = this.pos;
 
 		this.advance(); // skip '/'
@@ -445,7 +445,8 @@ export class AssemblyLexer {
 			if (this.peek() === "*" && this.peek(1) === "/") {
 				this.advance(); // skip '*'
 				this.advance(); // skip '/'
-				break;
+				// const value = this.source.slice(start, this.pos);
+				return null; // this.makeToken("COMMENT", value, line, column);
 			}
 
 			// Track line numbers within the comment
@@ -457,8 +458,7 @@ export class AssemblyLexer {
 			this.advance();
 		}
 
-		// const value = this.source.slice(start, this.pos);
-		return null; // this.makeToken("COMMENT", value, line, column);
+		throw new Error(`Unterminated comment on line ${line}, column ${column}: missing closing */.`);
 	}
 
 	private scanEscapeChar() {
