@@ -1,7 +1,6 @@
 import type { Assembler } from "../assembler/polyasm";
 import type { Logger } from "../helpers/logger.class";
 import type { ScalarToken } from "../shared/lexer/lexer.class";
-import { formatLogPrefix } from "../utils/error.utils";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class ListDirective implements IDirective {
@@ -37,14 +36,14 @@ export class ListDirective implements IDirective {
 				const expr = this.assembler.parser.getExpressionTokens(directive);
 				const filename = this.assembler.expressionEvaluator.evaluate(expr, context);
 				if (typeof filename !== "string") {
-					this.logger.warn(`${formatLogPrefix(directive, context)}.LIST FILE requires a string argument.`);
+					this.assembler.warn(".LIST FILE requires a string argument.");
 					break;
 				}
 				this.logger.pushConfig({ filename });
 				break;
 			}
 			default:
-				this.logger.warn(`${formatLogPrefix(directive, context)}Invalid .LIST mode '${mode}'. Expected ON or OFF.`);
+				this.assembler.warn(`Invalid .LIST mode '${mode}': expected ON or OFF.`);
 		}
 	}
 }

@@ -49,7 +49,9 @@ describe(".OPTION Directive", () => {
             .OPTION unknown_option 123
         `;
 		assembler.assemble(source);
-		expect(loggerSpy).toHaveBeenCalledWith(expect.stringContaining("[OPTION] Unknown option 'unknown_option'"));
+		expect(loggerSpy).toHaveBeenCalledWith(
+			expect.objectContaining({ message: "Unknown option 'unknown_option'.", severity: "warning", location: expect.objectContaining({ line: 2 }) }),
+		);
 		loggerSpy.mockRestore();
 	});
 

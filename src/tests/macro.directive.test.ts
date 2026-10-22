@@ -331,7 +331,10 @@ describe("Macro Handling", () => {
 				.end
 			`;
 			expect(() => assembler.assemble(source)).toThrow(
-				expect.objectContaining({ message: "Macro 'm' redefined: a macro can only be defined once.", location: expect.objectContaining({ line: 6 }) }),
+				expect.objectContaining({
+					message: expect.stringMatching(/^Macro 'm' redefined \(first defined at 2:\d+\): a macro can only be defined once\.$/),
+					location: expect.objectContaining({ line: 6 }),
+				}),
 			);
 		});
 	});

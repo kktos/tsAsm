@@ -1,7 +1,6 @@
 import type { Parser } from "../assembler/parser.class";
 import type { Assembler } from "../assembler/polyasm";
 import type { ILister } from "../helpers/lister.class";
-import type { Logger } from "../helpers/logger.class";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
@@ -27,7 +26,6 @@ export class HexDirective implements IDirective {
 
 	constructor(
 		private readonly assembler: Assembler,
-		private readonly logger: Logger,
 		private readonly lister: ILister,
 	) {}
 
@@ -44,7 +42,7 @@ export class HexDirective implements IDirective {
 
 			this.lister.directive(directive, `<${byteCount} bytes>`);
 		} catch (e) {
-			this.logger.warn(`[PASS 1] Warning on line ${directive.line}: Could not calculate size of .HEX block. ${e}`);
+			this.assembler.warn(`Could not calculate the size of the .HEX block: ${e instanceof Error ? e.message : e}`);
 		}
 	}
 

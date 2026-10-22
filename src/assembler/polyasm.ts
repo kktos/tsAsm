@@ -103,6 +103,7 @@ export class Assembler {
 			logger: this.logger,
 			linker: this.linker,
 			macroHandler: this.macroHandler,
+			warn: (message, position) => this.warn(message, position),
 		};
 		this.directiveHandler = new DirectiveHandler(this, runtime);
 
@@ -246,7 +247,16 @@ export class Assembler {
 	 * is the current statement's (its first token), in the file being assembled.
 	 */
 	private toAsmError(e: unknown): AsmError {
-		const error = e instanceof AsmError ? e : new AsmError(e instanceof Error ? e.message : String(e));
+		return this.locate(e instanceof AsmError ? e : new AsmError(e instanceof Error ? e.message : String(e)));
+	}
+
+	/** Reports a warning, located like an error: at `position`, else at the current statement. */
+	public warn(message: string, position?: { line: number | string; column: number }) {
+		this.logger.warn(this.locate(AsmError.warning(message, position ? { line: position.line, column: position.column } : {})));
+	}
+
+	/** Fills in what the error doesn't say about where it is: the statement, the file, the source line, the macro calls. */
+	private locate(error: AsmError): AsmError {
 		const { location } = error;
 		if (location.line === undefined && this.statementToken) {
 			location.line = this.statementToken.line;

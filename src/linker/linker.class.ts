@@ -309,6 +309,8 @@ export class Linker {
 			lister,
 			linker: this,
 			macroHandler,
+			// link() doesn't locate its messages
+			warn: (message) => logger.warn(message),
 		};
 		const dispatcher = new Dispatcher(runtime);
 

@@ -26,8 +26,8 @@ describe("Loops as line generators", () => {
 	});
 
 	it.each([
-		[".repeat 2\nlp: dex\n bne lp\n.end", "PASymbol global::LP redefined."],
-		[".for x of [1, 2]\nlp: dex\n.end", "PASymbol global::LP redefined."],
+		[".repeat 2\nlp: dex\n bne lp\n.end", "Symbol 'LP' redefined (first defined at 2:1)."],
+		[".for x of [1, 2]\nlp: dex\n.end", "Symbol 'LP' redefined (first defined at 2:1)."],
 	])("should report a label written in a body run more than once, as if the lines were written twice: %j", (source, message) => {
 		expect(() => assemble(source)).toThrow(message);
 	});

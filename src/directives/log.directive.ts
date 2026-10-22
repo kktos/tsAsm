@@ -88,7 +88,7 @@ export class LogDirective implements IDirective {
 			case "ERR":
 				throw new Error(message);
 			case "WARN":
-				this.runtime.logger.warn(message);
+				this.runtime.warn(message);
 				break;
 			default:
 				this.runtime.logger.log(message);

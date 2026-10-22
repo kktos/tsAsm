@@ -73,7 +73,8 @@ describe("Logging directives", () => {
 
 			// expect(sink.warnings).toBe("");
 
-			const found = sink.warnings.find((l) => l === "Boom Bada Boom");
+			// located like an error: the statement, then its source line
+			const found = sink.warnings.find((l) => l.startsWith("1:1: warning: Boom Bada Boom\n"));
 			expect(found).toBeDefined();
 		});
 
@@ -81,7 +82,7 @@ describe("Logging directives", () => {
 			const { asm, sink } = makeAssembler();
 			asm.assemble('.WARNING "size", size\nsize = 5');
 
-			expect(sink.warnings).toEqual(["size\t5"]);
+			expect(sink.warnings).toEqual([expect.stringMatching(/^1:1: warning: size\t5\n/)]);
 		});
 	});
 

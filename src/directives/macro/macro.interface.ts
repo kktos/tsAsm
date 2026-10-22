@@ -9,4 +9,7 @@ export interface MacroDefinition {
 	endPosition: number;
 	/** The file the macro is defined in: its body tokens' lines are lines of this file. */
 	file: string;
+	/** Where its .MACRO directive is. */
+	line: number | string;
+	column: number;
 }

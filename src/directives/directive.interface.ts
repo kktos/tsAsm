@@ -42,4 +42,6 @@ export interface DirectiveRuntime {
 	lister: ILister;
 	linker: Linker;
 	macroHandler: MacroHandler;
+	/** Reports a warning, located like an error: at `position`, else at the current statement. */
+	warn: (message: string, position?: { line: number | string; column: number }) => void;
 }

@@ -1,5 +1,4 @@
 import type { Assembler } from "../assembler/polyasm";
-import type { Logger } from "../helpers/logger.class";
 import type { ScalarToken } from "../shared/lexer/lexer.class";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
@@ -7,10 +6,7 @@ export class OptionDirective implements IDirective {
 	public isBlockDirective = false;
 	public isRawDirective = false;
 
-	constructor(
-		private readonly assembler: Assembler,
-		private readonly logger: Logger,
-	) {}
+	constructor(private readonly assembler: Assembler) {}
 
 	public handlePassOne(directive: ScalarToken, context: DirectiveContext) {
 		this.setOption(directive, context);
@@ -21,7 +17,7 @@ export class OptionDirective implements IDirective {
 		this.assembler.parser.getInstructionTokens();
 	}
 
-	private setOption(directive: ScalarToken, context: DirectiveContext): void {
+	private setOption(_directive: ScalarToken, context: DirectiveContext): void {
 		const argTokens = this.assembler.parser.getInstructionTokens();
 
 		if (argTokens.length < 2) throw new Error("Invalid .OPTION syntax. Expected: .OPTION <name> <value>");
@@ -38,7 +34,7 @@ export class OptionDirective implements IDirective {
 				this.assembler.setOption("local_label_char", optionValue);
 				break;
 			default:
-				this.logger.warn(`[OPTION] Unknown option '${optionName}' on line ${directive.line}.`);
+				this.assembler.warn(`Unknown option '${optionName}'.`);
 		}
 	}
 }
