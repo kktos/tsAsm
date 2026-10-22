@@ -99,6 +99,8 @@ This writes `hello.bin` (the machine code), `hello.asm.lst` (the listing) and `h
 | `output.symbols` | `enabled` and `path` of the symbol file (YAML). |
 | `output.segments` | `enabled` and `path` of the segment map file (YAML). |
 
+Paths are relative to the project file. Missing output directories are created.
+
 ## Library
 
 The package doesn't export the CPU handlers yet, so for now import the TypeScript sources directly:
