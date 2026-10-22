@@ -628,7 +628,9 @@ export class AssemblyLexer {
 		}
 
 		// Find the end marker, which can be preceded by whitespace on its own line.
-		let currentPos = rawDataStart;
+		// currentPos is the newline before the line being checked: when the data starts on a new line,
+		// that's the one ending the directive's line, so the first line of the block is checked too.
+		let currentPos = hasToGoNextline ? rawDataStart - 1 : rawDataStart;
 		let endOfRawData = -1;
 
 		do {
@@ -639,8 +641,9 @@ export class AssemblyLexer {
 
 			const searchSection = this.currentStream.source.slice(lineStart, lineStart + endMarkerLen).toLowerCase();
 
-			// if (this.currentStream.source.startsWith(endMarker, lineStart)) {
-			if (searchSection === endMarker) {
+			// The marker must be a whole word: '.END' matches, '.ENDIF' doesn't.
+			const isWholeWord = !this.isIdentifierPart(this.currentStream.source[lineStart + endMarkerLen] ?? "");
+			if (searchSection === endMarker && isWholeWord) {
 				endOfRawData = currentPos; // The raw data ends at the newline before the end marker line.
 				this.currentStream.pos = lineStart + endMarkerLen; // Move position past the end marker
 				break;
