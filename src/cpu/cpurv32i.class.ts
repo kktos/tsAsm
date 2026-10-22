@@ -1,5 +1,5 @@
 import type { OperatorStackToken } from "../shared/lexer/lexer.class";
-import type { AddressingMode, CPUHandler, ModeInfo } from "./cpuhandler.interface";
+import type { AddressingMode, CPUHandler, ModeInfo, ResolvedModeInfo } from "./cpuhandler.interface";
 
 // In RISC-V, there aren't addressing modes in the traditional sense, but instruction formats.
 // We'll use the instruction format names as "addressing modes".
@@ -236,7 +236,7 @@ export class CpuRV32IHandler implements CPUHandler<RV32IModeInfo> {
 		};
 	}
 
-	encodeInstruction(_tokens: OperatorStackToken[], modeInfo: RV32IModeInfo & { pc: number }): number[] {
+	encodeInstruction(_tokens: OperatorStackToken[], modeInfo: ResolvedModeInfo<RV32IModeInfo>): number[] {
 		let instruction = 0;
 		const { opcode, funct3, funct7, rd, rs1, rs2, imm, pc, mode } = modeInfo;
 

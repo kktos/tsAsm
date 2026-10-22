@@ -1,5 +1,5 @@
 import type { OperatorStackToken } from "../shared/lexer/lexer.class";
-import type { AddressingMode, CPUHandler, ModeInfo } from "./cpuhandler.interface";
+import type { AddressingMode, CPUHandler, ModeInfo, ResolvedModeInfo } from "./cpuhandler.interface";
 export class CpuArmRiscHandler implements CPUHandler {
 	cpuType = "ARM_RISC" as const;
 	endianness = "little" as const;
@@ -118,7 +118,7 @@ export class CpuArmRiscHandler implements CPUHandler {
 	 * Pass 2: Encodes the 4 bytes in Big-Endian format typical of ARM.
 	 * @param modeInfo Contains the pre-calculated 32-bit opcode or target address.
 	 */
-	encodeInstruction(_tokens: OperatorStackToken[], modeInfo: ModeInfo & { pc: number }): number[] {
+	encodeInstruction(_tokens: OperatorStackToken[], modeInfo: ResolvedModeInfo): number[] {
 		// We switch on the ARM specific mode strings
 		// const mnemonic = tokens[0]?.value.toUpperCase();
 

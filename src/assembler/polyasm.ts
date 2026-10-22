@@ -595,9 +595,12 @@ export class Assembler {
 					}),
 				);
 
-				// 2. Encode Bytes using resolved info
+				// 2. Encode Bytes using resolved info. Every symbol is known in pass 2, so is the operand.
+				const { resolvedAddress } = modeInfo;
+				if (resolvedAddress === null) throw new Error(`Internal error: the operand of '${mnemonicToken.value}' is still unknown in pass 2.`);
 				const encodedBytes = this.cpuHandler.encodeInstruction([mnemonicToken, ...operandTokens], {
 					...modeInfo,
+					resolvedAddress,
 					pc: this.PC.value,
 				});
 

@@ -219,4 +219,22 @@ describe("65C02 Opcodes", () => {
 			expect(() => assembleAndGetCode(source)).toThrow(message);
 		});
 	});
+
+	// In pass 1, an operand using a symbol defined later has no value yet: its size is the worst case.
+	describe("operands defined later", () => {
+		it.each([
+			["LDA later\nlater = $1234", [0xad, 0x34, 0x12]],
+			["LDA later,X\nlater = $1234", [0xbd, 0x34, 0x12]],
+			["LDA (zp),Y\nzp = $10", [0xb1, 0x10]],
+			["LDA #value\nvalue = 5", [0xa9, 0x05]],
+			["JMP (vector)\nvector = $FFFC", [0x6c, 0xfc, 0xff]],
+			["BNE done\nNOP\ndone: RTS", [0xd0, 0x01, 0xea, 0x60]],
+		])("should assemble %j", (source, bytes) => {
+			expect(assembleAndGetCode(source)).toEqual(bytes);
+		});
+
+		it("should report a zero page address defined later when code after it moves", () => {
+			expect(() => assembleAndGetCode("LDA zp\nnext: NOP\nzp = $10")).toThrow("Phase error: label 'NEXT' is $8003 in pass 1 but $8002 in pass 2.");
+		});
+	});
 });
