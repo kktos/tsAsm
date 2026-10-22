@@ -253,6 +253,7 @@ export class Assembler {
 			location.column = this.statementToken.column;
 		}
 		location.file ??= this.streamManager.currentFilepath;
+		if (error.sourceLine === undefined && typeof location.line === "number") error.sourceLine = this.streamManager.getSourceLine(location.file, location.line);
 		return error;
 	}
 
