@@ -1,4 +1,4 @@
-import type { ScalarToken } from "../shared/lexer/lexer.class";
+import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
 import type { DirectiveContext, DirectiveRuntime, IDirective } from "./directive.interface";
 
 export type StringFormat = "TEXT" | "CSTR" | "PSTR" | "PSTRL";
@@ -35,9 +35,16 @@ export class StringDirective implements IDirective {
 
 		while (!this.runtime.parser.isEOS()) {
 			const exprTokens = this.runtime.parser.getExpressionTokens(directive);
-			const value = this.runtime.evaluator.evaluate(exprTokens, context) as string;
-			if (!context.allowForwardRef && typeof value !== "string")
-				throw new Error(`Data directive expression must evaluate to a string on line ${directive.line}.`);
+			const value = this.runtime.evaluator.evaluate(exprTokens, context);
+			// A symbol defined later is unknown in pass 1, where the string's length is needed to place what follows.
+			if (value === null) {
+				const unknown = this.findUndefinedSymbol(exprTokens, context);
+				const symbol = unknown ? `'${unknown}'` : "Its symbol";
+				throw new Error(
+					`.${directive.value} on line ${directive.line}: ${symbol} must be defined before it is used here (its length is needed to place what follows).`,
+				);
+			}
+			if (typeof value !== "string") throw new Error(`Data directive expression must evaluate to a string on line ${directive.line}.`);
 			strings.push(value);
 			if (!this.runtime.parser.is("COMMA")) break;
 			this.runtime.parser.next();
@@ -46,11 +53,18 @@ export class StringDirective implements IDirective {
 		return strings;
 	}
 
+	/** The first symbol of the expression that isn't defined yet, looking into the arguments of macro parameters. */
+	private findUndefinedSymbol(tokens: Token[], context: DirectiveContext): string | undefined {
+		for (const token of tokens) {
+			if (token.type !== "IDENTIFIER") continue;
+			for (const t of context.macroArgs?.get(token.value) ?? [token])
+				if (t.type === "IDENTIFIER" && this.runtime.symbolTable.findSymbol(t.value) === undefined) return t.value;
+		}
+		return undefined;
+	}
+
 	private calculateSize(directive: ScalarToken, context: DirectiveContext): number {
-		const strings = this.getStrings(directive, {
-			...context,
-			allowForwardRef: true,
-		});
+		const strings = this.getStrings(directive, context);
 		let totalSize = 0;
 		for (const str of strings) {
 			totalSize += str.length;
