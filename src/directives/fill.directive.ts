@@ -15,14 +15,20 @@ export class FillDirective implements IDirective {
 		const [countTokens] = this.parseArguments(argTokens);
 
 		if (countTokens.length > 0) {
+			let byteCount: number | null;
 			try {
-				const byteCount = this.runtime.evaluator.evaluateAsNumber(countTokens, context);
-				context.PC.value += byteCount;
-				this.runtime.lister.directive(directive, `<${byteCount} bytes>`);
+				byteCount = this.runtime.evaluator.evaluateAsNumber(countTokens, context);
 			} catch (e) {
 				// Error evaluating in pass one, but we must continue. Assume 0 size.
 				this.runtime.logger.warn(`Warning on line ${directive.line}: Could not evaluate .FILL count. ${e}`);
+				return;
 			}
+			// A symbol defined later: assume 0 size, pass 2 will know.
+			if (byteCount === null) return;
+			this.assertValidCount(byteCount, directive);
+
+			context.PC.value += byteCount;
+			this.runtime.lister.directive(directive, `<${byteCount} bytes>`);
 		}
 	}
 
@@ -30,6 +36,7 @@ export class FillDirective implements IDirective {
 		const argTokens = this.runtime.parser.getInstructionTokens(directive);
 		const [countTokens, valueTokens] = this.parseArguments(argTokens);
 		const count = this.runtime.evaluator.evaluateAsNumber(countTokens, context);
+		this.assertValidCount(count, directive);
 
 		const fillerValue = valueTokens.length > 0 ? this.runtime.evaluator.evaluateAsNumber(valueTokens, context) : 0;
 		assertFitsInBytes(fillerValue, 1, `.${directive.value} value on line ${directive.line}:`);
@@ -48,6 +55,11 @@ export class FillDirective implements IDirective {
 				hasText: false,
 			});
 		}
+	}
+
+	private assertValidCount(count: number | null, directive: ScalarToken) {
+		if (!Number.isInteger(count) || (count as number) < 0)
+			throw new Error(`.${directive.value} count on line ${directive.line}: ${count} isn't a whole number of bytes (0 or more).`);
 	}
 
 	/**

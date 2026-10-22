@@ -86,21 +86,12 @@ describe("Directive: .fill", () => {
 		expect(segment.data[offset + 1]).toBe(0x42);
 	});
 
-	it("should do nothing if count is negative", () => {
-		const source = `
-            .cpu "6502"
-            .org $2000
-            .fill -5, $FF
-            LDA #$42
-        `;
-		segments = asm.assemble(source);
-
-		// expect(asm.currentPC).toBe(0x2002);
-		const segment = segments[0];
-		if (!segment) throw new Error("No segment found");
-
-		const offset = 0x2000 - segment.start;
-		expect(segment.data[offset]).toBe(0xa9); // LDA immediate
-		expect(segment.data[offset + 1]).toBe(0x42);
+	it.each([
+		[".fill -5, $FF", ".FILL count on line 2: -5"],
+		[".ds -1", ".DS count on line 2: -1"],
+		[".fill 5/2", ".FILL count on line 2: 2.5"],
+		[".fill count\ncount = -2", ".FILL count on line 2: -2"],
+	])("should throw on a count that isn't a whole number of 0 or more: %j", (source, message) => {
+		expect(() => asm.assemble(`.org $2000\n${source}\nlabel: LDA #$42`)).toThrow(`${message} isn't a whole number of bytes (0 or more).`);
 	});
 });
