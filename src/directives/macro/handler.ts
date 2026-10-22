@@ -28,7 +28,7 @@ export class MacroHandler {
 		const macroName = macroToken.value;
 		const definition = this.macroDefinitions.get(macroName);
 
-		if (!definition) throw new Error(`ERROR: Macro '${macroName}' not defined.`);
+		if (!definition) throw new Error(`Macro '${macroName}' not defined.`);
 
 		// Stop runaway recursion before it exhausts memory.
 		const activeExpansions = this.parser.tokenStreamStack.filter((stream) => stream.macroName).length;
@@ -77,7 +77,9 @@ export class MacroHandler {
 		} else {
 			// Original logic for fixed arguments
 			if (passedArgsArray.length !== definition.parameters.length)
-				throw new Error(`line ${macroToken.line} Macro '${macroName}' expected ${definition.parameters.length}, but got ${passedArgsArray.length}.`);
+				throw new Error(
+					`Macro '${macroName}' expects ${definition.parameters.length} argument${definition.parameters.length === 1 ? "" : "s"}, but got ${passedArgsArray.length}.`,
+				);
 
 			definition.parameters.forEach((param, index) => {
 				const argTokens = passedArgsArray[index] || [];

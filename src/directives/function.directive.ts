@@ -14,7 +14,7 @@ export class FunctionDirective implements IDirective {
 
 	private defineAndScope(directive: ScalarToken, context: DirectiveContext) {
 		const nameToken = this.assembler.parser.next() as ScalarToken;
-		if (nameToken?.type !== "IDENTIFIER") throw new Error(`line ${directive.line}: Expected function name after .FUNCTION directive.`);
+		if (nameToken?.type !== "IDENTIFIER") throw new Error("Expected a function name after .FUNCTION.");
 
 		// Define the function name as a label in the current scope.
 		if (this.assembler.pass === 1)

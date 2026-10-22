@@ -91,7 +91,9 @@ describe("Macro Handling", () => {
 				start:
 					nopnopnop 98
 			`;
-			expect(() => assembler.assemble(src)).toThrow("line 9 Macro 'NOPNOPNOP' expected 0, but got 1.");
+			expect(() => assembler.assemble(src)).toThrow(
+				expect.objectContaining({ message: "Macro 'NOPNOPNOP' expects 0 arguments, but got 1.", location: expect.objectContaining({ line: 9 }) }),
+			);
 		});
 
 		it("tests macro with strings", () => {
@@ -328,7 +330,9 @@ describe("Macro Handling", () => {
 					rts
 				.end
 			`;
-			expect(() => assembler.assemble(source)).toThrow("Macro 'm' redefined on line 6: a macro can only be defined once.");
+			expect(() => assembler.assemble(source)).toThrow(
+				expect.objectContaining({ message: "Macro 'm' redefined: a macro can only be defined once.", location: expect.objectContaining({ line: 6 }) }),
+			);
 		});
 	});
 
@@ -519,7 +523,9 @@ describe("Macro Handling", () => {
 					drawSprite #$54:#$2e:#$10
 			`;
 
-			expect(() => assembler.assemble(src2)).toThrow(/line 6 Macro 'DRAWSPRITE' expected 3, but got 1./);
+			expect(() => assembler.assemble(src2)).toThrow(
+				expect.objectContaining({ message: "Macro 'DRAWSPRITE' expects 3 arguments, but got 1.", location: expect.objectContaining({ line: 6 }) }),
+			);
 		});
 	});
 });

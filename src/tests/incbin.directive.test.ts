@@ -50,6 +50,8 @@ describe("File Directive .INCBIN", () => {
 		const { assembler } = createAssembler();
 		const source = ".INCBIN";
 
-		expect(() => assembler.assemble(source)).toThrow("[PASS 1] ERROR: .INCBIN requires a string argument on line 1.");
+		expect(() => assembler.assemble(source)).toThrow(
+			expect.objectContaining({ message: ".INCBIN requires a string argument.", location: expect.objectContaining({ line: 1 }) }),
+		);
 	});
 });

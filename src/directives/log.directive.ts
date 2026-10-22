@@ -86,7 +86,7 @@ export class LogDirective implements IDirective {
 	private emitLog(message: string): void {
 		switch (this.mode) {
 			case "ERR":
-				throw `${message}`;
+				throw new Error(message);
 			case "WARN":
 				this.runtime.logger.warn(message);
 				break;

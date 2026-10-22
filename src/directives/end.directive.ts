@@ -15,7 +15,7 @@ export class EndDirective implements IDirective {
 			return;
 		}
 
-		throw new Error(`line ${directive.line}: Unexpected directive '${directive.value}'`);
+		throw new Error(`Unexpected directive '.${directive.value}': there's no block to end.`);
 	}
 
 	public handlePassTwo(directive: ScalarToken, _context: DirectiveContext): void {

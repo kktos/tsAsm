@@ -23,12 +23,8 @@ export class OrgDirective implements IDirective {
 		}
 	}
 
-	public handlePassTwo(directive: ScalarToken, context: DirectiveContext) {
+	public handlePassTwo(_directive: ScalarToken, context: DirectiveContext) {
 		const orgExpressionTokens = this.assembler.parser.getInstructionTokens();
-		try {
-			context.PC.value = this.assembler.expressionEvaluator.evaluateAsNumber(orgExpressionTokens, context);
-		} catch (e) {
-			throw `line ${directive.line}: Failed to evaluate .ORG expression. ${e}`;
-		}
+		context.PC.value = this.assembler.expressionEvaluator.evaluateAsNumber(orgExpressionTokens, context);
 	}
 }

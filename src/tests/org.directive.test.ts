@@ -71,7 +71,7 @@ describe("Directive: .ORG / *", () => {
             * = "test"
         `;
 			const asm = createAssembler();
-			expect(() => asm.assemble(source)).toThrow(/- Invalid value for \*\/ORG test/);
+			expect(() => asm.assemble(source)).toThrow("Invalid value for */ORG: test.");
 		});
 
 		it("should handle multiple * assign", () => {

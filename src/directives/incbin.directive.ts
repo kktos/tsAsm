@@ -13,13 +13,13 @@ export class IncbinDirective implements IDirective {
 		private readonly logger: Logger,
 	) {}
 
-	public handlePassOne(directive: ScalarToken, context: DirectiveContext) {
+	public handlePassOne(_directive: ScalarToken, context: DirectiveContext) {
 		const expressionTokens = this.assembler.parser.getInstructionTokens();
-		if (expressionTokens.length === 0) throw new Error(`[PASS 1] ERROR: .INCBIN requires a string argument on line ${directive.line}.`);
+		if (expressionTokens.length === 0) throw new Error(".INCBIN requires a string argument.");
 
 		// 2. Resolve the array from the symbol table
 		const filename = this.assembler.expressionEvaluator.evaluate(expressionTokens, context);
-		if (typeof filename !== "string") throw new Error(`[PASS 1] ERROR: .INCBIN requires a string argument on line ${directive.line}.`);
+		if (typeof filename !== "string") throw new Error(".INCBIN requires a string argument.");
 
 		try {
 			const rawBytes = this.assembler.fileHandler.readBinaryFile(filename);
@@ -34,11 +34,11 @@ export class IncbinDirective implements IDirective {
 
 	public handlePassTwo(directive: ScalarToken, context: DirectiveContext) {
 		const expressionTokens = this.assembler.parser.getInstructionTokens();
-		if (expressionTokens.length === 0) throw new Error(`[PASS 1] ERROR: .INCBIN requires a string argument on line ${directive.line}.`);
+		if (expressionTokens.length === 0) throw new Error(".INCBIN requires a string argument.");
 
 		// 2. Resolve the array from the symbol table
 		const filename = this.assembler.expressionEvaluator.evaluate(expressionTokens, context);
-		if (typeof filename !== "string") throw new Error(`[PASS 2] ERROR: .INCBIN requires a string argument on line ${directive.line}.`);
+		if (typeof filename !== "string") throw new Error(".INCBIN requires a string argument.");
 
 		try {
 			const rawBytes = this.assembler.fileHandler.readBinaryFile(filename);

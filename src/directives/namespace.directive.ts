@@ -39,7 +39,7 @@ export class NamespaceDirective implements IDirective {
 			else break;
 		}
 
-		if (!parser.isEOS() && parser.peek()?.line === directive.line) throw new Error(`SYNTAXERROR on line ${directive.line}: Unexpected token.`);
+		if (!parser.isEOS() && parser.peek()?.line === directive.line) throw new Error("Unexpected token after the .NAMESPACE name.");
 
 		this.assembler.symbolTable.pushNamespace(ns, metadata);
 	}

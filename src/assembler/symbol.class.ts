@@ -237,12 +237,12 @@ export class PASymbolTable {
 		if (!ns) ns = this.scopeStack[this.scopeStack.length - 1] as string;
 
 		const scope = this.symbols.get(ns);
-		if (!scope) throw `PASymbol ${ns} doesn't exist.`;
+		if (!scope) throw new Error(`PASymbol ${ns} doesn't exist.`);
 
 		const name = variableName.toUpperCase();
 
 		const symbol = scope.get(name);
-		if (symbol?.isConstant) throw `Can't redefine constant symbol ${ns === INTERNAL_GLOBAL ? "global" : ns}::${variableName}.`;
+		if (symbol?.isConstant) throw new Error(`Can't redefine constant symbol ${ns === INTERNAL_GLOBAL ? "global" : ns}::${variableName}.`);
 
 		scope.set(name, {
 			name,
@@ -272,12 +272,12 @@ export class PASymbolTable {
 			ns = this.scopeStack[this.scopeStack.length - 1] as string;
 
 			scope = this.symbols.get(ns);
-			if (!scope) throw `PASymbol ${this.getCurrentNamespace()} doesn't exist.`;
+			if (!scope) throw new Error(`PASymbol ${this.getCurrentNamespace()} doesn't exist.`);
 			name = variableName.toUpperCase();
 			symbol = scope.get(name);
 		}
 
-		if (symbol?.isConstant) throw `Can't redefine constant symbol ${this.getCurrentNamespace()}::${variableName}.`;
+		if (symbol?.isConstant) throw new Error(`Can't redefine constant symbol ${this.getCurrentNamespace()}::${variableName}.`);
 
 		if (!symbol) throw new Error(`assignVariable: Unknown symbol "${ns === INTERNAL_GLOBAL ? "global" : ns}::${name}".`);
 
@@ -342,7 +342,7 @@ export class PASymbolTable {
 			scope = this.symbols.get(namespaceKey);
 		}
 
-		if (!scope) throw `ERROR: PASymbol ${ns} doesn't exist.`;
+		if (!scope) throw new Error(`PASymbol ${ns} doesn't exist.`);
 
 		return scope.get(name);
 	}

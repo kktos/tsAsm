@@ -46,7 +46,7 @@ describe("Error locations", () => {
 		// pass 2
 		["  nop\n  lda missing", "Undefined symbol 'MISSING' on line 2."],
 		// pass 1
-		["  nop\n  lda #1 +", "line: 2 Binary operator '+' requires two operands."],
+		["  nop\n  lda #1 +", "Binary operator '+' requires two operands."],
 	])("should give an instruction's error as it is, without wrapping it: %j", (source, message) => {
 		expect((assemble(source) as AsmError).message).toBe(message);
 	});

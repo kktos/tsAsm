@@ -117,13 +117,13 @@ describe(".LET directive", () => {
 		it("should allow only valid identifers in name expression", () => {
 			const { asm } = makeAssembler();
 			const src = `.LET "123" = "hello"`;
-			expect(() => asm.assemble(src)).toThrow(/Invalid identifier for symbol name : 123/);
+			expect(() => asm.assemble(src)).toThrow("Invalid identifier for symbol name: 123.");
 		});
 
 		it("should allow only valid identifers in name expression 2", () => {
 			const { asm } = makeAssembler();
 			const src = `.LET "n@me" = "hello"`;
-			expect(() => asm.assemble(src)).toThrow(/Invalid identifier for symbol name : n@me/);
+			expect(() => asm.assemble(src)).toThrow("Invalid identifier for symbol name: n@me.");
 		});
 	});
 });
