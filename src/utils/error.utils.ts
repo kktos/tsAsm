@@ -15,6 +15,8 @@ export interface SourceLocation {
  */
 export class AsmError extends Error {
 	public location: SourceLocation;
+	/** The text of the source line the error is on, when known: shown under the message. */
+	public sourceLine?: string;
 
 	public constructor(message: string, location: SourceLocation = {}) {
 		super(message);
@@ -22,11 +24,26 @@ export class AsmError extends Error {
 		this.location = location;
 	}
 
-	/** `file:line:column: error: message`, the format editors and terminals recognise. */
+	/**
+	 * `file:line:column: error: message`, the format editors and terminals recognise, then the source line with a
+	 * caret under the column:
+	 * ```
+	 * main.asm:3:7: error: Unexpected character '@'
+	 *     3 |   lda @x
+	 *       |       ^
+	 * ```
+	 */
 	public format(): string {
 		const { file, line, column } = this.location;
 		const where = [file, line, column].filter((part) => part !== undefined && part !== "").join(":");
-		return `${where ? `${where}: ` : ""}error: ${this.message}`;
+		const text = `${where ? `${where}: ` : ""}error: ${this.message}`;
+		if (this.sourceLine === undefined || line === undefined) return text;
+
+		const gutter = String(line).padStart(5);
+		const lines = [text, `${gutter} | ${this.sourceLine}`];
+		// Tabs are kept so that the caret lines up under the column as the source is shown.
+		if (column) lines.push(`${" ".repeat(gutter.length)} | ${this.sourceLine.slice(0, column - 1).replace(/[^\t]/g, " ")}^`);
+		return lines.join("\n");
 	}
 
 	public override toString(): string {

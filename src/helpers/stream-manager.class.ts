@@ -5,6 +5,8 @@ export class StreamManager {
 	public currentFilepath = "";
 	public currentFilename = "";
 	private filenameStack: { path: string; name: string }[] = [];
+	/** The text of each file read, by path: for errors to show their source line. */
+	private sources = new Map<string, string>();
 
 	constructor(
 		private readonly fileHandler: FileHandler,
@@ -15,11 +17,19 @@ export class StreamManager {
 		this.currentFilepath = filepath ?? "";
 		this.currentFilename = filename ?? "";
 		this.filenameStack = [];
+		this.sources = new Map([[this.currentFilepath, source]]);
 		this.parser.start(source);
+	}
+
+	/** A line (1-based) of a file read in this assembly, without its line ending (or a leading byte order mark). */
+	public getSourceLine(filepath: string, line: number): string | undefined {
+		const text = this.sources.get(filepath)?.split("\n")[line - 1];
+		return text?.replace(/\r$/, "").replace(/^\uFEFF/, "");
 	}
 
 	public startNewStream(filename: string, tokenize = true) {
 		const rawContent = this.fileHandler.readSourceFile(filename, this.currentFilepath);
+		this.sources.set(this.fileHandler.fullpath, rawContent);
 
 		// A file already being included would include itself again, forever.
 		const includeChain = [...this.filenameStack.map((file) => file.path), this.currentFilepath];
