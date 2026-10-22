@@ -281,7 +281,7 @@ Inside a YAML or JSON block, numbers follow that format's syntax: write `0xAA`, 
 
 ## Loops
 
-`.repeat <count> [AS <iterator>]` repeats a block. The iterator counts from `1`.
+`.repeat <count> [AS <iterator>]` repeats a block. The iterator counts from `1`. `count` is a whole number: `0` skips the block.
 
 ```as
 .repeat 3 AS i

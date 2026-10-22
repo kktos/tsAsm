@@ -89,6 +89,21 @@ describe("Repeat Directives", () => {
             test .equ idx
         `;
 
-		expect(() => assembler.assemble(source)).toThrow(/Repeat count must be a positive integer./);
+		expect(() => assembler.assemble(source)).toThrow(".REPEAT count on line 2: -1 isn't a whole number (0 or more).");
+	});
+
+	it("can't repeat a fractional count", () => {
+		const assembler = createAssembler();
+		expect(() => assembler.assemble(".repeat 5/2\n.db 1\n.end")).toThrow(".REPEAT count on line 1: 2.5 isn't a whole number (0 or more).");
+	});
+
+	it.each([
+		[".repeat 0\n.db 1\n.end\n.db 2"],
+		[".repeat 0 { .db 1 }\n.db 2"],
+		[".repeat 0 AS i\n.db i\n.end\n.db 2"],
+	])("should do nothing for a count of 0: %j", (source) => {
+		const assembler = createAssembler();
+		assembler.assemble(source);
+		expect(assembler.link()).toEqual([2]);
 	});
 });

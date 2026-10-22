@@ -119,10 +119,14 @@ export class LoopDirective implements IDirective {
 		if (asPos !== -1) iteratorToken = countExpressionTokens[asPos + 1] as IdentifierToken;
 
 		const count = this.runtime.evaluator.evaluateAsNumber(exprTokens, context);
-		if (count <= 0) throw new Error("Repeat count must be a positive integer.");
+		if (!Number.isInteger(count) || (count as number) < 0)
+			throw new Error(`.REPEAT count on line ${directive.line}: ${count} isn't a whole number (0 or more).`);
 
 		// Find loop body
 		const bodyTokens = this.runtime.parser.getDirectiveBlockTokens(directive.value);
+
+		// nothing to repeat then leave, like an empty .FOR
+		if (count === 0) return;
 
 		// Setup scope and state
 		this.runtime.symbolTable.pushScope();
