@@ -1,5 +1,7 @@
+import { YAMLException } from "js-yaml";
 import type { FileHandler } from "../assembler/polyasm.types";
 import handlers from "../cpu";
+import { AsmError } from "../utils/error.utils";
 import { yamlparse } from "./asm-yaml";
 import { type InferObject, validate } from "./schema";
 
@@ -88,11 +90,31 @@ const confSchema = {
 
 type TConf = InferObject<typeof confSchema>;
 
+/** A project file that can't be read, isn't YAML or isn't a mapping throws an AsmError; one that doesn't fit the schema returns `errors`. */
 export function readConf(fileHandler: FileHandler, filename: string) {
-	const confFile = fileHandler.readSourceFile(filename);
-	const conf = yamlparse(confFile) as Record<string, unknown>;
+	let confFile: string;
+	try {
+		confFile = fileHandler.readSourceFile(filename);
+	} catch (e) {
+		const err = e as NodeJS.ErrnoException;
+		throw new AsmError(err.code === "ENOENT" ? "Project file not found." : `Unable to read the project file: ${err.message}`, { file: filename });
+	}
+
+	let conf: Record<string, unknown>;
+	try {
+		conf = yamlparse(confFile) as Record<string, unknown>;
+	} catch (e) {
+		if (!(e instanceof YAMLException)) throw e;
+		const error = new AsmError(e.reason, { file: filename, line: e.mark.line + 1, column: e.mark.column + 1 });
+		error.sourceLine = confFile.split(/\r?\n/)[e.mark.line];
+		throw error;
+	}
+	// an empty file, a list or a scalar
+	if (typeof conf !== "object" || conf === null || Array.isArray(conf))
+		throw new AsmError("The project file must be a YAML mapping, with an `input` key.", { file: filename });
+
 	// YAML reads `cpu: 6502` as a number
-	const input = conf?.input as Record<string, unknown> | undefined;
+	const input = conf.input as Record<string, unknown> | undefined;
 	if (typeof input?.cpu === "number") input.cpu = String(input.cpu);
 	const result = validate(conf, confSchema);
 	return { conf: conf as TConf, errors: result.ok ? undefined : result.errors };

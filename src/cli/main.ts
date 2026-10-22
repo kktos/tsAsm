@@ -39,7 +39,14 @@ const cliArgs = parseCliArgs(process.argv.slice(2), name);
 const confFilename = cliArgs.projectName as string;
 const fileHandler = new NodeFileHandler();
 
-const { conf, errors } = readConf(fileHandler, confFilename);
+let confResult: ReturnType<typeof readConf>;
+try {
+	confResult = readConf(fileHandler, confFilename);
+} catch (e) {
+	new ConsoleErrorSink().error(e);
+	process.exit(-1);
+}
+const { conf, errors } = confResult;
 if (errors) printErrorsAndExit(errors);
 
 fileHandler.basedir = `${dirname(confFilename)}/${dirname(conf.input.source)}/`;
