@@ -92,19 +92,25 @@ describe(".ALIGN", () => {
 		// expect(finalPC).toBe(0x1009);
 	});
 
-	it("should warn on non-power-of-two boundary", () => {
-		const sink = new MemorySink();
-		const logger = new Logger({ sink, enabled: true });
+	it.each([
+		[".align 3", "3"],
+		[".align 6", "6"],
+		[".align 0", "0"],
+		[".align -4", "-4"],
+		[".align boundary\nboundary = 12", "12"],
+	])("should throw on a boundary that isn't a power of two: %j", (source, value) => {
+		const logger = new Logger({ sink: new MemorySink(), enabled: true });
 		const segments = [{ name: "CODE", start: 0x1001, size: 0, resizable: true }];
 		const assembler = createAssembler(segments, logger);
-		const source = `
-      .org $1001
-      .align 3
-    `;
-		assembler.assemble(source);
-		// expect(sink).toBe(1);
-		expect(sink.warnings.length).toBe(1);
-		expect(sink.warnings[0]).toContain("not a power of two");
+		expect(() => assembler.assemble(`.org $1001\n${source}`)).toThrow(`.ALIGN boundary on line 2: ${value} is not a power of two (1, 2, 4, 8, ...).`);
+	});
+
+	it("should accept 1 and a boundary defined later", () => {
+		const logger = new Logger({ sink: new MemorySink(), enabled: true });
+		const segments = [{ name: "CODE", start: 0x1001, size: 0, resizable: true }];
+		const assembler = createAssembler(segments, logger);
+		assembler.assemble(".org $1001\n.align 1\n.db 1\n.align boundary, $EA\n.db 2\nboundary = 4");
+		expect(assembler.link()).toEqual([1, 0xea, 0xea, 2]);
 	});
 
 	it("should throw if the boundary can't be evaluated", () => {

@@ -1,6 +1,5 @@
 import type { SymbolValue } from "../assembler/symbol.class";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
-import { getHex } from "../utils/hex.util";
 import { assertFitsInBytes } from "../utils/number.utils";
 import type { DirectiveContext, DirectiveRuntime, IDirective } from "./directive.interface";
 
@@ -14,22 +13,23 @@ export class AlignDirective implements IDirective {
 		const alignExpressionTokens = this.runtime.parser.getInstructionTokens();
 		const [boundaryTokens] = this.parseArguments(alignExpressionTokens);
 
+		let boundary: number | null;
 		try {
-			const boundary = this.runtime.evaluator.evaluateAsNumber(boundaryTokens, context);
-			if (boundary <= 0) return;
-
-			// Check if boundary is a power of two, which is a common requirement.
-			if ((boundary & 1) !== 0) this.runtime.logger.warn(`Warning on line ${directive.line}: .ALIGN boundary $${getHex(boundary)} is not a power of two.`);
-
-			const newPC = (context.PC.value + boundary - 1) & ~(boundary - 1);
-			const paddingBytesCount = newPC - context.PC.value;
-
-			context.PC.value = newPC;
-
-			this.runtime.lister.directive(directive, `${boundary} <${paddingBytesCount} bytes>`);
+			boundary = this.runtime.evaluator.evaluateAsNumber(boundaryTokens, context);
 		} catch (e) {
 			this.runtime.logger.warn(`Warning on line ${directive.line}: Could not evaluate .ALIGN expression. ${e}`);
+			return;
 		}
+		// A symbol defined later: pass 2 will know.
+		if (boundary === null) return;
+		this.assertPowerOfTwo(boundary, directive);
+
+		const newPC = (context.PC.value + boundary - 1) & ~(boundary - 1);
+		const paddingBytesCount = newPC - context.PC.value;
+
+		context.PC.value = newPC;
+
+		this.runtime.lister.directive(directive, `${boundary} <${paddingBytesCount} bytes>`);
 	}
 
 	public handlePassTwo(directive: ScalarToken, context: DirectiveContext): void {
@@ -38,7 +38,7 @@ export class AlignDirective implements IDirective {
 
 		// All symbols are known in pass 2, so an evaluation error is a real error: let it propagate.
 		const boundary = this.runtime.evaluator.evaluateAsNumber(boundaryTokens, context);
-		if (boundary <= 0) return;
+		this.assertPowerOfTwo(boundary, directive);
 
 		const fillerValue = valueTokens.length > 0 ? this.runtime.evaluator.evaluateAsNumber(valueTokens, context) : 0; // Default to 0 if no value is provided
 		assertFitsInBytes(fillerValue, 1, `.${directive.value} value on line ${directive.line}:`);
@@ -62,6 +62,12 @@ export class AlignDirective implements IDirective {
 				hasText: false,
 			});
 		}
+	}
+
+	/** The padding is computed with a bit mask, which only works for a power of two: anything else is an error. */
+	private assertPowerOfTwo(boundary: number, directive: ScalarToken) {
+		if (!Number.isInteger(boundary) || !Number.isInteger(Math.log2(boundary)))
+			throw new Error(`.ALIGN boundary on line ${directive.line}: ${boundary} is not a power of two (1, 2, 4, 8, ...).`);
 	}
 
 	/**
