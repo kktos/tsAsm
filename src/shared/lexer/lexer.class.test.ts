@@ -338,6 +338,16 @@ describe("AssemblyLexer", () => {
 		expect(tokens.map((t) => t.value)).toEqual(["1000", "65535", "31", "5", "10", "10", "%", "3", "16", ",", "X"]);
 	});
 
+	test("should leave the stream being lexed alone when tokenizing another source", () => {
+		lexer.startStream("NOP\nRTS");
+		expect(lexer.ensureBuffered(0)?.value).toBe("NOP");
+
+		expect(lexer.tokenize("LDA #1").map((t) => t.value)).toEqual(["LDA", "#", "1"]);
+		expect(() => lexer.tokenize("LDA @1")).toThrow("Unexpected character '@'");
+
+		expect(lexer.ensureBuffered(1)?.value).toBe("RTS");
+	});
+
 	test("should skip a closed block comment", () => {
 		const tokens = lexer.tokenize(".DB 1 /* A\nB */, 2 /**/");
 		expect(tokens.map((t) => t.value)).toEqual([".", "DB", "1", ",", "2"]);

@@ -97,19 +97,26 @@ export class AssemblyLexer {
 		});
 	}
 
+	/** Tokenizes a whole source on its own stream: the stream being lexed, if any, is left as it was. */
 	public tokenize(source: string): Token[] {
+		const previousStream = this.currentStream;
 		this.startStream(source);
 
-		while (this.currentStream.pos < this.currentStream.length) {
-			const token = this.nextToken();
-			if (!token) continue; // skip null tokens (e.g., newlines)
+		try {
+			while (this.currentStream.pos < this.currentStream.length) {
+				const token = this.nextToken();
+				if (!token) continue; // skip null tokens (e.g., newlines)
 
-			this.currentStream.lastToken = token;
-			this.currentStream.tokenBuffer.push(token);
-			if (token.type === "EOF") break;
+				this.currentStream.lastToken = token;
+				this.currentStream.tokenBuffer.push(token);
+				if (token.type === "EOF") break;
+			}
+
+			return this.currentStream.tokenBuffer.slice();
+		} finally {
+			this.streamStack.pop();
+			this.currentStream = previousStream;
 		}
-
-		return this.currentStream.tokenBuffer.slice();
 	}
 
 	public reset() {
@@ -220,23 +227,6 @@ export class AssemblyLexer {
 		stream.column = pos.column;
 		stream.pos = pos.pos;
 		stream.lastToken = stream.tokenBuffer[stream.tokenBuffer.length - 1] as Token;
-	}
-
-	/** Consume and return the next token from the stream (or null at EOF). */
-	public nextFromStream(): Token | null {
-		// Ensure at least one token is buffered
-		const token = this.ensureBuffered(this.currentStream.tokenBuffer.length);
-		if (!token) return null;
-		// Pop the next token off the buffer front
-		const next = this.currentStream.tokenBuffer.shift() as Token;
-		// Keep lastToken updated
-		this.currentStream.lastToken = next;
-		return next;
-	}
-
-	/** Peek ahead `offset` tokens without consuming them. */
-	public peekBuffered(offset = 0): Token | null {
-		return this.ensureBuffered(offset) ?? null;
 	}
 
 	// Single-pass token extraction with minimal backtracking
