@@ -64,7 +64,7 @@ lda #0  ; end-of-line comment
 
 ### Strings and characters
 
-Strings use double or single quotes: `"Hello"` or `'Hello'`. A one-character string used as a value gives its character code: `lda #"A"` loads `$41`.
+Strings use double or single quotes: `"Hello"` or `'Hello'`. A string ends on its line: a missing closing quote is an error. A one-character string used as a value gives its character code: `lda #"A"` loads `$41`.
 
 Escape sequences: `\n`, `\r`, `\t`, `\b`, `\f`, `\'`, `\"`, `\\`, and `\xHH` for a character code in hexadecimal.
 

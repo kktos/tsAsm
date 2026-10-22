@@ -520,7 +520,9 @@ export class AssemblyLexer {
 			}
 		}
 
-		if (this.peek() === delimiter) this.advance(); // skip closing "
+		// A string ends on its line: reaching the end of the line or of the source means the closing quote is missing.
+		if (this.peek() !== delimiter) throw new Error(`Unterminated string on line ${line}, column ${column}: missing closing ${delimiter}.`);
+		this.advance(); // skip closing "
 
 		return this.makeToken("STRING", value, line, column, delimiter);
 	}
