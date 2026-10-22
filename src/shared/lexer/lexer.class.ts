@@ -611,6 +611,7 @@ export class AssemblyLexer {
 		const endMarker = this.endMarker?.toLowerCase();
 		const endMarkerLen = this.endMarker?.length || 0;
 		this.endMarker = undefined;
+		const scanStart = this.currentStream.pos;
 
 		// console.log(
 		// 	"scanRawTextBlock",
@@ -661,9 +662,24 @@ export class AssemblyLexer {
 			this.currentStream.pos = this.currentStream.length;
 		}
 
+		this.moveLineAndColumnTo(scanStart, this.currentStream.pos);
+
 		const rawValue = this.currentStream.source.slice(rawDataStart, endOfRawData);
 
 		return this.makeToken("RAW_TEXT", rawValue, line + 1, column);
+	}
+
+	/** After jumping from `from` to `to` in the source, counts the lines skipped so positions stay right. */
+	private moveLineAndColumnTo(from: number, to: number) {
+		const source = this.currentStream.source;
+		let lineStart = -1;
+		for (let i = from; i < to; i++) {
+			if (source[i] !== "\n") continue;
+			this.currentStream.line++;
+			lineStart = i + 1;
+		}
+		if (lineStart === -1) this.currentStream.column += to - from;
+		else this.currentStream.column = to - lineStart + 1;
 	}
 
 	private scanIdentifier(line: number, column: number): Token {
