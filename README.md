@@ -16,6 +16,15 @@ pnpm build
 ```
 
 The build produces the command-line tool `dist/tsasm` and the library bundle `dist/libtsasm.js`.
+`dist/tsasm` is a single file that only needs Node.js.
+
+To run it as a `tsasm` command from any directory (macOS, Linux or Windows):
+
+```shell
+pnpm install:cli
+```
+
+This links the command into npm's global bin directory, which is normally in your `PATH`; use `pnpm install:cli --dir <directory>` to pick another one. As it is a link to `dist/tsasm`, a new build is picked up without reinstalling. `pnpm uninstall:cli` removes it.
 
 ## Command line
 
