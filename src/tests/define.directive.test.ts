@@ -272,6 +272,12 @@ describe(".DEFINE Directive", () => {
 			expect(assembler.symbolTable.lookupSymbol("AFTER")).toBe(1);
 		});
 
+		it("should keep line and column numbers right after the block", () => {
+			const assembler = createTextAssembler();
+			expect(() => assembler.assemble(".DEFINE MY_SYMBOL\nfoo\nbar\n  .END @\n")).toThrow("'@' (U+0040) on line 4, column 8.");
+			expect(() => createTextAssembler().assemble(".DEFINE MY_SYMBOL\nfoo\nbar\n.END\n  @\n")).toThrow("'@' (U+0040) on line 5, column 3.");
+		});
+
 		it("should end the block on a .END followed by a comment", () => {
 			const assembler = createTextAssembler();
 			assembler.assemble(".DEFINE MY_SYMBOL\nfoo\n  .end ; done\nAFTER = 1\n");
