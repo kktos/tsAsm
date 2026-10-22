@@ -44,11 +44,9 @@ export class StringDirective implements IDirective {
 			if (value === null) {
 				const unknown = this.findUndefinedSymbol(exprTokens, context);
 				const symbol = unknown ? `'${unknown}'` : "Its symbol";
-				throw new Error(
-					`.${directive.value} on line ${directive.line}: ${symbol} must be defined before it is used here (its length is needed to place what follows).`,
-				);
+				throw new Error(`.${directive.value}: ${symbol} must be defined before it is used here (its length is needed to place what follows).`);
 			}
-			if (typeof value !== "string") throw new Error(`Data directive expression must evaluate to a string on line ${directive.line}.`);
+			if (typeof value !== "string") throw new Error(`.${directive.value} expression must evaluate to a string.`);
 			strings.push(value);
 			if (!this.runtime.parser.is("COMMA")) break;
 			this.runtime.parser.next();
@@ -71,7 +69,7 @@ export class StringDirective implements IDirective {
 		const strings = this.getStrings(directive, context);
 		let totalSize = 0;
 		for (const str of strings) {
-			totalSize += stringToBytes(str, `.${directive.value} on line ${directive.line}:`).length;
+			totalSize += stringToBytes(str, `.${directive.value}:`).length;
 			switch (this.format) {
 				case "CSTR":
 					totalSize += 1;
@@ -91,7 +89,7 @@ export class StringDirective implements IDirective {
 		const outputBytes: number[] = [];
 
 		for (const str of strings) {
-			const chars = stringToBytes(str, `.${directive.value} on line ${directive.line}:`);
+			const chars = stringToBytes(str, `.${directive.value}:`);
 
 			switch (this.format) {
 				case "TEXT":
@@ -101,11 +99,11 @@ export class StringDirective implements IDirective {
 					outputBytes.push(...chars, 0);
 					break;
 				case "PSTR":
-					if (chars.length > 255) throw new Error(`.PSTR string length cannot exceed 255 bytes on line ${directive.line}.`);
+					if (chars.length > 255) throw new Error(".PSTR string length cannot exceed 255 bytes.");
 					outputBytes.push(chars.length, ...chars);
 					break;
 				case "PSTRL": {
-					if (chars.length > 65535) throw new Error(`.PSTRL string length cannot exceed 65535 bytes on line ${directive.line}.`);
+					if (chars.length > 65535) throw new Error(".PSTRL string length cannot exceed 65535 bytes.");
 					const length = [chars.length & 0xff, (chars.length >> 8) & 0xff];
 					outputBytes.push(...(this.getEndianness() === "big" ? length.reverse() : length), ...chars);
 					break;

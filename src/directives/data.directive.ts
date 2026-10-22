@@ -44,7 +44,7 @@ export class DataDirective implements IDirective {
 					break;
 				}
 				case "string": {
-					totalSize += stringToBytes(value, `.${directive.value} value on line ${directive.line}:`).length;
+					totalSize += stringToBytes(value, `.${directive.value} value:`).length;
 					break;
 				}
 				case "number": {
@@ -76,13 +76,13 @@ export class DataDirective implements IDirective {
 
 			switch (typeof value) {
 				case "string": {
-					outputBytes.push(...stringToBytes(value, `.${directive.value} value on line ${directive.line}:`));
+					outputBytes.push(...stringToBytes(value, `.${directive.value} value:`));
 					params.push(value);
 					hasText = true;
 					break;
 				}
 				case "number": {
-					assertFitsInBytes(value, this.bytesPerElement, `.${directive.value} value on line ${directive.line}:`);
+					assertFitsInBytes(value, this.bytesPerElement, `.${directive.value} value:`);
 					const bytes = Array.from({ length: this.bytesPerElement }, (_, i) => (value >> (i * 8)) & 0xff);
 					outputBytes.push(...(this.getEndianness() === "big" ? bytes.reverse() : bytes));
 					params.push(value);

@@ -102,7 +102,12 @@ describe(".ALIGN", () => {
 		const logger = new Logger({ sink: new MemorySink(), enabled: true });
 		const segments = [{ name: "CODE", start: 0x1001, size: 0, resizable: true }];
 		const assembler = createAssembler(segments, logger);
-		expect(() => assembler.assemble(`.org $1001\n${source}`)).toThrow(`.ALIGN boundary on line 2: ${value} is not a power of two (1, 2, 4, 8, ...).`);
+		expect(() => assembler.assemble(`.org $1001\n${source}`)).toThrow(
+			expect.objectContaining({
+				message: `.ALIGN boundary: ${value} is not a power of two (1, 2, 4, 8, ...).`,
+				location: expect.objectContaining({ line: 2 }),
+			}),
+		);
 	});
 
 	it("should accept 1 and a boundary defined later", () => {
