@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { Assembler } from "../assembler/polyasm";
 import type { SegmentDefinition } from "../assembler/polyasm.types";
 import { Cpu65C02Handler } from "../cpu/cpu65c02.class";
+import { Cpu6809Handler } from "../cpu/cpu6809.class";
 import { Logger } from "../helpers/logger.class";
 import { MemorySink } from "../helpers/memorysink.class";
 import { MockFileHandler } from "./mockfilehandler.class";
@@ -17,6 +18,7 @@ const fakeCPU = {
 		resolvedAddress: 0,
 	}),
 	encodeInstruction: () => [],
+	endianness: "little" as const,
 	getPCSize: () => 8,
 };
 
@@ -152,6 +154,30 @@ describe("Data Directives", () => {
 			['.DW 1, "😀"', ".DW value on line 1: '😀' (U+1F600) doesn't fit in a byte."],
 		])("should throw on an out-of-range value: %s", (source, message) => {
 			expect(() => assemble(source)).toThrow(message);
+		});
+	});
+
+	describe("byte order", () => {
+		const assembleWith = (cpu: Cpu65C02Handler | Cpu6809Handler, source: string) => {
+			const assembler = new Assembler(cpu, new MockFileHandler(), { segments: DEFAULT_SEGMENTS });
+			assembler.assemble(source);
+			return assembler.link();
+		};
+
+		it("should write .DW, .DL and the .PSTRL length big-endian on the 6809", () => {
+			expect(assembleWith(new Cpu6809Handler(), '.DW $1234, -2\n.DL $12345678\n.PSTRL "ab"')).toEqual([
+				0x12, 0x34, 0xff, 0xfe, 0x12, 0x34, 0x56, 0x78, 0x00, 0x02, 0x61, 0x62,
+			]);
+		});
+
+		it("should write them little-endian on the 65C02", () => {
+			expect(assembleWith(new Cpu65C02Handler(), '.DW $1234\n.DL $12345678\n.PSTRL "ab"')).toEqual([
+				0x34, 0x12, 0x78, 0x56, 0x34, 0x12, 0x02, 0x00, 0x61, 0x62,
+			]);
+		});
+
+		it("should follow the CPU selected with .CPU", () => {
+			expect(assembleWith(new Cpu65C02Handler(), '.DW $1234\n.CPU "6809"\n.DW $1234\n.CPU "65C02"\n.DW $1234')).toEqual([0x34, 0x12, 0x12, 0x34, 0x34, 0x12]);
 		});
 	});
 });

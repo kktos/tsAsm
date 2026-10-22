@@ -14,6 +14,7 @@ const RV32I_FORMATS = {
 
 export class CpuRV32IHandler implements CPUHandler {
 	cpuType = "RV32I" as const;
+	endianness = "little" as const;
 
 	private registerMap: Map<string, number> = new Map([
 		["zero", 0],

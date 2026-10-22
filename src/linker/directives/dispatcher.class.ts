@@ -39,13 +39,15 @@ export class Dispatcher {
 
 		this.register("FILL", new FillDirective(runtime));
 		this.register("ALIGN", new AlignDirective(runtime));
-		this.register("BYTE", new DataDirective(runtime, 1)); // Define Byte (1 byte)
-		this.register("WORD", new DataDirective(runtime, 2)); // Define Word (2 bytes)
-		this.register("LONG", new DataDirective(runtime, 4)); // Define Long (4 bytes)
-		this.register("STRING", new StringDirective(runtime, "TEXT"));
-		this.register("PSTRING", new StringDirective(runtime, "PSTR"));
-		this.register("PSTRINGLONG", new StringDirective(runtime, "PSTRL"));
-		this.register("CSTRING", new StringDirective(runtime, "CSTR"));
+		// The linker writes its output image little-endian (see Linker.emitWord/emitLong).
+		const littleEndian = () => "little" as const;
+		this.register("BYTE", new DataDirective(runtime, 1, littleEndian)); // Define Byte (1 byte)
+		this.register("WORD", new DataDirective(runtime, 2, littleEndian)); // Define Word (2 bytes)
+		this.register("LONG", new DataDirective(runtime, 4, littleEndian)); // Define Long (4 bytes)
+		this.register("STRING", new StringDirective(runtime, "TEXT", littleEndian));
+		this.register("PSTRING", new StringDirective(runtime, "PSTR", littleEndian));
+		this.register("PSTRINGLONG", new StringDirective(runtime, "PSTRL", littleEndian));
+		this.register("CSTRING", new StringDirective(runtime, "CSTR", littleEndian));
 
 		this.register("SECTION", new SectionDirective(runtime));
 

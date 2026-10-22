@@ -203,12 +203,14 @@ Code is assembled into segments. The command line tool defines them in the proje
 | Directive | Emits |
 |---|---|
 | `.db` / `.byte` | 8-bit values |
-| `.dw` / `.word` | 16-bit values, little-endian |
-| `.dl` / `.long` | 32-bit values, little-endian |
+| `.dw` / `.word` | 16-bit values, in the CPU's byte order |
+| `.dl` / `.long` | 32-bit values, in the CPU's byte order |
 | `.fill` / `.ds` / `.res` `<count> [, <value>]` | `count` bytes of `value` (default `0`); `count` is a whole number, 0 or more |
 | `.align <boundary> [, <value>]` | `value` bytes (default `0`) up to the next multiple of `boundary`, which must be a power of two |
 | `.hex` | Bytes written as hexadecimal digits |
 | `.incbin "<file>"` | The content of a binary file |
+
+The CPU's byte order is little-endian (`.dw $1234` gives `34 12`), except on the 6809, which is big-endian (`12 34`).
 
 ```as
 .db $01, 2, "A"
@@ -234,7 +236,7 @@ Code is assembled into segments. The command line tool defines them in the proje
 | `.text` / `.str` / `.string` | The characters |
 | `.cstr` / `.cstring` / `.asciiz` | The characters, then a `0` byte |
 | `.pstr` | A length byte, then the characters |
-| `.pstrl` | A 16-bit little-endian length, then the characters |
+| `.pstrl` | A 16-bit length in the CPU's byte order, then the characters |
 
 ```as
 .text "AB"      ; 41 42

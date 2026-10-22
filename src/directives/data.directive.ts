@@ -1,4 +1,5 @@
 import type { SymbolValue } from "../assembler/symbol.class";
+import type { Endianness } from "../cpu/cpuhandler.interface";
 import type { ScalarToken } from "../shared/lexer/lexer.class";
 import { assertFitsInBytes } from "../utils/number.utils";
 import { stringToBytes } from "../utils/string.utils";
@@ -11,6 +12,8 @@ export class DataDirective implements IDirective {
 	constructor(
 		private readonly runtime: DirectiveRuntime,
 		private readonly bytesPerElement: number,
+		/** The current CPU's byte order, read when the bytes are written (.cpu can change it). */
+		private readonly getEndianness: () => Endianness,
 	) {}
 
 	public handlePassOne(directive: ScalarToken, context: DirectiveContext) {
@@ -80,7 +83,8 @@ export class DataDirective implements IDirective {
 				}
 				case "number": {
 					assertFitsInBytes(value, this.bytesPerElement, `.${directive.value} value on line ${directive.line}:`);
-					for (let i = 0; i < this.bytesPerElement; i++) outputBytes.push((value >> (i * 8)) & 0xff);
+					const bytes = Array.from({ length: this.bytesPerElement }, (_, i) => (value >> (i * 8)) & 0xff);
+					outputBytes.push(...(this.getEndianness() === "big" ? bytes.reverse() : bytes));
 					params.push(value);
 					break;
 				}

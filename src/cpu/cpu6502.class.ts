@@ -3,6 +3,7 @@ import type { AddressingMode, CPUHandler } from "./cpuhandler.interface";
 
 export class Cpu6502Handler implements CPUHandler {
 	cpuType = "6502" as const;
+	endianness = "little" as const;
 
 	// Define M6502 specific modes internally
 	private M6502_MODES = {

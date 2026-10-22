@@ -2,6 +2,7 @@ import type { OperatorStackToken, Token } from "../shared/lexer/lexer.class";
 import type { AddressingMode, CPUHandler } from "./cpuhandler.interface";
 export class CpuArmRiscHandler implements CPUHandler {
 	cpuType = "ARM_RISC" as const;
+	endianness = "little" as const;
 
 	// ARM instructions are 32-bit (4 bytes) and fixed size in this implementation.
 	private readonly INSTRUCTION_SIZE = 4;
