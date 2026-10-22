@@ -280,19 +280,19 @@ describe("ExpressionEvaluator", () => {
 		it("should throw error when indexing a non-array", () => {
 			const { evaluator, tokenize } = setup();
 			const tokens = tokenize("123[0]");
-			expect(() => evaluator.evaluateAsNumber(tokens, { PC: { value: 0 } })).toThrow("Attempted to index a non-array value on line 1.");
+			expect(() => evaluator.evaluateAsNumber(tokens, { PC: { value: 0 } })).toThrow("Attempted to index a non-array value.");
 		});
 
 		it("should throw error for out-of-bounds index", () => {
 			const { evaluator, tokenize } = setup();
 			const tokens = tokenize("[1,2,3][3]");
-			expect(() => evaluator.evaluateAsNumber(tokens, { PC: { value: 0 } })).toThrow("Array index 3 out of bounds for array of length 3 on line 1.");
+			expect(() => evaluator.evaluateAsNumber(tokens, { PC: { value: 0 } })).toThrow("Array index 3 out of bounds for array of length 3.");
 		});
 
 		it("should throw error for non-numeric index", () => {
 			const { evaluator, tokenize } = setup();
 			const tokens = tokenize('[1,2,3]["hello"]');
-			expect(() => evaluator.evaluateAsNumber(tokens, { PC: { value: 0 } })).toThrow("Array index must be a number on line 1.");
+			expect(() => evaluator.evaluateAsNumber(tokens, { PC: { value: 0 } })).toThrow("Array index must be a number.");
 		});
 	});
 
@@ -421,14 +421,17 @@ describe("ExpressionEvaluator", () => {
 		it("should throw on undefined symbol when forward refs are not allowed", () => {
 			const { evaluator, tokenize } = setup();
 			const tokens = tokenize("UndefinedSymbol");
-			expect(() => evaluator.evaluateAsNumber(tokens, { PC: { value: 0 } })).toThrow("Undefined symbol 'UNDEFINEDSYMBOL' on line 1.");
+			// located at the symbol's token
+			expect(() => evaluator.evaluateAsNumber(tokens, { PC: { value: 0 } })).toThrow(
+				expect.objectContaining({ message: "Undefined symbol 'UNDEFINEDSYMBOL'.", location: { line: 1, column: 1 } }),
+			);
 		});
 
 		it("should suggest a similar symbol for an undefined symbol", () => {
 			const { evaluator, tokenize, symbolTable } = setup();
 			symbolTable.defineVariable("MyLabel", 0x1000, { filename: "test", line: 1, column: 1 });
 			const tokens = tokenize("MyLable"); // Typo
-			expect(() => evaluator.evaluateAsNumber(tokens, { PC: { value: 0 } })).toThrow("Undefined symbol 'MYLABLE' on line 1. Did you mean 'MYLABEL'?");
+			expect(() => evaluator.evaluateAsNumber(tokens, { PC: { value: 0 } })).toThrow("Undefined symbol 'MYLABLE'. Did you mean 'MYLABEL'?");
 		});
 
 		it("should throw on mismatched parentheses", () => {
@@ -446,7 +449,9 @@ describe("ExpressionEvaluator", () => {
 		it("should throw on invalid expression format", () => {
 			const { evaluator, tokenize } = setup();
 			const tokens = tokenize("5 5 +");
-			expect(() => evaluator.evaluateAsNumber(tokens, { PC: { value: 0 } })).toThrow("Invalid expression format: Unexpected token '5' on line 1.");
+			expect(() => evaluator.evaluateAsNumber(tokens, { PC: { value: 0 } })).toThrow(
+				expect.objectContaining({ message: "Invalid expression format: Unexpected token '5'.", location: { line: 1, column: 3 } }),
+			);
 		});
 	});
 
