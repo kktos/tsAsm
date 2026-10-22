@@ -278,6 +278,11 @@ describe(".DEFINE Directive", () => {
 			expect(() => createTextAssembler().assemble(".DEFINE MY_SYMBOL\nfoo\nbar\n.END\n  @\n")).toThrow("'@' (U+0040) on line 5, column 3.");
 		});
 
+		it("should throw when the block has no .END", () => {
+			expect(() => createTextAssembler().assemble("BEFORE = 1\n.DEFINE MY_SYMBOL\nfoo\nAFTER = 1\n")).toThrow("Missing .END for the block on line 2.");
+			expect(() => createTextAssembler().assemble(".DEFINE MY_SYMBOL\nfoo\n.ENDIF\n")).toThrow("Missing .END for the block on line 1.");
+		});
+
 		it("should end the block on a .END followed by a comment", () => {
 			const assembler = createTextAssembler();
 			assembler.assemble(".DEFINE MY_SYMBOL\nfoo\n  .end ; done\nAFTER = 1\n");

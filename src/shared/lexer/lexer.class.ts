@@ -608,9 +608,12 @@ export class AssemblyLexer {
 	}
 
 	private scanRawTextBlock({ line, column, hasToGoNextline }: { line: number; column: number; hasToGoNextline: boolean }): Token | null {
+		const endMarkerName = this.endMarker;
 		const endMarker = this.endMarker?.toLowerCase();
 		const endMarkerLen = this.endMarker?.length || 0;
 		this.endMarker = undefined;
+		// Reaching the end of the source without the end marker: don't silently take the rest of the file.
+		const missingEndMarker = () => new Error(`Missing ${endMarkerName} for the block on line ${line}.`);
 		const scanStart = this.currentStream.pos;
 
 		// console.log(
@@ -625,8 +628,8 @@ export class AssemblyLexer {
 		if (hasToGoNextline) {
 			// The raw data starts after the current line.
 			const endOfLine = this.currentStream.source.indexOf("\n", this.currentStream.pos);
-			// No newline after the directive, so no raw data.
-			if (endOfLine === -1) return null;
+			// No newline after the directive, so no room for the block and its end marker.
+			if (endOfLine === -1) throw missingEndMarker();
 			rawDataStart = endOfLine + 1;
 		} else {
 			rawDataStart = this.currentStream.pos - 1;
@@ -657,10 +660,7 @@ export class AssemblyLexer {
 			// biome-ignore lint/suspicious/noAssignInExpressions: easier that way
 		} while ((currentPos = this.currentStream.source.indexOf("\n", currentPos)) !== -1);
 
-		if (endOfRawData === -1) {
-			endOfRawData = this.currentStream.length; // Read to the end if marker not found
-			this.currentStream.pos = this.currentStream.length;
-		}
+		if (endOfRawData === -1) throw missingEndMarker();
 
 		this.moveLineAndColumnTo(scanStart, this.currentStream.pos);
 
