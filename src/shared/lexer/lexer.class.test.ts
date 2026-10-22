@@ -299,6 +299,16 @@ describe("AssemblyLexer", () => {
 		expect(() => lexer.tokenize(source)).toThrow(`Unexpected character ${message}.`);
 	});
 
+	test.each([
+		['.DB "AB', `line 1, column 5: missing closing ".`],
+		[".DB 'AB\n.DB 1", "line 1, column 5: missing closing '."],
+		['.DB "AB\\"', `line 1, column 5: missing closing ".`],
+		[".DB \"AB'", `line 1, column 5: missing closing ".`],
+		["NOP\n  LDA #'A", "line 2, column 8: missing closing '."],
+	])("should throw on an unterminated string: %j", (source, message) => {
+		expect(() => lexer.tokenize(source)).toThrow(`Unterminated string on ${message}`);
+	});
+
 	test("should accept unknown characters in comments and strings", () => {
 		const tokens = lexer.tokenize('.DB "@~É" ; @~É');
 		expect(tokens.map((t) => t.value)).toEqual([".", "DB", "@~É"]);
