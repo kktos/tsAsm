@@ -249,6 +249,38 @@ describe(".DEFINE Directive", () => {
 		});
 	});
 
+	describe(".DEFINE block end", () => {
+		const createTextAssembler = () => {
+			const textHandler = vi.fn((blockContent: string, _context: DirectiveContext) => blockContent);
+			const handlers = { default: "TEXT", map: new Map([["TEXT", textHandler]]) };
+			return createAssembler(handlers).assembler;
+		};
+
+		it("should end an empty block on a .END at the start of the line", () => {
+			const assembler = createTextAssembler();
+			assembler.assemble(".DEFINE MY_SYMBOL\n.END\nAFTER = 1\n");
+
+			expect(assembler.symbolTable.lookupSymbol("MY_SYMBOL")).toBe("");
+			expect(assembler.symbolTable.lookupSymbol("AFTER")).toBe(1);
+		});
+
+		it("should not end the block on a word starting with .END", () => {
+			const assembler = createTextAssembler();
+			assembler.assemble(".DEFINE MY_SYMBOL\nfoo\n.ENDIF\n.ending\nbar\n.END\nAFTER = 1\n");
+
+			expect(assembler.symbolTable.lookupSymbol("MY_SYMBOL")).toBe("foo\n.ENDIF\n.ending\nbar");
+			expect(assembler.symbolTable.lookupSymbol("AFTER")).toBe(1);
+		});
+
+		it("should end the block on a .END followed by a comment", () => {
+			const assembler = createTextAssembler();
+			assembler.assemble(".DEFINE MY_SYMBOL\nfoo\n  .end ; done\nAFTER = 1\n");
+
+			expect(assembler.symbolTable.lookupSymbol("MY_SYMBOL")).toBe("foo");
+			expect(assembler.symbolTable.lookupSymbol("AFTER")).toBe(1);
+		});
+	});
+
 	describe(".DEFINE from file", () => {
 		it("should load the file and define the symbol", () => {
 			// 1. Create a mock handler function
