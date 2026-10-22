@@ -61,7 +61,7 @@ describe("Error locations", () => {
 
 	it("should format as file:line:column: error: message, then the source line with a caret", () => {
 		expect((assemble("  nop\n  lda @x") as AsmError).format()).toBe(
-			["main.asm:2:7: error: Unexpected character '@' (U+0040) on line 2, column 7.", "    2 |   lda @x", "      |       ^"].join("\n"),
+			["main.asm:2:7: error: Unexpected character '@' (U+0040).", "    2 |   lda @x", "      |       ^"].join("\n"),
 		);
 	});
 

@@ -119,8 +119,12 @@ describe("Label References", () => {
 
 		it("should throw when an anonymous label moves between the passes", () => {
 			const { assembler } = setup();
+			// reported at the anonymous label, on line 4
 			expect(() => assembler.assemble(" lda zp\n bne :+\n nop\n: rts\nzp = $10")).toThrow(
-				"Phase error: anonymous label on line 4 is $1006 in pass 1 but $1005 in pass 2",
+				expect.objectContaining({
+					message: expect.stringContaining("Phase error: anonymous label is $1006 in pass 1 but $1005 in pass 2"),
+					location: expect.objectContaining({ line: 4, column: 1 }),
+				}),
 			);
 		});
 	});

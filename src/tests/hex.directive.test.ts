@@ -117,7 +117,9 @@ describe(".HEX Directive", () => {
 		});
 
 		it("should throw when the } is missing", () => {
-			expect(() => assemble(".hex { 0A\n0B")).toThrow("Missing } for the .HEX block on line 1.");
+			expect(() => assemble(".hex { 0A\n0B")).toThrow(
+				expect.objectContaining({ message: "Missing } for the .HEX block.", location: expect.objectContaining({ line: 1 }) }),
+			);
 		});
 	});
 });

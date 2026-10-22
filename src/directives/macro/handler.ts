@@ -2,6 +2,7 @@ import type { Parser } from "../../assembler/parser.class";
 import type { PASymbolTable } from "../../assembler/symbol.class";
 import type { ILister } from "../../helpers/lister.class";
 import type { ScalarToken, Token } from "../../shared/lexer/lexer.class";
+import { AsmError } from "../../utils/error.utils";
 import type { MacroDefinition } from "./macro.interface";
 
 const DEFAULT_MAX_MACRO_DEPTH = 32;
@@ -33,9 +34,7 @@ export class MacroHandler {
 		// Stop runaway recursion before it exhausts memory.
 		const activeExpansions = this.parser.tokenStreamStack.filter((stream) => stream.macroName).length;
 		if (activeExpansions >= this.maxDepth)
-			throw new Error(
-				`Macro '${macroName}' nested more than ${this.maxDepth} levels deep on line ${macroToken.line}. Is it recursive without an end condition?`,
-			);
+			throw AsmError.at(`Macro '${macroName}' nested more than ${this.maxDepth} levels deep. Is it recursive without an end condition?`, macroToken);
 
 		let passedArgsArray = this.parseMacroArguments(macroToken.line);
 
@@ -53,8 +52,9 @@ export class MacroHandler {
 		// Argument validation and mapping
 		if (definition.restParameter) {
 			if (passedArgsArray.length < definition.parameters.length)
-				throw new Error(
-					`Not enough arguments for macro '${macroName}' on line ${macroToken.line}. Expected at least ${definition.parameters.length}, but got ${passedArgsArray.length}.`,
+				throw AsmError.at(
+					`Not enough arguments for macro '${macroName}'. Expected at least ${definition.parameters.length}, but got ${passedArgsArray.length}.`,
+					macroToken,
 				);
 
 			// Map regular parameters
@@ -162,7 +162,7 @@ export class MacroHandler {
 					while (bracketDepth > 0) {
 						const innerToken = this.parser.peek();
 						if (!innerToken || innerToken.type === "EOF" || innerToken.line !== callLineNum) {
-							throw new Error(`Unmatched '<' in macro arguments on line ${callLineNum}.`);
+							throw new Error("Unmatched '<' in macro arguments.");
 						}
 						this.parser.advance(1);
 						if (innerToken.type === "OPERATOR") {

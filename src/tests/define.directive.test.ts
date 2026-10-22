@@ -276,13 +276,21 @@ describe(".DEFINE Directive", () => {
 
 		it("should keep line and column numbers right after the block", () => {
 			const assembler = createTextAssembler();
-			expect(() => assembler.assemble(".DEFINE MY_SYMBOL\nfoo\nbar\n  .END @\n")).toThrow("'@' (U+0040) on line 4, column 8.");
-			expect(() => createTextAssembler().assemble(".DEFINE MY_SYMBOL\nfoo\nbar\n.END\n  @\n")).toThrow("'@' (U+0040) on line 5, column 3.");
+			expect(() => assembler.assemble(".DEFINE MY_SYMBOL\nfoo\nbar\n  .END @\n")).toThrow(
+				expect.objectContaining({ message: "Unexpected character '@' (U+0040).", location: expect.objectContaining({ line: 4, column: 8 }) }),
+			);
+			expect(() => createTextAssembler().assemble(".DEFINE MY_SYMBOL\nfoo\nbar\n.END\n  @\n")).toThrow(
+				expect.objectContaining({ message: "Unexpected character '@' (U+0040).", location: expect.objectContaining({ line: 5, column: 3 }) }),
+			);
 		});
 
 		it("should throw when the block has no .END", () => {
-			expect(() => createTextAssembler().assemble("BEFORE = 1\n.DEFINE MY_SYMBOL\nfoo\nAFTER = 1\n")).toThrow("Missing .END for the .DEFINE block on line 2.");
-			expect(() => createTextAssembler().assemble(".DEFINE MY_SYMBOL\nfoo\n.ENDIF\n")).toThrow("Missing .END for the .DEFINE block on line 1.");
+			expect(() => createTextAssembler().assemble("BEFORE = 1\n.DEFINE MY_SYMBOL\nfoo\nAFTER = 1\n")).toThrow(
+				expect.objectContaining({ message: "Missing .END for the .DEFINE block.", location: expect.objectContaining({ line: 2 }) }),
+			);
+			expect(() => createTextAssembler().assemble(".DEFINE MY_SYMBOL\nfoo\n.ENDIF\n")).toThrow(
+				expect.objectContaining({ message: "Missing .END for the .DEFINE block.", location: expect.objectContaining({ line: 1 }) }),
+			);
 		});
 
 		it("should end the block on a .END followed by a comment", () => {
