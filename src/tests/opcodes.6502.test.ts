@@ -266,4 +266,25 @@ describe("6502 Opcodes", () => {
 			0x00,
 		]);
 	});
+
+	// In pass 1, an operand using a symbol defined later has no value yet: its size is the worst case.
+	describe("operands defined later", () => {
+		it.each([
+			["LDA later\nnext: NOP\nlater = $1234", [0xad, 0x34, 0x12, 0xea]],
+			["LDA later,X\nnext: NOP\nlater = $1234", [0xbd, 0x34, 0x12, 0xea]],
+			["LDA later,Y\nnext: NOP\nlater = $1234", [0xb9, 0x34, 0x12, 0xea]],
+			["LDA (zp),Y\nzp = $10", [0xb1, 0x10]],
+			["LDA #value\nvalue = 5", [0xa9, 0x05]],
+			["BNE done\nNOP\ndone: RTS", [0xd0, 0x01, 0xea, 0x60]],
+		])("should assemble %j", (source, bytes) => {
+			expect(assembleAndGetCode(source)).toEqual(bytes);
+		});
+
+		it.each([
+			["LDA zp\nnext: NOP\nzp = $10"],
+			["LDA zp,X\nnext: NOP\nzp = $10"],
+		])("should report a zero page address defined later when code after it moves: %j", (source) => {
+			expect(() => assembleAndGetCode(source)).toThrow("Phase error: label 'NEXT' is $8003 in pass 1 but $8002 in pass 2.");
+		});
+	});
 });

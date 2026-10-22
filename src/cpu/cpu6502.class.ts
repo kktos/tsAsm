@@ -339,7 +339,7 @@ export class Cpu6502Handler implements CPUHandler {
 		return tokens.slice(start + 1, end);
 	}
 
-	resolveAddressingMode(mnemonic: string, operandTokens: OperatorStackToken[], resolveValue: (tokens: OperatorStackToken[]) => number): ModeInfo {
+	resolveAddressingMode(mnemonic: string, operandTokens: OperatorStackToken[], resolveValue: (tokens: OperatorStackToken[]) => number | null): ModeInfo {
 		// Check if the base mnemonic is supported. If not, THROW to signal a potential label.
 		const parts = mnemonic.split(".");
 		const baseMnemonic = parts[0];
@@ -452,7 +452,8 @@ export class Cpu6502Handler implements CPUHandler {
 				const expressionTokens = operandTokens.slice(0, numTokens - 2);
 				const resolvedAddress = resolveValue(expressionTokens);
 
-				const isZP = resolvedAddress >= 0x00 && resolvedAddress <= 0xff;
+				// Unknown in pass 1 (defined later): the worst case, absolute.
+				const isZP = resolvedAddress !== null && resolvedAddress >= 0x00 && resolvedAddress <= 0xff;
 
 				let mode: AddressingMode;
 				if (forcedSize === "ZP" || (forcedSize === null && isZP)) {
