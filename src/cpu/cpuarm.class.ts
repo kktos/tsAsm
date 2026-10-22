@@ -1,5 +1,5 @@
 import type { OperatorStackToken } from "../shared/lexer/lexer.class";
-import type { AddressingMode, CPUHandler } from "./cpuhandler.interface";
+import type { AddressingMode, CPUHandler, ModeInfo } from "./cpuhandler.interface";
 export class CpuArmRiscHandler implements CPUHandler {
 	cpuType = "ARM_RISC" as const;
 	endianness = "little" as const;
@@ -65,16 +65,7 @@ export class CpuArmRiscHandler implements CPUHandler {
 	 * Resolves addressing mode for ARM instructions.
 	 * Simplification: only handles MOV Rdest, #Imm and B Label.
 	 */
-	resolveAddressingMode(
-		mnemonic: string,
-		operandTokens: OperatorStackToken[],
-		resolveValue: (tokens: OperatorStackToken[]) => number,
-	): {
-		mode: AddressingMode;
-		opcode: number;
-		bytes: number;
-		resolvedAddress: number;
-	} {
+	resolveAddressingMode(mnemonic: string, operandTokens: OperatorStackToken[], resolveValue: (tokens: OperatorStackToken[]) => number): ModeInfo {
 		const baseMnemonic = mnemonic.toUpperCase().match(/^[A-Z]+/)?.[0];
 		if (!baseMnemonic) {
 			// THROW here to signal a potential label to the Assembler engine
@@ -127,15 +118,7 @@ export class CpuArmRiscHandler implements CPUHandler {
 	 * Pass 2: Encodes the 4 bytes in Big-Endian format typical of ARM.
 	 * @param modeInfo Contains the pre-calculated 32-bit opcode or target address.
 	 */
-	encodeInstruction(
-		_tokens: OperatorStackToken[],
-		modeInfo: {
-			mode: AddressingMode;
-			resolvedAddress: number;
-			opcode: number;
-			pc: number;
-		},
-	): number[] {
+	encodeInstruction(_tokens: OperatorStackToken[], modeInfo: ModeInfo & { pc: number }): number[] {
 		// We switch on the ARM specific mode strings
 		// const mnemonic = tokens[0]?.value.toUpperCase();
 
