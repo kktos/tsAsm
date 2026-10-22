@@ -44,6 +44,4 @@ export interface CPUHandler {
 			pc: number;
 		},
 	): number[];
-
-	getPCSize(): number;
 }

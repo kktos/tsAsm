@@ -1,4 +1,4 @@
-import type { OperatorStackToken, Token } from "../shared/lexer/lexer.class";
+import type { OperatorStackToken } from "../shared/lexer/lexer.class";
 import { getHex } from "../utils/hex.util";
 import { assertFitsInBytes } from "../utils/number.utils";
 import type { AddressingMode, CPUHandler } from "./cpuhandler.interface";
@@ -375,11 +375,6 @@ export class Cpu65C02Handler implements CPUHandler {
 		"BEQ", // Branch on EQual
 		"BRA", // Branch Always
 	]);
-
-	getPCSize(): number {
-		return 16;
-	}
-	handleCPUSpecificDirective(_directive: string, _args: Token[]): void {}
 
 	isInstruction(mnemonic: string): boolean {
 		const baseMnemonic = mnemonic.toUpperCase().split(".")[0];

@@ -16,7 +16,6 @@ const fakeCPU = {
 	}),
 	encodeInstruction: () => [],
 	endianness: "little" as const,
-	getPCSize: () => 8,
 };
 
 describe(".LIST Directive", () => {

@@ -137,13 +137,6 @@ export class CpuRV32IHandler implements CPUHandler {
 		["JAL", new Map([[RV32I_FORMATS.J, { opcode: 0x6f }]])],
 	]);
 
-	getPCSize(): number {
-		return 32;
-	}
-	handleCPUSpecificDirective(_directive: string, _args: unknown[]): void {
-		// No specific directives for now
-	}
-
 	isInstruction(mnemonic: string): boolean {
 		return this.instructionMap.has(mnemonic.toUpperCase());
 	}

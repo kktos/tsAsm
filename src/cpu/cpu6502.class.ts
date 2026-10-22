@@ -1,4 +1,4 @@
-import type { OperatorStackToken, Token } from "../shared/lexer/lexer.class";
+import type { OperatorStackToken } from "../shared/lexer/lexer.class";
 import type { AddressingMode, CPUHandler } from "./cpuhandler.interface";
 
 export class Cpu6502Handler implements CPUHandler {
@@ -325,11 +325,6 @@ export class Cpu6502Handler implements CPUHandler {
 		"BNE", // Branch on Not Equal
 		"BEQ", // Branch on EQual
 	]);
-
-	getPCSize(): number {
-		return 16;
-	}
-	handleCPUSpecificDirective(_directive: string, _args: Token[]): void {}
 
 	isInstruction(mnemonic: string): boolean {
 		const baseMnemonic = mnemonic.toUpperCase().split(".")[0];
