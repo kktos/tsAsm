@@ -80,6 +80,8 @@ type Stream = {
 };
 export class AssemblyLexer {
 	private endMarker: string | undefined;
+	private rawInline = false;
+	private rawBlockName: string | undefined;
 	private localLabelChar = ":";
 
 	private streamStack: Stream[] = [];
@@ -130,8 +132,42 @@ export class AssemblyLexer {
 		this.streamStack.push(this.currentStream);
 	}
 
-	public setEndMarker(endMarker: string | undefined): void {
+	/**
+	 * Makes the next token raw text: the lines up to `endMarker` (see scanRawTextBlock), or with `rawInline`
+	 * the rest of the line or a '{ ... }' block (see scanRawInline). `blockName` names the directive in errors.
+	 */
+	public setRawMode({ endMarker, rawInline = false, blockName }: { endMarker?: string; rawInline?: boolean; blockName?: string } = {}): void {
 		this.endMarker = endMarker;
+		this.rawInline = rawInline;
+		this.rawBlockName = blockName;
+	}
+
+	private rawBlockLabel() {
+		return this.rawBlockName ? `the .${this.rawBlockName} block` : "the block";
+	}
+
+	/** The next character on the current line, after spaces: "" at the end of the line or of the source. Never lexes. */
+	public nextCharOnLine(): string {
+		const ch = this.currentStream.source[this.skipSpacesFrom(this.currentStream.pos)] ?? "";
+		return ch === "\n" ? "" : ch;
+	}
+
+	/** True when only spaces or a comment are left on the current line. Never lexes. */
+	public isRestOfLineBlank(): boolean {
+		const pos = this.skipSpacesFrom(this.currentStream.pos);
+		return this.nextCharOnLine() === "" || this.isCommentStart(pos);
+	}
+
+	private skipSpacesFrom(start: number): number {
+		const source = this.currentStream.source;
+		let pos = start;
+		while (source[pos] === " " || source[pos] === "\t" || source[pos] === "\r") pos++;
+		return pos;
+	}
+
+	private isCommentStart(pos: number): boolean {
+		const source = this.currentStream.source;
+		return source[pos] === this.commentChar || (source[pos] === "/" && (source[pos + 1] === "/" || source[pos + 1] === "*"));
 	}
 
 	/**
@@ -210,6 +246,7 @@ export class AssemblyLexer {
 		if (this.currentStream.pos >= this.currentStream.length) return this.makeToken("EOF", "");
 
 		if (this.endMarker) return this.scanRawTextBlock({ line: this.currentStream.line, column: this.currentStream.column, hasToGoNextline: true });
+		if (this.rawInline) return this.scanRawInline(this.currentStream.line, this.currentStream.column);
 
 		const ch = this.currentStream.source[this.currentStream.pos] as string;
 		const startLine = this.currentStream.line;
@@ -613,7 +650,7 @@ export class AssemblyLexer {
 		const endMarkerLen = this.endMarker?.length || 0;
 		this.endMarker = undefined;
 		// Reaching the end of the source without the end marker: don't silently take the rest of the file.
-		const missingEndMarker = () => new Error(`Missing ${endMarkerName} for the block on line ${line}.`);
+		const missingEndMarker = () => new Error(`Missing ${endMarkerName} for ${this.rawBlockLabel()} on line ${line}.`);
 		const scanStart = this.currentStream.pos;
 
 		// console.log(
@@ -667,6 +704,41 @@ export class AssemblyLexer {
 		const rawValue = this.currentStream.source.slice(rawDataStart, endOfRawData);
 
 		return this.makeToken("RAW_TEXT", rawValue, line + 1, column);
+	}
+
+	/**
+	 * Reads raw text on the current line: up to the end of the line, a '}' or a comment, which are left for the
+	 * next token. If the text starts with '{', reads up to the matching '}' instead, across lines and comments,
+	 * and returns what's between the braces.
+	 */
+	private scanRawInline(line: number, column: number): Token {
+		this.rawInline = false;
+		const source = this.currentStream.source;
+		const start = this.currentStream.pos;
+		let pos = start;
+
+		if (source[pos] !== "{") {
+			while (pos < this.currentStream.length && source[pos] !== "\n" && source[pos] !== "}" && !this.isCommentStart(pos)) pos++;
+			this.moveLineAndColumnTo(start, pos);
+			this.currentStream.pos = pos;
+			return this.makeToken("RAW_TEXT", source.slice(start, pos).trimEnd(), line, column);
+		}
+
+		pos++; // skip '{'
+		while (pos < this.currentStream.length && source[pos] !== "}") {
+			if (source[pos] === "/" && source[pos + 1] === "*") {
+				const end = source.indexOf("*/", pos + 2);
+				pos = end === -1 ? this.currentStream.length : end + 2;
+			} else if (this.isCommentStart(pos)) {
+				const end = source.indexOf("\n", pos);
+				pos = end === -1 ? this.currentStream.length : end;
+			} else pos++;
+		}
+		if (pos >= this.currentStream.length) throw new Error(`Missing } for ${this.rawBlockLabel()} on line ${line}.`);
+
+		this.moveLineAndColumnTo(start, pos + 1);
+		this.currentStream.pos = pos + 1;
+		return this.makeToken("RAW_TEXT", source.slice(start + 1, pos), line, column);
 	}
 
 	/** After jumping from `from` to `to` in the source, counts the lines skipped so positions stay right. */

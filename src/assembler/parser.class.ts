@@ -3,7 +3,8 @@ import type { PushTokenStreamParams, StreamState } from "../assembler/polyasm.ty
 import type { SymbolValue } from "../assembler/symbol.class";
 import { AssemblyLexer, type IdentifierToken, type NumberToken, type StringToken, type Token } from "../shared/lexer/lexer.class";
 
-type GetRawBlock = (parser: Parser, instructionTokens: Token[]) => Token | null;
+/** Called right after a raw directive's name: returns the rest of the directive's tokens, raw text included. */
+type GetRawBlock = (parser: Parser, directive: Token) => Token[];
 export const blockDirectives: Set<string> = new Set();
 export const rawDirectives: Map<string, GetRawBlock | undefined> = new Map();
 
@@ -92,9 +93,9 @@ export class Parser {
 	}
 
 	/** Read and consume the next token from the active stream. */
-	public next(options?: { endMarker?: string }): Token | null {
+	public next(options?: { endMarker?: string; rawInline?: boolean; blockName?: string }): Token | null {
 		const pos = this.getPosition();
-		this.lexer.setEndMarker(options?.endMarker);
+		this.lexer.setRawMode(options);
 		const t = this.ensureToken(pos);
 		if (t) this.setPosition(pos + 1);
 		return t;
@@ -165,7 +166,24 @@ export class Parser {
 	}
 
 	public isDirective(expectedValue?: SymbolValue | SymbolValue[], offset = 0) {
-		return this.is("DOT", undefined, offset) && this.isIdentifier(expectedValue, offset + 1) && !this.is("OPERATOR", "(", offset + 2);
+		return this.is("DOT", undefined, offset) && this.isIdentifier(expectedValue, offset + 1) && !this.opensCall(this.getPosition() + offset + 2);
+	}
+
+	/** True when the stream is past every token read so far: the next token would come from the lexer. */
+	public isAtUnlexedSource(): boolean {
+		const lexerBuffer = this.lexer.getBufferedTokens();
+		return this.activeTokens === lexerBuffer && this.getPosition() >= lexerBuffer.length;
+	}
+
+	/**
+	 * True when the token at `index` is '(' (a function call like `.hex(10)`, not a directive).
+	 * A token not lexed yet is checked on the source instead, so a raw directive's data isn't lexed as tokens.
+	 */
+	private opensCall(index: number): boolean {
+		const lexerBuffer = this.lexer.getBufferedTokens();
+		if (this.activeTokens === lexerBuffer && index >= lexerBuffer.length) return this.lexer.nextCharOnLine() === "(";
+		const token = this.ensureToken(index);
+		return token?.type === "OPERATOR" && token.value === "(";
 	}
 
 	public directive(expectedValue?: SymbolValue | SymbolValue[]) {
@@ -398,12 +416,7 @@ export class Parser {
 
 					const directiveName = directive.value as string;
 					const getRawBlock = rawDirectives.get(directiveName);
-					if (getRawBlock) {
-						const lineTokens = this.getInstructionTokens(directive);
-						tokens.push(...lineTokens);
-						const block = getRawBlock ? getRawBlock(this, lineTokens) : this.next({ endMarker: ".END" });
-						if (block) tokens.push(block);
-					}
+					if (getRawBlock && !this.opensCall(this.getPosition())) tokens.push(...getRawBlock(this, directive));
 					break;
 				}
 
@@ -454,10 +467,9 @@ export class Parser {
 
 				const getRawBlock = rawDirectives.get(directiveName);
 				if (getRawBlock) {
-					const lineTokens = this.getInstructionTokens(directive);
-					tokens.push(...lineTokens);
-					const block = getRawBlock ? getRawBlock(this, lineTokens) : this.next({ endMarker: ".END" });
-					if (block) tokens.push(block);
+					tokens.push(current, directive);
+					this.advance(2);
+					tokens.push(...getRawBlock(this, directive));
 					continue;
 				}
 

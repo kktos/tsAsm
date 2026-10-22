@@ -30,7 +30,8 @@ export interface IDirective {
 	handlePassOne(directive: ScalarToken, context: DirectiveContext): void;
 	handlePassTwo(directive: ScalarToken, context: DirectiveContext): void;
 
-	getRawBlock?(parser: Parser, instructionTokens: Token[]): Token | null;
+	/** Called right after the directive's name, even inside a block: returns the rest of its tokens, raw text included. */
+	getRawBlock?(parser: Parser, directive: Token): Token[];
 }
 
 export interface DirectiveRuntime {

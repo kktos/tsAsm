@@ -84,4 +84,40 @@ describe(".HEX Directive", () => {
 			0x80, 0x90, 0x80, 0x90, 0x80, 0xa0, 0x80,
 		]);
 	});
+
+	describe("raw data", () => {
+		const assemble = (source: string) => {
+			const assembler = createAssembler();
+			assembler.assemble(source);
+			return assembler.link();
+		};
+
+		it("should read digits that look like numbers as hex bytes", () => {
+			expect(assemble(".hex 0B01 0B10")).toEqual([0x0b, 0x01, 0x0b, 0x10]);
+		});
+
+		it.each([
+			["one line", ".macro m\n .hex 0A 0B\n.end\n m\n m"],
+			["braces", ".macro m\n .hex { 0A 0B }\n.end\n m\n m"],
+			["block", ".macro m\n .hex\n 0A 0B\n .end\n.end\n m\n m"],
+		])("should work inside a macro: %s", (_, source) => {
+			expect(assemble(source)).toEqual([0x0a, 0x0b, 0x0a, 0x0b]);
+		});
+
+		it("should work inside .if and .else", () => {
+			expect(assemble(".if 0\n .hex 0A\n.else\n .hex { 0B }\n.end\n.if 1\n .hex 0C\n.end")).toEqual([0x0b, 0x0c]);
+		});
+
+		it("should ignore comments in the data", () => {
+			expect(assemble(".hex 01 ; one\n.hex { 02 // two\n /* } */ 03 }\n.hex\n 04 ; four\n.end")).toEqual([1, 2, 3, 4]);
+		});
+
+		it("should leave the .hex() function alone inside a block", () => {
+			expect(assemble(".macro m\n .text .hex(10, 4)\n.end\n m")).toEqual([0x24, 0x30, 0x30, 0x30, 0x41]);
+		});
+
+		it("should throw when the } is missing", () => {
+			expect(() => assemble(".hex { 0A\n0B")).toThrow("Missing } for the .HEX block on line 1.");
+		});
+	});
 });

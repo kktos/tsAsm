@@ -279,8 +279,8 @@ describe(".DEFINE Directive", () => {
 		});
 
 		it("should throw when the block has no .END", () => {
-			expect(() => createTextAssembler().assemble("BEFORE = 1\n.DEFINE MY_SYMBOL\nfoo\nAFTER = 1\n")).toThrow("Missing .END for the block on line 2.");
-			expect(() => createTextAssembler().assemble(".DEFINE MY_SYMBOL\nfoo\n.ENDIF\n")).toThrow("Missing .END for the block on line 1.");
+			expect(() => createTextAssembler().assemble("BEFORE = 1\n.DEFINE MY_SYMBOL\nfoo\nAFTER = 1\n")).toThrow("Missing .END for the .DEFINE block on line 2.");
+			expect(() => createTextAssembler().assemble(".DEFINE MY_SYMBOL\nfoo\n.ENDIF\n")).toThrow("Missing .END for the .DEFINE block on line 1.");
 		});
 
 		it("should end the block on a .END followed by a comment", () => {
