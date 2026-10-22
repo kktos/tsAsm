@@ -298,6 +298,11 @@ colours = ["red", "green", "blue"]
 .end
 ```
 
+A loop only generates lines, as if the block were written out once per iteration: it has no scope of its own.
+- What the block defines (labels, variables) stays after the loop, and a variable carries over to the next iteration.
+- A label written in a block run more than once is defined more than once, which is an error: branch with [anonymous labels](#labels) (`:` and `:-`) instead.
+- The iterators (`i`, `colour`, `idx`) are local to the loop, like macro parameters: after it, a symbol of the same name has its previous value again.
+
 ## Macros
 
 ```as

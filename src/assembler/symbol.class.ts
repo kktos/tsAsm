@@ -56,6 +56,21 @@ export class PASymbolTable {
 		if (!this.symbols.has(name)) this.symbols.set(name, scope);
 	}
 
+	/**
+	 * Stashes a symbol of the current scope, like `git stash`, so the name can be defined again for a while
+	 * (a loop's iterator): the returned function pops it back, leaving the scope as it was.
+	 */
+	stashSymbol(symbolName: string): () => void {
+		const scope = this.getCurrentScope() as Map<string, PASymbol>;
+		const name = symbolName.toUpperCase();
+		const saved = scope.get(name);
+		scope.delete(name);
+		return () => {
+			if (saved) scope.set(name, saved);
+			else scope.delete(name);
+		};
+	}
+
 	/** Pops the current scope from the stack, returning to the parent scope. */
 	popScope(parm?: { wannaSave: boolean }) {
 		if (this.scopeStack.length > 1) {
