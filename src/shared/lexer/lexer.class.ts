@@ -588,13 +588,16 @@ export class AssemblyLexer {
 
 		const numberString = this.currentStream.source.slice(start, this.currentStream.pos).replace(/_/g, "");
 		if (numberString === "") {
-			// A prefix not followed by any digits (e.g. '$', '$x', '0xZZ').
-			// '$' can't start anything else: re-scanning it would never advance, so it's an error.
-			if (firstChar === "$") throw new Error(`Invalid number on line ${line}: '$' must be followed by hexadecimal digits.`);
+			// A hex prefix not followed by any digits (e.g. '$', '$x', '0xZZ').
+			const prefix = this.currentStream.source.slice(prefixStart, start);
+			throw new Error(`Invalid number on line ${line}: '${prefix}' must be followed by hexadecimal digits.`);
+		}
 
-			// Rewind before the prefix and re-evaluate as something else.
-			this.currentStream.pos = prefixStart;
-			return this.scanIdentifier(line, column);
+		// A number ends where a word would: '123abc', '0b2' or '$12g' are errors, not a number followed by a symbol.
+		if (this.isIdentifierPart(this.peek())) {
+			while (this.isIdentifierPart(this.peek())) this.advance();
+			const word = this.currentStream.source.slice(prefixStart, this.currentStream.pos);
+			throw new Error(`Invalid number '${word}' on line ${line}, column ${column}.`);
 		}
 
 		let numericValue = Number.parseInt(numberString, radix);
