@@ -64,6 +64,8 @@ A block comment without its closing `*/` is an error.
 .db 0b1010_1010   ; binary, with _ as a digit separator
 ```
 
+A number can't run into a letter or a digit outside its base: `123abc`, `0b2` or `$12g` is an error.
+
 ### Strings and characters
 
 Strings use double or single quotes: `"Hello"` or `'Hello'`. A string ends on its line: a missing closing quote is an error. A one-character string used as a value gives its character code: `lda #"A"` loads `$41`.

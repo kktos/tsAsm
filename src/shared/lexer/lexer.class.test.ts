@@ -318,6 +318,26 @@ describe("AssemblyLexer", () => {
 		expect(() => lexer.tokenize(source)).toThrow(`Unterminated comment on ${position}: missing closing */.`);
 	});
 
+	test.each([
+		[".DW 123ABC", "'123ABC' on line 1, column 5"],
+		[".DW 0b2", "'0b2' on line 1, column 5"],
+		[".DW 0b", "'0b' on line 1, column 5"],
+		[".DW $12G", "'$12G' on line 1, column 5"],
+		[".DW %102", "'%102' on line 1, column 5"],
+		["NOP\n1LBL: NOP", "'1LBL' on line 2, column 1"],
+	])("should throw on a number followed by letters or digits: %j", (source, message) => {
+		expect(() => lexer.tokenize(source)).toThrow(`Invalid number ${message}.`);
+	});
+
+	test.each(["LDA 0x", "LDA 0xZZ", "LDA 0X_"])("should throw on '0x' without hex digits: %s", (source) => {
+		expect(() => lexer.tokenize(source)).toThrow(/'0x' must be followed by hexadecimal digits/i);
+	});
+
+	test("should still read valid numbers", () => {
+		const tokens = lexer.tokenize("1_000 $FF_FF 0x1F 0b101 %1010 10%3 $10,X");
+		expect(tokens.map((t) => t.value)).toEqual(["1000", "65535", "31", "5", "10", "10", "%", "3", "16", ",", "X"]);
+	});
+
 	test("should skip a closed block comment", () => {
 		const tokens = lexer.tokenize(".DB 1 /* A\nB */, 2 /**/");
 		expect(tokens.map((t) => t.value)).toEqual([".", "DB", "1", ",", "2"]);
