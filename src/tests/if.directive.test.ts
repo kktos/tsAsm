@@ -177,4 +177,14 @@ describe("Directive: .if/.else", () => {
 			expect(segments[0].data[offset]).toBe(0x18); // CLC
 		}
 	});
+
+	it("should report an unknown character inside a false .if block", () => {
+		const source = `
+            .if 0
+            LDA @value
+            .end
+        `;
+		const asm = createAssembler();
+		expect(() => asm.assemble(source)).toThrow("Unexpected character '@' (U+0040) on line 3, column 17.");
+	});
 });
