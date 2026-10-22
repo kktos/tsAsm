@@ -625,27 +625,22 @@ export class Assembler {
 		const instructionPC = this.PC.value;
 
 		// It's an instruction. Resolve its size and advance the PC.
-		try {
-			const sizeInfo = this.cpuHandler.resolveAddressingMode(mnemonicToken.value, operandTokens, (exprTokens, numberMax = 0) =>
-				this.expressionEvaluator.evaluateAsNumber(exprTokens, {
-					PC: this.PC,
-					allowForwardRef: true,
-					currentLabel: this.lastGlobalLabel,
-					numberMax,
-				}),
-			);
-			this.PC.value += sizeInfo.bytes;
+		const sizeInfo = this.cpuHandler.resolveAddressingMode(mnemonicToken.value, operandTokens, (exprTokens, numberMax = 0) =>
+			this.expressionEvaluator.evaluateAsNumber(exprTokens, {
+				PC: this.PC,
+				allowForwardRef: true,
+				currentLabel: this.lastGlobalLabel,
+				numberMax,
+			}),
+		);
+		this.PC.value += sizeInfo.bytes;
 
-			const operandString = operandTokens.map((t) => (t.type === "NUMBER" ? `$${getHex(Number(t.value))}` : t.value)).join("");
-			this.lister.bytes({
-				addr: instructionPC,
-				bytes: Array.from({ length: sizeInfo.bytes }, () => 0),
-				text: `${mnemonicToken.value} ${operandString}`,
-			});
-		} catch (e) {
-			const errorMessage = e instanceof Error ? e.message : String(e);
-			throw `line ${mnemonicToken.line}: ${errorMessage}\nCould not determine size of instruction '${mnemonicToken.value}'.`;
-		}
+		const operandString = operandTokens.map((t) => (t.type === "NUMBER" ? `$${getHex(Number(t.value))}` : t.value)).join("");
+		this.lister.bytes({
+			addr: instructionPC,
+			bytes: Array.from({ length: sizeInfo.bytes }, () => 0),
+			text: `${mnemonicToken.value} ${operandString}`,
+		});
 	}
 
 	private handleInstructionPassTwo(mnemonicToken: OperatorStackToken): void {
@@ -657,39 +652,34 @@ export class Assembler {
 			const currentStream = this.parser.tokenStreamStack[this.parser.tokenStreamStack.length - 1] as StreamState;
 			if (currentStream.macroArgs) operandTokens = this.substituteTokens(operandTokens, currentStream.macroArgs) as OperatorStackToken[];
 
-			try {
-				// 1. Resolve Mode & Address
-				const modeInfo = this.cpuHandler.resolveAddressingMode(mnemonicToken.value, operandTokens, (exprTokens, numberMax = 0) =>
-					this.expressionEvaluator.evaluateAsNumber(exprTokens, {
-						PC: this.PC,
-						currentLabel: this.lastGlobalLabel,
-						numberMax,
-					}),
-				);
+			// 1. Resolve Mode & Address
+			const modeInfo = this.cpuHandler.resolveAddressingMode(mnemonicToken.value, operandTokens, (exprTokens, numberMax = 0) =>
+				this.expressionEvaluator.evaluateAsNumber(exprTokens, {
+					PC: this.PC,
+					currentLabel: this.lastGlobalLabel,
+					numberMax,
+				}),
+			);
 
-				// 2. Encode Bytes using resolved info. Every symbol is known in pass 2, so is the operand.
-				const { resolvedAddress } = modeInfo;
-				if (resolvedAddress === null) throw new Error(`Internal error: the operand of '${mnemonicToken.value}' is still unknown in pass 2.`);
-				const encodedBytes = this.cpuHandler.encodeInstruction([mnemonicToken, ...operandTokens], {
-					...modeInfo,
-					resolvedAddress,
-					pc: this.PC.value,
-				});
+			// 2. Encode Bytes using resolved info. Every symbol is known in pass 2, so is the operand.
+			const { resolvedAddress } = modeInfo;
+			if (resolvedAddress === null) throw new Error(`Internal error: the operand of '${mnemonicToken.value}' is still unknown in pass 2.`);
+			const encodedBytes = this.cpuHandler.encodeInstruction([mnemonicToken, ...operandTokens], {
+				...modeInfo,
+				resolvedAddress,
+				pc: this.PC.value,
+			});
 
-				// 3. LOGGING (New location)
-				const operandString = operandTokens.map((t) => (t.type === "NUMBER" ? `$${getHex(Number(t.value))}` : t.value)).join("");
-				this.lister.bytes({
-					addr: instructionPC,
-					bytes: encodedBytes,
-					text: `${mnemonicToken.value} ${operandString}`,
-				});
+			// 3. LOGGING (New location)
+			const operandString = operandTokens.map((t) => (t.type === "NUMBER" ? `$${getHex(Number(t.value))}` : t.value)).join("");
+			this.lister.bytes({
+				addr: instructionPC,
+				bytes: encodedBytes,
+				text: `${mnemonicToken.value} ${operandString}`,
+			});
 
-				this.linker.writeBytes(this.PC.value, encodedBytes);
-				this.PC.value += encodedBytes.length;
-			} catch (e) {
-				const errorMessage = e instanceof Error ? e.message : String(e);
-				throw new Error(`line ${mnemonicToken.line}: Invalid instruction syntax or unresolved symbol. Error: ${errorMessage}`);
-			}
+			this.linker.writeBytes(this.PC.value, encodedBytes);
+			this.PC.value += encodedBytes.length;
 		}
 	}
 

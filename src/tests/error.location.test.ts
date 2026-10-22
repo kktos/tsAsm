@@ -42,6 +42,15 @@ describe("Error locations", () => {
 		expect((error as AsmError).location).toEqual(location);
 	});
 
+	it.each([
+		// pass 2
+		["  nop\n  lda missing", "Undefined symbol 'MISSING' on line 2."],
+		// pass 1
+		["  nop\n  lda #1 +", "line: 2 Binary operator '+' requires two operands."],
+	])("should give an instruction's error as it is, without wrapping it: %j", (source, message) => {
+		expect((assemble(source) as AsmError).message).toBe(message);
+	});
+
 	it("should turn whatever was thrown into an AsmError", () => {
 		// the operand error is thrown as a string by the instruction handling
 		const error = assemble("  nop\n  lda #1 +");

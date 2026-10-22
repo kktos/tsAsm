@@ -62,7 +62,10 @@ describe("FunctionDirective Scoping", () => {
         `;
 
 		expect(() => assembler.assemble(source)).toThrow(
-			/line 7: Invalid instruction syntax or unresolved symbol. Error: Undefined symbol 'MYROUTINE::PRIVATE_LABEL'./,
+			expect.objectContaining({
+				message: expect.stringContaining("Undefined symbol 'MYROUTINE::PRIVATE_LABEL'"),
+				location: expect.objectContaining({ line: 7 }),
+			}),
 		);
 	});
 
@@ -76,6 +79,8 @@ describe("FunctionDirective Scoping", () => {
             JMP PRIVATE_LABEL ; This should fail
         `;
 
-		expect(() => assembler.assemble(source)).toThrow(/line 7: Invalid instruction syntax or unresolved symbol. Error: Undefined symbol 'PRIVATE_LABEL'./);
+		expect(() => assembler.assemble(source)).toThrow(
+			expect.objectContaining({ message: expect.stringContaining("Undefined symbol 'PRIVATE_LABEL'"), location: expect.objectContaining({ line: 7 }) }),
+		);
 	});
 });

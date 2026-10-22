@@ -61,7 +61,7 @@ describe("Directive: .ORG / *", () => {
             NOP
         `;
 			const asm = createAssembler();
-			expect(() => asm.assemble(source)).toThrow(/Error: Write out of bounds: address \$300 is below segment 'CODE' start \$1000./);
+			expect(() => asm.assemble(source)).toThrow(/Write out of bounds: address \$300 is below segment 'CODE' start \$1000./);
 		});
 	});
 
