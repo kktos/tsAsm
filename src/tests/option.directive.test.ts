@@ -58,7 +58,9 @@ describe(".OPTION Directive", () => {
 		const source = `
             .OPTION local_label_char
         `;
-		expect(() => assembler.assemble(source)).toThrow("Invalid .OPTION syntax on line 2. Expected: .OPTION <name> <value>");
+		expect(() => assembler.assemble(source)).toThrow(
+			expect.objectContaining({ message: "Invalid .OPTION syntax. Expected: .OPTION <name> <value>", location: expect.objectContaining({ line: 2 }) }),
+		);
 	});
 
 	it("should throw an error for an invalid value type", () => {
@@ -66,7 +68,9 @@ describe(".OPTION Directive", () => {
 		const source = `
             .OPTION local_label_char 123
         `;
-		expect(() => assembler.assemble(source)).toThrow("Value for 'local_label_char' must be a single character string on line 2.");
+		expect(() => assembler.assemble(source)).toThrow(
+			expect.objectContaining({ message: "Value for 'local_label_char' must be a single character string.", location: expect.objectContaining({ line: 2 }) }),
+		);
 	});
 
 	it("should throw an error for an invalid value length", () => {
@@ -74,7 +78,9 @@ describe(".OPTION Directive", () => {
 		const source = `
             .OPTION local_label_char "@@"
         `;
-		expect(() => assembler.assemble(source)).toThrow("Value for 'local_label_char' must be a single character string on line 2.");
+		expect(() => assembler.assemble(source)).toThrow(
+			expect.objectContaining({ message: "Value for 'local_label_char' must be a single character string.", location: expect.objectContaining({ line: 2 }) }),
+		);
 	});
 
 	// it("should not process the option in pass two", () => {

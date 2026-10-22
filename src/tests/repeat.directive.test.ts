@@ -89,12 +89,16 @@ describe("Repeat Directives", () => {
             test .equ idx
         `;
 
-		expect(() => assembler.assemble(source)).toThrow(".REPEAT count on line 2: -1 isn't a whole number (0 or more).");
+		expect(() => assembler.assemble(source)).toThrow(
+			expect.objectContaining({ message: ".REPEAT count: -1 isn't a whole number (0 or more).", location: expect.objectContaining({ line: 2 }) }),
+		);
 	});
 
 	it("can't repeat a fractional count", () => {
 		const assembler = createAssembler();
-		expect(() => assembler.assemble(".repeat 5/2\n.db 1\n.end")).toThrow(".REPEAT count on line 1: 2.5 isn't a whole number (0 or more).");
+		expect(() => assembler.assemble(".repeat 5/2\n.db 1\n.end")).toThrow(
+			expect.objectContaining({ message: ".REPEAT count: 2.5 isn't a whole number (0 or more).", location: expect.objectContaining({ line: 1 }) }),
+		);
 	});
 
 	it.each([

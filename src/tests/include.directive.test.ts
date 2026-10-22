@@ -68,7 +68,9 @@ describe("File Directive .INCLUDE", () => {
 		const { assembler } = createAssembler();
 		const source = ".INCLUDE";
 
-		expect(() => assembler.assemble(source)).toThrow(".INCLUDE requires a string argument on line 1.");
+		expect(() => assembler.assemble(source)).toThrow(
+			expect.objectContaining({ message: ".INCLUDE requires a string argument.", location: expect.objectContaining({ line: 1 }) }),
+		);
 	});
 
 	it("should .INCLUDE file with a .FUNCTION holding a .DEFINE - bug fix", () => {

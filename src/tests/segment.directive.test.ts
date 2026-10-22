@@ -110,6 +110,15 @@ describe("Segments", () => {
 		expect(seg?.size).toBe(256);
 	});
 
+	it.each([
+		// a property spread over lines: the error is at the property, not at the .SEGMENT
+		[".SEGMENT CODE {\n  start: $1000,\n  foo: 1\n}", "Unknown .SEGMENT property 'foo': expected start, end, size or pad.", { line: 3, column: 3 }],
+		[".SEGMENT CODE { start: $1000, 5 }", "Expected 'key: value' in the .SEGMENT definition, got '5'.", { line: 1, column: 31 }],
+	])("should report a .SEGMENT definition error at its token: %j", (source, message, location) => {
+		const assembler = new Assembler(new Cpu6502Handler(), new MockFileHandler());
+		expect(() => assembler.assemble(source)).toThrow(expect.objectContaining({ message, location: expect.objectContaining(location) }));
+	});
+
 	it("should fail on duplicate segment names", () => {
 		const cpu = new Cpu6502Handler();
 		const assembler = new Assembler(cpu, new MockFileHandler());

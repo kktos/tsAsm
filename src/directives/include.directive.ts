@@ -20,11 +20,11 @@ export class IncludeDirective implements IDirective {
 		// const expressionTokens = exprHeader.slice(0, asIndex);
 		// const indexIteratorToken = asIndex < exprHeader.length ? (exprHeader[asIndex + 1] as IdentifierToken) : undefined;
 
-		if (expressionTokens.length === 0) throw new Error(`.INCLUDE requires a string argument on line ${directive.line}.`);
+		if (expressionTokens.length === 0) throw new Error(".INCLUDE requires a string argument.");
 
 		// 2. Resolve the array from the symbol table
 		const filename = this.assembler.expressionEvaluator.evaluate(expressionTokens, context);
-		if (typeof filename !== "string") throw new Error(`.INCLUDE requires a string argument on line ${directive.line}.`);
+		if (typeof filename !== "string") throw new Error(".INCLUDE requires a string argument.");
 
 		try {
 			const logConfigDepth = this.assembler.logger.getConfigDepth();
@@ -53,7 +53,7 @@ export class IncludeDirective implements IDirective {
 	public handlePassTwo(directive: ScalarToken, context: DirectiveContext) {
 		const expressionTokens = this.assembler.parser.getInstructionTokens();
 		const filename = this.assembler.expressionEvaluator.evaluate(expressionTokens, context);
-		if (typeof filename !== "string") throw new Error(`.INCLUDE requires a string argument on line ${directive.line}.`);
+		if (typeof filename !== "string") throw new Error(".INCLUDE requires a string argument.");
 
 		const logConfigDepth = this.assembler.logger.getConfigDepth();
 		this.assembler.streamManager.startNewStream(filename, false);
