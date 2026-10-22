@@ -750,7 +750,7 @@ export class AssemblyLexer {
 	private scanIdentifier(line: number, column: number): Token {
 		let start = this.currentStream.pos;
 
-		// Scan identifier: letters, digits, underscore, and dot (for addressing modes like LDA.W)
+		// Scan identifier: letters, digits and underscore. A mnemonic suffix (LDA.W) is lexed as LDA, '.', W: the assembler joins them
 		while (this.isIdentifierPart(this.peek())) this.advance();
 
 		const value = this.currentStream.source.slice(start, this.currentStream.pos);
@@ -806,7 +806,6 @@ export class AssemblyLexer {
 	}
 
 	private isIdentifierPart(ch: string): boolean {
-		// Allow dot in identifiers for addressing modes (LDA.W, LDA.B)
 		return this.isAlphaNumeric(ch) || ch === "_";
 	}
 

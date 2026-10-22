@@ -458,3 +458,10 @@ tsAsm assembles 65C02 code, with the usual syntax:
 | Indirect | `jmp ($1234)`, `lda ($12)` |
 | Indexed indirect / indirect indexed | `lda ($12,x)`, `lda ($12),y` |
 | Relative | `bne loop` |
+
+A `.b` or `.w` suffix forces the addressing mode of an address, whatever its value. Without one, an address that fits in the zero page uses it.
+- `.b` uses zero page, with the address's low byte: with `X = $1234`, `lda.b X` is `lda $34` (`a5 34`).
+- `.w` uses absolute: with `X = $10`, `lda.w X` is `lda $0010` (`ad 10 00`).
+- A suffix only applies to an address that can be zero page or absolute: `nop.b`, `lda.w #1` or `lda.b ($10),y` are errors, and so is a form the instruction doesn't have (`jmp.b`, `lda.b $10,y`).
+
+Suffixes work on the 6502 and the 65C02; other CPUs have none.

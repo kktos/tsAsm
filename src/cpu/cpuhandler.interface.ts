@@ -30,6 +30,12 @@ export interface CPUHandler<TModeInfo extends ModeInfo = ModeInfo> {
 	/** Byte order of the CPU: data directives (.dw, .dl, the .pstrl length) write their values in it too. */
 	endianness: Endianness;
 
+	/**
+	 * Suffixes a mnemonic can take after a dot, given to resolveAddressingMode as part of the mnemonic: the 6502's
+	 * `lda.b` / `lda.w` force a zero page / absolute operand. A CPU without suffixes leaves it out.
+	 */
+	mnemonicSuffixes?: readonly string[];
+
 	/** * Core method to determine the specific addressing mode, opcode, and size
 	 * based on the mnemonic and the structure of the operand tokens.
 	 * @param resolveValue A function provided by the Assembler to evaluate expressions.
