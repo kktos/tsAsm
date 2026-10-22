@@ -62,6 +62,21 @@ describe("ExpressionEvaluator", () => {
 			expect(result).toBe("$002A");
 		});
 
+		it.each([
+			["-1", "$FF"],
+			["-128", "$80"],
+			["-129", "$FF7F"],
+			["-200", "$FF38"],
+			["-32768", "$8000"],
+			["-70000", "$FFFEEE90"],
+			["-1, 4", "$FFFF"],
+			["-129, 2", "$F7F"],
+		])("should evaluate .HEX() of a negative value as two's complement: .HEX(%s)", (args, expected) => {
+			const { evaluator, tokenize } = setup();
+			const result = evaluator.evaluate(tokenize(`.HEX(${args})`), { PC: { value: 0 } });
+			expect(result).toBe(expected);
+		});
+
 		it("should evaluate .LOBYTE() to get the low byte of a 16-bit value", () => {
 			const { evaluator, tokenize } = setup();
 			let tokens = tokenize(".LOBYTE($1234)");
