@@ -18,7 +18,6 @@ const fakeCPU = {
 	}),
 	encodeInstruction: () => [],
 	endianness: "little" as const,
-	getPCSize: () => 8,
 };
 
 const DEFAULT_SEGMENTS: SegmentDefinition[] = [{ name: "CODE", start: 0x1000, size: 0, resizable: true }];

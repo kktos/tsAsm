@@ -372,10 +372,6 @@ export class Cpu6809Handler implements CPUHandler {
 		return { postByte: 0x8f, extraBytes: 0, resolvedAddress };
 	}
 
-	getPCSize(): number {
-		return 16;
-	}
-
 	isInstruction(mnemonic: string): boolean {
 		const upperMnemonic = mnemonic.toUpperCase();
 		return this.pages.page1.has(upperMnemonic) || this.pages.page2.has(upperMnemonic) || this.pages.page3.has(upperMnemonic);

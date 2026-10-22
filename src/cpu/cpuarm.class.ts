@@ -1,4 +1,4 @@
-import type { OperatorStackToken, Token } from "../shared/lexer/lexer.class";
+import type { OperatorStackToken } from "../shared/lexer/lexer.class";
 import type { AddressingMode, CPUHandler } from "./cpuhandler.interface";
 export class CpuArmRiscHandler implements CPUHandler {
 	cpuType = "ARM_RISC" as const;
@@ -42,12 +42,6 @@ export class CpuArmRiscHandler implements CPUHandler {
 		["LR", 14],
 		["PC", 15],
 	]);
-
-	getPCSize(): number {
-		return 32;
-	}
-
-	handleCPUSpecificDirective(_directive: string, _args: Token[]): void {}
 
 	isInstruction(mnemonic: string): boolean {
 		const baseMnemonic = mnemonic.toUpperCase().match(/^[A-Z]+/)?.[0];
