@@ -7,4 +7,6 @@ export interface MacroDefinition {
 	restParameter?: string;
 	body: Token[];
 	endPosition: number;
+	/** The file the macro is defined in: its body tokens' lines are lines of this file. */
+	file: string;
 }

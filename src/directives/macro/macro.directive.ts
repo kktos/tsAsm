@@ -22,7 +22,7 @@ export class MacroDirective implements IDirective {
 	}
 
 	/** Pass 1: Parses and stores a macro definition. */
-	public handleMacroDefinition(directive: ScalarToken, _context: DirectiveContext) {
+	public handleMacroDefinition(directive: ScalarToken, context: DirectiveContext) {
 		const nameToken = this.runtime.parser.identifier();
 		if (!nameToken) throw `ERROR: Macro needs a name on line ${directive.line}.`;
 
@@ -45,6 +45,7 @@ export class MacroDirective implements IDirective {
 			restParameter,
 			body: bodyTokens,
 			endPosition,
+			file: context.filename,
 		});
 
 		this.runtime.lister.directive(
