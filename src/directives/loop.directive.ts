@@ -33,7 +33,7 @@ export class LoopDirective implements IDirective {
 				this.handleRepeatLoop(directive, context);
 				return;
 			default:
-				throw new Error(`Invalid directive ${directive.value} on line ${directive.line}.`);
+				throw new Error(`Invalid directive ${directive.value}.`);
 		}
 	}
 
@@ -46,7 +46,7 @@ export class LoopDirective implements IDirective {
 				this.handleRepeatLoop(directive, context);
 				return;
 			default:
-				throw new Error(`Invalid directive ${directive.value} on line ${directive.line}.`);
+				throw new Error(`Invalid directive ${directive.value}.`);
 		}
 	}
 
@@ -55,7 +55,7 @@ export class LoopDirective implements IDirective {
 		const itemIteratorToken = this.runtime.parser.identifier();
 		const ofToken = this.runtime.parser.identifier("OF");
 
-		if (!itemIteratorToken || !ofToken) throw new Error(`Invalid .FOR loop syntax on line ${directive.line}. Expected: .for <iterator> of <array>`);
+		if (!itemIteratorToken || !ofToken) throw new Error("Invalid .FOR loop syntax. Expected: .for <iterator> of <array>");
 
 		// Find expression tokens on the header line after 'OF', optionally followed by 'AS'
 		const exprHeader = this.runtime.parser.getInstructionTokens();
@@ -110,8 +110,7 @@ export class LoopDirective implements IDirective {
 		if (asPos !== -1) iteratorToken = countExpressionTokens[asPos + 1] as IdentifierToken;
 
 		const count = this.runtime.evaluator.evaluateAsNumber(exprTokens, context);
-		if (!Number.isInteger(count) || (count as number) < 0)
-			throw new Error(`.REPEAT count on line ${directive.line}: ${count} isn't a whole number (0 or more).`);
+		if (!Number.isInteger(count) || (count as number) < 0) throw new Error(`.REPEAT count: ${count} isn't a whole number (0 or more).`);
 
 		// Find loop body
 		const bodyTokens = this.runtime.parser.getDirectiveBlockTokens(directive.value);

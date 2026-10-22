@@ -24,17 +24,16 @@ export class OptionDirective implements IDirective {
 	private setOption(directive: ScalarToken, context: DirectiveContext): void {
 		const argTokens = this.assembler.parser.getInstructionTokens();
 
-		if (argTokens.length < 2) throw new Error(`Invalid .OPTION syntax on line ${directive.line}. Expected: .OPTION <name> <value>`);
+		if (argTokens.length < 2) throw new Error("Invalid .OPTION syntax. Expected: .OPTION <name> <value>");
 
-		if (argTokens[0]?.type !== "IDENTIFIER") throw new Error(`Option name must be an identifier on line ${directive.line}.`);
+		if (argTokens[0]?.type !== "IDENTIFIER") throw new Error("Option name must be an identifier.");
 
 		const optionName = argTokens[0].value.toLowerCase();
 		const optionValue = this.assembler.expressionEvaluator.evaluate(argTokens.slice(1), context);
 
 		switch (optionName) {
 			case "local_label_char":
-				if (typeof optionValue !== "string" || optionValue.length !== 1)
-					throw new Error(`Value for 'local_label_char' must be a single character string on line ${directive.line}.`);
+				if (typeof optionValue !== "string" || optionValue.length !== 1) throw new Error("Value for 'local_label_char' must be a single character string.");
 
 				this.assembler.setOption("local_label_char", optionValue);
 				break;

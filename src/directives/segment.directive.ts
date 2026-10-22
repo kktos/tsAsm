@@ -1,5 +1,6 @@
 import type { SymbolValue } from "../assembler/symbol.class";
 import type { ScalarToken } from "../shared/lexer/lexer.class";
+import { AsmError } from "../utils/error.utils";
 import { getHex } from "../utils/hex.util";
 import type { DirectiveContext, DirectiveRuntime, IDirective } from "./directive.interface";
 
@@ -64,7 +65,7 @@ export class SegmentDirective implements IDirective {
 	}
 
 	private defineSegment(name: string, directive: ScalarToken, context: DirectiveContext) {
-		const params = this.parseBlockParameters(context, directive.line);
+		const params = this.parseBlockParameters(context);
 
 		if (params.start === undefined || (params.end === undefined && params.size === undefined))
 			throw new Error(".SEGMENT definition requires 'start','end' or 'start','size' parameters.");
@@ -81,7 +82,7 @@ export class SegmentDirective implements IDirective {
 		this.runtime.lister.directive(directive, `${name.padEnd(16)} { start: $${getHex(start)}, end: $${getHex(end)}, pad: $${getHex(pad ?? 0)} }`);
 	}
 
-	private parseBlockParameters(context: DirectiveContext, line: number | string): SegmentDef {
+	private parseBlockParameters(context: DirectiveContext): SegmentDef {
 		const params: SegmentDef = { start: 0 };
 
 		this.runtime.parser.advance();
@@ -89,11 +90,11 @@ export class SegmentDirective implements IDirective {
 		while (true) {
 			const token = this.runtime.parser.next();
 			if (!token || token.type === "RBRACE") break;
-			if (token.type !== "LABEL") throw new Error(`.SEGMENT definition syntax error on line ${line}: key:value`);
+			if (token.type !== "LABEL") throw AsmError.at(`Expected 'key: value' in the .SEGMENT definition, got '${token.raw ?? token.value}'.`, token);
 
 			const key = token.value.toLowerCase();
 			if (key !== "start" && key !== "end" && key !== "pad" && key !== "size")
-				throw new Error(`.SEGMENT definition syntax error on line ${line}: unknown property ${key}`);
+				throw AsmError.at(`Unknown .SEGMENT property '${token.raw ?? key}': expected start, end, size or pad.`, token);
 
 			const valueTokens = this.runtime.parser.getExpressionTokens();
 			params[key] = this.runtime.evaluator.evaluateAsNumber(valueTokens, context);
