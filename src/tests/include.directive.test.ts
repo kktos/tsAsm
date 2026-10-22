@@ -59,7 +59,9 @@ describe("File Directive .INCLUDE", () => {
 			throw new Error("File not found");
 		});
 
-		expect(() => assembler.assemble(source)).toThrow("including file nonexistent.asm on line 1: Error: File not found");
+		expect(() => assembler.assemble(source)).toThrow(
+			expect.objectContaining({ message: "Can't include 'nonexistent.asm': File not found", location: expect.objectContaining({ line: 1 }) }),
+		);
 	});
 
 	it("should log an error if .INCLUDE is missing a filename argument", () => {

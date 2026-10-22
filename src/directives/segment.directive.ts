@@ -25,9 +25,9 @@ export class SegmentDirective implements IDirective {
 			this.runtime.parser.advance();
 		} else {
 			const tokens = this.runtime.parser.getInstructionTokens();
-			if (tokens.length === 0) throw new Error(`ERROR on line ${directive.line}: .SEGMENT requires a name expression.`);
+			if (tokens.length === 0) throw new Error(".SEGMENT requires a name expression.");
 			name = this.runtime.evaluator.evaluate(tokens, context);
-			if (typeof name !== "string") throw new Error(`ERROR on line ${directive.line}: .SEGMENT name must evaluate to a string.`);
+			if (typeof name !== "string") throw new Error(".SEGMENT name must evaluate to a string.");
 		}
 
 		if (this.runtime.parser.peek()?.type === "LBRACE") {
@@ -48,9 +48,9 @@ export class SegmentDirective implements IDirective {
 			this.runtime.parser.advance();
 		} else {
 			const tokens = this.runtime.parser.getInstructionTokens();
-			if (tokens.length === 0) throw new Error(`ERROR on line ${directive.line}: .SEGMENT requires a name expression.`);
+			if (tokens.length === 0) throw new Error(".SEGMENT requires a name expression.");
 			name = this.runtime.evaluator.evaluate(tokens, context);
-			if (typeof name !== "string") throw new Error(`ERROR on line ${directive.line}: .SEGMENT name must evaluate to a string.`);
+			if (typeof name !== "string") throw new Error(".SEGMENT name must evaluate to a string.");
 		}
 
 		// If it was a definition, the segment was already added in pass one.
@@ -67,14 +67,14 @@ export class SegmentDirective implements IDirective {
 		const params = this.parseBlockParameters(context, directive.line);
 
 		if (params.start === undefined || (params.end === undefined && params.size === undefined))
-			throw new Error(`ERROR on line ${directive.line}: .SEGMENT definition requires 'start','end' or 'start','size' parameters.`);
+			throw new Error(".SEGMENT definition requires 'start','end' or 'start','size' parameters.");
 
 		const start = params.start;
 		const end = params.end !== undefined ? params.end : start + (params.size ?? 0) - 1;
 		const pad = params.pad;
 
 		const size = end - start + 1;
-		if (size < 0) throw new Error(`ERROR on line ${directive.line}: .SEGMENT 'end' address must be greater than or equal to 'start' address.`);
+		if (size < 0) throw new Error(".SEGMENT 'end' address must be greater than or equal to 'start' address.");
 
 		this.runtime.linker.addSegment(name, start, size, pad, size === 0);
 

@@ -17,9 +17,9 @@ export class ModuleDirective implements IDirective {
 			this.runtime.parser.advance();
 		} else {
 			const tokens = this.runtime.parser.getInstructionTokens();
-			if (tokens.length === 0) throw new Error(`ERROR on line ${directive.line}: .MODULE requires a name expression.`);
+			if (tokens.length === 0) throw new Error(".MODULE requires a name expression.");
 			name = this.runtime.evaluator.evaluate(tokens, context);
-			if (typeof name !== "string") throw new Error(`ERROR on line ${directive.line}: .MODULE name must evaluate to a string.`);
+			if (typeof name !== "string") throw new Error(".MODULE name must evaluate to a string.");
 		}
 
 		this.runtime.linker.addModule(name);
@@ -35,9 +35,9 @@ export class ModuleDirective implements IDirective {
 			this.runtime.parser.advance();
 		} else {
 			const tokens = this.runtime.parser.getInstructionTokens();
-			if (tokens.length === 0) throw new Error(`ERROR on line ${directive.line}: .MODULE requires a name expression.`);
+			if (tokens.length === 0) throw new Error(".MODULE requires a name expression.");
 			name = this.runtime.evaluator.evaluate(tokens, context);
-			if (typeof name !== "string") throw new Error(`ERROR on line ${directive.line}: .MODULE name must evaluate to a string.`);
+			if (typeof name !== "string") throw new Error(".MODULE name must evaluate to a string.");
 		}
 
 		this.runtime.linker.useModule(name);

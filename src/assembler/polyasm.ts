@@ -77,7 +77,7 @@ export class Assembler {
 		if (options?.rawDataProcessors) {
 			this.rawDataProcessors = options.rawDataProcessors.map;
 			this.defaultRawDataProcessor = options.rawDataProcessors.default || "";
-			if (!this.rawDataProcessors.has(this.defaultRawDataProcessor)) throw "Default data processor not found.";
+			if (!this.rawDataProcessors.has(this.defaultRawDataProcessor)) throw new Error("Default data processor not found.");
 		}
 
 		this.symbolTable = new PASymbolTable(this.lister);
@@ -318,7 +318,8 @@ export class Assembler {
 			switch (token.type) {
 				case "DOT": {
 					const directiveToken = this.parser.next() as ScalarToken;
-					if (directiveToken?.type !== "IDENTIFIER") throw new Error(`Bad directive in line ${token.line} - ${directiveToken.value}`);
+					if (directiveToken?.type !== "IDENTIFIER")
+						throw new ParserError(`Expected a directive name after '.', got '${directiveToken.value}'.`, directiveToken);
 
 					const directiveContext: DirectiveContext = {
 						filename: this.streamManager.currentFilepath,
@@ -403,7 +404,7 @@ export class Assembler {
 				}
 
 				case "LOCAL_LABEL": {
-					if (!this.lastGlobalLabel) throw new ParserError(`ERROR: Local label ':${token.value}' defined without a preceding global label.`, token);
+					if (!this.lastGlobalLabel) throw new ParserError(`Local label ':${token.value}' defined without a preceding global label.`, token);
 
 					const qualifiedName = `${this.lastGlobalLabel}.${token.value}`;
 					this.symbolTable.defineConstant(qualifiedName, this.PC.value, {
@@ -480,7 +481,7 @@ export class Assembler {
 						break;
 					}
 
-					throw new Error(`Syntax error in line ${token.line} - Unexpected operator '${token.value}'`);
+					throw new Error(`Unexpected operator '${token.value}'.`);
 				}
 
 				case "IDENTIFIER": {
@@ -514,7 +515,8 @@ export class Assembler {
 
 				case "DOT": {
 					const directiveToken = this.parser.next() as ScalarToken;
-					if (directiveToken?.type !== "IDENTIFIER") throw new Error(`Syntax error in line ${token.line}`);
+					if (directiveToken?.type !== "IDENTIFIER")
+						throw new ParserError(`Expected a directive name after '.', got '${directiveToken.value}'.`, directiveToken);
 
 					const streamBefore = this.parser.tokenStreamStack.length;
 					const directiveContext: DirectiveContext = {
@@ -725,7 +727,7 @@ export class Assembler {
 					const expressions = argTokens[0]?.value as Token[][];
 
 					if (indexValue < 0 || indexValue >= expressions.length)
-						throw new Error(`line ${token.line}: Macro argument index ${indexValue} out of bounds for argument '${token.value}'.`);
+						throw new Error(`Macro argument index ${indexValue} out of bounds for argument '${token.value}'.`);
 
 					result.push(...(expressions[indexValue] as Token[]));
 					i = j; // Advance main loop past `]`

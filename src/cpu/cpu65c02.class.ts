@@ -650,7 +650,8 @@ export class Cpu65C02Handler implements CPUHandler {
 			const offset = targetAddress - (modeInfo.pc + instructionSize);
 
 			// Check if the offset is within the valid 8-bit signed range (-128 to 127)
-			if (offset < -128 || offset > 127) throw `Branch target out of range. Target: $${getHex(targetAddress)}, PC: $${getHex(modeInfo.pc)}, Offset: ${offset}`;
+			if (offset < -128 || offset > 127)
+				throw new Error(`Branch target out of range. Target: $${getHex(targetAddress)}, PC: $${getHex(modeInfo.pc)}, Offset: ${offset}`);
 
 			// Convert to 8-bit two's complement if negative
 			const finalOffset = offset < 0 ? offset + 256 : offset;

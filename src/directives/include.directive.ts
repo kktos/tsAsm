@@ -46,7 +46,7 @@ export class IncludeDirective implements IDirective {
 
 			this.lister.directive(directive, this.assembler.streamManager.currentFilepath);
 		} catch (e) {
-			throw `including file ${filename} on line ${directive.line}: ${e}`;
+			throw new Error(`Can't include '${filename}': ${e instanceof Error ? e.message : e}`);
 		}
 	}
 

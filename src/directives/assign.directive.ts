@@ -17,10 +17,10 @@ export class AssignDirective implements IDirective {
 
 		const isOnSameLine = labelToken?.line === directive.line;
 		const isValidType = labelToken?.type === "IDENTIFIER" || (labelToken?.type === "OPERATOR" && labelToken.value === "*");
-		if (!isOnSameLine || !isValidType) throw `Syntax error in line ${directive.line} - Missing symbol name before =`;
+		if (!isOnSameLine || !isValidType) throw new Error("Missing symbol name before =.");
 
 		const label = this.assembler.lastGlobalLabel;
-		if (!label) throw `Syntax error in line ${directive.line} - Missing symbol name before =`;
+		if (!label) throw new Error("Missing symbol name before =.");
 
 		this.assembler.lastGlobalLabel = null;
 
@@ -31,7 +31,7 @@ export class AssignDirective implements IDirective {
 		this.lister.symbol(label, value);
 
 		if (label === "*") {
-			if (typeof value !== "number") throw `line ${directive.line} - Invalid value for */ORG ${value}`;
+			if (typeof value !== "number") throw new Error(`Invalid value for */ORG: ${value}.`);
 			context.PC.value = value;
 			return;
 		}
@@ -41,19 +41,19 @@ export class AssignDirective implements IDirective {
 
 	public handlePassTwo(directive: ScalarToken, context: DirectiveContext): void {
 		const label = this.assembler.lastGlobalLabel;
-		if (!label) throw new Error(`Syntax error in line ${directive.line} - Missing label name`);
+		if (!label) throw new Error("Missing label name.");
 
 		const expressionTokens = this.assembler.parser.getInstructionTokens(directive);
 
 		const value = this.assembler.expressionEvaluator.evaluate(expressionTokens, context);
 
 		// If evaluation produced undefined, treat as an error in Pass 2
-		if (value === undefined) throw new Error(`line ${directive.line}: Unresolved assignment for ${label}`);
+		if (value === undefined) throw new Error(`Unresolved assignment for ${label}.`);
 
 		this.lister.symbol(label, value);
 
 		if (label === "*") {
-			if (typeof value !== "number") throw new Error(`line ${directive.line} - Invalid value for */ORG ${value}`);
+			if (typeof value !== "number") throw new Error(`Invalid value for */ORG: ${value}.`);
 			context.PC.value = value;
 			return;
 		}

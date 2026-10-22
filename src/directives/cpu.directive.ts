@@ -16,12 +16,12 @@ export class CpuDirective implements IDirective {
 	private setCpu(directive: ScalarToken, context: DirectiveContext) {
 		const tokens = this.assembler.parser.getInstructionTokens();
 		const cpuName = this.assembler.expressionEvaluator.evaluate(tokens, context);
-		if (typeof cpuName !== "string") throw new Error(`ERROR on line ${directive.line}: ${directive.value} name must evaluate to a string.`);
+		if (typeof cpuName !== "string") throw new Error(`.${directive.value} name must evaluate to a string.`);
 
 		const upperCpuName = cpuName.toUpperCase();
 		const handlerClass = handlers[upperCpuName];
 
-		if (!handlerClass) throw new Error(`ERROR on line ${directive.line}: Unknown CPU name '${cpuName}'.`);
+		if (!handlerClass) throw new Error(`Unknown CPU name '${cpuName}'.`);
 		if (this.assembler.getCPUHandler().cpuType !== upperCpuName) this.assembler.setCPUHandler(new handlerClass());
 
 		this.lister.directive(directive, cpuName);

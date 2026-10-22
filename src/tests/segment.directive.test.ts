@@ -46,7 +46,12 @@ describe("Segments", () => {
 		const source = `
       .SEGMENT "INCOMPLETE" { start: 0x1000 }
     `;
-		expect(() => assembler.assemble(source)).toThrow("ERROR on line 2: .SEGMENT definition requires 'start','end' or 'start','size' parameters.");
+		expect(() => assembler.assemble(source)).toThrow(
+			expect.objectContaining({
+				message: ".SEGMENT definition requires 'start','end' or 'start','size' parameters.",
+				location: expect.objectContaining({ line: 2 }),
+			}),
+		);
 	});
 
 	it("should throw an error for invalid end address", () => {
@@ -55,7 +60,12 @@ describe("Segments", () => {
 		const source = `
       .SEGMENT "BAD" { start: 0x2000, end: 0x1000 }
     `;
-		expect(() => assembler.assemble(source)).toThrow("ERROR on line 2: .SEGMENT 'end' address must be greater than or equal to 'start' address.");
+		expect(() => assembler.assemble(source)).toThrow(
+			expect.objectContaining({
+				message: ".SEGMENT 'end' address must be greater than or equal to 'start' address.",
+				location: expect.objectContaining({ line: 2 }),
+			}),
+		);
 	});
 
 	it("should handle expressions in segment definitions", () => {

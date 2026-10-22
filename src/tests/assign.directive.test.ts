@@ -53,6 +53,6 @@ describe("= - variable assignment", () => {
 				boo:
 					= 456
 			`;
-		expect(() => asm.assemble(src)).toThrow(/- Missing symbol name before =/);
+		expect(() => asm.assemble(src)).toThrow("Missing symbol name before =.");
 	});
 });

@@ -547,7 +547,7 @@ export class ExpressionEvaluator {
 
 	private handleBinaryOperator(token: OperatorToken, right: SymbolValue | undefined | null, stack: (SymbolValue | null)[]): void {
 		const left = stack.pop();
-		if (left === undefined || right === undefined) throw `line: ${token.line} Binary operator '${token.value}' requires two operands.`;
+		if (left === undefined || right === undefined) throw new Error(`Binary operator '${token.value}' requires two operands.`);
 
 		// Handle string operations first
 		if (typeof left === "string") {
@@ -693,7 +693,7 @@ export class ExpressionEvaluator {
 			}
 
 			case "LOCAL_LABEL": {
-				if (!context.currentLabel) throw `Local label reference ':${token.value}' used without a preceding global label.`;
+				if (!context.currentLabel) throw new Error(`Local label reference ':${token.value}' used without a preceding global label.`);
 
 				const qualifiedName = `${context.currentLabel}.${token.value}`;
 				const value = this.symbolTable.lookupSymbol(qualifiedName);
@@ -701,7 +701,7 @@ export class ExpressionEvaluator {
 
 				if (context.allowForwardRef) return null; // Pass 1: Assume 0 for forward references.
 
-				throw `Undefined local label ':${token.value}' in scope '${context.currentLabel}'.`;
+				throw new Error(`Undefined local label ':${token.value}' in scope '${context.currentLabel}'.`);
 			}
 
 			case "ANONYMOUS_LABEL_REF": {
@@ -709,7 +709,7 @@ export class ExpressionEvaluator {
 				const addr = this.findNearestLabel(context.PC.value, distance);
 
 				if (addr === null && !context.allowForwardRef)
-					throw `Not enough ${distance < 0 ? "preceding" : "succeeding"} anonymous labels to satisfy '${token.value}'.`;
+					throw new Error(`Not enough ${distance < 0 ? "preceding" : "succeeding"} anonymous labels to satisfy '${token.value}'.`);
 
 				return addr;
 			}
