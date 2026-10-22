@@ -158,4 +158,31 @@ describe("Assembler - 6809 Opcodes", () => {
 
 		expect(code.slice(0, expectedBytes.length)).toEqual(expectedBytes);
 	});
+
+	// In pass 1, an operand using a symbol defined later has no value yet: its size is the worst case.
+	describe("operands defined later", () => {
+		const assemble = (source: string) => {
+			const assembler = new Assembler(new Cpu6809Handler(), new MockFileHandler(), {
+				segments: [{ name: "CODE", start: 0x1000, size: 0, resizable: true }],
+			});
+			assembler.assemble(source);
+			return assembler.link();
+		};
+
+		it.each([
+			["LDA offset,X\nnext: NOP\noffset = 1000", [0xa6, 0x89, 0x03, 0xe8, 0x12]],
+			["LDA later\nnext: NOP\nlater = $1234", [0xb6, 0x12, 0x34, 0x12]],
+			["LDA data,PCR\ndata: .DB 1", [0xa6, 0x8d, 0x00, 0x00, 0x01]],
+			["LDA #value\nvalue = 5", [0x86, 0x05]],
+		])("should assemble %j", (source, bytes) => {
+			expect(assemble(source)).toEqual(bytes);
+		});
+
+		it.each([
+			["LDA offset,X\nnext: NOP\noffset = 5", "$1004 in pass 1 but $1002 in pass 2"],
+			["LDA offset,X\nnext: NOP\noffset = 100", "$1004 in pass 1 but $1003 in pass 2"],
+		])("should report an index offset defined later when code after it moves: %j", (source, message) => {
+			expect(() => assemble(source)).toThrow(`Phase error: label 'NEXT' is ${message}.`);
+		});
+	});
 });

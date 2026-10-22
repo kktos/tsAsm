@@ -284,8 +284,8 @@ export class Cpu6809Handler implements CPUHandler<Cpu6809ModeInfo> {
 
 	private parseIndexedMode(
 		operandTokens: OperatorStackToken[],
-		resolveValue: (tokens: OperatorStackToken[], numberMax?: number) => number,
-	): { postByte: number; extraBytes: number; resolvedAddress: number } {
+		resolveValue: (tokens: OperatorStackToken[], numberMax?: number) => number | null,
+	): { postByte: number; extraBytes: number; resolvedAddress: number | null } {
 		const operandString = operandTokens
 			.map((t) => t.value)
 			.join("")
@@ -355,6 +355,9 @@ export class Cpu6809Handler implements CPUHandler<Cpu6809ModeInfo> {
 			const offsetTokens = operandTokens.slice(0, commaIndex);
 			const offset = resolveValue(offsetTokens);
 
+			// Unknown in pass 1 (defined later): the worst case, a 16-bit offset.
+			if (offset === null) return { postByte: 0b10001001 | rr, extraBytes: 2, resolvedAddress: null };
+
 			// 5-bit signed offset (-16 to 15)
 			// 0,R is handled by autoIncDecMatch, so we exclude it here.
 			if (offset >= -16 && offset <= 15 && offset !== 0) {
@@ -386,7 +389,7 @@ export class Cpu6809Handler implements CPUHandler<Cpu6809ModeInfo> {
 	resolveAddressingMode(
 		mnemonic: string,
 		operandTokens: OperatorStackToken[],
-		resolveValue: (tokens: OperatorStackToken[], numberMax?: number) => number,
+		resolveValue: (tokens: OperatorStackToken[], numberMax?: number) => number | null,
 	): Cpu6809ModeInfo {
 		const upperMnemonic = mnemonic.toUpperCase();
 		const numTokens = operandTokens.length;
