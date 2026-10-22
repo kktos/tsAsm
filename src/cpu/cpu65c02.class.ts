@@ -5,6 +5,7 @@ import type { AddressingMode, CPUHandler } from "./cpuhandler.interface";
 
 export class Cpu65C02Handler implements CPUHandler {
 	cpuType = "65C02" as const;
+	endianness = "little" as const;
 
 	// Define M65C02 specific modes internally
 	private M65C02_MODES = {

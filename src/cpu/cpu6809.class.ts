@@ -14,6 +14,7 @@ type Page = Map<string, InstructionModes>;
 
 export class Cpu6809Handler implements CPUHandler {
 	cpuType = "6809" as const;
+	endianness = "big" as const;
 
 	private M6809_MODES = {
 		INHERENT: "M6809_INHERENT",

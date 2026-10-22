@@ -1,3 +1,4 @@
+import type { Endianness } from "../cpu/cpuhandler.interface";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
 import { stringToBytes } from "../utils/string.utils";
 import type { DirectiveContext, DirectiveRuntime, IDirective } from "./directive.interface";
@@ -11,6 +12,8 @@ export class StringDirective implements IDirective {
 	constructor(
 		private readonly runtime: DirectiveRuntime,
 		private readonly format: StringFormat,
+		/** The current CPU's byte order, for the .PSTRL length (.cpu can change it). */
+		private readonly getEndianness: () => Endianness,
 	) {}
 
 	public handlePassOne(directive: ScalarToken, context: DirectiveContext) {
@@ -101,10 +104,12 @@ export class StringDirective implements IDirective {
 					if (chars.length > 255) throw new Error(`.PSTR string length cannot exceed 255 bytes on line ${directive.line}.`);
 					outputBytes.push(chars.length, ...chars);
 					break;
-				case "PSTRL":
+				case "PSTRL": {
 					if (chars.length > 65535) throw new Error(`.PSTRL string length cannot exceed 65535 bytes on line ${directive.line}.`);
-					outputBytes.push(chars.length & 0xff, (chars.length >> 8) & 0xff, ...chars); // Little-endian length
+					const length = [chars.length & 0xff, (chars.length >> 8) & 0xff];
+					outputBytes.push(...(this.getEndianness() === "big" ? length.reverse() : length), ...chars);
 					break;
+				}
 			}
 		}
 		return outputBytes;

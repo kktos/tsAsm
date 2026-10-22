@@ -38,6 +38,7 @@ export class DirectiveHandler {
 	private readonly directiveMap: Map<string, IDirective>;
 	constructor(assembler: Assembler, runtime: DirectiveRuntime) {
 		this.directiveMap = new Map();
+		const cpuEndianness = () => assembler.getCPUHandler().endianness;
 
 		this.register("ORG", new OrgDirective(assembler, runtime.logger));
 		this.register("MACRO", new MacroDirective(runtime));
@@ -60,23 +61,23 @@ export class DirectiveHandler {
 		this.register("INCBIN", new IncbinDirective(assembler, runtime.logger));
 
 		this.register("HEX", new HexDirective(assembler, runtime.logger, runtime.lister));
-		this.register("DB", new DataDirective(runtime, 1)); // Define Byte (1 byte)
-		this.register("BYTE", new DataDirective(runtime, 1)); // Define Byte (1 byte)
-		this.register("DW", new DataDirective(runtime, 2)); // Define Word (2 bytes)
-		this.register("WORD", new DataDirective(runtime, 2)); // Define Word (2 bytes)
-		this.register("DL", new DataDirective(runtime, 4)); // Define Long (4 bytes)
-		this.register("LONG", new DataDirective(runtime, 4)); // Define Long (4 bytes)
+		this.register("DB", new DataDirective(runtime, 1, cpuEndianness)); // Define Byte (1 byte)
+		this.register("BYTE", new DataDirective(runtime, 1, cpuEndianness)); // Define Byte (1 byte)
+		this.register("DW", new DataDirective(runtime, 2, cpuEndianness)); // Define Word (2 bytes)
+		this.register("WORD", new DataDirective(runtime, 2, cpuEndianness)); // Define Word (2 bytes)
+		this.register("DL", new DataDirective(runtime, 4, cpuEndianness)); // Define Long (4 bytes)
+		this.register("LONG", new DataDirective(runtime, 4, cpuEndianness)); // Define Long (4 bytes)
 
-		const strHandler = new StringDirective(runtime, "TEXT");
+		const strHandler = new StringDirective(runtime, "TEXT", cpuEndianness);
 		this.register("TEXT", strHandler);
 		this.register("STR", strHandler);
 		this.register("STRING", strHandler);
-		const cstrHandler = new StringDirective(runtime, "CSTR");
+		const cstrHandler = new StringDirective(runtime, "CSTR", cpuEndianness);
 		this.register("CSTR", cstrHandler);
 		this.register("CSTRING", cstrHandler);
 		this.register("ASCIIZ", cstrHandler);
-		this.register("PSTR", new StringDirective(runtime, "PSTR"));
-		this.register("PSTRL", new StringDirective(runtime, "PSTRL"));
+		this.register("PSTR", new StringDirective(runtime, "PSTR", cpuEndianness));
+		this.register("PSTRL", new StringDirective(runtime, "PSTRL", cpuEndianness));
 
 		const loopHandler = new LoopDirective(runtime);
 		this.register("FOR", loopHandler);

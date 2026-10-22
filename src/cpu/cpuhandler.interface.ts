@@ -6,8 +6,14 @@ import type { OperatorStackToken } from "../shared/lexer/lexer.class";
  */
 export type AddressingMode = string;
 
+/** Byte order of a CPU's multi-byte values. */
+export type Endianness = "little" | "big";
+
 export interface CPUHandler {
 	cpuType: string;
+
+	/** Byte order of the CPU: data directives (.dw, .dl, the .pstrl length) write their values in it too. */
+	endianness: Endianness;
 
 	/** * Core method to determine the specific addressing mode, opcode, and size
 	 * based on the mnemonic and the structure of the operand tokens.

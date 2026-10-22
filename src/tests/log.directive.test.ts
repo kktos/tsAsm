@@ -15,6 +15,7 @@ const fakeCPU = {
 		resolvedAddress: 0,
 	}),
 	encodeInstruction: () => [],
+	endianness: "little" as const,
 	getPCSize: () => 8,
 };
 
