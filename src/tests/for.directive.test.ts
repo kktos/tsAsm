@@ -73,7 +73,9 @@ describe(".FOR...OF", () => {
 				}
 				test .equ idx
 			`;
-		expect(() => assembler.assemble(source)).toThrow("Undefined symbol 'IDX' on line 5.");
+		expect(() => assembler.assemble(source)).toThrow(
+			expect.objectContaining({ message: "Undefined symbol 'IDX'.", location: expect.objectContaining({ line: 5 }) }),
+		);
 	});
 
 	it("should declare a local iterator variable", () => {
@@ -83,7 +85,9 @@ describe(".FOR...OF", () => {
 				}
 				test .equ item
 			`;
-		expect(() => assembler.assemble(source)).toThrow("Undefined symbol 'ITEM' on line 5.");
+		expect(() => assembler.assemble(source)).toThrow(
+			expect.objectContaining({ message: "Undefined symbol 'ITEM'.", location: expect.objectContaining({ line: 5 }) }),
+		);
 	});
 
 	it("should not make local global variables", () => {
