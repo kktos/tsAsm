@@ -60,6 +60,6 @@ describe("Function LEN()", () => {
 		const { evaluator, tokenize, symbolTable } = setup();
 		symbolTable.defineVariable("MyObject", { name: "" }, { filename: "test", line: 1, column: 1 });
 		const tokens = tokenize(".LEN(MyObject)");
-		expect(() => evaluator.evaluateAsNumber(tokens, { PC: { value: 0 } })).toThrow(/.LEN\(\) requires a string or array argument on line 1./);
+		expect(() => evaluator.evaluateAsNumber(tokens, { PC: { value: 0 } })).toThrow(".LEN() requires a string or array argument.");
 	});
 });

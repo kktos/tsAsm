@@ -1,4 +1,5 @@
 import type { SymbolValue } from "../../assembler/symbol.class";
+import { AsmError } from "../../utils/error.utils";
 import type { Token } from "../lexer/lexer.class";
 import type { EvaluationStack, FunctionHandler } from "./types";
 
@@ -7,7 +8,7 @@ export const iifFunction: FunctionHandler = (stack: EvaluationStack, token: Toke
 	const trueValue = stack.pop() as SymbolValue;
 	const condition = stack.pop();
 
-	if (typeof condition !== "number") throw new Error(`First argument to .IIF() must be a number on line ${token.line}.`);
+	if (typeof condition !== "number") throw AsmError.at("First argument to .IIF() must be a number.", token);
 
 	const result = condition !== 0 ? trueValue : falseValue;
 

@@ -45,6 +45,8 @@ describe("Function IIF()", () => {
 		const { evaluator, tokenize } = setup();
 
 		const tokens = tokenize('.IIF("toto", "true", "false")');
-		expect(() => evaluator.evaluate(tokens, { PC: { value: 0 } })).toThrow("First argument to .IIF() must be a number on line 1.");
+		expect(() => evaluator.evaluate(tokens, { PC: { value: 0 } })).toThrow(
+			expect.objectContaining({ message: "First argument to .IIF() must be a number.", location: expect.objectContaining({ line: 1 }) }),
+		);
 	});
 });

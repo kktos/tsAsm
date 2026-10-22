@@ -1,3 +1,4 @@
+import { AsmError } from "../../utils/error.utils";
 import type { Token } from "../lexer/lexer.class";
 import type { EvaluationStack, FunctionHandler } from "./types";
 
@@ -10,7 +11,7 @@ export const hibyteFunction: FunctionHandler = (stack: EvaluationStack, token: T
 		return;
 	}
 
-	if (typeof arg !== "number") throw new Error(`.HIBYTE() requires a number argument on line ${token.line}.`);
+	if (typeof arg !== "number") throw AsmError.at(".HIBYTE() requires a number argument.", token);
 
 	stack.push((arg >> 8) & 0xff);
 };

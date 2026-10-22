@@ -1,4 +1,5 @@
 import type { PASymbolTable } from "../../assembler/symbol.class";
+import { AsmError } from "../../utils/error.utils";
 import type { Token } from "../lexer/lexer.class";
 import { arrayFunction } from "./array.function";
 import { ceilFunction } from "./ceil.function";
@@ -65,11 +66,11 @@ export class FunctionDispatcher {
 
 	public dispatch(name: string, stack: EvaluationStack, token: Token, symbolTable: PASymbolTable, argCount = 0, resolver?: SymbolResolver): void {
 		const funcDef = this.functions.get(name.toUpperCase());
-		if (!funcDef) throw new Error(`Unknown function '${name}' on line ${token.line}.`);
+		if (!funcDef) throw AsmError.at(`Unknown function '${name}'.`, token);
 
 		// Centralized argument count validation
 		if (argCount < funcDef.minArgs || argCount > funcDef.maxArgs)
-			throw new Error(`Function '${name}' expects between ${funcDef.minArgs} and ${funcDef.maxArgs} arguments, but got ${argCount} on line ${token.line}.`);
+			throw AsmError.at(`Function '${name}' expects between ${funcDef.minArgs} and ${funcDef.maxArgs} arguments, but got ${argCount}.`, token);
 
 		funcDef.handler(stack, token, symbolTable, argCount, resolver);
 	}

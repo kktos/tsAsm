@@ -1,3 +1,4 @@
+import { AsmError } from "../../utils/error.utils";
 import type { Token } from "../lexer/lexer.class";
 import type { EvaluationStack, FunctionHandler } from "./types";
 
@@ -6,7 +7,7 @@ export const typeFunction: FunctionHandler = (stack: EvaluationStack, token: Tok
 
 	if (arg === undefined) {
 		// This should not happen with the centralized argument validation
-		throw new Error(`Internal error: stack underflow for .TYPE() on line ${token.line}.`);
+		throw AsmError.at("Internal error: stack underflow for .TYPE().", token);
 	}
 
 	let typeString: string;
