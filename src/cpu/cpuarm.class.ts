@@ -116,7 +116,7 @@ export class CpuArmRiscHandler implements CPUHandler {
 	}
 
 	/**
-	 * Pass 2: Encodes the 4 bytes in Big-Endian format typical of ARM.
+	 * Pass 2: Encodes the 4 bytes, in the CPU's byte order (little-endian, like data).
 	 * @param modeInfo Contains the pre-calculated 32-bit opcode or target address.
 	 */
 	encodeInstruction(_tokens: OperatorStackToken[], modeInfo: ResolvedModeInfo): number[] {
@@ -140,8 +140,12 @@ export class CpuArmRiscHandler implements CPUHandler {
 		throw new Error(`Unhandled ARM encoding mode: ${modeInfo.mode}`);
 	}
 
-	/** Converts a 32-bit number (ARM instruction) into 4 Big-Endian bytes. */
+	/**
+	 * Converts a 32-bit number (ARM instruction) into 4 bytes in the CPU's byte order. ARM is little-endian in
+	 * practice, and since ARMv6 its instructions are stored little-endian even on a big-endian (BE-8) system.
+	 */
 	private u32ToBytes(value: number): number[] {
-		return [(value >> 24) & 0xff, (value >> 16) & 0xff, (value >> 8) & 0xff, value & 0xff];
+		const bytes = [value & 0xff, (value >> 8) & 0xff, (value >> 16) & 0xff, (value >> 24) & 0xff];
+		return this.endianness === "little" ? bytes : bytes.reverse();
 	}
 }
