@@ -11,6 +11,8 @@ interface LoopState {
 	// For .REPEAT loops
 	repeatCount?: number;
 	repeatTotal?: number;
+	// Puts back what the iterators replaced, at the loop's end
+	restoreSymbols: (() => void)[];
 }
 
 export class LoopDirective implements IDirective {
@@ -76,9 +78,6 @@ export class LoopDirective implements IDirective {
 		// nothing to loop for then leave
 		if (arrayValue.length === 0) return;
 
-		// Create a local scope for the entire loop's duration.
-		this.runtime.symbolTable.pushScope(`@@for_${directive.line}_`);
-
 		// Store the complete state for the loop.
 		const loopId = `${directive.line}`; // Use line number as a unique ID for the loop.
 		this.loopStates.set(loopId, {
@@ -88,22 +87,12 @@ export class LoopDirective implements IDirective {
 			repeatCount: arrayValue.length,
 			repeatTotal: arrayValue.length,
 			body: bodyTokens,
+			restoreSymbols: [],
 		});
 
-		// Define the main iterator variable
-		if (indexIteratorToken)
-			this.runtime.symbolTable.defineVariable(indexIteratorToken.value, 0, {
-				filename: context.filename,
-				line: directive.line,
-				column: directive.column,
-			});
-
-		// Define the item iterator variable
-		this.runtime.symbolTable.defineVariable(itemIteratorToken.value, 0, {
-			filename: context.filename,
-			line: directive.line,
-			column: directive.column,
-		});
+		// Define the index and item iterator variables
+		if (indexIteratorToken) this.defineIterator(loopId, indexIteratorToken, directive, context);
+		this.defineIterator(loopId, itemIteratorToken, directive, context);
 
 		// Kick off the first iteration.
 		this.runNextLoopIteration(loopId, context);
@@ -128,23 +117,18 @@ export class LoopDirective implements IDirective {
 		// nothing to repeat then leave, like an empty .FOR
 		if (count === 0) return;
 
-		// Setup scope and state
-		this.runtime.symbolTable.pushScope();
+		// Setup state
 		const loopId = `${directive.line}`;
 		this.loopStates.set(loopId, {
 			iterator: iteratorToken,
 			repeatCount: count,
 			repeatTotal: count,
 			body: bodyTokens,
+			restoreSymbols: [],
 		});
 
 		// Define the main iterator variable
-		if (iteratorToken)
-			this.runtime.symbolTable.defineVariable(iteratorToken.value, 0, {
-				filename: context.filename,
-				line: directive.line,
-				column: directive.column,
-			});
+		if (iteratorToken) this.defineIterator(loopId, iteratorToken, directive, context);
 
 		// kick off iteration
 		this.runNextLoopIteration(loopId, context);
@@ -184,7 +168,23 @@ export class LoopDirective implements IDirective {
 	}
 
 	private endLoop(loopId: string): void {
-		this.runtime.symbolTable.popScope();
+		const state = this.loopStates.get(loopId);
+		for (const restore of state?.restoreSymbols.reverse() ?? []) restore();
 		this.loopStates.delete(loopId);
+	}
+
+	/**
+	 * A loop only generates lines, like a preprocessor: it has no scope, and what its body defines stays where the
+	 * loop is. Only its iterators are local, like macro parameters: defined in the current scope for the loop (over
+	 * any symbol of the same name), then the scope is put back as it was.
+	 */
+	private defineIterator(loopId: string, iterator: IdentifierToken, directive: ScalarToken, context: DirectiveContext) {
+		const state = this.loopStates.get(loopId) as LoopState;
+		state.restoreSymbols.push(this.runtime.symbolTable.stashSymbol(iterator.value));
+		this.runtime.symbolTable.defineVariable(iterator.value, 0, {
+			filename: context.filename,
+			line: directive.line,
+			column: directive.column,
+		});
 	}
 }
