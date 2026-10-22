@@ -16,6 +16,7 @@ pnpm build
 ```
 
 The build produces the command-line tool `dist/tsasm` and the library bundle `dist/libtsasm.js`.
+Every build (`build`, `build:cli`, `build:lib`) first increments the patch number of the version in `package.json` (2.0.0 → 2.0.1); `pnpm version:bump` does only that.
 `dist/tsasm` is a single file that only needs Node.js.
 
 To run it as a `tsasm` command from any directory (macOS, Linux or Windows):

@@ -15,9 +15,10 @@
 	},
 	"scripts": {
 		"check": "tsc --noEmit",
-		"build": "rimraf ./dist && rollup -c rollup.config.js",
-		"build:cli": "rollup -c rollup.config.js --environment TARGET:cli",
-		"build:lib": "rollup -c rollup.config.js --environment TARGET:lib",
+		"build": "npm run --silent version:bump && rimraf ./dist && rollup -c rollup.config.js",
+		"build:cli": "npm run --silent version:bump && rollup -c rollup.config.js --environment TARGET:cli",
+		"build:lib": "npm run --silent version:bump && rollup -c rollup.config.js --environment TARGET:lib",
+		"version:bump": "npm version patch --no-git-tag-version",
 		"install:cli": "node scripts/install-cli.js",
 		"uninstall:cli": "node scripts/install-cli.js --uninstall",
 		"test": "vitest",
