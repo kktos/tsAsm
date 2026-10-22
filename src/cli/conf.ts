@@ -91,6 +91,9 @@ type TConf = InferObject<typeof confSchema>;
 export function readConf(fileHandler: FileHandler, filename: string) {
 	const confFile = fileHandler.readSourceFile(filename);
 	const conf = yamlparse(confFile) as Record<string, unknown>;
+	// YAML reads `cpu: 6502` as a number
+	const input = conf?.input as Record<string, unknown> | undefined;
+	if (typeof input?.cpu === "number") input.cpu = String(input.cpu);
 	const result = validate(conf, confSchema);
 	return { conf: conf as TConf, errors: result.ok ? undefined : result.errors };
 }
