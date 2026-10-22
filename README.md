@@ -120,6 +120,16 @@ assembler.assemble(`
 const bytes = assembler.link(); // [0xa9, 0x41, 0x20, 0xed, 0xfd, 0x60]
 ```
 
+When the source has an error, `assemble()` throws an `AsmError` (`src/utils/error.utils.ts`): `message` says what is wrong, `location` where (`{ file, line, column }`), and `format()` gives `file:line:column: error: message`.
+
+```ts
+try {
+	assembler.assemble(source);
+} catch (e) {
+	if (e instanceof AsmError) console.error(e.format()); // main.asm:3:7: error: …
+}
+```
+
 To use `.define` blocks, pass the data processors in the options, for example:
 
 ```ts

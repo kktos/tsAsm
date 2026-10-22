@@ -10,7 +10,7 @@ import { StreamManager } from "../helpers/stream-manager.class";
 import { Linker, type Segment } from "../linker/linker.class";
 import type { FunctionHandler } from "../shared/functions/types";
 import type { OperatorStackToken, ScalarToken, Token } from "../shared/lexer/lexer.class";
-import { formatLogPrefix } from "../utils/error.utils";
+import { AsmError } from "../utils/error.utils";
 import { getHex } from "../utils/hex.util";
 import { ExpressionEvaluator } from "./expression";
 import type { ValueHolder } from "./expression.types";
@@ -41,6 +41,8 @@ export class Assembler {
 
 	public lastGlobalLabel: string | null = null;
 	private lastGlobalLabelLine: string | number = 0;
+	/** The first token of the statement being assembled: where an error is reported when it doesn't say better. */
+	private statementToken: Token | undefined;
 	public namelessLabels: NamelessLabels = new NamelessLabels();
 
 	public pass: number;
@@ -228,10 +230,7 @@ export class Assembler {
 
 			this.logger.enabled = isLogEnabled;
 		} catch (e) {
-			if (e instanceof ParserError)
-				throw `${formatLogPrefix({ column: e.token?.column ?? 0, line: e.token?.line ?? 0 }, { filename: this.streamManager.currentFilepath })}${e} - pass ${this.pass}`;
-
-			throw `${formatLogPrefix({ column: 0, line: "" }, { filename: this.streamManager.currentFilepath })}${e} - pass ${this.pass}`;
+			throw this.toAsmError(e);
 		} finally {
 			this.fileHandler.fullpath = fullpath;
 			this.fileHandler.filename = filename;
@@ -242,12 +241,28 @@ export class Assembler {
 		return this.linker.segments;
 	}
 
+	/**
+	 * Whatever was thrown, the user gets an AsmError: what is wrong, and where. A location the error doesn't give
+	 * is the current statement's (its first token), in the file being assembled.
+	 */
+	private toAsmError(e: unknown): AsmError {
+		const error = e instanceof AsmError ? e : new AsmError(e instanceof Error ? e.message : String(e));
+		const { location } = error;
+		if (location.line === undefined && this.statementToken) {
+			location.line = this.statementToken.line;
+			location.column = this.statementToken.column;
+		}
+		location.file ??= this.streamManager.currentFilepath;
+		return error;
+	}
+
 	private passOne(): void {
 		this.logger.log("\n--- Starting Pass 1: PASymbol Definition & PC Calculation ---");
 
 		this.symbolTable.setNamespace("global");
 
 		this.pass = 1;
+		this.statementToken = undefined;
 		this.namelessLabels.clear();
 		this.lastGlobalLabel = null;
 
@@ -267,6 +282,7 @@ export class Assembler {
 				if (poppedStream) this.emitter.emit(`endOfStream:${poppedStream.id}`);
 				continue;
 			}
+			this.statementToken = token;
 
 			switch (token.type) {
 				case "DOT": {
@@ -389,6 +405,7 @@ export class Assembler {
 	private passTwo(): void {
 		this.logger.log("\n--- Starting Pass 2: Code Generation ---");
 		this.pass = 2;
+		this.statementToken = undefined;
 		this.namelessLabels.rewind();
 		// Start where pass 1 started, not where it ended (the last .segment used) nor at a segment the source defined.
 		this.linker.currentSegment = this.passStart.segment;
@@ -408,6 +425,7 @@ export class Assembler {
 				if (poppedStream) this.emitter.emit(`endOfStream:${poppedStream.id}`);
 				continue;
 			}
+			this.statementToken = token;
 
 			switch (token.type) {
 				case "OPERATOR": {

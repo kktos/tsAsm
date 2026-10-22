@@ -32,7 +32,9 @@ export class FileSink implements LogSink<FileSinkConfig> {
 	}
 
 	private format(message: unknown): string {
-		return typeof message === "string" ? `${message}\n` : `${JSON.stringify(message)}\n`;
+		// An error has no JSON form: its text (for an AsmError, `file:line:column: error: message`).
+		if (typeof message === "string" || message instanceof Error) return `${message}\n`;
+		return `${JSON.stringify(message)}\n`;
 	}
 
 	pushConfig(config: FileSinkConfig): void {

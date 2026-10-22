@@ -1,5 +1,6 @@
 import type * as EventEmitter from "node:events";
 import type { SymbolValue } from "../../assembler/symbol.class";
+import { AsmError } from "../../utils/error.utils";
 
 export type TokenType =
 	// Structural
@@ -440,7 +441,10 @@ export class AssemblyLexer {
 		// Unknown character: always an error, never skipped silently
 		const codePoint = this.currentStream.source.codePointAt(this.currentStream.pos) as number;
 		const code = `U+${codePoint.toString(16).toUpperCase().padStart(4, "0")}`;
-		throw new Error(`Unexpected character '${String.fromCodePoint(codePoint)}' (${code}) on line ${startLine}, column ${startColumn}.`);
+		throw new AsmError(`Unexpected character '${String.fromCodePoint(codePoint)}' (${code}) on line ${startLine}, column ${startColumn}.`, {
+			line: startLine,
+			column: startColumn,
+		});
 	}
 
 	private scanComment(_line: number, _column: number) {
@@ -485,7 +489,7 @@ export class AssemblyLexer {
 			this.advance();
 		}
 
-		throw new Error(`Unterminated comment on line ${line}, column ${column}: missing closing */.`);
+		throw new AsmError(`Unterminated comment on line ${line}, column ${column}: missing closing */.`, { line, column });
 	}
 
 	private scanEscapeChar() {
@@ -548,7 +552,7 @@ export class AssemblyLexer {
 		}
 
 		// A string ends on its line: reaching the end of the line or of the source means the closing quote is missing.
-		if (this.peek() !== delimiter) throw new Error(`Unterminated string on line ${line}, column ${column}: missing closing ${delimiter}.`);
+		if (this.peek() !== delimiter) throw new AsmError(`Unterminated string on line ${line}, column ${column}: missing closing ${delimiter}.`, { line, column });
 		this.advance(); // skip closing "
 
 		return this.makeToken("STRING", value, line, column, delimiter);
@@ -580,14 +584,14 @@ export class AssemblyLexer {
 		if (numberString === "") {
 			// A hex prefix not followed by any digits (e.g. '$', '$x', '0xZZ').
 			const prefix = this.currentStream.source.slice(prefixStart, start);
-			throw new Error(`Invalid number on line ${line}: '${prefix}' must be followed by hexadecimal digits.`);
+			throw new AsmError(`Invalid number on line ${line}: '${prefix}' must be followed by hexadecimal digits.`, { line, column });
 		}
 
 		// A number ends where a word would: '123abc', '0b2' or '$12g' are errors, not a number followed by a symbol.
 		if (this.isIdentifierPart(this.peek())) {
 			while (this.isIdentifierPart(this.peek())) this.advance();
 			const word = this.currentStream.source.slice(prefixStart, this.currentStream.pos);
-			throw new Error(`Invalid number '${word}' on line ${line}, column ${column}.`);
+			throw new AsmError(`Invalid number '${word}' on line ${line}, column ${column}.`, { line, column });
 		}
 
 		let numericValue = Number.parseInt(numberString, radix);
@@ -643,7 +647,7 @@ export class AssemblyLexer {
 		const endMarkerLen = this.endMarker?.length || 0;
 		this.endMarker = undefined;
 		// Reaching the end of the source without the end marker: don't silently take the rest of the file.
-		const missingEndMarker = () => new Error(`Missing ${endMarkerName} for ${this.rawBlockLabel()} on line ${line}.`);
+		const missingEndMarker = () => new AsmError(`Missing ${endMarkerName} for ${this.rawBlockLabel()} on line ${line}.`, { line, column });
 		const scanStart = this.currentStream.pos;
 
 		// console.log(
@@ -727,7 +731,7 @@ export class AssemblyLexer {
 				pos = end === -1 ? this.currentStream.length : end;
 			} else pos++;
 		}
-		if (pos >= this.currentStream.length) throw new Error(`Missing } for ${this.rawBlockLabel()} on line ${line}.`);
+		if (pos >= this.currentStream.length) throw new AsmError(`Missing } for ${this.rawBlockLabel()} on line ${line}.`, { line, column });
 
 		this.moveLineAndColumnTo(start, pos + 1);
 		this.currentStream.pos = pos + 1;

@@ -109,7 +109,9 @@ describe(".DEFINE Directive", () => {
 			.DEFINE MY_SYMBOL AS TOML
 			.END
 		`;
-			expect(() => assembler.assemble(source)).toThrow("[:2:5] Error: Unknown Data Processor 'TOML'. - pass 1");
+			expect(() => assembler.assemble(source)).toThrow(
+				expect.objectContaining({ message: "Unknown Data Processor 'TOML'.", location: { file: "", line: 2, column: 5 } }),
+			);
 		});
 
 		it("should return a text with a TEXT processor", () => {
