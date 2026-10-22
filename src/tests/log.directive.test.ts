@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { Assembler } from "../assembler/polyasm";
 import { Logger } from "../helpers/logger.class";
 import { MemorySink } from "../helpers/memorysink.class";
@@ -76,5 +76,28 @@ describe("Logging directives", () => {
 			const found = sink.warnings.find((l) => l === "Boom Bada Boom");
 			expect(found).toBeDefined();
 		});
+
+		it("warns once, with symbols defined later", () => {
+			const { asm, sink } = makeAssembler();
+			asm.assemble('.WARNING "size", size\nsize = 5');
+
+			expect(sink.warnings).toEqual(["size\t5"]);
+		});
+	});
+
+	it("logs an object without writing to the console", () => {
+		const sink = new MemorySink();
+		const logger = new Logger({ sink, enabled: true });
+		const rawDataProcessors = { default: "JSON", map: new Map([["JSON", (block: string) => JSON.parse(block)]]) };
+		const asm = new Assembler(fakeCPU, new MockFileHandler(), { logger, rawDataProcessors, log: { pass1Enabled: false, pass2Enabled: true } });
+		const consoleLog = vi.spyOn(console, "log").mockImplementation(() => {});
+
+		asm.assemble('.DEFINE obj\n{"a": 1}\n.END\n.LOG obj');
+		// read the calls before mockRestore(), which clears them
+		const consoleCalls = consoleLog.mock.calls.length;
+		consoleLog.mockRestore();
+
+		expect(consoleCalls).toBe(0);
+		expect(sink.logs).toContain('{"a":1}');
 	});
 });

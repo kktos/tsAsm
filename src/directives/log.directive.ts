@@ -11,6 +11,11 @@ export class LogDirective implements IDirective {
 	) {}
 
 	public handlePassOne(directive: ScalarToken, context: DirectiveContext) {
+		// A warning is given once, in pass 2, when all symbols are known: pass 1 only skips its line.
+		if (this.mode === "WARN") {
+			this.runtime.parser.getInstructionTokens(directive);
+			return;
+		}
 		this.handle(directive, context);
 	}
 
@@ -73,10 +78,7 @@ export class LogDirective implements IDirective {
 
 	private formatValue(value: unknown): string {
 		if (Array.isArray(value)) return `[${value.map((v) => this.formatValue(v)).join(", ")}]`;
-		if (typeof value === "object") {
-			console.log(value);
-			return JSON.stringify(value);
-		}
+		if (typeof value === "object") return JSON.stringify(value);
 
 		return String(value);
 	}
