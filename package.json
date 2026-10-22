@@ -44,14 +44,5 @@
 	},
 	"dependencies": {
 		"js-yaml": "^4.1.1"
-	},
-	"pnpm": {
-		"onlyBuiltDependencies": [
-			"@biomejs/biome",
-			"rollup"
-		],
-		"ignoredBuiltDependencies": [
-			"esbuild"
-		]
 	}
 }
