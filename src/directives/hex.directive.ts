@@ -10,10 +10,10 @@ import type { DirectiveContext, IDirective } from "./directive.interface";
  * the rest of the line, a '{ ... }' block, or, when the line is blank, the lines up to '.END'.
  * Pass 2, macros and blocks replay the RAW_TEXT token read the first time.
  */
-function readHexData(parser: Parser, directive: Token): Token {
+function readHexData(parser: Parser): Token {
 	if (!parser.isAtUnlexedSource()) {
 		const token = parser.peek();
-		if (token?.type !== "RAW_TEXT") throw new Error(`Internal error: the .HEX data on line ${directive.line} was read as tokens.`);
+		if (token?.type !== "RAW_TEXT") throw new Error("Internal error: the .HEX data was read as tokens.");
 		parser.advance();
 		return token;
 	}
@@ -31,12 +31,12 @@ export class HexDirective implements IDirective {
 		private readonly lister: ILister,
 	) {}
 
-	getRawBlock(parser: Parser, directive: Token): Token[] {
-		return [readHexData(parser, directive)];
+	getRawBlock(parser: Parser, _directive: Token): Token[] {
+		return [readHexData(parser)];
 	}
 
 	public handlePassOne(directive: ScalarToken, context: DirectiveContext) {
-		const hexString = this.extractHexData(directive);
+		const hexString = this.extractHexData();
 
 		try {
 			const byteCount = hexString.replace(/\s/g, "").length / 2;
@@ -49,7 +49,7 @@ export class HexDirective implements IDirective {
 	}
 
 	public handlePassTwo(directive: ScalarToken, context: DirectiveContext) {
-		const hexString = this.extractHexData(directive);
+		const hexString = this.extractHexData();
 
 		const cleanedString = hexString.replace(/\s/g, "");
 		if (cleanedString.length % 2 !== 0) throw new Error("Hex data must have an even number of digits.");
@@ -69,8 +69,8 @@ export class HexDirective implements IDirective {
 	}
 
 	/** Returns the .HEX data as text, without its comments. */
-	private extractHexData(directive: ScalarToken) {
-		const text = readHexData(this.assembler.parser, directive).value as string;
+	private extractHexData() {
+		const text = readHexData(this.assembler.parser).value as string;
 		if (text.includes('"') || text.includes("'")) throw new Error(".HEX does not accept strings; write the hex digits without quotes.");
 
 		const commentChar = this.assembler.parser.lexer.commentChar;

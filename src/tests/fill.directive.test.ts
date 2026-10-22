@@ -87,11 +87,13 @@ describe("Directive: .fill", () => {
 	});
 
 	it.each([
-		[".fill -5, $FF", ".FILL count on line 2: -5"],
-		[".ds -1", ".DS count on line 2: -1"],
-		[".fill 5/2", ".FILL count on line 2: 2.5"],
-		[".fill count\ncount = -2", ".FILL count on line 2: -2"],
+		[".fill -5, $FF", ".FILL count: -5"],
+		[".ds -1", ".DS count: -1"],
+		[".fill 5/2", ".FILL count: 2.5"],
+		[".fill count\ncount = -2", ".FILL count: -2"],
 	])("should throw on a count that isn't a whole number of 0 or more: %j", (source, message) => {
-		expect(() => asm.assemble(`.org $2000\n${source}\nlabel: LDA #$42`)).toThrow(`${message} isn't a whole number of bytes (0 or more).`);
+		expect(() => asm.assemble(`.org $2000\n${source}\nlabel: LDA #$42`)).toThrow(
+			expect.objectContaining({ message: `${message} isn't a whole number of bytes (0 or more).`, location: expect.objectContaining({ line: 2 }) }),
+		);
 	});
 });

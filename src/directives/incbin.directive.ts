@@ -21,13 +21,10 @@ export class IncbinDirective implements IDirective {
 		const filename = this.assembler.expressionEvaluator.evaluate(expressionTokens, context);
 		if (typeof filename !== "string") throw new Error(".INCBIN requires a string argument.");
 
-		try {
-			const rawBytes = this.assembler.fileHandler.readBinaryFile(filename);
-			context.PC.value += rawBytes.length;
-			this.logger.log(`[PASS 1] Reserved ${rawBytes.length} bytes for binary file: ${filename}`);
-		} catch (e) {
-			this.logger.error(`[PASS 1] ERROR reading binary file ${filename} for size calculation: ${e}`);
-		}
+		// Pass 1 knows the file name: a file that can't be read is reported now, not after a pass with a wrong size.
+		const rawBytes = this.readFile(filename);
+		context.PC.value += rawBytes.length;
+		this.logger.log(`[PASS 1] Reserved ${rawBytes.length} bytes for binary file: ${filename}`);
 
 		return undefined;
 	}
@@ -40,27 +37,29 @@ export class IncbinDirective implements IDirective {
 		const filename = this.assembler.expressionEvaluator.evaluate(expressionTokens, context);
 		if (typeof filename !== "string") throw new Error(".INCBIN requires a string argument.");
 
-		try {
-			const rawBytes = this.assembler.fileHandler.readBinaryFile(filename);
+		const rawBytes = this.readFile(filename);
 
-			context.emitbytes(rawBytes);
-			// this.assembler.currentPC is advanced by writeBytes
-			// this.assembler.symbolTable.lookupAndUpdateSymbol("*", this.assembler.currentPC);
+		context.emitbytes(rawBytes);
+		// this.assembler.currentPC is advanced by writeBytes
+		// this.assembler.symbolTable.lookupAndUpdateSymbol("*", this.assembler.currentPC);
 
-			const bytesStr =
-				rawBytes
-					.slice(0, 4)
-					.map((b) => b.toString(16).padStart(2, "0").toUpperCase())
-					.join(" ") + (rawBytes.length > 4 ? "..." : "");
+		const bytesStr =
+			rawBytes
+				.slice(0, 4)
+				.map((b) => b.toString(16).padStart(2, "0").toUpperCase())
+				.join(" ") + (rawBytes.length > 4 ? "..." : "");
 
-			const addressHex = getHex(context.PC.value, 4);
-			this.logger.log(`[PASS 2] $${addressHex}: ${bytesStr.padEnd(8)} | Line ${directive.line}: .INCBIN "${filename}" (${rawBytes.length} bytes)`);
-		} catch (e) {
-			const errorMessage = e instanceof Error ? e.message : String(e);
-			this.logger.error(`\n[PASS 2] FATAL ERROR on line ${directive.line}: Could not include binary file ${filename}. Error: ${errorMessage}`);
-			throw new Error(`Assembly failed on line ${directive.line}: Binary include failed.`);
-		}
+		const addressHex = getHex(context.PC.value, 4);
+		this.logger.log(`[PASS 2] $${addressHex}: ${bytesStr.padEnd(8)} | Line ${directive.line}: .INCBIN "${filename}" (${rawBytes.length} bytes)`);
 
 		return undefined;
+	}
+
+	private readFile(filename: string): number[] {
+		try {
+			return this.assembler.fileHandler.readBinaryFile(filename);
+		} catch (e) {
+			throw new Error(`Can't include binary file '${filename}': ${e instanceof Error ? e.message : e}`);
+		}
 	}
 }

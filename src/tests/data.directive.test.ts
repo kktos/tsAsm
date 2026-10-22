@@ -143,14 +143,14 @@ describe("Data Directives", () => {
 		});
 
 		it.each([
-			[".DB 256", ".DB value on line 1: 256 doesn't fit in a byte (-128..255)."],
-			[".DB -129", ".DB value on line 1: -129 doesn't fit in a byte (-128..255)."],
-			[".DW $10000", ".DW value on line 1: 65536 doesn't fit in 2 bytes (-32768..65535)."],
-			[".DL $100000000", ".DL value on line 1: 4294967296 doesn't fit in 4 bytes (-2147483648..4294967295)."],
-			[".FILL 2, 256", ".FILL value on line 1: 256 doesn't fit in a byte (-128..255)."],
-			[".DB 1\n.ALIGN 4, 256", ".ALIGN value on line 2: 256 doesn't fit in a byte (-128..255)."],
-			['.DB "a€"', ".DB value on line 1: '€' (U+20AC) doesn't fit in a byte."],
-			['.DW 1, "😀"', ".DW value on line 1: '😀' (U+1F600) doesn't fit in a byte."],
+			[".DB 256", ".DB value: 256 doesn't fit in a byte (-128..255)."],
+			[".DB -129", ".DB value: -129 doesn't fit in a byte (-128..255)."],
+			[".DW $10000", ".DW value: 65536 doesn't fit in 2 bytes (-32768..65535)."],
+			[".DL $100000000", ".DL value: 4294967296 doesn't fit in 4 bytes (-2147483648..4294967295)."],
+			[".FILL 2, 256", ".FILL value: 256 doesn't fit in a byte (-128..255)."],
+			[".DB 1\n.ALIGN 4, 256", ".ALIGN value: 256 doesn't fit in a byte (-128..255)."],
+			['.DB "a€"', ".DB value: '€' (U+20AC) doesn't fit in a byte."],
+			['.DW 1, "😀"', ".DW value: '😀' (U+1F600) doesn't fit in a byte."],
 		])("should throw on an out-of-range value: %s", (source, message) => {
 			expect(() => assemble(source)).toThrow(message);
 		});

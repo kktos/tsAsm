@@ -39,7 +39,7 @@ export class FillDirective implements IDirective {
 		this.assertValidCount(count, directive);
 
 		const fillerValue = valueTokens.length > 0 ? this.runtime.evaluator.evaluateAsNumber(valueTokens, context) : 0;
-		assertFitsInBytes(fillerValue, 1, `.${directive.value} value on line ${directive.line}:`);
+		assertFitsInBytes(fillerValue, 1, `.${directive.value} value:`);
 
 		if (count > 0) {
 			// Ensure filler value is a single byte
@@ -58,8 +58,7 @@ export class FillDirective implements IDirective {
 	}
 
 	private assertValidCount(count: number | null, directive: ScalarToken) {
-		if (!Number.isInteger(count) || (count as number) < 0)
-			throw new Error(`.${directive.value} count on line ${directive.line}: ${count} isn't a whole number of bytes (0 or more).`);
+		if (!Number.isInteger(count) || (count as number) < 0) throw new Error(`.${directive.value} count: ${count} isn't a whole number of bytes (0 or more).`);
 	}
 
 	/**

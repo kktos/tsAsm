@@ -93,7 +93,9 @@ describe("String Directives", () => {
 		const source = `
             .TEXT 12345
         `;
-		expect(() => assembler.assemble(source)).toThrow("Data directive expression must evaluate to a string on line 2.");
+		expect(() => assembler.assemble(source)).toThrow(
+			expect.objectContaining({ message: ".TEXT expression must evaluate to a string.", location: expect.objectContaining({ line: 2 }) }),
+		);
 	});
 
 	it("should throw an error for .PSTR string exceeding 255 bytes", () => {
@@ -102,7 +104,9 @@ describe("String Directives", () => {
 		const source = `
             .PSTR "${longString}"
         `;
-		expect(() => assembler.assemble(source)).toThrow(".PSTR string length cannot exceed 255 bytes on line 2.");
+		expect(() => assembler.assemble(source)).toThrow(
+			expect.objectContaining({ message: ".PSTR string length cannot exceed 255 bytes.", location: expect.objectContaining({ line: 2 }) }),
+		);
 	});
 
 	it("should correctly calculate size in Pass 1", () => {
@@ -177,22 +181,22 @@ describe("String Directives", () => {
 	});
 
 	it.each([
-		['.text msg\nmsg = "hi"', ".TEXT on line 1: 'MSG'"],
-		['.cstr "a", msg\nmsg = "hi"', ".CSTR on line 1: 'MSG'"],
-		['.pstr msg\nmsg = "hi"', ".PSTR on line 1: 'MSG'"],
-		['.macro m s\n.text s\n.end\n m msg\nmsg = "hi"', ".TEXT on line 4.2: 'MSG'"],
+		['.text msg\nmsg = "hi"', ".TEXT: 'MSG'"],
+		['.cstr "a", msg\nmsg = "hi"', ".CSTR: 'MSG'"],
+		['.pstr msg\nmsg = "hi"', ".PSTR: 'MSG'"],
+		['.macro m s\n.text s\n.end\n m msg\nmsg = "hi"', ".TEXT: 'MSG'"],
 	])("should throw when the string uses a symbol defined later: %j", (source, message) => {
 		expect(() => createAssembler().assemble(source)).toThrow(`${message} must be defined before it is used here (its length is needed to place what follows).`);
 	});
 
 	it("should throw when the value isn't a string", () => {
-		expect(() => createAssembler().assemble(".text 65")).toThrow("Data directive expression must evaluate to a string on line 1.");
+		expect(() => createAssembler().assemble(".text 65")).toThrow(".TEXT expression must evaluate to a string.");
 	});
 
 	it.each([
-		['.text "€"', ".TEXT on line 1: '€' (U+20AC)"],
-		['.cstr "é€"', ".CSTR on line 1: '€' (U+20AC)"],
-		['.pstr "😀"', ".PSTR on line 1: '😀' (U+1F600)"],
+		['.text "€"', ".TEXT: '€' (U+20AC)"],
+		['.cstr "é€"', ".CSTR: '€' (U+20AC)"],
+		['.pstr "😀"', ".PSTR: '😀' (U+1F600)"],
 	])("should throw on a character above 255: %j", (source, message) => {
 		expect(() => createAssembler().assemble(source)).toThrow(`${message} doesn't fit in a byte.`);
 	});

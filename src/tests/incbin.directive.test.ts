@@ -42,7 +42,9 @@ describe("File Directive .INCBIN", () => {
 			throw new Error("File not found");
 		});
 
-		expect(() => assembler.assemble(source)).toThrow("Assembly failed on line 1: Binary include failed.");
+		expect(() => assembler.assemble(source)).toThrow(
+			expect.objectContaining({ message: "Can't include binary file 'nonexistent.bin': File not found", location: expect.objectContaining({ line: 1 }) }),
+		);
 		expect(readBinaryFileSpy).toHaveBeenCalledWith("nonexistent.bin");
 	});
 
