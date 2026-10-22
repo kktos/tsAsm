@@ -424,7 +424,7 @@ Read-only values, prefixed with a dot.
 | `.def(<symbol>)`, `.undef(<symbol>)` | `1` if the symbol is defined (`.def`) or not defined (`.undef`), else `0`. The name can be given as a string: `.def("utils::getKey")`. |
 | `.label(<name>)` | The address of the label with that name |
 | `.type(<value>)` | `"number"`, `"string"`, `"array"` or `"object"` |
-| `.hex(<value> [, <digits>])` | The value as a hexadecimal string: `.hex(10, 4)` is `"$000A"` |
+| `.hex(<value> [, <digits>])` | The value as a hexadecimal string: `.hex(10, 4)` is `"$000A"`. A negative value gives its two's complement: `.hex(-1)` is `"$FF"` |
 | `.str(<value>)` | The value as a string |
 | `.json(<value>)` | The value as a JSON string |
 | `.lobyte(<value>)`, `.hibyte(<value>)` | Low byte, high byte |
