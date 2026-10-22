@@ -1,4 +1,5 @@
 import type { OperatorStackToken } from "../shared/lexer/lexer.class";
+import { getHex } from "../utils/hex.util";
 import type { AddressingMode, CPUHandler, ModeInfo, ResolvedModeInfo } from "./cpuhandler.interface";
 
 export class Cpu6502Handler implements CPUHandler {
@@ -341,9 +342,41 @@ export class Cpu6502Handler implements CPUHandler {
 		return tokens.slice(start + 1, end);
 	}
 
-	/** .b forces zero page: the address must fit in it. In pass 1, an operand defined later is null and is checked in pass 2. */
-	private assertForcedZeroPage(address: number | null) {
-		if (address !== null && (address < 0 || address > 0xff)) throw new Error(`Zero page address ${address} is out of range ($0..$FF).`);
+	/**
+	 * Zero page or absolute, for a direct or indexed operand (`index` is "", ",X" or ",Y").
+	 * A suffix forces it, if the instruction has that form: .b zero page (with the address's low byte), .w absolute.
+	 * Without one: zero page when the address is known, fits, and the instruction has that form, else absolute
+	 * (the worst case for an address defined later).
+	 */
+	private selectAddressMode(
+		mnemonic: string,
+		modes: ReadonlyMap<AddressingMode, unknown>,
+		zeroPageMode: AddressingMode,
+		absoluteMode: AddressingMode,
+		address: number | null,
+		forcedSize: "ZP" | "ABS" | null,
+		index: "" | ",X" | ",Y",
+	): AddressingMode {
+		const base = mnemonic.split(".")[0];
+		const hasZeroPage = modes.has(zeroPageMode);
+		const hasAbsolute = modes.has(absoluteMode);
+
+		if (forcedSize === "ZP") {
+			if (!hasZeroPage) throw new Error(`'${mnemonic}': ${base} has no zero page${index} form.`);
+			return zeroPageMode;
+		}
+		if (forcedSize === "ABS") {
+			if (!hasAbsolute) throw new Error(`'${mnemonic}': ${base} has no absolute${index} form.`);
+			return absoluteMode;
+		}
+
+		const fitsZeroPage = address !== null && address >= 0x00 && address <= 0xff;
+		if (hasZeroPage && (fitsZeroPage || !hasAbsolute)) {
+			if (address !== null && !fitsZeroPage) throw new Error(`${base} has no absolute${index} form, and $${getHex(address)} isn't a zero page address.`);
+			return zeroPageMode;
+		}
+		if (hasAbsolute) return absoluteMode;
+		throw new Error(`Invalid addressing mode for instruction ${mnemonic}`);
 	}
 
 	resolveAddressingMode(mnemonic: string, operandTokens: OperatorStackToken[], resolveValue: (tokens: OperatorStackToken[]) => number | null): ModeInfo {
@@ -367,11 +400,18 @@ export class Cpu6502Handler implements CPUHandler {
 		let forcedSize: "ZP" | "ABS" | null = null;
 		if (sizeSuffix === "B") forcedSize = "ZP";
 		if (sizeSuffix === "W") forcedSize = "ABS";
+		if (sizeSuffix && !forcedSize) throw new Error(`'${mnemonic}': the 6502 has no '.${sizeSuffix}' suffix.`);
+
+		// A suffix sets the size of an address (zero page or absolute): any other operand can't take one.
+		const rejectSuffix = () => {
+			if (sizeSuffix) throw new Error(`'${mnemonic}': .${sizeSuffix} only applies to an address that can be zero page or absolute.`);
+		};
 
 		const numTokens = operandTokens.length;
 
 		// 1. Implied Mode (e.g., RTS) - no operands
 		if (numTokens === 0) {
+			rejectSuffix();
 			const [opcode, bytes] = getOpcode(this.M6502_MODES.IMPLIED);
 			return {
 				mode: this.M6502_MODES.IMPLIED,
@@ -383,6 +423,7 @@ export class Cpu6502Handler implements CPUHandler {
 
 		// Accumulator
 		if (numTokens === 1 && operandTokens[0]?.value.toUpperCase() === "A") {
+			rejectSuffix();
 			const [opcode, bytes] = getOpcode(this.M6502_MODES.ACCUMULATOR);
 			return {
 				mode: this.M6502_MODES.ACCUMULATOR,
@@ -394,6 +435,7 @@ export class Cpu6502Handler implements CPUHandler {
 
 		// 2. Immediate Mode (e.g., LDA #$42)
 		if (operandTokens[0]?.value === "#") {
+			rejectSuffix();
 			const expressionTokens = operandTokens.slice(1);
 			const resolvedAddress = resolveValue(expressionTokens);
 			const [opcode, bytes] = getOpcode(this.M6502_MODES.IMMEDIATE);
@@ -407,6 +449,7 @@ export class Cpu6502Handler implements CPUHandler {
 
 		// 3. Indirect, Indirect Indexed Modes
 		if (operandTokens[0]?.value === "(") {
+			rejectSuffix();
 			const lastToken = operandTokens[numTokens - 1];
 
 			// Indirect Y: (zp),Y
@@ -459,18 +502,10 @@ export class Cpu6502Handler implements CPUHandler {
 				const expressionTokens = operandTokens.slice(0, numTokens - 2);
 				const resolvedAddress = resolveValue(expressionTokens);
 
-				if (forcedSize === "ZP") this.assertForcedZeroPage(resolvedAddress);
-
-				// Unknown in pass 1 (defined later): the worst case, absolute.
-				const isZP = resolvedAddress !== null && resolvedAddress >= 0x00 && resolvedAddress <= 0xff;
-
-				let mode: AddressingMode;
-				if (forcedSize === "ZP" || (forcedSize === null && isZP)) {
-					mode = indexReg === "X" ? this.M6502_MODES.ZEROPAGE_X : this.M6502_MODES.ZEROPAGE_Y;
-				} else {
-					mode = indexReg === "X" ? this.M6502_MODES.ABSOLUTE_X : this.M6502_MODES.ABSOLUTE_Y;
-				}
-
+				const mode =
+					indexReg === "X"
+						? this.selectAddressMode(mnemonic, instructionModes, this.M6502_MODES.ZEROPAGE_X, this.M6502_MODES.ABSOLUTE_X, resolvedAddress, forcedSize, ",X")
+						: this.selectAddressMode(mnemonic, instructionModes, this.M6502_MODES.ZEROPAGE_Y, this.M6502_MODES.ABSOLUTE_Y, resolvedAddress, forcedSize, ",Y");
 				const [opcode, bytes] = getOpcode(mode);
 				return { mode, opcode, bytes, resolvedAddress };
 			}
@@ -478,6 +513,7 @@ export class Cpu6502Handler implements CPUHandler {
 
 		// 5. Relative Mode (Branches)
 		if (this.branchMnemonics.has(baseMnemonic)) {
+			rejectSuffix();
 			const resolvedAddress = resolveValue(operandTokens);
 			const [opcode, bytes] = getOpcode(this.M6502_MODES.RELATIVE);
 			return {
@@ -490,26 +526,9 @@ export class Cpu6502Handler implements CPUHandler {
 
 		// 6. Absolute/Zero Page Direct (e.g., LDA $1234 or LDA MyLabel)
 		const resolvedAddress = resolveValue(operandTokens);
-		if (forcedSize === "ZP") this.assertForcedZeroPage(resolvedAddress);
-		const isZP = resolvedAddress !== null && resolvedAddress >= 0x00 && resolvedAddress <= 0xff;
 
-		let mode: AddressingMode;
-		if (forcedSize === "ZP" || (forcedSize === null && isZP)) {
-			mode = this.M6502_MODES.ZEROPAGE;
-		} else {
-			mode = this.M6502_MODES.ABSOLUTE;
-		}
-
-		const op = instructionModes.get(mode);
-		if (!op) {
-			// If ZP mode was tried and failed, maybe it's an instruction that only has ABS mode (like JMP)
-			if (mode === this.M6502_MODES.ZEROPAGE) {
-				const absOp = instructionModes.get(this.M6502_MODES.ABSOLUTE);
-				if (absOp) return { mode: this.M6502_MODES.ABSOLUTE, opcode: absOp[0], bytes: absOp[1], resolvedAddress };
-			}
-			throw new Error(`Invalid addressing mode for instruction ${mnemonic}`);
-		}
-		const [opcode, bytes] = op;
+		const mode = this.selectAddressMode(mnemonic, instructionModes, this.M6502_MODES.ZEROPAGE, this.M6502_MODES.ABSOLUTE, resolvedAddress, forcedSize, "");
+		const [opcode, bytes] = getOpcode(mode);
 
 		return { mode, opcode, bytes, resolvedAddress };
 	}
