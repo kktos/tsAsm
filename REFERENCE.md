@@ -218,9 +218,10 @@ Code is assembled into segments. The command line tool defines them in the proje
     38 43 23 00
 .end
 .hex { 0E 60 0B 00 }
+.hex 0E 60 0B 00
 ```
 
-`.hex` data is digits only: quoted strings are rejected.
+`.hex` data is digits only, in pairs, with optional spaces and comments: quoted strings are rejected.
 
 ## Strings
 

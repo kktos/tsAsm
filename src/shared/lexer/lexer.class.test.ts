@@ -255,9 +255,9 @@ describe("AssemblyLexer", () => {
 		// 2. Get the end marker
 		lexer.nextToken() as Token;
 		// 3. Instruct the lexer to get the raw text block
-		lexer.setEndMarker(".END");
+		lexer.setRawMode({ endMarker: ".END" });
 		tokens.push(lexer.nextToken() as Token);
-		lexer.setEndMarker(undefined);
+		lexer.setRawMode();
 
 		// skip comment
 		lexer.nextToken();

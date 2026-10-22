@@ -1,18 +1,39 @@
+import type { Parser } from "../assembler/parser.class";
 import type { Assembler } from "../assembler/polyasm";
 import type { ILister } from "../helpers/lister.class";
 import type { Logger } from "../helpers/logger.class";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
+/**
+ * Reads the .HEX data right after the directive's name, as raw text so digits like '0A' or '0B01' aren't lexed as numbers:
+ * the rest of the line, a '{ ... }' block, or, when the line is blank, the lines up to '.END'.
+ * Pass 2, macros and blocks replay the RAW_TEXT token read the first time.
+ */
+function readHexData(parser: Parser, directive: Token): Token {
+	if (!parser.isAtUnlexedSource()) {
+		const token = parser.peek();
+		if (token?.type !== "RAW_TEXT") throw new Error(`Internal error: the .HEX data on line ${directive.line} was read as tokens.`);
+		parser.advance();
+		return token;
+	}
+	const token = parser.lexer.isRestOfLineBlank() ? parser.next({ endMarker: ".END", blockName: "HEX" }) : parser.next({ rawInline: true, blockName: "HEX" });
+	return token as Token;
+}
+
 export class HexDirective implements IDirective {
-	public isBlockDirective = true;
-	public isRawDirective = false;
+	public isBlockDirective = false;
+	public isRawDirective = true;
 
 	constructor(
 		private readonly assembler: Assembler,
 		private readonly logger: Logger,
 		private readonly lister: ILister,
 	) {}
+
+	getRawBlock(parser: Parser, directive: Token): Token[] {
+		return [readHexData(parser, directive)];
+	}
 
 	public handlePassOne(directive: ScalarToken, context: DirectiveContext) {
 		const hexString = this.extractHexData(directive);
@@ -47,25 +68,19 @@ export class HexDirective implements IDirective {
 		this.lister.directive(directive, `<${bytes.length} bytes>`);
 	}
 
-	/**
-	 * Extracts the raw hexadecimal string from the source tokens,
-	 * handling both inline `{...}` and block `.HEX...END` syntax.
-	 * @returns A tuple of [hexDataString, endIndex].
-	 */
+	/** Returns the .HEX data as text, without its comments. */
 	private extractHexData(directive: ScalarToken) {
-		let hexTokens: Token[] | undefined;
+		const text = readHexData(this.assembler.parser, directive).value as string;
+		if (text.includes('"') || text.includes("'")) throw new Error(".HEX does not accept strings; write the hex digits without quotes.");
 
-		if (!this.assembler.parser.is("LBRACE")) hexTokens = this.assembler.parser.getInstructionTokens(directive);
-
-		if (!hexTokens || hexTokens.length === 0) hexTokens = this.assembler.parser.getDirectiveBlockTokens(directive.value);
-
-		// The lexer will tokenize '0E' as NUMBER '0' and IDENTIFIER 'E', and '60' as NUMBER '60'.
-		// We must join their values back together to form a single string of hex digits,
-		// while ignoring any comments that might be inside the block.
-		if (hexTokens?.some((t) => t.type === "STRING")) throw new Error(".HEX does not accept strings; write the hex digits without quotes.");
-
-		const hexString = hexTokens?.map((t) => t.raw ?? t.value).join("");
-
-		return hexString ?? "";
+		const commentChar = this.assembler.parser.lexer.commentChar;
+		return text
+			.replace(/\/\*[\s\S]*?\*\//g, " ")
+			.split("\n")
+			.map((line) => {
+				const comment = [line.indexOf(commentChar), line.indexOf("//")].filter((i) => i >= 0);
+				return comment.length ? line.slice(0, Math.min(...comment)) : line;
+			})
+			.join("\n");
 	}
 }

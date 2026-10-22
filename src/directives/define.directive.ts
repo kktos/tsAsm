@@ -14,11 +14,13 @@ export class DefineDirective implements IDirective {
 		private readonly lister: ILister,
 	) {}
 
-	getRawBlock(parser: Parser, lineTokens: Token[]): Token | null {
+	getRawBlock(parser: Parser, directive: Token): Token[] {
+		const lineTokens = parser.getInstructionTokens(directive);
 		// .DEFINE symbol [AS processor] FROM file is inline
-		if (lineTokens.findIndex((token) => token.type === "IDENTIFIER" && token.value === "FROM") >= 0) return null;
+		if (lineTokens.findIndex((token) => token.type === "IDENTIFIER" && token.value === "FROM") >= 0) return lineTokens;
 		// .DEFINE symbol [AS processor] .... .END is block
-		return parser.next({ endMarker: ".END" });
+		const block = parser.next({ endMarker: ".END", blockName: "DEFINE" });
+		return block ? [...lineTokens, block] : lineTokens;
 	}
 
 	public handlePassOne(directive: ScalarToken, context: DirectiveContext) {
@@ -82,7 +84,7 @@ export class DefineDirective implements IDirective {
 				this.assembler.parser.advance();
 				blockToken = token;
 			} else {
-				blockToken = this.assembler.parser.next({ endMarker: ".END" });
+				blockToken = this.assembler.parser.next({ endMarker: ".END", blockName: "DEFINE" });
 			}
 			blockContent = (blockToken?.value as string) ?? "";
 		}
