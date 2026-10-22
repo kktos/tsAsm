@@ -1,5 +1,5 @@
 import type { OperatorStackToken } from "../shared/lexer/lexer.class";
-import type { AddressingMode, CPUHandler } from "./cpuhandler.interface";
+import type { AddressingMode, CPUHandler, ModeInfo } from "./cpuhandler.interface";
 
 export class Cpu6502Handler implements CPUHandler {
 	cpuType = "6502" as const;
@@ -339,16 +339,7 @@ export class Cpu6502Handler implements CPUHandler {
 		return tokens.slice(start + 1, end);
 	}
 
-	resolveAddressingMode(
-		mnemonic: string,
-		operandTokens: OperatorStackToken[],
-		resolveValue: (tokens: OperatorStackToken[]) => number,
-	): {
-		mode: AddressingMode;
-		opcode: number;
-		bytes: number;
-		resolvedAddress: number;
-	} {
+	resolveAddressingMode(mnemonic: string, operandTokens: OperatorStackToken[], resolveValue: (tokens: OperatorStackToken[]) => number): ModeInfo {
 		// Check if the base mnemonic is supported. If not, THROW to signal a potential label.
 		const parts = mnemonic.split(".");
 		const baseMnemonic = parts[0];
@@ -513,16 +504,7 @@ export class Cpu6502Handler implements CPUHandler {
 	}
 
 	/** Pass 2: Encodes the instruction using the resolved mode and address. */
-	encodeInstruction(
-		_tokens: OperatorStackToken[],
-		modeInfo: {
-			mode: AddressingMode;
-			resolvedAddress: number;
-			opcode: number;
-			bytes: number;
-			pc: number;
-		},
-	): number[] {
+	encodeInstruction(_tokens: OperatorStackToken[], modeInfo: ModeInfo & { pc: number }): number[] {
 		if (modeInfo.mode === this.M6502_MODES.RELATIVE) {
 			const targetAddress = modeInfo.resolvedAddress;
 			const instructionSize = modeInfo.bytes; // Should be 2 for branch instructions

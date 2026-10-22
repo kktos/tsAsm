@@ -1,7 +1,7 @@
 import type { OperatorStackToken } from "../shared/lexer/lexer.class";
 import { getHex } from "../utils/hex.util";
 import { assertFitsInBytes } from "../utils/number.utils";
-import type { AddressingMode, CPUHandler } from "./cpuhandler.interface";
+import type { AddressingMode, CPUHandler, ModeInfo } from "./cpuhandler.interface";
 
 export class Cpu65C02Handler implements CPUHandler {
 	cpuType = "65C02" as const;
@@ -399,12 +399,7 @@ export class Cpu65C02Handler implements CPUHandler {
 		mnemonic: string,
 		operandTokens: OperatorStackToken[],
 		resolveValue: (tokens: OperatorStackToken[], numberSize?: number) => number,
-	): {
-		mode: AddressingMode;
-		opcode: number;
-		bytes: number;
-		resolvedAddress: number;
-	} {
+	): ModeInfo {
 		// Check if the base mnemonic is supported. If not, THROW to signal a potential label.
 		const parts = mnemonic.split(".");
 		const baseMnemonic = parts[0];
@@ -640,16 +635,7 @@ export class Cpu65C02Handler implements CPUHandler {
 	}
 
 	/** Pass 2: Encodes the instruction using the resolved mode and address. */
-	encodeInstruction(
-		_tokens: OperatorStackToken[],
-		modeInfo: {
-			mode: AddressingMode;
-			resolvedAddress: number;
-			opcode: number;
-			bytes: number;
-			pc: number;
-		},
-	): number[] {
+	encodeInstruction(_tokens: OperatorStackToken[], modeInfo: ModeInfo & { pc: number }): number[] {
 		if (modeInfo.mode === this.M65C02_MODES.RELATIVE) {
 			const targetAddress = modeInfo.resolvedAddress;
 			const instructionSize = modeInfo.bytes; // Should be 2 for branch instructions

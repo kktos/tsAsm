@@ -1,6 +1,6 @@
 import type { OperatorStackToken } from "../shared/lexer/lexer.class";
 import { pushNumber, pushSignedNumber } from "../utils/array.utils";
-import type { AddressingMode, CPUHandler } from "./cpuhandler.interface";
+import type { AddressingMode, CPUHandler, ModeInfo } from "./cpuhandler.interface";
 
 // Helper structure for opcode details
 interface OpcodeInfo {
@@ -12,7 +12,13 @@ interface OpcodeInfo {
 type InstructionModes = Map<AddressingMode, OpcodeInfo>;
 type Page = Map<string, InstructionModes>;
 
-export class Cpu6809Handler implements CPUHandler {
+/** The 6809 adds its indexed-mode post byte and its opcode page (1, 2 or 3). */
+export interface Cpu6809ModeInfo extends ModeInfo {
+	postByte?: number;
+	page?: number;
+}
+
+export class Cpu6809Handler implements CPUHandler<Cpu6809ModeInfo> {
 	cpuType = "6809" as const;
 	endianness = "big" as const;
 
@@ -381,14 +387,7 @@ export class Cpu6809Handler implements CPUHandler {
 		mnemonic: string,
 		operandTokens: OperatorStackToken[],
 		resolveValue: (tokens: OperatorStackToken[], numberMax?: number) => number,
-	): {
-		mode: AddressingMode;
-		opcode: number;
-		bytes: number;
-		resolvedAddress: number;
-		postByte?: number;
-		page?: number;
-	} {
+	): Cpu6809ModeInfo {
 		const upperMnemonic = mnemonic.toUpperCase();
 		const numTokens = operandTokens.length;
 
@@ -505,18 +504,7 @@ export class Cpu6809Handler implements CPUHandler {
 		return { ...info, mode, resolvedAddress, page };
 	}
 
-	encodeInstruction(
-		_tokens: OperatorStackToken[],
-		modeInfo: {
-			mode: AddressingMode;
-			resolvedAddress: number;
-			opcode: number;
-			bytes: number;
-			pc: number;
-			postByte?: number;
-			page?: number;
-		},
-	): number[] {
+	encodeInstruction(_tokens: OperatorStackToken[], modeInfo: Cpu6809ModeInfo & { pc: number }): number[] {
 		const bytes: number[] = [];
 
 		// Add page prefix

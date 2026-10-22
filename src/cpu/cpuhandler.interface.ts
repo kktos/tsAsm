@@ -9,7 +9,18 @@ export type AddressingMode = string;
 /** Byte order of a CPU's multi-byte values. */
 export type Endianness = "little" | "big";
 
-export interface CPUHandler {
+/**
+ * What resolveAddressingMode finds for an instruction, given back to encodeInstruction (with the PC).
+ * A CPU can extend it with its own fields, like the 6809's post byte.
+ */
+export interface ModeInfo {
+	mode: AddressingMode;
+	opcode: number;
+	bytes: number;
+	resolvedAddress: number;
+}
+
+export interface CPUHandler<TModeInfo extends ModeInfo = ModeInfo> {
 	cpuType: string;
 
 	/** Byte order of the CPU: data directives (.dw, .dl, the .pstrl length) write their values in it too. */
@@ -23,25 +34,11 @@ export interface CPUHandler {
 		mnemonic: string,
 		operandTokens: OperatorStackToken[],
 		resolveValue: (tokens: OperatorStackToken[], numberMax?: number) => number | null,
-	): {
-		mode: AddressingMode;
-		opcode: number;
-		bytes: number;
-		resolvedAddress: number;
-	};
+	): TModeInfo;
 
 	/** Checks if a given mnemonic corresponds to a known instruction for this CPU. */
 	isInstruction(mnemonic: string): boolean;
 
 	/** Encodes the instruction into raw bytes, typically relying on modeInfo calculated in Pass 1. */
-	encodeInstruction(
-		tokens: OperatorStackToken[],
-		modeInfo: {
-			mode: AddressingMode;
-			resolvedAddress: number;
-			opcode: number;
-			bytes: number;
-			pc: number;
-		},
-	): number[];
+	encodeInstruction(tokens: OperatorStackToken[], modeInfo: TModeInfo & { pc: number }): number[];
 }

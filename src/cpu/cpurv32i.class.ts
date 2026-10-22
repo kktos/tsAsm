@@ -1,5 +1,5 @@
 import type { OperatorStackToken } from "../shared/lexer/lexer.class";
-import type { AddressingMode, CPUHandler } from "./cpuhandler.interface";
+import type { AddressingMode, CPUHandler, ModeInfo } from "./cpuhandler.interface";
 
 // In RISC-V, there aren't addressing modes in the traditional sense, but instruction formats.
 // We'll use the instruction format names as "addressing modes".
@@ -12,7 +12,17 @@ const RV32I_FORMATS = {
 	J: "J-type",
 };
 
-export class CpuRV32IHandler implements CPUHandler {
+/** RV32I instructions are made of these fields, depending on their format (R, I, S, B, U, J). */
+export interface RV32IModeInfo extends ModeInfo {
+	funct3?: number;
+	funct7?: number;
+	rd?: number;
+	rs1?: number;
+	rs2?: number;
+	imm?: number;
+}
+
+export class CpuRV32IHandler implements CPUHandler<RV32IModeInfo> {
 	cpuType = "RV32I" as const;
 	endianness = "little" as const;
 
@@ -141,22 +151,7 @@ export class CpuRV32IHandler implements CPUHandler {
 		return this.instructionMap.has(mnemonic.toUpperCase());
 	}
 
-	resolveAddressingMode(
-		mnemonic: string,
-		operandTokens: OperatorStackToken[],
-		resolveValue: (tokens: OperatorStackToken[]) => number,
-	): {
-		mode: AddressingMode;
-		opcode: number;
-		bytes: number;
-		resolvedAddress: number;
-		funct3?: number;
-		funct7?: number;
-		rd?: number;
-		rs1?: number;
-		rs2?: number;
-		imm?: number;
-	} {
+	resolveAddressingMode(mnemonic: string, operandTokens: OperatorStackToken[], resolveValue: (tokens: OperatorStackToken[]) => number): RV32IModeInfo {
 		const upperMnemonic = mnemonic.toUpperCase();
 		const instructionGroup = this.instructionMap.get(upperMnemonic);
 		if (!instructionGroup) throw new Error(`Unknown instruction mnemonic: ${mnemonic}`);
@@ -241,21 +236,7 @@ export class CpuRV32IHandler implements CPUHandler {
 		};
 	}
 
-	encodeInstruction(
-		_tokens: OperatorStackToken[],
-		modeInfo: {
-			mode: AddressingMode;
-			opcode: number;
-			bytes: number;
-			pc: number;
-			funct3?: number;
-			funct7?: number;
-			rd?: number;
-			rs1?: number;
-			rs2?: number;
-			imm?: number;
-		},
-	): number[] {
+	encodeInstruction(_tokens: OperatorStackToken[], modeInfo: RV32IModeInfo & { pc: number }): number[] {
 		let instruction = 0;
 		const { opcode, funct3, funct7, rd, rs1, rs2, imm, pc, mode } = modeInfo;
 
