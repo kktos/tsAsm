@@ -1,4 +1,5 @@
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
+import { stringToBytes } from "../utils/string.utils";
 import type { DirectiveContext, DirectiveRuntime, IDirective } from "./directive.interface";
 
 export type StringFormat = "TEXT" | "CSTR" | "PSTR" | "PSTRL";
@@ -67,7 +68,7 @@ export class StringDirective implements IDirective {
 		const strings = this.getStrings(directive, context);
 		let totalSize = 0;
 		for (const str of strings) {
-			totalSize += str.length;
+			totalSize += stringToBytes(str, `.${directive.value} on line ${directive.line}:`).length;
 			switch (this.format) {
 				case "CSTR":
 					totalSize += 1;
@@ -87,7 +88,7 @@ export class StringDirective implements IDirective {
 		const outputBytes: number[] = [];
 
 		for (const str of strings) {
-			const chars = str.split("").map((c) => c.charCodeAt(0));
+			const chars = stringToBytes(str, `.${directive.value} on line ${directive.line}:`);
 
 			switch (this.format) {
 				case "TEXT":
@@ -97,12 +98,12 @@ export class StringDirective implements IDirective {
 					outputBytes.push(...chars, 0);
 					break;
 				case "PSTR":
-					if (str.length > 255) throw new Error(`.PSTR string length cannot exceed 255 bytes on line ${directive.line}.`);
-					outputBytes.push(str.length, ...chars);
+					if (chars.length > 255) throw new Error(`.PSTR string length cannot exceed 255 bytes on line ${directive.line}.`);
+					outputBytes.push(chars.length, ...chars);
 					break;
 				case "PSTRL":
-					if (str.length > 65535) throw new Error(`.PSTRL string length cannot exceed 65535 bytes on line ${directive.line}.`);
-					outputBytes.push(str.length & 0xff, (str.length >> 8) & 0xff, ...chars); // Little-endian length
+					if (chars.length > 65535) throw new Error(`.PSTRL string length cannot exceed 65535 bytes on line ${directive.line}.`);
+					outputBytes.push(chars.length & 0xff, (chars.length >> 8) & 0xff, ...chars); // Little-endian length
 					break;
 			}
 		}

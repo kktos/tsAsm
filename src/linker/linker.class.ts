@@ -13,7 +13,7 @@ import type { FunctionHandler } from "../shared/functions/types";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
 import { pushNumber } from "../utils/array.utils";
 import { getHex } from "../utils/hex.util";
-import { stringToASCIICharCodes } from "../utils/string.utils";
+import { stringToBytes } from "../utils/string.utils";
 import { Dispatcher } from "./directives/dispatcher.class";
 
 export interface Segment {
@@ -222,8 +222,9 @@ export class Linker {
 	}
 
 	public emitString(value: string, _offset?: number) {
-		this.activeSegment().data.push(...stringToASCIICharCodes(value));
-		this.PC.value += value.length;
+		const bytes = stringToBytes(value, "Invalid write string directive -");
+		this.activeSegment().data.push(...bytes);
+		this.PC.value += bytes.length;
 	}
 	public emitByte(value: number, offset?: number) {
 		if (offset !== undefined) {

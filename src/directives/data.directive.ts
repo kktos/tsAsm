@@ -1,6 +1,7 @@
 import type { SymbolValue } from "../assembler/symbol.class";
 import type { ScalarToken } from "../shared/lexer/lexer.class";
 import { assertFitsInBytes } from "../utils/number.utils";
+import { stringToBytes } from "../utils/string.utils";
 import type { DirectiveContext, DirectiveRuntime, IDirective } from "./directive.interface";
 
 export class DataDirective implements IDirective {
@@ -40,7 +41,7 @@ export class DataDirective implements IDirective {
 					break;
 				}
 				case "string": {
-					totalSize += value.length;
+					totalSize += stringToBytes(value, `.${directive.value} value on line ${directive.line}:`).length;
 					break;
 				}
 				case "number": {
@@ -72,7 +73,7 @@ export class DataDirective implements IDirective {
 
 			switch (typeof value) {
 				case "string": {
-					for (let i = 0; i < value.length; i++) outputBytes.push(value.charCodeAt(i));
+					outputBytes.push(...stringToBytes(value, `.${directive.value} value on line ${directive.line}:`));
 					params.push(value);
 					hasText = true;
 					break;
