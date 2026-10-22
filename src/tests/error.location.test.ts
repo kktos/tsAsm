@@ -73,10 +73,34 @@ describe("Error locations", () => {
 		expect(error.sourceLine).toBe("  lda missing");
 	});
 
-	it("should not show a source line for a macro body line yet", () => {
-		const error = assemble(".macro m\n  lda missing\n.end\n  m") as AsmError;
-		expect(error.location.line).toBe("4.2");
-		expect(error.sourceLine).toBeUndefined();
+	describe("in a macro body", () => {
+		it("should report the body line, and the call", () => {
+			const error = assemble(".macro m\n  lda missing\n.end\n  nop\n  m") as AsmError;
+			expect(error.location).toEqual({ file: "main.asm", line: 2, column: 3 });
+			expect(error.sourceLine).toBe("  lda missing");
+			expect(error.macroStack).toEqual([{ name: "m", calledAt: { file: "main.asm", line: 5, column: 3 } }]);
+		});
+
+		it("should report a macro defined in an included file, and nested calls, innermost first", () => {
+			files["macros.asm"] = ".macro load v\n  lda missing\n.end\n.macro twice v\n  load v\n.end\n";
+			const error = assemble('.include "macros.asm"\n  nop\n  twice 1') as AsmError;
+			expect(error.location).toEqual({ file: "macros.asm", line: 2, column: 3 });
+			expect(error.macroStack).toEqual([
+				{ name: "load", calledAt: { file: "macros.asm", line: 5, column: 3 } },
+				{ name: "twice", calledAt: { file: "main.asm", line: 3, column: 3 } },
+			]);
+		});
+
+		it("should report a line of a loop in a macro body", () => {
+			const error = assemble(".macro m\n.repeat 2\n  lda missing\n.end\n.end\n  m") as AsmError;
+			expect(error.location).toEqual({ file: "main.asm", line: 3, column: 3 });
+			expect(error.macroStack).toEqual([{ name: "m", calledAt: { file: "main.asm", line: 6, column: 3 } }]);
+		});
+
+		it("should show the calls under the source line", () => {
+			const text = (assemble(".macro m\n  lda missing\n.end\n  nop\n  m") as AsmError).format().split("\n");
+			expect(text.slice(1)).toEqual(["    2 |   lda missing", "      |   ^", "  in macro m, called at main.asm:5:3"]);
+		});
 	});
 
 	it("should format a source line given with the error", () => {

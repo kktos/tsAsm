@@ -252,9 +252,39 @@ export class Assembler {
 			location.line = this.statementToken.line;
 			location.column = this.statementToken.column;
 		}
+		if (typeof location.line === "string") this.locateInMacro(error);
 		location.file ??= this.streamManager.currentFilepath;
 		if (error.sourceLine === undefined && typeof location.line === "number") error.sourceLine = this.streamManager.getSourceLine(location.file, location.line);
 		return error;
+	}
+
+	/**
+	 * A macro body line is numbered "<call line>.<body line>" ("4.2", "4.3.2" for a nested call): the error is
+	 * located at the body line, in the file the macro is defined in, and the macro calls go in its macro stack.
+	 */
+	private locateInMacro(error: AsmError) {
+		const expansions = this.parser.tokenStreamStack.filter((stream) => stream.macroName);
+		const definitionFile = (index: number) => {
+			const name = expansions[index]?.macroName;
+			return name !== undefined ? this.macroHandler.macroDefinitions.get(name)?.file : undefined;
+		};
+		const bodyLine = (line: number | string) => Number(String(line).split(".").at(-1));
+
+		const innermost = expansions.length - 1;
+		const file = definitionFile(innermost);
+		if (file === undefined) return;
+		error.location.file = file;
+		error.location.line = bodyLine(error.location.line as string);
+
+		// Innermost first: each macro is called from the body of the one before it, or from the source itself.
+		for (let index = innermost; index >= 0; index--) {
+			const { macroName, macroCall } = expansions[index] as StreamState;
+			if (!macroName || !macroCall) continue;
+			error.macroStack.push({
+				name: macroCall.raw ?? macroName,
+				calledAt: { file: definitionFile(index - 1) ?? this.streamManager.currentFilepath, line: bodyLine(macroCall.line), column: macroCall.column },
+			});
+		}
 	}
 
 	private passOne(): void {

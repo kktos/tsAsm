@@ -120,7 +120,7 @@ assembler.assemble(`
 const bytes = assembler.link(); // [0xa9, 0x41, 0x20, 0xed, 0xfd, 0x60]
 ```
 
-When the source has an error, `assemble()` throws an `AsmError` (`src/utils/error.utils.ts`): `message` says what is wrong, `location` where (`{ file, line, column }`), and `format()` gives `file:line:column: error: message`, followed by the source line with a caret under the column.
+When the source has an error, `assemble()` throws an `AsmError` (`src/utils/error.utils.ts`): `message` says what is wrong, `location` where (`{ file, line, column }`), and `format()` gives `file:line:column: error: message`, followed by the source line with a caret under the column. In a macro body, the location is the body line, in the file the macro is defined in, and `macroStack` lists the calls it comes from (innermost first).
 
 ```ts
 try {

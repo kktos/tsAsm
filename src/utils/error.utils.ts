@@ -13,10 +13,18 @@ export interface SourceLocation {
  * The error the assembler reports: what is wrong (`message`) and where (`location`).
  * Code that knows the exact place (a token, a character) gives it; else the assembler uses the statement's.
  */
+/** `file:line:column: `, with the parts that are known. */
+function formatLocation({ file, line, column }: SourceLocation): string {
+	const where = [file, line, column].filter((part) => part !== undefined && part !== "").join(":");
+	return where ? `${where}: ` : "";
+}
+
 export class AsmError extends Error {
 	public location: SourceLocation;
 	/** The text of the source line the error is on, when known: shown under the message. */
 	public sourceLine?: string;
+	/** For an error in a macro body: the macro calls it comes from, innermost first. */
+	public macroStack: { name: string; calledAt: SourceLocation }[] = [];
 
 	public constructor(message: string, location: SourceLocation = {}) {
 		super(message);
@@ -32,17 +40,20 @@ export class AsmError extends Error {
 	 *     3 |   lda @x
 	 *       |       ^
 	 * ```
+	 * and, in a macro body, the calls it comes from: `  in macro M, called at main.asm:9:3`.
 	 */
 	public format(): string {
-		const { file, line, column } = this.location;
-		const where = [file, line, column].filter((part) => part !== undefined && part !== "").join(":");
-		const text = `${where ? `${where}: ` : ""}error: ${this.message}`;
-		if (this.sourceLine === undefined || line === undefined) return text;
+		const { line, column } = this.location;
+		const lines = [`${formatLocation(this.location)}error: ${this.message}`];
 
-		const gutter = String(line).padStart(5);
-		const lines = [text, `${gutter} | ${this.sourceLine}`];
-		// Tabs are kept so that the caret lines up under the column as the source is shown.
-		if (column) lines.push(`${" ".repeat(gutter.length)} | ${this.sourceLine.slice(0, column - 1).replace(/[^\t]/g, " ")}^`);
+		if (this.sourceLine !== undefined && line !== undefined) {
+			const gutter = String(line).padStart(5);
+			lines.push(`${gutter} | ${this.sourceLine}`);
+			// Tabs are kept so that the caret lines up under the column as the source is shown.
+			if (column) lines.push(`${" ".repeat(gutter.length)} | ${this.sourceLine.slice(0, column - 1).replace(/[^\t]/g, " ")}^`);
+		}
+
+		for (const call of this.macroStack) lines.push(`  in macro ${call.name}, called at ${formatLocation(call.calledAt).slice(0, -2)}`);
 		return lines.join("\n");
 	}
 

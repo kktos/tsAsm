@@ -12,6 +12,8 @@ export interface StreamState {
 	cacheName?: string;
 	/** Set on the stream of a macro expansion: the macro's name. */
 	macroName?: string;
+	/** Set on the stream of a macro expansion: the token calling the macro. */
+	macroCall?: Token;
 }
 
 export interface FileHandler {
@@ -41,6 +43,7 @@ export interface PushTokenStreamParams {
 	macroArgs?: Map<string, Token[]>;
 	cacheName?: string;
 	macroName?: string;
+	macroCall?: Token;
 	onEndOfStream?: () => void;
 }
 
