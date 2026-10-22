@@ -93,4 +93,14 @@ describe("RV32I Opcodes", () => {
 		// 0x00000517
 		expect(data).toEqual([0x17, 0x05, 0x00, 0x00]);
 	});
+
+	// Every instruction is 4 bytes: an operand using a symbol defined later can't change the size.
+	it.each([
+		// beq zero, zero, +8 = 0x00000463, then addi a0, zero, 1 and addi a0, zero, 2
+		["BEQ zero, zero, done\nADDI a0, zero, 1\ndone: ADDI a0, zero, 2", [0x63, 0x04, 0x00, 0x00, 0x13, 0x05, 0x10, 0x00, 0x13, 0x05, 0x20, 0x00]],
+		["ADDI a0, zero, value\nvalue = 42", [0x13, 0x05, 0xa0, 0x02]],
+		["LW a0, offset(sp)\noffset = 12", [0x03, 0x25, 0xc1, 0x00]],
+	])("should assemble an operand defined later: %j", (source, bytes) => {
+		expect(assembleAndGetCode(source)).toEqual(bytes);
+	});
 });

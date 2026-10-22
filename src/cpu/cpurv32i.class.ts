@@ -19,7 +19,8 @@ export interface RV32IModeInfo extends ModeInfo {
 	rd?: number;
 	rs1?: number;
 	rs2?: number;
-	imm?: number;
+	/** null in pass 1 when it uses a symbol defined later: the size is always 4 bytes anyway. */
+	imm?: number | null;
 }
 
 export class CpuRV32IHandler implements CPUHandler<RV32IModeInfo> {
@@ -151,7 +152,7 @@ export class CpuRV32IHandler implements CPUHandler<RV32IModeInfo> {
 		return this.instructionMap.has(mnemonic.toUpperCase());
 	}
 
-	resolveAddressingMode(mnemonic: string, operandTokens: OperatorStackToken[], resolveValue: (tokens: OperatorStackToken[]) => number): RV32IModeInfo {
+	resolveAddressingMode(mnemonic: string, operandTokens: OperatorStackToken[], resolveValue: (tokens: OperatorStackToken[]) => number | null): RV32IModeInfo {
 		const upperMnemonic = mnemonic.toUpperCase();
 		const instructionGroup = this.instructionMap.get(upperMnemonic);
 		if (!instructionGroup) throw new Error(`Unknown instruction mnemonic: ${mnemonic}`);
@@ -172,7 +173,7 @@ export class CpuRV32IHandler implements CPUHandler<RV32IModeInfo> {
 		let rd: number | undefined;
 		let rs1: number | undefined;
 		let rs2: number | undefined;
-		let imm: number | undefined;
+		let imm: number | null | undefined;
 
 		switch (mode) {
 			case RV32I_FORMATS.R: // ADD rd, rs1, rs2
@@ -239,6 +240,8 @@ export class CpuRV32IHandler implements CPUHandler<RV32IModeInfo> {
 	encodeInstruction(_tokens: OperatorStackToken[], modeInfo: ResolvedModeInfo<RV32IModeInfo>): number[] {
 		let instruction = 0;
 		const { opcode, funct3, funct7, rd, rs1, rs2, imm, pc, mode } = modeInfo;
+		// Every symbol is known in pass 2, so is the immediate.
+		if (imm === null) throw new Error("Internal error: the immediate is still unknown in pass 2.");
 
 		let finalImm = imm ?? 0;
 
