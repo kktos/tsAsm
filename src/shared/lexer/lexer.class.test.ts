@@ -288,45 +288,47 @@ describe("AssemblyLexer", () => {
 	});
 
 	test.each([
-		["LDA @X", "'@' (U+0040) on line 1, column 5"],
-		[".DB ~0", "'~' (U+007E) on line 1, column 5"],
-		["CAFÉ = 1", "'É' (U+00C9) on line 1, column 4"],
-		["NOP\n  LDA #1 ` X", "'`' (U+0060) on line 2, column 10"],
-		[".DB 1", "' ' (U+00A0) on line 1, column 4"],
-		[".DB 1​", "'​' (U+200B) on line 1, column 6"],
-		[".DB 1 😀", "'😀' (U+1F600) on line 1, column 7"],
-	])("should throw on an unknown character: %j", (source, message) => {
-		expect(() => lexer.tokenize(source)).toThrow(`Unexpected character ${message}.`);
+		["LDA @X", "'@' (U+0040)", 1, 5],
+		[".DB ~0", "'~' (U+007E)", 1, 5],
+		["CAFÉ = 1", "'É' (U+00C9)", 1, 4],
+		["NOP\n  LDA #1 ` X", "'`' (U+0060)", 2, 10],
+		[".DB 1", "' ' (U+00A0)", 1, 4],
+		[".DB 1​", "'​' (U+200B)", 1, 6],
+		[".DB 1 😀", "'😀' (U+1F600)", 1, 7],
+	])("should throw on an unknown character, at its position: %j", (source, char, line, column) => {
+		expect(() => lexer.tokenize(source)).toThrow(expect.objectContaining({ message: `Unexpected character ${char}.`, location: { line, column } }));
 	});
 
 	test.each([
-		['.DB "AB', `line 1, column 5: missing closing ".`],
-		[".DB 'AB\n.DB 1", "line 1, column 5: missing closing '."],
-		['.DB "AB\\"', `line 1, column 5: missing closing ".`],
-		[".DB \"AB'", `line 1, column 5: missing closing ".`],
-		["NOP\n  LDA #'A", "line 2, column 8: missing closing '."],
-	])("should throw on an unterminated string: %j", (source, message) => {
-		expect(() => lexer.tokenize(source)).toThrow(`Unterminated string on ${message}`);
+		['.DB "AB', '"', 1, 5],
+		[".DB 'AB\n.DB 1", "'", 1, 5],
+		['.DB "AB\\"', '"', 1, 5],
+		[".DB \"AB'", '"', 1, 5],
+		["NOP\n  LDA #'A", "'", 2, 8],
+	])("should throw on an unterminated string, at its opening quote: %j", (source, quote, line, column) => {
+		expect(() => lexer.tokenize(source)).toThrow(
+			expect.objectContaining({ message: `Unterminated string: missing closing ${quote}.`, location: { line, column } }),
+		);
 	});
 
 	test.each([
-		["LDA #1 /* ABC", "line 1, column 8"],
-		[".DB 1 /*", "line 1, column 7"],
-		[".DB 1 /* AB*", "line 1, column 7"],
-		["NOP\n/* A\nB\n.DB 2", "line 2, column 1"],
-	])("should throw on an unterminated comment: %j", (source, position) => {
-		expect(() => lexer.tokenize(source)).toThrow(`Unterminated comment on ${position}: missing closing */.`);
+		["LDA #1 /* ABC", 1, 8],
+		[".DB 1 /*", 1, 7],
+		[".DB 1 /* AB*", 1, 7],
+		["NOP\n/* A\nB\n.DB 2", 2, 1],
+	])("should throw on an unterminated comment, at its /*: %j", (source, line, column) => {
+		expect(() => lexer.tokenize(source)).toThrow(expect.objectContaining({ message: "Unterminated comment: missing closing */.", location: { line, column } }));
 	});
 
 	test.each([
-		[".DW 123ABC", "'123ABC' on line 1, column 5"],
-		[".DW 0b2", "'0b2' on line 1, column 5"],
-		[".DW 0b", "'0b' on line 1, column 5"],
-		[".DW $12G", "'$12G' on line 1, column 5"],
-		[".DW %102", "'%102' on line 1, column 5"],
-		["NOP\n1LBL: NOP", "'1LBL' on line 2, column 1"],
-	])("should throw on a number followed by letters or digits: %j", (source, message) => {
-		expect(() => lexer.tokenize(source)).toThrow(`Invalid number ${message}.`);
+		[".DW 123ABC", "'123ABC'", 1, 5],
+		[".DW 0b2", "'0b2'", 1, 5],
+		[".DW 0b", "'0b'", 1, 5],
+		[".DW $12G", "'$12G'", 1, 5],
+		[".DW %102", "'%102'", 1, 5],
+		["NOP\n1LBL: NOP", "'1LBL'", 2, 1],
+	])("should throw on a number followed by letters or digits: %j", (source, word, line, column) => {
+		expect(() => lexer.tokenize(source)).toThrow(expect.objectContaining({ message: `Invalid number ${word}.`, location: { line, column } }));
 	});
 
 	test.each(["LDA 0x", "LDA 0xZZ", "LDA 0X_"])("should throw on '0x' without hex digits: %s", (source) => {
@@ -360,6 +362,6 @@ describe("AssemblyLexer", () => {
 
 	test("should skip a byte order mark at the start of the source only", () => {
 		expect(lexer.tokenize("﻿NOP")).toEqual([{ type: "IDENTIFIER", value: "NOP", raw: "NOP", line: 1, column: 1 }]);
-		expect(() => lexer.tokenize("NOP﻿")).toThrow("Unexpected character '﻿' (U+FEFF) on line 1, column 4.");
+		expect(() => lexer.tokenize("NOP﻿")).toThrow(expect.objectContaining({ message: "Unexpected character '﻿' (U+FEFF).", location: { line: 1, column: 4 } }));
 	});
 });

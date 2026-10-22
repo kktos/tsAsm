@@ -516,7 +516,7 @@ export class Parser {
 		}
 
 		// Reaching the end of the source means the block's .END is missing: don't silently take the rest of the file.
-		if (!terminated) throw new Error(`Missing .END for the .${startDirective} block on line ${startLine}.`);
+		if (!terminated) throw new AsmError(`Missing .END for the .${startDirective} block.`, { line: startLine });
 
 		return tokens;
 	}

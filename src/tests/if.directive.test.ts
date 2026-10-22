@@ -185,6 +185,8 @@ describe("Directive: .if/.else", () => {
             .end
         `;
 		const asm = createAssembler();
-		expect(() => asm.assemble(source)).toThrow("Unexpected character '@' (U+0040) on line 3, column 17.");
+		expect(() => asm.assemble(source)).toThrow(
+			expect.objectContaining({ message: "Unexpected character '@' (U+0040).", location: expect.objectContaining({ line: 3, column: 17 }) }),
+		);
 	});
 });

@@ -136,7 +136,7 @@ export class Assembler {
 				return this.streamManager.currentFilepath;
 
 			default:
-				throw new Error(`Unknown system variable: ${nameToken.value} on line ${nameToken.line}.`);
+				throw AsmError.at(`Unknown system variable: ${nameToken.value}.`, nameToken);
 		}
 	}
 
@@ -251,6 +251,9 @@ export class Assembler {
 		if (location.line === undefined && this.statementToken) {
 			location.line = this.statementToken.line;
 			location.column = this.statementToken.column;
+		} else if (location.column === undefined && location.line === this.statementToken?.line) {
+			// On the statement's line: its column too.
+			location.column = this.statementToken?.column;
 		}
 		if (typeof location.line === "string") this.locateInMacro(error);
 		location.file ??= this.streamManager.currentFilepath;
@@ -575,7 +578,7 @@ export class Assembler {
 
 				case "ANONYMOUS_LABEL_DEF": {
 					const pass1Address = this.namelessLabels.update(this.PC.value);
-					if (pass1Address !== undefined && pass1Address !== this.PC.value) throw this.phaseError(`anonymous label on line ${token.line}`, pass1Address);
+					if (pass1Address !== undefined && pass1Address !== this.PC.value) throw this.phaseError("anonymous label", pass1Address);
 					break;
 				}
 			}
@@ -744,9 +747,9 @@ export class Assembler {
 	private addFunctions() {
 		const segHandler: FunctionHandler = (stack, token, _symbolTable, _argCount) => {
 			const segName = stack.pop();
-			if (typeof segName !== "string") throw new Error(`Argument to .SEGMENT() must be a string on line ${token.line}.`);
+			if (typeof segName !== "string") throw AsmError.at("Argument to .SEGMENT() must be a string.", token);
 			const seg = this.linker.segments.find((s) => s.name === segName);
-			if (!seg) throw new Error(`Segment '${segName}' not found on line ${token.line}.`);
+			if (!seg) throw AsmError.at(`Segment '${segName}' not found.`, token);
 			stack.push(seg);
 		};
 		this.expressionEvaluator.functionDispatcher.register("SEGMENT", { handler: segHandler, minArgs: 1, maxArgs: 1 });
