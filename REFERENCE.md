@@ -458,3 +458,5 @@ tsAsm assembles 65C02 code, with the usual syntax:
 | Indirect | `jmp ($1234)`, `lda ($12)` |
 | Indexed indirect / indirect indexed | `lda ($12,x)`, `lda ($12),y` |
 | Relative | `bne loop` |
+
+A `.b` or `.w` suffix forces the size of an address: `lda.b label` uses zero page, `lda.w $10` uses absolute (`ad 10 00`). `.b` with an address above `$FF` is an error. This works on the 6502 and the 65C02; other CPUs have no suffixes.

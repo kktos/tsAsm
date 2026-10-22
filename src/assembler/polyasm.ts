@@ -324,8 +324,9 @@ export class Assembler {
 					// PRIORITY 2: CPU INSTRUCTION ...
 
 					// Check if the mnemonic is a known instruction for the current CPU.
-					if (this.cpuHandler.isInstruction(token.value)) {
-						this.handleInstructionPassOne(token as ScalarToken);
+					const mnemonic = this.joinMnemonicSuffix(token as ScalarToken);
+					if (this.cpuHandler.isInstruction(mnemonic.value)) {
+						this.handleInstructionPassOne(mnemonic);
 						break;
 					}
 
@@ -439,8 +440,9 @@ export class Assembler {
 						break;
 					}
 
-					if (this.cpuHandler.isInstruction(token.value)) {
-						this.handleInstructionPassTwo(token as OperatorStackToken);
+					const mnemonic = this.joinMnemonicSuffix(token as ScalarToken);
+					if (this.cpuHandler.isInstruction(mnemonic.value)) {
+						this.handleInstructionPassTwo(mnemonic as OperatorStackToken);
 						break;
 					}
 
@@ -542,6 +544,27 @@ export class Assembler {
 		return new Error(
 			`Phase error: ${description} is $${getHex(pass1Value)} in pass 1 but $${getHex(this.PC.value)} in pass 2. Code before it changed size between the passes, usually because a symbol is used before it is defined: define that symbol earlier.`,
 		);
+	}
+
+	/**
+	 * An instruction with a suffix (`lda.b`) is lexed as LDA, '.', B. When they're written together, joins them
+	 * into one mnemonic for the CPU: a suffix the CPU doesn't declare is an error.
+	 */
+	private joinMnemonicSuffix(token: ScalarToken): ScalarToken {
+		const dot = this.parser.peek();
+		if (dot?.type !== "DOT" || dot.line !== token.line || dot.column !== token.column + (token.raw ?? token.value).length) return token;
+		const suffix = this.parser.peek(1);
+		if (suffix?.type !== "IDENTIFIER" || suffix.line !== token.line || suffix.column !== dot.column + 1) return token;
+		if (!this.cpuHandler.isInstruction(token.value)) return token;
+
+		const suffixes = this.cpuHandler.mnemonicSuffixes ?? [];
+		if (!suffixes.includes(suffix.value)) {
+			const known = suffixes.length ? ` (it has ${suffixes.map((s) => `.${s}`).join(", ")})` : "";
+			throw new ParserError(`'${token.value}.${suffix.value}': the ${this.cpuHandler.cpuType} has no '.${suffix.value}' suffix${known}.`, token);
+		}
+
+		this.parser.advance(2);
+		return { ...token, value: `${token.value}.${suffix.value}`, raw: `${token.raw ?? token.value}.${suffix.raw ?? suffix.value}` };
 	}
 
 	private handleInstructionPassOne(mnemonicToken: ScalarToken): void {

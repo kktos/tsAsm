@@ -6,6 +6,8 @@ import type { AddressingMode, CPUHandler, ModeInfo, ResolvedModeInfo } from "./c
 export class Cpu65C02Handler implements CPUHandler {
 	cpuType = "65C02" as const;
 	endianness = "little" as const;
+	// lda.b: zero page, lda.w: absolute
+	mnemonicSuffixes = ["B", "W"] as const;
 
 	// Define M65C02 specific modes internally
 	private M65C02_MODES = {
@@ -559,7 +561,8 @@ export class Cpu65C02Handler implements CPUHandler {
 			if (comma === ",") {
 				const expressionTokens = operandTokens.slice(0, numTokens - 2);
 				const resolvedAddress = resolveValue(expressionTokens);
-				this.checkAddress(resolvedAddress, 0xffff);
+				// .b forces zero page: the address must fit in it.
+				this.checkAddress(resolvedAddress, forcedSize === "ZP" ? 0xff : 0xffff);
 
 				const isZP = resolvedAddress !== null && resolvedAddress >= 0x00 && resolvedAddress <= 0xff;
 
@@ -605,7 +608,8 @@ export class Cpu65C02Handler implements CPUHandler {
 
 		// 6. Absolute/Zero Page Direct (e.g., LDA $1234 or LDA MyLabel)
 		const resolvedAddress = resolveValue(operandTokens);
-		this.checkAddress(resolvedAddress, 0xffff);
+		// .b forces zero page: the address must fit in it.
+		this.checkAddress(resolvedAddress, forcedSize === "ZP" ? 0xff : 0xffff);
 		const isZP = resolvedAddress !== null && resolvedAddress >= 0x00 && resolvedAddress <= 0xff;
 
 		let mode: AddressingMode;

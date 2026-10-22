@@ -4,6 +4,8 @@ import type { AddressingMode, CPUHandler, ModeInfo, ResolvedModeInfo } from "./c
 export class Cpu6502Handler implements CPUHandler {
 	cpuType = "6502" as const;
 	endianness = "little" as const;
+	// lda.b: zero page, lda.w: absolute
+	mnemonicSuffixes = ["B", "W"] as const;
 
 	// Define M6502 specific modes internally
 	private M6502_MODES = {
@@ -339,6 +341,11 @@ export class Cpu6502Handler implements CPUHandler {
 		return tokens.slice(start + 1, end);
 	}
 
+	/** .b forces zero page: the address must fit in it. In pass 1, an operand defined later is null and is checked in pass 2. */
+	private assertForcedZeroPage(address: number | null) {
+		if (address !== null && (address < 0 || address > 0xff)) throw new Error(`Zero page address ${address} is out of range ($0..$FF).`);
+	}
+
 	resolveAddressingMode(mnemonic: string, operandTokens: OperatorStackToken[], resolveValue: (tokens: OperatorStackToken[]) => number | null): ModeInfo {
 		// Check if the base mnemonic is supported. If not, THROW to signal a potential label.
 		const parts = mnemonic.split(".");
@@ -452,6 +459,8 @@ export class Cpu6502Handler implements CPUHandler {
 				const expressionTokens = operandTokens.slice(0, numTokens - 2);
 				const resolvedAddress = resolveValue(expressionTokens);
 
+				if (forcedSize === "ZP") this.assertForcedZeroPage(resolvedAddress);
+
 				// Unknown in pass 1 (defined later): the worst case, absolute.
 				const isZP = resolvedAddress !== null && resolvedAddress >= 0x00 && resolvedAddress <= 0xff;
 
@@ -481,6 +490,7 @@ export class Cpu6502Handler implements CPUHandler {
 
 		// 6. Absolute/Zero Page Direct (e.g., LDA $1234 or LDA MyLabel)
 		const resolvedAddress = resolveValue(operandTokens);
+		if (forcedSize === "ZP") this.assertForcedZeroPage(resolvedAddress);
 		const isZP = resolvedAddress !== null && resolvedAddress >= 0x00 && resolvedAddress <= 0xff;
 
 		let mode: AddressingMode;
