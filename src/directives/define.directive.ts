@@ -3,6 +3,7 @@ import type { Assembler } from "../assembler/polyasm";
 import type { SymbolValue } from "../assembler/symbol.class";
 import type { ILister } from "../helpers/lister.class";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
+import { describeLocation } from "../utils/error.utils";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class DefineDirective implements IDirective {
@@ -66,8 +67,11 @@ export class DefineDirective implements IDirective {
 		const processor = this.assembler.getDataProcessor(processorName);
 		if (!processor) throw new ParserError(`Unknown Data Processor '${processorName}'.`, directive);
 
-		if (pass === 1 && this.assembler.symbolTable.hasSymbolInScope(symbolNameToken.value))
-			throw new ParserError(`Cannot redefine symbol '${symbolNameToken.value}'.`, directive);
+		if (pass === 1 && this.assembler.symbolTable.hasSymbolInScope(symbolNameToken.value)) {
+			const existing = this.assembler.symbolTable.findSymbol(symbolNameToken.value)?.symbol;
+			const where = existing ? ` (first defined at ${describeLocation({ file: existing.source, line: existing.line, column: existing.column })})` : "";
+			throw new ParserError(`Cannot redefine symbol '${symbolNameToken.value}'${where}.`, directive);
+		}
 
 		// this.assembler.symbolTable.assignVariable(symbolNameToken.value, 0);
 

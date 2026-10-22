@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { Assembler } from "../assembler/polyasm";
 import type { FileHandler } from "../assembler/polyasm.types";
 import { Cpu6502Handler } from "../cpu/cpu6502.class";
+import { Logger } from "../helpers/logger.class";
+import { MemorySink } from "../helpers/memorysink.class";
 import { AsmError } from "../utils/error.utils";
 
 describe("Error locations", () => {
@@ -127,5 +129,23 @@ describe("Error locations", () => {
 	])("should format the parts of the location it has: %j", (location, text) => {
 		expect(new AsmError("boom", location).format()).toBe(text);
 		expect(String(new AsmError("boom", location))).toBe(text);
+	});
+
+	it.each([
+		["lbl: nop\n  nop\nlbl: nop", "Symbol 'LBL' redefined (first defined at main.asm:1:1)."],
+		[".macro m\n.end\n  nop\n.macro m\n.end", "Macro 'm' redefined (first defined at main.asm:1:2): a macro can only be defined once."],
+	])("should say where a redefined name is first defined: %j", (source, message) => {
+		expect((assemble(source) as AsmError).message).toBe(message);
+	});
+
+	it("should locate and format a warning like an error", () => {
+		const sink = new MemorySink();
+		const fileHandler: FileHandler = { fullpath: "main.asm", filename: "main.asm", readSourceFile: () => "", readBinaryFile: () => [] };
+		const assembler = new Assembler(new Cpu6502Handler(), fileHandler, {
+			logger: new Logger({ sink, enabled: true }),
+			segments: [{ name: "CODE", start: 0x1000, size: 0, resizable: true }],
+		});
+		assembler.assemble('  nop\n  .warning "careful"');
+		expect(sink.warnings).toEqual([["main.asm:2:3: warning: careful", '    2 |   .warning "careful"', "      |   ^"].join("\n")]);
 	});
 });

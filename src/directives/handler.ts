@@ -40,7 +40,7 @@ export class DirectiveHandler {
 		this.directiveMap = new Map();
 		const cpuEndianness = () => assembler.getCPUHandler().endianness;
 
-		this.register("ORG", new OrgDirective(assembler, runtime.logger));
+		this.register("ORG", new OrgDirective(assembler));
 		this.register("MACRO", new MacroDirective(runtime));
 
 		this.register("NAMESPACE", new NamespaceDirective(assembler));
@@ -56,11 +56,11 @@ export class DirectiveHandler {
 		this.register("=", new AssignDirective(assembler, runtime.lister));
 		this.register("LET", new LetDirective(assembler, runtime.lister));
 
-		this.register("OPTION", new OptionDirective(assembler, runtime.logger));
+		this.register("OPTION", new OptionDirective(assembler));
 		this.register("INCLUDE", new IncludeDirective(assembler, runtime.lister));
 		this.register("INCBIN", new IncbinDirective(assembler, runtime.logger));
 
-		this.register("HEX", new HexDirective(assembler, runtime.logger, runtime.lister));
+		this.register("HEX", new HexDirective(assembler, runtime.lister));
 		this.register("DB", new DataDirective(runtime, 1, cpuEndianness)); // Define Byte (1 byte)
 		this.register("BYTE", new DataDirective(runtime, 1, cpuEndianness)); // Define Byte (1 byte)
 		this.register("DW", new DataDirective(runtime, 2, cpuEndianness)); // Define Word (2 bytes)

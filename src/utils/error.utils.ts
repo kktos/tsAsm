@@ -1,7 +1,3 @@
-export function formatLogPrefix(pos: { line: number | string; column: number }, source: { filename: string }): string {
-	return `[${source.filename}:${pos.line}:${pos.column}] `;
-}
-
 /** Where an error is in the source. Any part can be unknown where it's thrown: the assembler fills in what it knows. */
 export interface SourceLocation {
 	file?: string;
@@ -13,9 +9,14 @@ export interface SourceLocation {
  * The error the assembler reports: what is wrong (`message`) and where (`location`).
  * Code that knows the exact place (a token, a character) gives it; else the assembler uses the statement's.
  */
+/** `file:line:column`, with the parts that are known. */
+export function describeLocation({ file, line, column }: SourceLocation): string {
+	return [file, line, column].filter((part) => part !== undefined && part !== "").join(":");
+}
+
 /** `file:line:column: `, with the parts that are known. */
-function formatLocation({ file, line, column }: SourceLocation): string {
-	const where = [file, line, column].filter((part) => part !== undefined && part !== "").join(":");
+function formatLocation(location: SourceLocation): string {
+	const where = describeLocation(location);
 	return where ? `${where}: ` : "";
 }
 
@@ -25,6 +26,8 @@ export class AsmError extends Error {
 	public sourceLine?: string;
 	/** For an error in a macro body: the macro calls it comes from, innermost first. */
 	public macroStack: { name: string; calledAt: SourceLocation }[] = [];
+	/** A warning is reported the same way, but doesn't stop the assembly. */
+	public severity: "error" | "warning" = "error";
 
 	public constructor(message: string, location: SourceLocation = {}) {
 		super(message);
@@ -49,7 +52,7 @@ export class AsmError extends Error {
 	 */
 	public format(): string {
 		const { line, column } = this.location;
-		const lines = [`${formatLocation(this.location)}error: ${this.message}`];
+		const lines = [`${formatLocation(this.location)}${this.severity}: ${this.message}`];
 
 		if (this.sourceLine !== undefined && line !== undefined) {
 			const gutter = String(line).padStart(5);
@@ -58,8 +61,15 @@ export class AsmError extends Error {
 			if (column) lines.push(`${" ".repeat(gutter.length)} | ${this.sourceLine.slice(0, column - 1).replace(/[^\t]/g, " ")}^`);
 		}
 
-		for (const call of this.macroStack) lines.push(`  in macro ${call.name}, called at ${formatLocation(call.calledAt).slice(0, -2)}`);
+		for (const call of this.macroStack) lines.push(`  in macro ${call.name}, called at ${describeLocation(call.calledAt)}`);
 		return lines.join("\n");
+	}
+
+	/** A warning, located and formatted like an error. */
+	public static warning(message: string, location: SourceLocation = {}): AsmError {
+		const warning = new AsmError(message, location);
+		warning.severity = "warning";
+		return warning;
 	}
 
 	public override toString(): string {

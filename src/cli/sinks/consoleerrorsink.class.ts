@@ -8,7 +8,7 @@ export class ConsoleErrorSink implements LogSink<null> {
 	}
 
 	warn(message: unknown): void {
-		console.warn(colors.yellow(`Warning: ${message}`));
+		console.warn(colors.yellow(message instanceof AsmError ? message.format() : `Warning: ${message}`));
 	}
 
 	error(message: unknown): void {

@@ -1,5 +1,6 @@
 import type { ILister } from "../helpers/lister.class";
 import type { Token } from "../shared/lexer/lexer.class";
+import { describeLocation } from "../utils/error.utils";
 import { getHex } from "../utils/hex.util";
 
 // Internal unique key for the global namespace to avoid collisions with user namespaces
@@ -20,6 +21,16 @@ interface PASymbol {
 	source: string;
 	line: number | string;
 	column: number;
+}
+
+/** A symbol's name for messages: in its namespace, unless it's the global one. */
+function qualifiedName(namespace: string, name: string): string {
+	return namespace === INTERNAL_GLOBAL ? name : `${namespace}::${name}`;
+}
+
+/** Where a symbol is defined, as `file:line:column`. */
+function definedAt(symbol: PASymbol): string {
+	return describeLocation({ file: symbol.source, line: symbol.line, column: symbol.column });
 }
 
 export class PASymbolTable {
@@ -207,7 +218,8 @@ export class PASymbolTable {
 		if (!scope) throw new Error(`defineConstant: PASymbol Namespace "${ns}" doesn't exist.`);
 
 		name = name.toUpperCase();
-		if (scope.has(name)) throw new Error(`PASymbol ${ns === INTERNAL_GLOBAL ? "global" : ns}::${name} redefined.`);
+		const existing = scope.get(name);
+		if (existing) throw new Error(`Symbol '${qualifiedName(ns, name)}' redefined (first defined at ${definedAt(existing)}).`);
 
 		scope.set(name, {
 			name,
@@ -242,7 +254,7 @@ export class PASymbolTable {
 		const name = variableName.toUpperCase();
 
 		const symbol = scope.get(name);
-		if (symbol?.isConstant) throw new Error(`Can't redefine constant symbol ${ns === INTERNAL_GLOBAL ? "global" : ns}::${variableName}.`);
+		if (symbol?.isConstant) throw new Error(`Can't redefine constant '${qualifiedName(ns, name)}' (defined at ${definedAt(symbol)}).`);
 
 		scope.set(name, {
 			name,
@@ -277,7 +289,7 @@ export class PASymbolTable {
 			symbol = scope.get(name);
 		}
 
-		if (symbol?.isConstant) throw new Error(`Can't redefine constant symbol ${this.getCurrentNamespace()}::${variableName}.`);
+		if (symbol?.isConstant) throw new Error(`Can't redefine constant '${qualifiedName(ns, name)}' (defined at ${definedAt(symbol)}).`);
 
 		if (!symbol) throw new Error(`assignVariable: Unknown symbol "${ns === INTERNAL_GLOBAL ? "global" : ns}::${name}".`);
 

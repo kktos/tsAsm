@@ -48,7 +48,7 @@ describe(".LET directive", () => {
 			foo .EQU 10
 			.LET foo = 20
 		`;
-			expect(() => asm.assemble(src)).toThrow(/Can't redefine constant symbol global::FOO./);
+			expect(() => asm.assemble(src)).toThrow(/Can't redefine constant 'FOO' \(defined at \d+:\d+\)/);
 		});
 
 		it("should allow re-defining a variable with .LET", () => {
@@ -68,7 +68,7 @@ describe(".LET directive", () => {
 			.LET foo = 10
 			foo .EQU 20
 		`;
-			expect(() => asm.assemble(src)).toThrow(/PASymbol global::FOO redefined./);
+			expect(() => asm.assemble(src)).toThrow(/Symbol 'FOO' redefined \(first defined at \d+:\d+\)/);
 		});
 
 		it("should handle complex expressions", () => {

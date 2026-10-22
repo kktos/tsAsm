@@ -20,7 +20,7 @@ export class FillDirective implements IDirective {
 				byteCount = this.runtime.evaluator.evaluateAsNumber(countTokens, context);
 			} catch (e) {
 				// Error evaluating in pass one, but we must continue. Assume 0 size.
-				this.runtime.logger.warn(`Warning on line ${directive.line}: Could not evaluate .FILL count. ${e}`);
+				this.runtime.warn(`Could not evaluate the .FILL count: ${e instanceof Error ? e.message : e}`);
 				return;
 			}
 			// A symbol defined later: assume 0 size, pass 2 will know.

@@ -17,7 +17,7 @@ export class AlignDirective implements IDirective {
 		try {
 			boundary = this.runtime.evaluator.evaluateAsNumber(boundaryTokens, context);
 		} catch (e) {
-			this.runtime.logger.warn(`Warning on line ${directive.line}: Could not evaluate .ALIGN expression. ${e}`);
+			this.runtime.warn(`Could not evaluate the .ALIGN boundary: ${e instanceof Error ? e.message : e}`);
 			return;
 		}
 		// A symbol defined later: pass 2 will know.

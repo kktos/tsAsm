@@ -42,7 +42,7 @@ describe(".EQU - constant assignment", () => {
 				foo .EQU 123
 				foo .EQU 456
 			`;
-		expect(() => asm.assemble(src)).toThrow(/global::FOO redefined/);
+		expect(() => asm.assemble(src)).toThrow(/Symbol 'FOO' redefined \(first defined at 2:\d+\)/);
 	});
 
 	it("should have a mandatory symbol name before .EQU", () => {
