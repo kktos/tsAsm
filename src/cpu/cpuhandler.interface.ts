@@ -17,8 +17,12 @@ export interface ModeInfo {
 	mode: AddressingMode;
 	opcode: number;
 	bytes: number;
-	resolvedAddress: number;
+	/** The operand's value: null in pass 1 when it uses a symbol defined later. */
+	resolvedAddress: number | null;
 }
+
+/** What encodeInstruction gets, in pass 2: the operand's value is known, and the PC is added. */
+export type ResolvedModeInfo<TModeInfo extends ModeInfo = ModeInfo> = TModeInfo & { resolvedAddress: number; pc: number };
 
 export interface CPUHandler<TModeInfo extends ModeInfo = ModeInfo> {
 	cpuType: string;
@@ -40,5 +44,5 @@ export interface CPUHandler<TModeInfo extends ModeInfo = ModeInfo> {
 	isInstruction(mnemonic: string): boolean;
 
 	/** Encodes the instruction into raw bytes, typically relying on modeInfo calculated in Pass 1. */
-	encodeInstruction(tokens: OperatorStackToken[], modeInfo: TModeInfo & { pc: number }): number[];
+	encodeInstruction(tokens: OperatorStackToken[], modeInfo: ResolvedModeInfo<TModeInfo>): number[];
 }

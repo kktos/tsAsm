@@ -1,5 +1,5 @@
 import type { OperatorStackToken } from "../shared/lexer/lexer.class";
-import type { AddressingMode, CPUHandler, ModeInfo } from "./cpuhandler.interface";
+import type { AddressingMode, CPUHandler, ModeInfo, ResolvedModeInfo } from "./cpuhandler.interface";
 
 export class Cpu6502Handler implements CPUHandler {
 	cpuType = "6502" as const;
@@ -504,7 +504,7 @@ export class Cpu6502Handler implements CPUHandler {
 	}
 
 	/** Pass 2: Encodes the instruction using the resolved mode and address. */
-	encodeInstruction(_tokens: OperatorStackToken[], modeInfo: ModeInfo & { pc: number }): number[] {
+	encodeInstruction(_tokens: OperatorStackToken[], modeInfo: ResolvedModeInfo): number[] {
 		if (modeInfo.mode === this.M6502_MODES.RELATIVE) {
 			const targetAddress = modeInfo.resolvedAddress;
 			const instructionSize = modeInfo.bytes; // Should be 2 for branch instructions

@@ -1,6 +1,6 @@
 import type { OperatorStackToken } from "../shared/lexer/lexer.class";
 import { pushNumber, pushSignedNumber } from "../utils/array.utils";
-import type { AddressingMode, CPUHandler, ModeInfo } from "./cpuhandler.interface";
+import type { AddressingMode, CPUHandler, ModeInfo, ResolvedModeInfo } from "./cpuhandler.interface";
 
 // Helper structure for opcode details
 interface OpcodeInfo {
@@ -504,7 +504,7 @@ export class Cpu6809Handler implements CPUHandler<Cpu6809ModeInfo> {
 		return { ...info, mode, resolvedAddress, page };
 	}
 
-	encodeInstruction(_tokens: OperatorStackToken[], modeInfo: Cpu6809ModeInfo & { pc: number }): number[] {
+	encodeInstruction(_tokens: OperatorStackToken[], modeInfo: ResolvedModeInfo<Cpu6809ModeInfo>): number[] {
 		const bytes: number[] = [];
 
 		// Add page prefix
