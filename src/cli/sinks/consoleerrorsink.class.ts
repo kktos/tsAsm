@@ -13,7 +13,8 @@ export class ConsoleErrorSink implements LogSink<null> {
 
 	error(message: unknown): void {
 		// An AsmError says "error:" itself, in the `file:line:column: error: message` format editors recognise.
-		console.error(colors.red(message instanceof AsmError ? message.format() : `Error: ${message}`));
+		if (message instanceof AsmError) console.error(colors.red(message.format()));
+		else console.error(colors.red(`Error: ${message instanceof Error ? message.message : message}`));
 	}
 
 	pushConfig(): void {}

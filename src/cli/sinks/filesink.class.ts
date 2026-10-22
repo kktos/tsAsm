@@ -1,5 +1,7 @@
-import { createWriteStream, type WriteStream } from "node:fs";
+import { createWriteStream, mkdirSync, type WriteStream } from "node:fs";
+import { dirname, join } from "node:path";
 import type { LogSink } from "../../helpers/logsink.interface";
+import colors from "../colors";
 
 type FileSinkConfig = {
 	filename: string;
@@ -7,7 +9,7 @@ type FileSinkConfig = {
 
 export class FileSink implements LogSink<FileSinkConfig> {
 	private readonly stack: FileSinkConfig[] = [];
-	private stream!: WriteStream;
+	private stream: WriteStream | undefined;
 	private flags: string;
 
 	constructor(
@@ -20,15 +22,15 @@ export class FileSink implements LogSink<FileSinkConfig> {
 	}
 
 	log(message: unknown): void {
-		this.stream.write(this.format(message));
+		this.stream?.write(this.format(message));
 	}
 
 	warn(message: unknown): void {
-		this.stream.write(`[WARN] ${this.format(message)}`);
+		this.stream?.write(`[WARN] ${this.format(message)}`);
 	}
 
 	error(message: unknown): void {
-		this.stream.write(`[ERROR] ${this.format(message)}`);
+		this.stream?.write(`[ERROR] ${this.format(message)}`);
 	}
 
 	private format(message: unknown): string {
@@ -54,12 +56,31 @@ export class FileSink implements LogSink<FileSinkConfig> {
 	}
 
 	private open(filename: string): void {
-		if (this.stream) this.stream.end();
+		this.stream?.end();
+		this.stream = undefined;
 
-		// console.log("FileSink.open", `${this.dir}/${filename} ${this.flags}`);
+		const path = join(this.dir, filename);
 
-		this.stream = createWriteStream(`${this.dir}/${filename}`, { flags: this.flags });
+		// A listing that can't be written is reported once, and the assembly goes on without it.
+		let reported = false;
+		const report = (err: Error) => {
+			if (reported) return;
+			reported = true;
+			console.error(colors.red(`Error: unable to write the listing ${path}: ${err.message}`));
+			process.exitCode = 1;
+		};
 
-		// this.log("------ HERE -------");
+		try {
+			mkdirSync(dirname(path), { recursive: true });
+			const stream = createWriteStream(path, { flags: this.flags });
+			// The file is opened asynchronously: without this listener, a failure kills node with an "Unhandled 'error' event".
+			stream.on("error", (err) => {
+				if (this.stream === stream) this.stream = undefined;
+				report(err);
+			});
+			this.stream = stream;
+		} catch (e) {
+			report(e as Error);
+		}
 	}
 }

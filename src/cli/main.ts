@@ -1,5 +1,5 @@
-import { writeFileSync } from "node:fs";
-import { basename, dirname } from "node:path";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { basename, dirname, resolve } from "node:path";
 import { chdir } from "node:process";
 import { name, version } from "../../package.json";
 import { Assembler } from "../assembler/polyasm";
@@ -28,6 +28,12 @@ const printErrorsAndExit = (errors: ValidationError[]) => {
 	process.exit(-1);
 };
 
+// Output paths may name directories that don't exist yet
+const writeOutputFile = (path: string, data: string | Buffer) => {
+	mkdirSync(dirname(path), { recursive: true });
+	writeFileSync(path, data);
+};
+
 const cliArgs = parseCliArgs(process.argv.slice(2), name);
 
 const confFilename = cliArgs.projectName as string;
@@ -52,15 +58,16 @@ const dataProcessorhandlers = {
 	]),
 };
 
-const logDir = dirname(conf.output?.listing?.path ?? conf.input.source);
-const sink = new TeeSink(
-	new FileSink(logDir, conf.output?.listing?.path ? basename(conf.output?.listing?.path) : `${basename(conf.input.source)}.lst`),
-	new ConsoleErrorSink(),
-);
+// Like the other outputs, the listing path is relative to the project file. It's made absolute
+// as the file is only opened once the assembly is over, after the chdir below.
+const listing = conf.output?.listing;
+const listingEnabled = listing?.enabled ?? false;
+const listingPath = resolve(dirname(confFilename), listing?.path ?? `${conf.input.source}.lst`);
+const sink = listingEnabled ? new TeeSink(new FileSink(dirname(listingPath), basename(listingPath)), new ConsoleErrorSink()) : new ConsoleErrorSink();
 
 const logger = new Logger({
 	sink,
-	enabled: conf.output?.listing?.enabled ?? false,
+	enabled: listingEnabled,
 	cached: false,
 });
 
@@ -101,7 +108,7 @@ try {
 			if (segment.resizable) s.resizable = segment.resizable;
 			map[segment.name] = s;
 		}
-		writeFileSync(segmentsFilename, yamlstringify(map, { flowLevel: 1, sortKeys: false }));
+		writeOutputFile(segmentsFilename, yamlstringify(map, { flowLevel: 1, sortKeys: false }));
 	}
 
 	if (cliArgs.link) {
@@ -116,18 +123,18 @@ try {
 			const result = assembler.linker.link(scriptFile, conf.output.object?.path, logger);
 
 			const buffer = Buffer.from(result.data);
-			writeFileSync(result.name, buffer);
+			writeOutputFile(result.name, buffer);
 		} else if (conf.output.object?.path) {
 			const objFile = assembler.link(); // This creates the object file, not final linking
 			const buffer = Buffer.from(objFile);
-			writeFileSync(conf.output.object.path, buffer);
+			writeOutputFile(conf.output.object.path, buffer);
 		}
 	}
 
 	if (conf.output.symbols?.enabled === true) {
 		const symbolsFilename = conf.output.symbols.path ?? `${basename(conf.input.source)}.sym`;
 		const index = assembler.symbolTable.getDict();
-		writeFileSync(symbolsFilename, yamlstringify(index));
+		writeOutputFile(symbolsFilename, yamlstringify(index));
 	}
 } catch (e) {
 	logger.error(e);
