@@ -175,4 +175,17 @@ describe("String Directives", () => {
 		const machineCode = assembler.link();
 		expect(machineCode).toEqual([0xa9, 0x04, 0xa9, 0x10]);
 	});
+
+	it.each([
+		['.text msg\nmsg = "hi"', ".TEXT on line 1: 'MSG'"],
+		['.cstr "a", msg\nmsg = "hi"', ".CSTR on line 1: 'MSG'"],
+		['.pstr msg\nmsg = "hi"', ".PSTR on line 1: 'MSG'"],
+		['.macro m s\n.text s\n.end\n m msg\nmsg = "hi"', ".TEXT on line 4.2: 'MSG'"],
+	])("should throw when the string uses a symbol defined later: %j", (source, message) => {
+		expect(() => createAssembler().assemble(source)).toThrow(`${message} must be defined before it is used here (its length is needed to place what follows).`);
+	});
+
+	it("should throw in pass 1 when the value isn't a string", () => {
+		expect(() => createAssembler().assemble(".text 65")).toThrow("Data directive expression must evaluate to a string on line 1. - pass 1");
+	});
 });
