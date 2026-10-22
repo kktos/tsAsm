@@ -32,6 +32,11 @@ export class AsmError extends Error {
 		this.location = location;
 	}
 
+	/** An error at a token (or anything with a line and a column): located there, so the caret points at it. */
+	public static at(message: string, position: { line: number | string; column: number }): AsmError {
+		return new AsmError(message, { line: position.line, column: position.column });
+	}
+
 	/**
 	 * `file:line:column: error: message`, the format editors and terminals recognise, then the source line with a
 	 * caret under the column:

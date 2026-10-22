@@ -1,3 +1,4 @@
+import { AsmError } from "../../utils/error.utils";
 import type { Token } from "../lexer/lexer.class";
 import type { EvaluationStack, FunctionHandler } from "./types";
 
@@ -5,7 +6,7 @@ export const popFunction: FunctionHandler = (stack: EvaluationStack, token: Toke
 	const arrayArg = stack.pop();
 
 	if (!Array.isArray(arrayArg) || arrayArg.length === 0) {
-		throw new Error(`Argument to .POP() must be a non-empty array on line ${token.line}.`);
+		throw AsmError.at("Argument to .POP() must be a non-empty array.", token);
 	}
 
 	stack.push(arrayArg[arrayArg.length - 1]);

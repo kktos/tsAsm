@@ -108,7 +108,7 @@ export class ExpressionEvaluator {
 				break;
 			}
 		}
-		if (!foundParen) throw errorAt("Unexpected comma.", token);
+		if (!foundParen) throw AsmError.at("Unexpected comma.", token);
 	}
 
 	/** Handles all operator tokens, including parentheses and unary operators. Returns a potentially modified token. */
@@ -133,10 +133,10 @@ export class ExpressionEvaluator {
 					}
 					outputQueue.push(topOp);
 				}
-				if (!foundParen) throw errorAt(`Mismatched brackets: unmatched ']'.`, token);
+				if (!foundParen) throw AsmError.at(`Mismatched brackets: unmatched ']'.`, token);
 
 				const arrayAccessOp = operatorStack.pop();
-				if (arrayAccessOp?.value !== "ARRAY_ACCESS") throw errorAt(`Mismatched brackets: ']' without preceding array access.`, token);
+				if (arrayAccessOp?.value !== "ARRAY_ACCESS") throw AsmError.at(`Mismatched brackets: ']' without preceding array access.`, token);
 
 				outputQueue.push(arrayAccessOp);
 				break;
@@ -163,7 +163,7 @@ export class ExpressionEvaluator {
 				break;
 
 			case "!":
-				if (!isUnary) throw errorAt(`Operator '!' must be unary.`, token);
+				if (!isUnary) throw AsmError.at(`Operator '!' must be unary.`, token);
 				operatorStack.push(token); // prefix operator, see UNARY_MINUS
 				break;
 
@@ -209,7 +209,7 @@ export class ExpressionEvaluator {
 					}
 					outputQueue.push(topOp);
 				}
-				if (!foundMatch) throw errorAt(`Mismatched parenthesis: unmatched ')'.`, token);
+				if (!foundMatch) throw AsmError.at(`Mismatched parenthesis: unmatched ')'.`, token);
 
 				// If the token before the '(' was a function, pop it to the output.
 				const topOfStack = operatorStack[operatorStack.length - 1];
@@ -284,7 +284,7 @@ export class ExpressionEvaluator {
 					if (balance === 0) break;
 				}
 
-				if (balance !== 0) throw errorAt("Mismatched brackets in array literal.", processedToken);
+				if (balance !== 0) throw AsmError.at("Mismatched brackets in array literal.", processedToken);
 
 				const arrayContentTokens = tokens.slice(index + 1, j);
 				const arrayValue = this.evaluateArray(arrayContentTokens, context);
@@ -304,7 +304,7 @@ export class ExpressionEvaluator {
 				case "IDENTIFIER": {
 					// An operand should not follow another operand without an operator in between.
 					if (lastToken && lastToken.type !== "OPERATOR" && lastToken.type !== "COMMA" && lastToken.value !== "(")
-						throw errorAt(`Invalid expression format: Unexpected token '${processedToken.value}'.`, processedToken);
+						throw AsmError.at(`Invalid expression format: Unexpected token '${processedToken.value}'.`, processedToken);
 
 					outputQueue.push(processedToken);
 					break;
@@ -317,7 +317,7 @@ export class ExpressionEvaluator {
 				case "ARRAY":
 					// An operand should not follow another operand without an operator in between.
 					if (lastToken && lastToken.type !== "OPERATOR" && lastToken.type !== "COMMA" && lastToken.value !== "(")
-						throw errorAt(`Invalid expression format: Unexpected token '${processedToken.value}'.`, processedToken);
+						throw AsmError.at(`Invalid expression format: Unexpected token '${processedToken.value}'.`, processedToken);
 
 					outputQueue.push(processedToken);
 					break;
@@ -330,7 +330,7 @@ export class ExpressionEvaluator {
 					const isUnary = !lastToken || (lastToken.type === "OPERATOR" && lastToken.value !== "]") || lastToken.type === "COMMA";
 					const nextToken = tokens[index + 1];
 
-					if (nextToken?.type !== "IDENTIFIER") throw errorAt(`Invalid syntax: '.' must be followed by an identifier.`, processedToken);
+					if (nextToken?.type !== "IDENTIFIER") throw AsmError.at(`Invalid syntax: '.' must be followed by an identifier.`, processedToken);
 
 					if (isUnary) {
 						// Check for function call, e.g., IDENTIFIER followed by '('.
@@ -497,7 +497,7 @@ export class ExpressionEvaluator {
 					stack.push(right);
 					return true;
 				}
-				if (typeof right !== "number") throw errorAt("Unary operator requires a numeric operand.", token);
+				if (typeof right !== "number") throw AsmError.at("Unary operator requires a numeric operand.", token);
 				stack.push(-right);
 				return true;
 			case "!":
@@ -505,7 +505,7 @@ export class ExpressionEvaluator {
 					stack.push(right);
 					return true;
 				}
-				if (typeof right !== "number") throw errorAt("Unary operator '!' requires a numeric operand.", token);
+				if (typeof right !== "number") throw AsmError.at("Unary operator '!' requires a numeric operand.", token);
 				stack.push(right === 0 ? 1 : 0);
 				return true;
 			case "UNARY_LSB":
@@ -513,7 +513,7 @@ export class ExpressionEvaluator {
 					stack.push(right);
 					return true;
 				}
-				if (typeof right !== "number") throw errorAt("Unary operator '<' (LSB) requires a numeric operand.", token);
+				if (typeof right !== "number") throw AsmError.at("Unary operator '<' (LSB) requires a numeric operand.", token);
 				stack.push(right & 0xff);
 				return true;
 			case "UNARY_MSB":
@@ -521,7 +521,7 @@ export class ExpressionEvaluator {
 					stack.push(right);
 					return true;
 				}
-				if (typeof right !== "number") throw errorAt("Unary operator '>' (MSB) requires a numeric operand.", token);
+				if (typeof right !== "number") throw AsmError.at("Unary operator '>' (MSB) requires a numeric operand.", token);
 				stack.push((right >> 8) & 0xff);
 				return true;
 		}
@@ -532,12 +532,12 @@ export class ExpressionEvaluator {
 	private handleArrayAccessOperator(token: OperatorToken, right: SymbolValue | undefined | null, stack: (SymbolValue | null)[]): boolean {
 		if (token.value === "ARRAY_ACCESS") {
 			const arrIdx = right === null ? 0 : right;
-			if (typeof arrIdx !== "number") throw errorAt("Array index must be a number.", token);
+			if (typeof arrIdx !== "number") throw AsmError.at("Array index must be a number.", token);
 
 			const array = stack.pop() as SymbolValue[];
-			if (!Array.isArray(array)) throw errorAt("Attempted to index a non-array value.", token);
+			if (!Array.isArray(array)) throw AsmError.at("Attempted to index a non-array value.", token);
 
-			if (arrIdx < 0 || arrIdx >= array.length) throw errorAt(`Array index ${arrIdx} out of bounds for array of length ${array.length}.`, token);
+			if (arrIdx < 0 || arrIdx >= array.length) throw AsmError.at(`Array index ${arrIdx} out of bounds for array of length ${array.length}.`, token);
 
 			stack.push(array[arrIdx] as SymbolValue);
 			return true;
@@ -547,7 +547,7 @@ export class ExpressionEvaluator {
 
 	private handleBinaryOperator(token: OperatorToken, right: SymbolValue | undefined | null, stack: (SymbolValue | null)[]): void {
 		const left = stack.pop();
-		if (left === undefined || right === undefined) throw errorAt(`Binary operator '${token.value}' requires two operands.`, token);
+		if (left === undefined || right === undefined) throw AsmError.at(`Binary operator '${token.value}' requires two operands.`, token);
 
 		// Handle string operations first
 		if (typeof left === "string") {
@@ -563,7 +563,7 @@ export class ExpressionEvaluator {
 				}
 			}
 
-			if (typeof right !== "string") throw errorAt(`Binary operator '${token.value}' requires two strings.`, token);
+			if (typeof right !== "string") throw AsmError.at(`Binary operator '${token.value}' requires two strings.`, token);
 
 			switch (token.value) {
 				case "+":
@@ -577,7 +577,7 @@ export class ExpressionEvaluator {
 					stack.push(left !== right ? 1 : 0);
 					return;
 				default:
-					throw errorAt(`Operator '${token.value}' cannot be applied to strings.`, token);
+					throw AsmError.at(`Operator '${token.value}' cannot be applied to strings.`, token);
 			}
 		}
 
@@ -586,7 +586,7 @@ export class ExpressionEvaluator {
 			stack.push(null);
 			return;
 		}
-		if (typeof left !== "number" || typeof right !== "number") throw errorAt(`Binary operator '${token.value}' requires two numbers.`, token);
+		if (typeof left !== "number" || typeof right !== "number") throw AsmError.at(`Binary operator '${token.value}' requires two numbers.`, token);
 
 		// Numeric operations
 		switch (token.value) {
@@ -619,7 +619,7 @@ export class ExpressionEvaluator {
 				stack.push(left * right);
 				break;
 			case "/":
-				if (right === 0) throw errorAt("Division by zero.", token);
+				if (right === 0) throw AsmError.at("Division by zero.", token);
 				// stack.push(Math.floor(left / right)); // Integer division
 				stack.push(left / right);
 				break;
@@ -635,7 +635,7 @@ export class ExpressionEvaluator {
 				stack.push(left >= 0 && right >= 0 ? (left ^ right) >>> 0 : left ^ right);
 				break;
 			case "%":
-				if (right === 0) throw errorAt("Modulo by zero.", token);
+				if (right === 0) throw AsmError.at("Modulo by zero.", token);
 				stack.push(left % right);
 				break;
 			case "<<":
@@ -651,7 +651,7 @@ export class ExpressionEvaluator {
 				stack.push(left !== 0 || right !== 0 ? 1 : 0);
 				break;
 			default:
-				throw errorAt(`Unknown operator: ${token.value}`, token);
+				throw AsmError.at(`Unknown operator: ${token.value}`, token);
 		}
 	}
 
@@ -689,11 +689,11 @@ export class ExpressionEvaluator {
 				let errorMessage = `Undefined symbol '${token.value}'.`;
 				if (suggestions.length > 0 && suggestions[0] !== token.value) errorMessage += ` Did you mean '${suggestions[0]}'?`;
 
-				throw errorAt(errorMessage, token);
+				throw AsmError.at(errorMessage, token);
 			}
 
 			case "LOCAL_LABEL": {
-				if (!context.currentLabel) throw errorAt(`Local label reference ':${token.value}' used without a preceding global label.`, token);
+				if (!context.currentLabel) throw AsmError.at(`Local label reference ':${token.value}' used without a preceding global label.`, token);
 
 				const qualifiedName = `${context.currentLabel}.${token.value}`;
 				const value = this.symbolTable.lookupSymbol(qualifiedName);
@@ -701,7 +701,7 @@ export class ExpressionEvaluator {
 
 				if (context.allowForwardRef) return null; // Pass 1: Assume 0 for forward references.
 
-				throw errorAt(`Undefined local label ':${token.value}' in scope '${context.currentLabel}'.`, token);
+				throw AsmError.at(`Undefined local label ':${token.value}' in scope '${context.currentLabel}'.`, token);
 			}
 
 			case "ANONYMOUS_LABEL_REF": {
@@ -709,7 +709,7 @@ export class ExpressionEvaluator {
 				const addr = this.findNearestLabel(context.PC.value, distance);
 
 				if (addr === null && !context.allowForwardRef)
-					throw errorAt(`Not enough ${distance < 0 ? "preceding" : "succeeding"} anonymous labels to satisfy '${token.value}'.`, token);
+					throw AsmError.at(`Not enough ${distance < 0 ? "preceding" : "succeeding"} anonymous labels to satisfy '${token.value}'.`, token);
 
 				return addr;
 			}
@@ -718,9 +718,4 @@ export class ExpressionEvaluator {
 				return 0;
 		}
 	}
-}
-
-/** An error at a token of the expression: located there, so the caret under the source line points at it. */
-function errorAt(message: string, token: Token): AsmError {
-	return new AsmError(message, { line: token.line, column: token.column });
 }

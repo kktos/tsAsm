@@ -1,3 +1,4 @@
+import { AsmError } from "../../utils/error.utils";
 import type { Token } from "../lexer/lexer.class";
 import type { EvaluationStack, FunctionHandler } from "./types";
 
@@ -6,11 +7,11 @@ export const joinFunction: FunctionHandler = (stack: EvaluationStack, token: Tok
 	const arrayArg = stack.pop();
 
 	if (!Array.isArray(arrayArg)) {
-		throw new Error(`First argument to .JOIN() must be an array on line ${token.line}.`);
+		throw AsmError.at("First argument to .JOIN() must be an array.", token);
 	}
 
 	if (typeof separator !== "string") {
-		throw new Error(`Second argument to .JOIN() must be a string on line ${token.line}.`);
+		throw AsmError.at("Second argument to .JOIN() must be a string.", token);
 	}
 
 	// The native join method handles converting number elements to strings automatically.

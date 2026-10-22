@@ -1,3 +1,4 @@
+import { AsmError } from "../../utils/error.utils";
 import type { Token } from "../lexer/lexer.class";
 import type { EvaluationStack, FunctionHandler } from "./types";
 
@@ -6,10 +7,10 @@ export const splitFunction: FunctionHandler = (stack: EvaluationStack, token: To
 	const stringArg = stack.pop();
 
 	if (typeof stringArg !== "string") {
-		throw new Error(`First argument to .SPLIT() must be a string on line ${token.line}.`);
+		throw AsmError.at("First argument to .SPLIT() must be a string.", token);
 	}
 	if (typeof delimiterArg !== "string") {
-		throw new Error(`Second argument to .SPLIT() (delimiter) must be a string on line ${token.line}.`);
+		throw AsmError.at("Second argument to .SPLIT() (delimiter) must be a string.", token);
 	}
 
 	stack.push(stringArg.split(delimiterArg));
