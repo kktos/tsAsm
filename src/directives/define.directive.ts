@@ -41,7 +41,7 @@ export class DefineDirective implements IDirective {
 
 		while (true) {
 			let token = this.assembler.parser.peekTokenUnbuffered();
-			if (!token || token?.line !== directive.line) break;
+			if (!token || token.type === "EOF" || token.line !== directive.line) break;
 
 			if (token.type !== "IDENTIFIER") throw new ParserError("Syntax Error - Unexpected token in .DEFINE", directive);
 
