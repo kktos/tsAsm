@@ -20,6 +20,7 @@ Every repro below was re-checked on the code of #68.
   - warnings go through `assembler.warn()` / `runtime.warn()`.
 - **Checking the CLI:** build it with `pnpm exec rollup -c rollup.config.js --environment TARGET:cli` (`pnpm build:cli` bumps the version since #70), then run `node dist/tsasm proj.yaml` on a small project.
 - **`pnpm-workspace.yaml` is committed** since #71: it holds the pnpm 12 `allowBuilds` settings.
+- **Done items stay in this file:** mark them `✅ **DONE (#PR)**` at the start of the item (and of the section title when the whole section is done), never delete them.
 
 ## 1. Bugs
 
@@ -49,9 +50,9 @@ Likely fix: keep each call's scope from pass 1 for pass 2. Scope names are alrea
 ### 1.6 `.option local_label_char` takes effect one line late
 `.option local_label_char "@"` / `:` / `nop`: the line after the `.option` was already lexed with the old prefix, so `:` is still accepted.
 
-### 1.7 Small messages
-- `.repeat n` with `n` defined later → `.REPEAT count: null isn't a whole number (0 or more).` It should say the count must be defined before the `.REPEAT`, as the string directives do.
-- `.define X` on the last line (no newline) → `Syntax Error - Unexpected token in .DEFINE`, which is misleading.
+### 1.7 Small messages — ✅ DONE (#76, #77)
+- ✅ **DONE (#76)** — `.repeat n` with `n` defined later → `.REPEAT count: null isn't a whole number (0 or more).` It should say the count must be defined before the `.REPEAT`, as the string directives do. *Now `.REPEAT: 'N' must be defined before it is used here (the count is needed to place what follows).` `.for x of list` had the same bug (it crashed with `object null is not iterable`) and is fixed too.*
+- ✅ **DONE (#77)** — `.define X` on the last line (no newline) → `Syntax Error - Unexpected token in .DEFINE`, which is misleading. *Now `Missing .END for the .DEFINE block.` `.define X FROM "file"` on a last line, which was rejected, works too.*
 
 ### 1.7b Found while doing #75
 - **Definition columns:** what a directive defines (`.macro`, `.equ`, `=`, `.let`, `.define`, `.function`, loop iterators) records the directive name's column, after the `.`, while errors point at the statement's start. A redefinition shows `1:2` for the error and `1:3` for its `first defined here` note. Record the statement's position (`Assembler.currentStatement`, added in #75).
@@ -59,9 +60,11 @@ Likely fix: keep each call's scope from pass 1 for pass 2. Scope names are alrea
 - `lda #` (no operand) is accepted silently.
 - **No include guard:** a file defining macros can't be included by two modules (`Macro … redefined`). Decision needed: `.include once`, an automatic once-only include, or `.ifdef` / `defined()`.
 - An `.include` inside a macro body gets an `included from file:4.2:…` line (the macro's "call.body" line number).
+- **Missed by #75:** `.define` has its own redefinition check, `Cannot redefine symbol 'X' (first defined at …)` (`define.directive.ts`): still the old message, without the `first defined here` note and its include chain.
+- `.define` without a name → `Syntax error - Expecting IDENTIFIER ` (trailing space, and it should say a symbol name is needed).
 
 ### 1.8 CLI
-- ~~Included file paths come out as `./././nope.asm`.~~ Normalized in #75.
+- ✅ **DONE (#75)** — Included file paths come out as `./././nope.asm`. *Now normalized (`includes/x.asm`), and every error in an included file says through which includes it was reached.*
 - The linker prints a debug `Linker` / `- CODE offset: …` after each run (`console.log` in `linker.class.ts`).
 
 ## 2. Code review, items left
@@ -88,11 +91,12 @@ Likely fix: keep each call's scope from pass 1 for pass 2. Scope names are alrea
 ### 2.2 Linker / CLI / build
 - **Linker errors aren't located:** `link()` doesn't use `AsmError`. Messages like `Syntax error in line N` and the linker's `.SEGMENT()` / system variable errors still carry their line. Give `link()` the same mechanism: `toAsmError`, statement token, file.
 - Relative config path applied twice (`chdir` + `dirname`), so `tsasm proj/conf.yaml` fails.
-- ~~The config validator crashes on `cpu: 6502` and on an empty file.~~ Fixed in #69 and #73 (missing file and YAML syntax errors too).
+- ✅ **DONE (#69, #73)** — The config validator crashes on `cpu: 6502` and on an empty file. *A missing file and YAML syntax errors are reported too, as `file:line:column: error:`.*
 - A write past the end of a fixed segment is accepted. Through a linker script it gives `RangeError: Invalid array length`. `.OUTPUT … FIXED n` too large fails the same way before the friendly check.
 - `.SECTION x AT off` is misplaced when the output isn't fixed. `.WRITE WORD/LONG … AT` writes one element (truncated). `STRING` / `BYTES` ignore `AT`.
-- `link()` isn't idempotent. ~~An empty `.lst` is always created in the current directory.~~ Fixed in #72.
-- ~~**Build:** `build:cli` / `build:lib` are broken on macOS/Linux.~~ Fixed in #69.
+- `link()` isn't idempotent.
+- ✅ **DONE (#72)** — An empty `.lst` is always created in the current directory. *The listing is only written when enabled, relative to the project file, its directory created; a write failure is a clean error, not a node crash.*
+- ✅ **DONE (#69)** — **Build:** `build:cli` / `build:lib` are broken on macOS/Linux. *Now `rollup --environment TARGET:…`.*
 - **Package unpublishable:**
   - `main` / `bin` point to `tsasm.js`, which isn't in `dist/`;
   - `publishIt` has no `dist/package.json`;
@@ -135,4 +139,12 @@ Likely fix: keep each call's scope from pass 1 for pass 2. Scope names are alrea
 - **Errors:**
   - `AsmError` with file/line/column, the source line and a caret, macro context;
   - no wrapping or prefixes, errors located at their token;
-  - "first defined at", located warnings (#58–#68).
+  - "first defined at", located warnings (#58–#68);
+  - include chains (`included from …`) and `first defined here` notes, normalized include paths (#75).
+- **CLI / build (#69–#73):**
+  - self-contained `dist/tsasm` (js-yaml bundled), `pnpm install:cli` / `uninstall:cli`, cross-platform `build:cli` (#69);
+  - every build bumps the patch version (#70);
+  - pnpm 12 build settings in `pnpm-workspace.yaml` (#71);
+  - output files: no crash on a missing directory, listing only when enabled (#72);
+  - no crash on a missing, invalid or empty project file (#73).
+- **Messages:** `.REPEAT` / `.FOR` with a symbol defined later (#76), `.DEFINE` on the last line (#77).
