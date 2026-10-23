@@ -63,10 +63,6 @@ Likely fix: keep each call's scope from pass 1 for pass 2. Scope names are alrea
 - **Missed by #75:** `.define` has its own redefinition check, `Cannot redefine symbol 'X' (first defined at …)` (`define.directive.ts`): still the old message, without the `first defined here` note and its include chain.
 - `.define` without a name → `Syntax error - Expecting IDENTIFIER ` (trailing space, and it should say a symbol name is needed).
 
-### 1.8 CLI
-- ✅ **DONE (#75)** — Included file paths come out as `./././nope.asm`. *Now normalized (`includes/x.asm`), and every error in an included file says through which includes it was reached.*
-- The linker prints a debug `Linker` / `- CODE offset: …` after each run (`console.log` in `linker.class.ts`).
-
 ## 2. Code review, items left
 
 ### 2.1 CPU back-ends
@@ -105,11 +101,13 @@ Likely fix: keep each call's scope from pass 1 for pass 2. Scope names are alrea
 - `.module` always fails when the project file defines segments → `Segments were used before any module was defined.` The first segment is selected (and so put in the implicit main module) before the source starts. Modules only work with segments defined in the source.
 - `.WRITE SEGMENT` / `.WRITE MODULE` in a `.SECTION … AT` silently go to the end of the output, not to the section. With `.OUTPUT "x" FIXED 4`, `.SECTION S AT 2`, `.WRITE SEGMENT "CODE"` puts `CODE` at 0. Either write them to the section or make it an error.
 - One skipped linker test: the hybrid `SEGMENTS` variable (the maintainer didn't remember what it held).
+- The linker prints a debug `Linker` / `- CODE offset: …` after each run (`console.log` in `linker.class.ts`).
 
 ### 2.3 CLI
 - Relative config path applied twice (`chdir` + `dirname`), so `tsasm proj/conf.yaml` fails.
 - ✅ **DONE (#69, #73)** — The config validator crashes on `cpu: 6502` and on an empty file. *A missing file and YAML syntax errors are reported too, as `file:line:column: error:`.*
 - ✅ **DONE (#72)** — An empty `.lst` is always created in the current directory. *The listing is only written when enabled, relative to the project file, its directory created; a write failure is a clean error, not a node crash.*
+- ✅ **DONE (#75)** — Included file paths come out as `./././nope.asm`. *Now normalized (`includes/x.asm`), and every error in an included file says through which includes it was reached.*
 
 ### 2.4 Build
 - ✅ **DONE (#69)** — `build:cli` / `build:lib` are broken on macOS/Linux. *Now `rollup --environment TARGET:…`.*
