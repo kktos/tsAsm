@@ -49,7 +49,7 @@ Likely fix: keep each call's scope from pass 1 for pass 2. Scope names are alrea
 Follow-ups found while doing it:
 - **Macro call arguments** are still split at a comma inside `[ ]`: `m [1,2][1]` → `Macro 'M' expects 1 argument, but got 2.` (`macro/handler.ts`, both call forms). Without parentheses, `m ($12,x)` is also split in two. Decision needed: should `( )` group a macro argument too?
 - ✅ **DONE (#89)** — `.db [1,2]` (a whole array) → `Unexpected object value 1,2.` Decision needed: emit its elements, or a clear error. *An error, decided: `[1,2]` doesn't say it means its elements. Now `.DB value: an array can't be emitted as is: index it to emit one of its elements.` (or `an object … use one of its fields`), at the value. An array defined after the `.db` was silently emitted as nothing (`.db t` / `t = [1,2]`): it's the same error now.*
-  - ✅ **DONE (#90)** — **Spread, decided:** `.db 1, ...table, 2` emits each element as if written there (strings too), in `.db` / `.dw` / `.dl` and probably `.text`. `...` is already the lexer's `REST_OPERATOR`, as in macro rest parameters. The array error then adds "or spread it". *Done in `.db` / `.dw` / `.dl` and the string directives (`.text`, `.cstr`, `.pstr`, `.pstrl`), a macro's rest parameter included. The array must be known in pass 1: an array defined later is an error, like a string. Spreading in a macro call (`m(...list)`) isn't supported.*
+- ✅ **DONE (#90)** — **Spread, decided:** `.db 1, ...table, 2` emits each element as if written there (strings too), in `.db` / `.dw` / `.dl` and probably `.text`. `...` is already the lexer's `REST_OPERATOR`, as in macro rest parameters. The array error then adds "or spread it". *Done in `.db` / `.dw` / `.dl` and the string directives (`.text`, `.cstr`, `.pstr`, `.pstrl`), a macro's rest parameter included. The array must be known in pass 1: an array defined later is an error, like a string. Spreading in a macro call (`m(...list)`) isn't supported.*
 - Indexing a macro's rest parameter gives the argument's tokens, not its value: in `.macro m(...a)`, `.db a[1]` → `an array can't be emitted as is`. `.for f of a` and `...a` evaluate them.
 - Indexing an array defined later fails in pass 1: `.db t[1]` / `t = [2,3]` → `Attempted to index a non-array value.` The evaluator should pass `null` (not known yet) through `[ ]` in pass 1, as for 1.5.
 - `getExpressionTokens`' `inParentheses` parameter is never used.
@@ -99,7 +99,7 @@ Follow-ups found while doing it:
 
   *The assembler's locating code is now shared (`ErrorLocator`): a linker error or warning is located at its token, else at its statement, in the script or included file, through macro calls, with the source line. The messages no longer carry their line.*
 - ✅ **DONE (#87)** — A write past the end of a fixed segment is accepted. Through a linker script it gives `RangeError: Invalid array length`. *A write that starts in a fixed segment and goes past its end is now an error at its line: `Write out of bounds: address $804 outside fixed segment 'SEG' …`, as one that starts past it already was.*
-  - ✅ **DONE (#86)** — `.OUTPUT … FIXED n` too large fails the same way before the friendly check. *Now `Output file is too large. Max size is n bytes, …`.*
+- ✅ **DONE (#86)** — `.OUTPUT … FIXED n` too large fails the same way before the friendly check. *Now `Output file is too large. Max size is n bytes, …`.*
 - ✅ **DONE (#86)** — `.SECTION x AT off` is misplaced when the output isn't fixed. `.WRITE WORD/LONG … AT` writes one element (truncated). `STRING` / `BYTES` ignore `AT`. *Every `AT` write is now applied like a section: in order, over the complete output, padded up to it when it isn't `FIXED`. `WORD` / `LONG` follow `.ENDIAN`, and `.PC` in a section is its offset in the output. A negative offset is an error. The directive's file is now `section.directive.ts`.*
 - `link()` isn't idempotent.
 - ✅ **DONE (#80)** — `linker_script.md` still describes jsasm6502-era syntax. *Rewritten from the current code, each behaviour checked with a script, with a Limitations section.*
@@ -133,7 +133,7 @@ Follow-ups found while doing it:
   - no `files` / `exports` / `types` / `engines`;
   - `.d.ts` files are emitted for the tests.
 - Type errors don't fail the build, and CI doesn't run `check` / `build`.
-- `tsconfig`: `moduleResolution: node` and `esModuleInterop: false` are deprecated in TS 6. Use `"bundler"`.
+- ✅ **DONE (#91)** — `tsconfig`: `moduleResolution: node` and `esModuleInterop: false` are deprecated in TS 6. Use `"bundler"`. *Now on TypeScript 6.0.3, with `moduleResolution: "bundler"`, no `esModuleInterop` (always on in TS 6) and `types: ["node"]` (TS 6 no longer includes every `@types` package). The build output is byte-identical to TS 5.9's.*
 
 ### 2.5 Architecture
 - **#1, two hand-copied passes:** `passOne` / `passTwo` and most directives' `handlePassOne` / `handlePassTwo` re-implement parsing separately. Suggested: one pass loop parametrised by the pass, each directive and instruction exposing `size()` and `emit()` from the same evaluation, and iterating until stable (max N passes) instead of reporting a phase error when a forward reference changes a size. Big: plan it first.
