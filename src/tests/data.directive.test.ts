@@ -129,6 +129,22 @@ describe("Data Directives", () => {
 		expect(machineCode).toEqual([0x80, 0x02, 0x04, 0x10, 0x60]);
 	});
 
+	describe("commas inside a value", () => {
+		it.each([
+			[".DB [1,2][1], 3", [2, 3]],
+			[".DW [$1234,5][0], 6", [0x34, 0x12, 6, 0]],
+			[".DB [[1,2],[3,4]][1][0]", [3]],
+			['.TEXT ["ab","cd"][1], "x"', [0x63, 0x64, 0x78]],
+			[".DB .iif(1,2,3), 4", [2, 4]],
+			['.DB "(", 1', [0x28, 1]],
+			['.DB "[", 1', [0x5b, 1]],
+		])("should only split %s at its top-level commas", (source, expected) => {
+			const assembler = createAssembler();
+			assembler.assemble(source);
+			expect(assembler.link()).toEqual(expected);
+		});
+	});
+
 	describe("value ranges", () => {
 		const assemble = (source: string) => {
 			const assembler = createAssembler();

@@ -99,6 +99,12 @@ describe(".LET directive", () => {
 			const symbolName = asm.symbolTable.lookupSymbol("name");
 			expect(symbolName).toBe("hello");
 		});
+
+		it("should index an array literal", () => {
+			const { asm } = makeAssembler();
+			asm.assemble(".LET v = [1,2][1]");
+			expect(asm.symbolTable.lookupSymbol("v")).toBe(2);
+		});
 	});
 
 	describe("dynamic name", () => {

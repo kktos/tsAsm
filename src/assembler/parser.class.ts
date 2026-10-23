@@ -3,6 +3,7 @@ import type { PushTokenStreamParams, StreamState } from "../assembler/polyasm.ty
 import type { SymbolValue } from "../assembler/symbol.class";
 import { AssemblyLexer, type IdentifierToken, type NumberToken, type StringToken, type Token } from "../shared/lexer/lexer.class";
 import { AsmError } from "../utils/error.utils";
+import { nestingDelta } from "../utils/token.utils";
 
 /** Called right after a raw directive's name: returns the rest of the directive's tokens, raw text included. */
 type GetRawBlock = (parser: Parser, directive: Token) => Token[];
@@ -337,7 +338,8 @@ export class Parser {
 
 	public getExpressionTokens(instructionToken?: Token, inParentheses = false): Token[] {
 		const tokens: Token[] = [];
-		let parenDepth = 0;
+		// Inside ( ) or [ ]: a comma there belongs to a function call or an array literal, not the directive.
+		let depth = 0;
 
 		const startToken = this.peek();
 		if (!startToken || startToken.type === "EOF") return tokens;
@@ -348,8 +350,7 @@ export class Parser {
 		this.advance(1);
 		tokens.push(startToken);
 
-		if (startToken.value === "(") parenDepth++;
-		if (startToken.value === ")") parenDepth--;
+		depth += nestingDelta(startToken);
 
 		const startLine = instructionToken ? instructionToken.line : startToken.line;
 
@@ -359,9 +360,8 @@ export class Parser {
 			const token = this.peek();
 			if (!token || token.line !== startLine || token.type === "LBRACE" || token.type === "RBRACE" || token.type === "EOF") break;
 
-			if (token.value === "(") parenDepth++;
-			else if (token.value === ")") parenDepth--;
-			else if (token.type === "COMMA" && parenDepth <= 0) break;
+			if (token.type === "COMMA" && depth <= 0) break;
+			depth += nestingDelta(token);
 
 			if (currentTokens.has(token.type) && !previousTokens.has(lastToken.type)) break;
 
@@ -370,7 +370,7 @@ export class Parser {
 			this.advance(1);
 			tokens.push(token);
 
-			if (inParentheses && parenDepth === 0) break;
+			if (inParentheses && depth === 0) break;
 		}
 		return tokens;
 	}

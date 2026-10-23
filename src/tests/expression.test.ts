@@ -308,6 +308,8 @@ describe("ExpressionEvaluator", () => {
 			["[[1,[2,3]],4]", [[1, [2, 3]], 4]],
 			["[.hex(10, 4), .iif(1, 2, 3)]", ["$000A", 2]], // commas of a function call don't split the array
 			["[[1,2],[3,4]][1][0]", 3],
+			['["]", "[", "("][1]', "["], // brackets in strings aren't the array's
+			['"[" + "]"', "[]"],
 		])("%s", (expression, expected) => {
 			const { evaluator, tokenize } = setup();
 			expect(evaluator.evaluate(tokenize(expression as string), { PC: { value: 0 } })).toEqual(expected);

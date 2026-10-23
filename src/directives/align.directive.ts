@@ -1,6 +1,7 @@
 import type { SymbolValue } from "../assembler/symbol.class";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
 import { assertFitsInBytes } from "../utils/number.utils";
+import { findTopLevelComma } from "../utils/token.utils";
 import type { DirectiveContext, DirectiveRuntime, IDirective } from "./directive.interface";
 
 export class AlignDirective implements IDirective {
@@ -75,7 +76,7 @@ export class AlignDirective implements IDirective {
 	 * @returns A tuple containing [boundaryTokens, valueTokens].
 	 */
 	private parseArguments(tokens: Token[]): [Token[], Token[]] {
-		const commaIndex = tokens.findIndex((t) => t.type === "COMMA");
+		const commaIndex = findTopLevelComma(tokens);
 
 		// No comma, all tokens are for the boundary.
 		if (commaIndex === -1) return [tokens, []];
