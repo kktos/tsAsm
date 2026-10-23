@@ -88,15 +88,31 @@ Likely fix: keep each call's scope from pass 1 for pass 2. Scope names are alrea
 - **ARM** is a two-instruction stub (`MOV #imm`, `B`). `#256` gives `#0`. Don't advertise it, or complete it.
 - **Done this session:** 6502 `LDA $12,Y` (#57), `.B` / `.W` suffixes (#57), ARM byte order (#56).
 
-### 2.2 Linker / CLI / build
+### 2.2 Linker
 - **Linker errors aren't located:** `link()` doesn't use `AsmError`. Messages like `Syntax error in line N` and the linker's `.SEGMENT()` / system variable errors still carry their line. Give `link()` the same mechanism: `toAsmError`, statement token, file.
-- Relative config path applied twice (`chdir` + `dirname`), so `tsasm proj/conf.yaml` fails.
-- ✅ **DONE (#69, #73)** — The config validator crashes on `cpu: 6502` and on an empty file. *A missing file and YAML syntax errors are reported too, as `file:line:column: error:`.*
 - A write past the end of a fixed segment is accepted. Through a linker script it gives `RangeError: Invalid array length`. `.OUTPUT … FIXED n` too large fails the same way before the friendly check.
 - `.SECTION x AT off` is misplaced when the output isn't fixed. `.WRITE WORD/LONG … AT` writes one element (truncated). `STRING` / `BYTES` ignore `AT`.
 - `link()` isn't idempotent.
+- ✅ **DONE (#80)** — `linker_script.md` still describes jsasm6502-era syntax. *Rewritten from the current code, each behaviour checked with a script, with a Limitations section.*
+- ✅ **DONE (#80)** — `;` isn't a comment in a linker script (`Unexpected character ';'`). *By design: it tells a linker script from assembler source. Now documented.*
+- ✅ **DONE (#79)** — In a linker script, `.ENDIAN BIG` changes `.WRITE WORD/LONG` but not `.WORD`, `.LONG` or the length of `.PSTRINGLONG`, which stayed little-endian. *They now follow `.ENDIAN`.*
+- **A `.WRITE` value isn't parsed unless it's a number, a string or a symbol name.** Parentheses are needed:
+  - `.WRITE SEGMENT s.name` → `Invalid syntax: '.' must be followed by an identifier.`
+  - `.WRITE BYTE .lobyte($1234)` → `Unknown system variable: LOBYTE`
+  - `.WRITE BYTES [1, 2]` → `Mismatched brackets in array literal.`
+  - `.WRITE SEGMENT(s.name)`, `.WRITE BYTE(.lobyte($1234))`, `.WRITE BYTES([1, 2])` work.
+- `.segment("CODE").size` → `Unknown system variable: SIZE`: a field of a function's result can't be read directly. `seg = .segment("CODE")` then `seg.size` works. Check if the assembler's `.segment()` does the same.
+- `.module` always fails when the project file defines segments → `Segments were used before any module was defined.` The first segment is selected (and so put in the implicit main module) before the source starts. Modules only work with segments defined in the source.
+- `.WRITE SEGMENT` / `.WRITE MODULE` in a `.SECTION … AT` silently go to the end of the output, not to the section. With `.OUTPUT "x" FIXED 4`, `.SECTION S AT 2`, `.WRITE SEGMENT "CODE"` puts `CODE` at 0. Either write them to the section or make it an error.
+- One skipped linker test: the hybrid `SEGMENTS` variable (the maintainer didn't remember what it held).
+
+### 2.3 CLI
+- Relative config path applied twice (`chdir` + `dirname`), so `tsasm proj/conf.yaml` fails.
+- ✅ **DONE (#69, #73)** — The config validator crashes on `cpu: 6502` and on an empty file. *A missing file and YAML syntax errors are reported too, as `file:line:column: error:`.*
 - ✅ **DONE (#72)** — An empty `.lst` is always created in the current directory. *The listing is only written when enabled, relative to the project file, its directory created; a write failure is a clean error, not a node crash.*
-- ✅ **DONE (#69)** — **Build:** `build:cli` / `build:lib` are broken on macOS/Linux. *Now `rollup --environment TARGET:…`.*
+
+### 2.4 Build
+- ✅ **DONE (#69)** — `build:cli` / `build:lib` are broken on macOS/Linux. *Now `rollup --environment TARGET:…`.*
 - **Package unpublishable:**
   - `main` / `bin` point to `tsasm.js`, which isn't in `dist/`;
   - `publishIt` has no `dist/package.json`;
@@ -105,20 +121,8 @@ Likely fix: keep each call's scope from pass 1 for pass 2. Scope names are alrea
   - `.d.ts` files are emitted for the tests.
 - Type errors don't fail the build, and CI doesn't run `check` / `build`.
 - `tsconfig`: `moduleResolution: node` and `esModuleInterop: false` are deprecated in TS 6. Use `"bundler"`.
-- ✅ **DONE (#80)** — `linker_script.md` still describes jsasm6502-era syntax. *Rewritten from the current code, each behaviour checked with a script, with a Limitations section.*
-- ✅ **DONE (#80)** — `;` isn't a comment in a linker script (`Unexpected character ';'`). *By design: it tells a linker script from assembler source. Now documented.*
-- ✅ **DONE (#79)** — In a linker script, `.ENDIAN BIG` changes `.WRITE WORD/LONG` but not `.WORD`, `.LONG` or the length of `.PSTRINGLONG`, which stayed little-endian. *They now follow `.ENDIAN`.*
-- **Linker: a `.WRITE` value isn't parsed unless it's a number, a string or a symbol name.** Parentheses are needed:
-  - `.WRITE SEGMENT s.name` → `Invalid syntax: '.' must be followed by an identifier.`
-  - `.WRITE BYTE .lobyte($1234)` → `Unknown system variable: LOBYTE`
-  - `.WRITE BYTES [1, 2]` → `Mismatched brackets in array literal.`
-  - `.WRITE SEGMENT(s.name)`, `.WRITE BYTE(.lobyte($1234))`, `.WRITE BYTES([1, 2])` work.
-- Linker: `.segment("CODE").size` → `Unknown system variable: SIZE`: a field of a function's result can't be read directly. `seg = .segment("CODE")` then `seg.size` works. Check if the assembler's `.segment()` does the same.
-- `.module` always fails when the project file defines segments → `Segments were used before any module was defined.` The first segment is selected (and so put in the implicit main module) before the source starts. Modules only work with segments defined in the source.
-- Linker: `.WRITE SEGMENT` / `.WRITE MODULE` in a `.SECTION … AT` silently go to the end of the output, not to the section. With `.OUTPUT "x" FIXED 4`, `.SECTION S AT 2`, `.WRITE SEGMENT "CODE"` puts `CODE` at 0. Either write them to the section or make it an error.
-- One skipped linker test: the hybrid `SEGMENTS` variable (the maintainer didn't remember what it held).
 
-### 2.3 Architecture
+### 2.5 Architecture
 - **#1, two hand-copied passes:** `passOne` / `passTwo` and most directives' `handlePassOne` / `handlePassTwo` re-implement parsing separately. Suggested: one pass loop parametrised by the pass, each directive and instruction exposing `size()` and `emit()` from the same evaluation, and iterating until stable (max N passes) instead of reporting a phase error when a forward reference changes a size. Big: plan it first.
 - **#5, global mutable state:** module-level `blockDirectives` / `rawDirectives` are mutated by `register()`, so the linker's `SECTION` leaks into every parser.
 - **#6, god objects:** `Assembler` exposes parser, linker and symbol table as public mutable fields and is passed whole to some directives, while others get `DirectiveRuntime`. `Linker` is a segment store, a DSL interpreter and an output image.
