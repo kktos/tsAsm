@@ -1,6 +1,7 @@
 import type { SymbolValue } from "../assembler/symbol.class";
 import type { Endianness } from "../cpu/cpuhandler.interface";
-import type { ScalarToken } from "../shared/lexer/lexer.class";
+import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
+import { AsmError } from "../utils/error.utils";
 import { assertFitsInBytes } from "../utils/number.utils";
 import { stringToBytes } from "../utils/string.utils";
 import type { DirectiveContext, DirectiveRuntime, IDirective } from "./directive.interface";
@@ -39,7 +40,8 @@ export class DataDirective implements IDirective {
 
 			switch (typeof value) {
 				case "object": {
-					if (value !== null) throw new Error(`Unexpected object value ${value}.`);
+					// null: not known yet, a number or a string later
+					if (value !== null) throw this.notData(directive, value, exprTokens);
 					totalSize += this.bytesPerElement;
 					break;
 				}
@@ -88,6 +90,10 @@ export class DataDirective implements IDirective {
 					params.push(value);
 					break;
 				}
+				case "object":
+					// An array defined after the directive was null in pass 1, counted as one element.
+					if (value !== null) throw this.notData(directive, value, exprTokens);
+					break;
 			}
 
 			if (this.runtime.parser.isEOS() || !this.runtime.parser.is("COMMA")) break;
@@ -104,5 +110,13 @@ export class DataDirective implements IDirective {
 		});
 
 		return outputBytes;
+	}
+
+	/** Only numbers and strings are data: an array or an object, emitted whole, would hide a missing index or field. */
+	private notData(directive: ScalarToken, value: SymbolValue, exprTokens: Token[]) {
+		const hint = Array.isArray(value)
+			? "an array can't be emitted as is: index it to emit one of its elements"
+			: "an object can't be emitted as is: use one of its fields";
+		return AsmError.at(`.${directive.value} value: ${hint}.`, exprTokens[0] as Token);
 	}
 }

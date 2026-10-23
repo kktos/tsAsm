@@ -87,7 +87,11 @@ describe("Directive: .fill", () => {
 	});
 
 	it.each([".fill [2,3][0], $AB", ".fill .iif(1,2,3), $AB"])("should only split %s at its top-level comma", (directive) => {
-		segments = asm.assemble(`${directive}\n.db 1`);
+		const source = `
+			${directive}
+			.db 1
+		`;
+		segments = asm.assemble(source);
 		expect(segments[0]?.data).toEqual([0xab, 0xab, 1]);
 	});
 

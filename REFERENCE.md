@@ -88,6 +88,8 @@ list = [5, 6, 7]
 
 Arrays and objects also come from [`.define`](#structured-data-define) blocks, where object properties are read with a dot: `sprites[0].x`.
 
+Data directives only emit numbers and strings: `.db list` is an error, index the array (`list[1]`) or read the object's field. To emit every element, loop over it with [`.for`](#loops).
+
 ### Operators
 
 | Operators | Meaning |
