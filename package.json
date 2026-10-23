@@ -22,7 +22,7 @@
 		"install:cli": "node scripts/install-cli.js",
 		"uninstall:cli": "node scripts/install-cli.js --uninstall",
 		"test": "vitest",
-		"lint:ci": "oxlint",
+		"lint:ci": "oxlint && oxfmt --check",
 		"lint:fix": "oxlint --fix-suggestions",
 		"format:fix": "oxfmt",
 		"publishIt": "cd dist && npm publish"
