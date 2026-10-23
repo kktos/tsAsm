@@ -198,6 +198,27 @@ Code is assembled into segments. The command line tool defines them in the proje
     nop
 ```
 
+### Modules
+
+`.module <name>` starts a module, a group of segments for the [linker script](src/linker/linker_script.md#modules): the segments selected after it belong to it, until the next `.module`. The name is a symbol name or a string expression (`.module "LIB" + "1"`), and each module is defined once.
+
+```as
+.segment CODE { start: $8000, size: $100 }
+.segment LIBCODE { start: $A000, size: $100 }
+
+.module GAME
+.segment CODE
+    lda #1
+.module LIB
+.segment LIBCODE
+    rts
+```
+
+The linker script writes a module's segments with `.WRITE MODULE "GAME"`. Without a linker script, modules change nothing: every segment is written.
+
+- No segment can be selected before the first `.module` (`Segments were used before any module was defined.`). So modules only work with segments defined in the source: the project file's first segment is selected before the source starts.
+- A segment selected in two modules belongs to both, and is written with each.
+
 ## Data
 
 | Directive | Emits |

@@ -150,7 +150,7 @@ In a section, only `.WRITE BYTE`, `WORD`, `LONG`, `BYTES`, `STRING` and the data
 
 ## Modules
 
-A module is a group of segments. In the source, `.module <name>` starts a module: the segments used after it belong to it, until the next `.module`.
+A module is a group of segments. In the source, `.module <name>` starts a module: the segments used after it belong to it, until the next `.module` (see [Modules](../../REFERENCE.md#modules) in the reference).
 
 ```as
 .segment CODE { start: $8000, size: $100 }
