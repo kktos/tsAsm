@@ -177,23 +177,22 @@ export class Linker {
 	/**
 	 * Links the segments into a flat binary, each one at its address relative to the lowest one.
 	 * Gaps between segments are filled with 0; where segments overlap, the later one wins.
-	 * Empty segments are ignored.
+	 * Empty segments are ignored. With a logger, each segment's place in the binary is logged.
 	 */
-	public rawBinaryLink(segments?: Segment[]): number[] {
+	public rawBinaryLink(segments?: Segment[], logger?: Logger): number[] {
 		const segs = (segments ?? this.segments).filter((s) => s.size > 0);
 		if (segs.length === 0) return [];
 
 		const minStart = Math.min(...segs.map((s) => s.start));
 		const maxEnd = Math.max(...segs.map((s) => s.start + s.size));
 
-		console.log("");
-		console.log("Linker");
+		logger?.log("\n--- Linker ---");
 
 		const out: number[] = new Array(maxEnd - minStart).fill(0);
 		for (const s of segs) {
 			const offset = s.start - minStart;
 
-			console.log("-", s.name, `offset: $${getHex(offset)}`, `addr: $${getHex(s.start)}`, `size: $${getHex(s.size)}`, `len: $${getHex(s.data.length)}`);
+			logger?.log(`- ${s.name} offset: $${getHex(offset)} addr: $${getHex(s.start)} size: $${getHex(s.size)} len: $${getHex(s.data.length)}`);
 
 			const pad = s.padValue ?? 0;
 			for (let i = 0; i < s.size; i++) {
@@ -329,7 +328,7 @@ export class Linker {
 		this.PC.value = 0;
 		if (outputPath) this.setOutputFile(outputPath);
 
-		runtime.logger.log("--- Linker Begin---\n");
+		runtime.logger.log("--- Linker Begin ---\n");
 
 		parser.lexer.commentChar = "#";
 		if (this.streamManager && this.fileHandler) {

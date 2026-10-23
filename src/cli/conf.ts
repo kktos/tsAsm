@@ -66,6 +66,7 @@ const confSchema = {
 							pass2: { type: "boolean", optional: true },
 						},
 					},
+					linker: { type: "boolean", optional: true },
 				},
 			},
 			symbols: {
