@@ -285,6 +285,74 @@ describe("Linker", () => {
 		});
 	});
 
+	describe(".WRITE values", () => {
+		const logger = {
+			log: () => {},
+			warn: () => {},
+			error: (m: any) => {
+				throw new Error(m);
+			},
+		} as any;
+
+		it.each([
+			["a number", ".WRITE BYTE $12", [0x12]],
+			["an expression", ".WRITE BYTE 2 * 3 + 1", [7]],
+			["a function call", ".WRITE BYTE .lobyte($1234)", [0x34]],
+			["an expression starting with parentheses", ".WRITE BYTE (1 + 2) * 2", [6]],
+			["an array", ".WRITE BYTES [1, 2, 3]", [1, 2, 3]],
+			["a word expression", ".WRITE WORD $1200 + $34", [0x34, 0x12]],
+		])("should parse %s without parentheses", (_label, line, expected) => {
+			const result = linker.link(`.OUTPUT "test.bin"\n${line}`, undefined, logger);
+			expect(result.data).toEqual(expected);
+		});
+
+		it.each([
+			["a number", ".WRITE BYTE($12)", [0x12]],
+			["a function call", ".WRITE BYTE(.lobyte($1234))", [0x34]],
+			["an array", ".WRITE BYTES([1, 2, 3])", [1, 2, 3]],
+		])("should parse %s in parentheses", (_label, line, expected) => {
+			const result = linker.link(`.OUTPUT "test.bin"\n${line}`, undefined, logger);
+			expect(result.data).toEqual(expected);
+		});
+
+		it("should parse a field access, with or without parentheses", () => {
+			linker.addModule("MAIN");
+			linker.addSegment("CODE", 0, 1);
+			linker.useSegment("CODE");
+			linker.writeBytes(0, [0xaa]);
+			linker.addSegment("DATA", 0, 1);
+			linker.useSegment("DATA");
+			linker.writeBytes(0, [0xbb]);
+
+			const script = `
+				.OUTPUT "test.bin"
+				.FOR s OF .SEGMENTS_LIST
+					.WRITE SEGMENT s.name
+					.WRITE SEGMENT(s.name)
+				.END
+			`;
+			const result = linker.link(script, undefined, logger);
+			expect(result.data).toEqual([0xaa, 0xaa, 0xbb, 0xbb]);
+		});
+
+		it("should stop the value at AT, with or without parentheses", () => {
+			const script = `
+				.OUTPUT "test.bin"
+				.WRITE BYTES [1, 2, 3, 4]
+				.WRITE BYTE 2 * 3 AT 1
+				.WRITE BYTE(7) AT 2
+				.WRITE BYTE .lobyte($1209) AT 1 + 2
+			`;
+			const result = linker.link(script, undefined, logger);
+			expect(result.data).toEqual([1, 6, 7, 9]);
+		});
+
+		it("should report a missing value", () => {
+			expect(() => linker.link(`.OUTPUT "test.bin"\n.WRITE BYTE`, undefined, logger)).toThrow("Missing value for .WRITE BYTE");
+			expect(() => linker.link(`.OUTPUT "test.bin"\n.WRITE BYTE AT 2`, undefined, logger)).toThrow("Missing value for .WRITE BYTE");
+		});
+	});
+
 	describe("Hybrid SEGMENTS Variable", () => {
 		// Skipped until the SEGMENTS variable's intended API (array and/or map) is decided.
 		it.skip("should behave as both an array and a map", () => {

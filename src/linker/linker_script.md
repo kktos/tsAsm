@@ -97,13 +97,14 @@ The script writes to the output file, one item after the other. `.PC` is the off
 ```as
 .WRITE SEGMENT "CODE"
 .WRITE WORD $1234
-.WRITE BYTES([1, 2, 3])
+.WRITE BYTES [1, 2, 3]
+.WRITE BYTE .lobyte(addr)
 .WRITE BYTE 0 AT 2          # overwrite the byte at offset 2
 ```
 
 A segment can be written more than once: each write appends a copy.
 
-**Parentheses.** When the value is more than a number, a string or a symbol name, put it in parentheses: `.WRITE SEGMENT(s.name)`, `.WRITE BYTE(.lobyte(addr))`, `.WRITE BYTES([1, 2])`. Without them, the value isn't parsed.
+**Value.** The value is any expression. It runs to the end of the line, or to `AT`. It can also be written in parentheses, right after the type: `.WRITE SEGMENT s.name` and `.WRITE SEGMENT(s.name)` are the same.
 
 **Byte order.** `.ENDIAN BIG` or `.ENDIAN LITTLE` sets the byte order of the words and longs that follow: `.WRITE WORD`, `.WRITE LONG`, and the data directives below. The default is little-endian.
 
@@ -223,4 +224,3 @@ Read the fields from a variable: `.segment("CODE").size` doesn't work.
 - `.SECTION … AT` may be misplaced when the output isn't `FIXED`.
 - `.module` fails ("Segments were used before any module was defined") when the project file defines segments, as the first one is selected before the source starts.
 - Writing more than the `FIXED` size, or a fixed segment written past its end, fails with `RangeError: Invalid array length` instead of a clear error.
-- A value after `.WRITE <type>` needs [parentheses](#writing-data) unless it is a number, a string or a symbol name.
