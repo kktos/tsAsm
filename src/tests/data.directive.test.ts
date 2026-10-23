@@ -145,6 +145,40 @@ describe("Data Directives", () => {
 		});
 	});
 
+	describe("arrays and objects", () => {
+		const ARRAY = "value: an array can't be emitted as is: index it to emit one of its elements.";
+
+		it.each([
+			[".DB [1,2]", `.DB ${ARRAY}`, 1, 5],
+			[".DW 1, [1,2]", `.DW ${ARRAY}`, 1, 8],
+			["t = [1,2]\n.DL t", `.DL ${ARRAY}`, 2, 5],
+			['.DB .split("a b")', `.DB ${ARRAY}`, 1, 5],
+			[".DB []", `.DB ${ARRAY}`, 1, 5],
+			// t isn't known in pass 1, counted as one byte: pass 2 emitted nothing for it
+			[".DB t\n.DB 9\nt = [1,2]", `.DB ${ARRAY}`, 1, 5],
+		])("should throw on an array: %j", (source, message, line, column) => {
+			expect(() => createAssembler().assemble(source)).toThrow(expect.objectContaining({ message, location: expect.objectContaining({ line, column }) }));
+		});
+
+		it("should throw on an object", () => {
+			const rawDataProcessors = { default: "JSON", map: new Map([["JSON", (block: string) => JSON.parse(block)]]) };
+			const assembler = new Assembler(fakeCPU, new MockFileHandler(), { segments: DEFAULT_SEGMENTS, rawDataProcessors });
+			expect(() => assembler.assemble('.DEFINE p\n{ "x": 1 }\n.END\n.DB p')).toThrow(
+				expect.objectContaining({
+					message: ".DB value: an object can't be emitted as is: use one of its fields.",
+					location: expect.objectContaining({ line: 4, column: 5 }),
+				}),
+			);
+		});
+
+		it("should emit an indexed array or an object's field", () => {
+			const rawDataProcessors = { default: "JSON", map: new Map([["JSON", (block: string) => JSON.parse(block)]]) };
+			const assembler = new Assembler(fakeCPU, new MockFileHandler(), { segments: DEFAULT_SEGMENTS, rawDataProcessors });
+			assembler.assemble('t = [2,3]\n.DEFINE p\n{ "x": 1 }\n.END\n.DB t[1], p.x');
+			expect(assembler.link()).toEqual([3, 1]);
+		});
+	});
+
 	describe("value ranges", () => {
 		const assemble = (source: string) => {
 			const assembler = createAssembler();
