@@ -293,6 +293,16 @@ describe(".DEFINE Directive", () => {
 			);
 		});
 
+		it.each([
+			".DEFINE MY_SYMBOL",
+			"  nop\n.DEFINE MY_SYMBOL",
+			".DEFINE MY_SYMBOL AS TEXT",
+		])("should ask for the .END of a block started on the last line, without a newline: %j", (source) => {
+			expect(() => createTextAssembler().assemble(source)).toThrow(
+				expect.objectContaining({ message: "Missing .END for the .DEFINE block.", location: expect.objectContaining({ line: source.split("\n").length }) }),
+			);
+		});
+
 		it("should end the block on a .END followed by a comment", () => {
 			const assembler = createTextAssembler();
 			assembler.assemble(".DEFINE MY_SYMBOL\nfoo\n  .end ; done\nAFTER = 1\n");
@@ -303,6 +313,15 @@ describe(".DEFINE Directive", () => {
 	});
 
 	describe(".DEFINE from file", () => {
+		it("should load the file on the last line, without a newline", () => {
+			const textHandler = vi.fn((blockContent: string, _context: DirectiveContext) => blockContent);
+			const { assembler, mockFileHandler } = createAssembler({ default: "TEXT", map: new Map([["TEXT", textHandler]]) });
+			vi.spyOn(mockFileHandler, "readSourceFile").mockReturnValue("data");
+
+			assembler.assemble('.DEFINE MY_SYMBOL FROM "file.txt"');
+			expect(assembler.symbolTable.lookupSymbol("MY_SYMBOL")).toBe("data");
+		});
+
 		it("should load the file and define the symbol", () => {
 			// 1. Create a mock handler function
 			const textHandler = vi.fn((blockContent: string, _context: DirectiveContext) => blockContent);
