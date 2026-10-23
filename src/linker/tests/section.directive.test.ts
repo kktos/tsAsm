@@ -96,4 +96,44 @@ describe("Linker Script: .SECTION and .WRITE … AT", () => {
 			expect(() => link('.OUTPUT "x"\n.WRITE BYTE 1 AT -2')).toThrow("Invalid offset -2: it can't be negative.");
 		});
 	});
+
+	describe("segments and modules", () => {
+		beforeEach(() => {
+			linker.addModule("M");
+			linker.addSegment("CODE", 0x1000, 2);
+			linker.useSegment("CODE");
+			linker.writeBytes(0x1000, [1, 2]);
+			// fixed, 1 byte of 3 written: padded with its pad value
+			linker.addSegment("DATA", 0x2000, 3, 0xee);
+			linker.useSegment("DATA");
+			linker.writeBytes(0x2000, [9]);
+		});
+
+		it("should write a segment in a section, and move .PC", () => {
+			expect(link('.OUTPUT "x" FIXED 6\n.SECTION S AT 3\n.WRITE SEGMENT "CODE"\n.LOG .PC')).toEqual([0, 0, 0, 1, 2, 0]);
+			expect(sink.logs).toContain("5");
+		});
+
+		it("should write a module in a section", () => {
+			expect(link('.OUTPUT "x" FIXED 7\n.SECTION S AT 1\n.WRITE MODULE "M"\n.WRITE BYTE 5')).toEqual([0, 1, 2, 9, 0xee, 0xee, 5]);
+		});
+
+		it("should write a segment at an offset, padded to its size, without moving .PC", () => {
+			expect(link('.OUTPUT "x"\n.WRITE BYTE 7\n.WRITE SEGMENT "DATA" AT 2\n.LOG .PC')).toEqual([7, 0, 9, 0xee, 0xee]);
+			expect(sink.logs).toContain("1");
+		});
+
+		it("should write a module at an offset", () => {
+			expect(link('.OUTPUT "x" FIXED 6 PAD $FF\n.WRITE MODULE("M") AT 1')).toEqual([0xff, 1, 2, 9, 0xee, 0xee]);
+		});
+
+		it("should count what a section or AT writes as written", () => {
+			link('.OUTPUT "x"\n.SECTION S AT 0\n.WRITE SEGMENT "CODE"\n.WRITE MODULE "M" AT 8\n.LOG .len(.UNWRITTEN_SEGMENTS), " ", .len(.UNWRITTEN_MODULES)');
+			expect(sink.logs).toContain("0\t \t0");
+		});
+
+		it("should still append in the output, outside sections", () => {
+			expect(link('.OUTPUT "x"\n.WRITE SEGMENT "CODE"\n.SECTION S AT 0\n.WRITE BYTE 7\n.SECTION BACK\n.WRITE SEGMENT "DATA"')).toEqual([7, 2, 9, 0xee, 0xee]);
+		});
+	});
 });
