@@ -7,7 +7,9 @@ import { MockFileHandler } from "./mockfilehandler.class";
 // Only the iterators are local to the loop.
 describe("Loops as line generators", () => {
 	const assemble = (source: string) => {
-		const assembler = new Assembler(new Cpu6502Handler(), new MockFileHandler(), { segments: [{ name: "CODE", start: 0x1000, size: 0, resizable: true }] });
+		const assembler = new Assembler(new Cpu6502Handler(), new MockFileHandler(), {
+			segments: [{ name: "CODE", start: 0x1000, size: 0, resizable: true }],
+		});
 		assembler.assemble(source);
 		return assembler.link();
 	};
@@ -30,7 +32,10 @@ describe("Loops as line generators", () => {
 		[".for x of [1, 2]\nlp: dex\n.end", "Symbol 'LP' redefined."],
 	])("should report a label written in a body run more than once, as if the lines were written twice: %j", (source, message) => {
 		expect(() => assemble(source)).toThrow(
-			expect.objectContaining({ message, notes: [expect.objectContaining({ location: expect.objectContaining({ line: 2, column: 1 }) })] }),
+			expect.objectContaining({
+				message,
+				notes: [expect.objectContaining({ location: expect.objectContaining({ line: 2, column: 1 }) })],
+			}),
 		);
 	});
 

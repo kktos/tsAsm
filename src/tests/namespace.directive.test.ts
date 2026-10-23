@@ -13,7 +13,11 @@ describe(".NAMESPACE Directive", () => {
 		const mockFileHandler = new MockFileHandler();
 		const sink = new MemorySink();
 		const logger = new Logger({ sink, enabled: true });
-		const assembler = new Assembler(new Cpu6502Handler(), mockFileHandler, { segments, logger, log: { pass1Enabled: true, pass2Enabled: true } });
+		const assembler = new Assembler(new Cpu6502Handler(), mockFileHandler, {
+			segments,
+			logger,
+			log: { pass1Enabled: true, pass2Enabled: true },
+		});
 		return { assembler, logger, sink };
 	};
 	it("should switch current namespace when given an identifier", () => {

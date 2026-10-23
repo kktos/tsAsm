@@ -33,7 +33,11 @@ function qualifiedName(namespace: string, name: string): string {
 /** An error about a symbol already defined, with a note pointing at its definition. */
 function definitionError(message: string, symbol: PASymbol, note: string): AsmError {
 	const error = new AsmError(message);
-	error.notes.push({ message: note, location: { file: symbol.source, line: symbol.line, column: symbol.column }, includeStack: symbol.includeStack });
+	error.notes.push({
+		message: note,
+		location: { file: symbol.source, line: symbol.line, column: symbol.column },
+		includeStack: symbol.includeStack,
+	});
 	return error;
 }
 
@@ -527,13 +531,9 @@ function levenshteinDistance(name: string, symbolName: string): number {
 	const bLen = b.length;
 
 	// Use two rows instead of full matrix
-	let prevRow = new Array(aLen + 1);
-	let currRow = new Array(aLen + 1);
-
-	// Initialize first row
-	for (let i = 0; i <= aLen; i++) {
-		prevRow[i] = i;
-	}
+	// First row is initialized to 0..aLen
+	let prevRow = Array.from({ length: aLen + 1 }, (_, i) => i);
+	let currRow = Array.from({ length: aLen + 1 }, () => 0);
 
 	// Calculate distances
 	for (let j = 1; j <= bLen; j++) {
@@ -542,9 +542,9 @@ function levenshteinDistance(name: string, symbolName: string): number {
 		for (let i = 1; i <= aLen; i++) {
 			const cost = a[i - 1] === b[j - 1] ? 0 : 1;
 			currRow[i] = Math.min(
-				currRow[i - 1] + 1, // deletion
-				prevRow[i] + 1, // insertion
-				prevRow[i - 1] + cost, // substitution
+				currRow[i - 1]! + 1, // deletion
+				prevRow[i]! + 1, // insertion
+				prevRow[i - 1]! + cost, // substitution
 			);
 		}
 
@@ -552,5 +552,5 @@ function levenshteinDistance(name: string, symbolName: string): number {
 		[prevRow, currRow] = [currRow, prevRow];
 	}
 
-	return prevRow[aLen];
+	return prevRow[aLen]!;
 }

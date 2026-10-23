@@ -202,7 +202,12 @@ export class AssemblyLexer {
 			if (t.type === "EOF") break;
 		}
 
-		if (this.endMarker) return this.scanRawTextBlock({ line: this.currentStream.line, column: this.currentStream.column, hasToGoNextline: false });
+		if (this.endMarker)
+			return this.scanRawTextBlock({
+				line: this.currentStream.line,
+				column: this.currentStream.column,
+				hasToGoNextline: false,
+			});
 
 		const token = this.currentStream.tokenBuffer[index];
 		if (!token) return null;
@@ -236,7 +241,12 @@ export class AssemblyLexer {
 
 		if (this.currentStream.pos >= this.currentStream.length) return this.makeToken("EOF", "");
 
-		if (this.endMarker) return this.scanRawTextBlock({ line: this.currentStream.line, column: this.currentStream.column, hasToGoNextline: true });
+		if (this.endMarker)
+			return this.scanRawTextBlock({
+				line: this.currentStream.line,
+				column: this.currentStream.column,
+				hasToGoNextline: true,
+			});
 		if (this.rawInline) return this.scanRawInline(this.currentStream.line, this.currentStream.column);
 
 		const ch = this.currentStream.source[this.currentStream.pos] as string;
@@ -597,7 +607,13 @@ export class AssemblyLexer {
 		let numericValue = Number.parseInt(numberString, radix);
 		if (negative) numericValue = -numericValue;
 
-		return this.makeToken("NUMBER", String(numericValue), line, column, radix === 16 ? `$${numberString}` : radix === 2 ? `%${numberString}` : numberString);
+		return this.makeToken(
+			"NUMBER",
+			String(numericValue),
+			line,
+			column,
+			radix === 16 ? `$${numberString}` : radix === 2 ? `%${numberString}` : numberString,
+		);
 	}
 
 	private scanLocalLabel(line: number, column: number, _char: string): Token {
@@ -841,7 +857,13 @@ export class AssemblyLexer {
 		return { line: this.currentStream.line, column: this.currentStream.column, pos: this.currentStream.pos };
 	}
 
-	private makeToken(type: Exclude<TokenType, "ARRAY">, value: string, line = this.currentStream.line, column = this.currentStream.column, raw?: string): Token {
+	private makeToken(
+		type: Exclude<TokenType, "ARRAY">,
+		value: string,
+		line = this.currentStream.line,
+		column = this.currentStream.column,
+		raw?: string,
+	): Token {
 		return { type, value, line, column, raw } as Token;
 	}
 }

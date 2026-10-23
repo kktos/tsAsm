@@ -50,7 +50,11 @@ describe(".OPTION Directive", () => {
         `;
 		assembler.assemble(source);
 		expect(loggerSpy).toHaveBeenCalledWith(
-			expect.objectContaining({ message: "Unknown option 'unknown_option'.", severity: "warning", location: expect.objectContaining({ line: 2 }) }),
+			expect.objectContaining({
+				message: "Unknown option 'unknown_option'.",
+				severity: "warning",
+				location: expect.objectContaining({ line: 2 }),
+			}),
 		);
 		loggerSpy.mockRestore();
 	});
@@ -61,7 +65,10 @@ describe(".OPTION Directive", () => {
             .OPTION local_label_char
         `;
 		expect(() => assembler.assemble(source)).toThrow(
-			expect.objectContaining({ message: "Invalid .OPTION syntax. Expected: .OPTION <name> <value>", location: expect.objectContaining({ line: 2 }) }),
+			expect.objectContaining({
+				message: "Invalid .OPTION syntax. Expected: .OPTION <name> <value>",
+				location: expect.objectContaining({ line: 2 }),
+			}),
 		);
 	});
 
@@ -71,7 +78,10 @@ describe(".OPTION Directive", () => {
             .OPTION local_label_char 123
         `;
 		expect(() => assembler.assemble(source)).toThrow(
-			expect.objectContaining({ message: "Value for 'local_label_char' must be a single character string.", location: expect.objectContaining({ line: 2 }) }),
+			expect.objectContaining({
+				message: "Value for 'local_label_char' must be a single character string.",
+				location: expect.objectContaining({ line: 2 }),
+			}),
 		);
 	});
 
@@ -81,7 +91,10 @@ describe(".OPTION Directive", () => {
             .OPTION local_label_char "@@"
         `;
 		expect(() => assembler.assemble(source)).toThrow(
-			expect.objectContaining({ message: "Value for 'local_label_char' must be a single character string.", location: expect.objectContaining({ line: 2 }) }),
+			expect.objectContaining({
+				message: "Value for 'local_label_char' must be a single character string.",
+				location: expect.objectContaining({ line: 2 }),
+			}),
 		);
 	});
 

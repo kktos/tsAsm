@@ -9,7 +9,9 @@ import { MockFileHandler } from "./mockfilehandler.class";
 // A suffix tells the assembler the addressing mode the developer wants: .b zero page, .w absolute.
 describe("Mnemonic suffixes", () => {
 	const assemble = (cpu: CPUHandler, source: string) => {
-		const assembler = new Assembler(cpu, new MockFileHandler(), { segments: [{ name: "CODE", start: 0x1000, size: 0, resizable: true }] });
+		const assembler = new Assembler(cpu, new MockFileHandler(), {
+			segments: [{ name: "CODE", start: 0x1000, size: 0, resizable: true }],
+		});
 		assembler.assemble(source);
 		return assembler.link();
 	};

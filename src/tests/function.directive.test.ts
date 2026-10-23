@@ -80,7 +80,10 @@ describe("FunctionDirective Scoping", () => {
         `;
 
 		expect(() => assembler.assemble(source)).toThrow(
-			expect.objectContaining({ message: expect.stringContaining("Undefined symbol 'PRIVATE_LABEL'"), location: expect.objectContaining({ line: 7 }) }),
+			expect.objectContaining({
+				message: expect.stringContaining("Undefined symbol 'PRIVATE_LABEL'"),
+				location: expect.objectContaining({ line: 7 }),
+			}),
 		);
 	});
 });

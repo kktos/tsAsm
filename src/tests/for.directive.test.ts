@@ -74,7 +74,10 @@ describe(".FOR...OF", () => {
 				test .equ idx
 			`;
 		expect(() => assembler.assemble(source)).toThrow(
-			expect.objectContaining({ message: "Undefined symbol 'IDX'.", location: expect.objectContaining({ line: 5 }) }),
+			expect.objectContaining({
+				message: "Undefined symbol 'IDX'.",
+				location: expect.objectContaining({ line: 5 }),
+			}),
 		);
 	});
 
@@ -86,7 +89,10 @@ describe(".FOR...OF", () => {
 				test .equ item
 			`;
 		expect(() => assembler.assemble(source)).toThrow(
-			expect.objectContaining({ message: "Undefined symbol 'ITEM'.", location: expect.objectContaining({ line: 5 }) }),
+			expect.objectContaining({
+				message: "Undefined symbol 'ITEM'.",
+				location: expect.objectContaining({ line: 5 }),
+			}),
 		);
 	});
 

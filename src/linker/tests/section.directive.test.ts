@@ -133,7 +133,9 @@ describe("Linker Script: .SECTION and .WRITE … AT", () => {
 		});
 
 		it("should still append in the output, outside sections", () => {
-			expect(link('.OUTPUT "x"\n.WRITE SEGMENT "CODE"\n.SECTION S AT 0\n.WRITE BYTE 7\n.SECTION BACK\n.WRITE SEGMENT "DATA"')).toEqual([7, 2, 9, 0xee, 0xee]);
+			expect(link('.OUTPUT "x"\n.WRITE SEGMENT "CODE"\n.SECTION S AT 0\n.WRITE BYTE 7\n.SECTION BACK\n.WRITE SEGMENT "DATA"')).toEqual([
+				7, 2, 9, 0xee, 0xee,
+			]);
 		});
 	});
 });

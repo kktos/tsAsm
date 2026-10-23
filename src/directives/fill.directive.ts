@@ -45,7 +45,7 @@ export class FillDirective implements IDirective {
 		if (count > 0) {
 			// Ensure filler value is a single byte
 			const byteValue = fillerValue & 0xff;
-			const bytes = new Array(count).fill(byteValue);
+			const bytes = Array.from({ length: count }, () => byteValue);
 			context.emitbytes(bytes);
 
 			this.runtime.lister.directiveWithBytes({
@@ -59,7 +59,8 @@ export class FillDirective implements IDirective {
 	}
 
 	private assertValidCount(count: number | null, directive: ScalarToken) {
-		if (!Number.isInteger(count) || (count as number) < 0) throw new Error(`.${directive.value} count: ${count} isn't a whole number of bytes (0 or more).`);
+		if (!Number.isInteger(count) || (count as number) < 0)
+			throw new Error(`.${directive.value} count: ${count} isn't a whole number of bytes (0 or more).`);
 	}
 
 	/**

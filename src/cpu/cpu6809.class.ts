@@ -449,7 +449,14 @@ export class Cpu6809Handler implements CPUHandler<Cpu6809ModeInfo> {
 						throw new Error(`Invalid register for ${mnemonic}: ${reg}`);
 				}
 			}
-			return { ...info, mode: this.M6809_MODES.INHERENT, resolvedAddress: 0, postByte, page, bytes: info.bytes + 1 };
+			return {
+				...info,
+				mode: this.M6809_MODES.INHERENT,
+				resolvedAddress: 0,
+				postByte,
+				page,
+				bytes: info.bytes + 1,
+			};
 		}
 
 		// Inherent
@@ -488,7 +495,14 @@ export class Cpu6809Handler implements CPUHandler<Cpu6809ModeInfo> {
 
 			const { postByte, extraBytes, resolvedAddress } = this.parseIndexedMode(operandTokens, resolveValue);
 
-			return { ...info, mode: this.M6809_MODES.INDEXED, resolvedAddress, postByte, page, bytes: info.bytes + extraBytes };
+			return {
+				...info,
+				mode: this.M6809_MODES.INDEXED,
+				resolvedAddress,
+				postByte,
+				page,
+				bytes: info.bytes + extraBytes,
+			};
 		}
 
 		// Default to Direct/Extended

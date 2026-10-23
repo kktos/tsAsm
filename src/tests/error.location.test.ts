@@ -19,7 +19,9 @@ describe("Error locations", () => {
 			},
 			readBinaryFile: () => [],
 		};
-		const assembler = new Assembler(new Cpu6502Handler(), fileHandler, { segments: [{ name: "CODE", start: 0x1000, size: 0, resizable: true }] });
+		const assembler = new Assembler(new Cpu6502Handler(), fileHandler, {
+			segments: [{ name: "CODE", start: 0x1000, size: 0, resizable: true }],
+		});
 		try {
 			assembler.assemble(source);
 		} catch (e) {
@@ -142,7 +144,12 @@ describe("Error locations", () => {
 
 	it("should locate and format a warning like an error", () => {
 		const sink = new MemorySink();
-		const fileHandler: FileHandler = { fullpath: "main.asm", filename: "main.asm", readSourceFile: () => "", readBinaryFile: () => [] };
+		const fileHandler: FileHandler = {
+			fullpath: "main.asm",
+			filename: "main.asm",
+			readSourceFile: () => "",
+			readBinaryFile: () => [],
+		};
 		const assembler = new Assembler(new Cpu6502Handler(), fileHandler, {
 			logger: new Logger({ sink, enabled: true }),
 			segments: [{ name: "CODE", start: 0x1000, size: 0, resizable: true }],

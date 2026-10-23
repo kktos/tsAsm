@@ -504,8 +504,24 @@ export class Cpu6502Handler implements CPUHandler {
 
 				const mode =
 					indexReg === "X"
-						? this.selectAddressMode(mnemonic, instructionModes, this.M6502_MODES.ZEROPAGE_X, this.M6502_MODES.ABSOLUTE_X, resolvedAddress, forcedSize, ",X")
-						: this.selectAddressMode(mnemonic, instructionModes, this.M6502_MODES.ZEROPAGE_Y, this.M6502_MODES.ABSOLUTE_Y, resolvedAddress, forcedSize, ",Y");
+						? this.selectAddressMode(
+								mnemonic,
+								instructionModes,
+								this.M6502_MODES.ZEROPAGE_X,
+								this.M6502_MODES.ABSOLUTE_X,
+								resolvedAddress,
+								forcedSize,
+								",X",
+							)
+						: this.selectAddressMode(
+								mnemonic,
+								instructionModes,
+								this.M6502_MODES.ZEROPAGE_Y,
+								this.M6502_MODES.ABSOLUTE_Y,
+								resolvedAddress,
+								forcedSize,
+								",Y",
+							);
 				const [opcode, bytes] = getOpcode(mode);
 				return { mode, opcode, bytes, resolvedAddress };
 			}

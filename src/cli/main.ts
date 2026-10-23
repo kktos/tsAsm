@@ -123,7 +123,11 @@ try {
 			fileHandler.basedir = `${dirname(confFilename)}/`;
 			const scriptFile = fileHandler.readSourceFile(conf.output?.linker?.script);
 			// The linker's report and the script's .LOG go to the listing, like the assembler's; warnings and errors to the console.
-			const linkerLogger = new Logger({ sink, enabled: listingEnabled && listing?.linker === true, cached: false });
+			const linkerLogger = new Logger({
+				sink,
+				enabled: listingEnabled && listing?.linker === true,
+				cached: false,
+			});
 			const result = assembler.linker.link(scriptFile, conf.output.object?.path, linkerLogger);
 
 			const buffer = Buffer.from(result.data);

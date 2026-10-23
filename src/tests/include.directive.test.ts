@@ -60,7 +60,10 @@ describe("File Directive .INCLUDE", () => {
 		});
 
 		expect(() => assembler.assemble(source)).toThrow(
-			expect.objectContaining({ message: "Can't include 'nonexistent.asm': File not found", location: expect.objectContaining({ line: 1 }) }),
+			expect.objectContaining({
+				message: "Can't include 'nonexistent.asm': File not found",
+				location: expect.objectContaining({ line: 1 }),
+			}),
 		);
 	});
 
@@ -69,7 +72,10 @@ describe("File Directive .INCLUDE", () => {
 		const source = ".INCLUDE";
 
 		expect(() => assembler.assemble(source)).toThrow(
-			expect.objectContaining({ message: ".INCLUDE requires a string argument.", location: expect.objectContaining({ line: 1 }) }),
+			expect.objectContaining({
+				message: ".INCLUDE requires a string argument.",
+				location: expect.objectContaining({ line: 1 }),
+			}),
 		);
 	});
 

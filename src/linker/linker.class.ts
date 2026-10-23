@@ -79,7 +79,15 @@ export class Linker {
 		if (seg) throw new Error(`Segment already defined : ${name}`);
 
 		// If size is zero, create an empty data array. If resizable is true, the segment will grow on writes.
-		const newSeg: Segment = { name, start, size, data: size > 0 ? new Array(size).fill(padValue) : [], resizable, padValue, emitted: false };
+		const newSeg: Segment = {
+			name,
+			start,
+			size,
+			data: size > 0 ? Array.from({ length: size }, () => padValue) : [],
+			resizable,
+			padValue,
+			emitted: false,
+		};
 		this.segments.push(newSeg);
 	}
 
@@ -173,7 +181,7 @@ export class Linker {
 			if (!active.resizable) throw new Error(`Internal error: segment '${active.name}' data shorter than declared size and not resizable.`);
 
 			const needed = offset + values.length - active.data.length;
-			active.data.push(...new Array(needed).fill(active.padValue ?? 0));
+			active.data.push(...Array.from({ length: needed }, () => active.padValue ?? 0));
 		}
 
 		// active.data[offset] = value & 0xff;
@@ -195,7 +203,7 @@ export class Linker {
 
 		logger?.log("\n--- Linker ---");
 
-		const out: number[] = new Array(maxEnd - minStart).fill(0);
+		const out: number[] = Array.from({ length: maxEnd - minStart }, () => 0);
 		for (const s of segs) {
 			const offset = s.start - minStart;
 
@@ -349,13 +357,15 @@ export class Linker {
 					continue;
 				}
 				// `name = value` is one statement, from its name.
-				const isAssignment = token.type === "OPERATOR" && token.value === "=" && statementToken?.type === "IDENTIFIER" && statementToken.line === token.line;
+				const isAssignment =
+					token.type === "OPERATOR" && token.value === "=" && statementToken?.type === "IDENTIFIER" && statementToken.line === token.line;
 				if (!isAssignment) statementToken = token;
 
 				switch (token.type) {
 					case "DOT": {
 						const directiveToken = parser.next() as ScalarToken;
-						if (directiveToken?.type !== "IDENTIFIER") throw AsmError.at(`Expected a directive name after '.', got '${directiveToken.value}'.`, directiveToken);
+						if (directiveToken?.type !== "IDENTIFIER")
+							throw AsmError.at(`Expected a directive name after '.', got '${directiveToken.value}'.`, directiveToken);
 
 						const directiveContext: DirectiveContext = {
 							filename: this.streamManager?.currentFilepath ?? "linker",

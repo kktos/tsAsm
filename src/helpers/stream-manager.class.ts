@@ -44,7 +44,11 @@ export class StreamManager {
 		const cycleStart = includeChain.indexOf(this.fileHandler.fullpath);
 		if (cycleStart !== -1) throw new Error(`Include cycle: ${[...includeChain.slice(cycleStart), this.fileHandler.fullpath].join(" -> ")}`);
 
-		this.filenameStack.push({ path: this.currentFilepath, name: this.currentFilename, includeStack: this.includeStack });
+		this.filenameStack.push({
+			path: this.currentFilepath,
+			name: this.currentFilename,
+			includeStack: this.includeStack,
+		});
 		this.includeStack = [{ file: this.currentFilepath, line: includedAt?.line, column: includedAt?.column }, ...this.includeStack];
 		this.currentFilepath = this.fileHandler.fullpath;
 		this.currentFilename = this.fileHandler.filename;

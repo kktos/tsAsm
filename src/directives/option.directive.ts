@@ -29,7 +29,8 @@ export class OptionDirective implements IDirective {
 
 		switch (optionName) {
 			case "local_label_char":
-				if (typeof optionValue !== "string" || optionValue.length !== 1) throw new Error("Value for 'local_label_char' must be a single character string.");
+				if (typeof optionValue !== "string" || optionValue.length !== 1)
+					throw new Error("Value for 'local_label_char' must be a single character string.");
 
 				this.assembler.setOption("local_label_char", optionValue);
 				break;

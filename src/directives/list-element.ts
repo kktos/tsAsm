@@ -34,6 +34,8 @@ export function readListElement(runtime: DirectiveRuntime, directive: ScalarToke
 	}
 
 	// A macro's rest parameter holds each argument as its tokens: evaluated like a macro argument, without the macro's own.
-	const values = value.map((item) => (Array.isArray(item) && item[0]?.type ? evaluator.evaluate(item as Token[], { ...context, macroArgs: undefined }) : item));
+	const values = value.map((item) =>
+		Array.isArray(item) && item[0]?.type ? evaluator.evaluate(item as Token[], { ...context, macroArgs: undefined }) : item,
+	);
 	return { tokens: [spread, ...exprTokens], values };
 }

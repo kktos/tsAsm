@@ -33,11 +33,11 @@ This links the command into npm's global bin directory, which is normally in you
 node dist/tsasm <project-file> [--link true|false]
 ```
 
-| Option | Description |
-|---|---|
-| `<project-file>` | Project configuration file (YAML). Required. |
+| Option                       | Description                                                              |
+| ---------------------------- | ------------------------------------------------------------------------ |
+| `<project-file>`             | Project configuration file (YAML). Required.                             |
 | `-l`, `--link <true\|false>` | Run the final linking stage and write the output file (default: `true`). |
-| `-h`, `--help` | Show the help. |
+| `-h`, `--help`               | Show the help.                                                           |
 
 ### A first project
 
@@ -64,18 +64,18 @@ message:
 
 ```yaml
 input:
-  cpu: 65C02
-  source: hello.asm
-  segments:
-    - { name: CODE, start: 0x0800, size: 0, resizable: true }
+    cpu: 65C02
+    source: hello.asm
+    segments:
+        - { name: CODE, start: 0x0800, size: 0, resizable: true }
 
 output:
-  object:
-    path: hello.bin
-  listing:
-    enabled: true
-  symbols:
-    enabled: true
+    object:
+        path: hello.bin
+    listing:
+        enabled: true
+    symbols:
+        enabled: true
 ```
 
 Run it from the project's directory:
@@ -88,16 +88,16 @@ This writes `hello.bin` (the machine code), `hello.asm.lst` (the listing) and `h
 
 ### Project file
 
-| Key | Description |
-|---|---|
-| `input.source` | Main source file. Required. |
-| `input.cpu` | CPU to assemble for: `65C02`. |
-| `input.segments` | List of segments: `name`, `start`, `size`, and optionally `padValue` and `resizable`. The first one is selected at the start. |
-| `output.object.path` | Output file for the assembled code. |
-| `output.linker.script` | Linker script to use instead of writing the segments directly (see [linker_script.md](src/linker/linker_script.md)). |
-| `output.listing` | `enabled`, `path`, `passes: { pass1, pass2 }` to list each pass, and `linker` to list the linking: the linker script's report and `.log`s, or without a script each segment's place in the output. |
-| `output.symbols` | `enabled` and `path` of the symbol file (YAML). |
-| `output.segments` | `enabled` and `path` of the segment map file (YAML). |
+| Key                    | Description                                                                                                                                                                                        |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `input.source`         | Main source file. Required.                                                                                                                                                                        |
+| `input.cpu`            | CPU to assemble for: `65C02`.                                                                                                                                                                      |
+| `input.segments`       | List of segments: `name`, `start`, `size`, and optionally `padValue` and `resizable`. The first one is selected at the start.                                                                      |
+| `output.object.path`   | Output file for the assembled code.                                                                                                                                                                |
+| `output.linker.script` | Linker script to use instead of writing the segments directly (see [linker_script.md](src/linker/linker_script.md)).                                                                               |
+| `output.listing`       | `enabled`, `path`, `passes: { pass1, pass2 }` to list each pass, and `linker` to list the linking: the linker script's report and `.log`s, or without a script each segment's place in the output. |
+| `output.symbols`       | `enabled` and `path` of the symbol file (YAML).                                                                                                                                                    |
+| `output.segments`      | `enabled` and `path` of the segment map file (YAML).                                                                                                                                               |
 
 Paths are relative to the project file. Missing output directories are created.
 

@@ -22,7 +22,10 @@ describe(".LIST Directive", () => {
 	it("should suppress log output when disabled and re-enable it", () => {
 		const sink = new MemorySink();
 		const logger = new Logger({ sink, enabled: true });
-		const assembler = new Assembler(fakeCPU, new MockFileHandler(), { logger, log: { pass1Enabled: true, pass2Enabled: true } });
+		const assembler = new Assembler(fakeCPU, new MockFileHandler(), {
+			logger,
+			log: { pass1Enabled: true, pass2Enabled: true },
+		});
 
 		const source = `
 			Start: .DB 1 ; This should log

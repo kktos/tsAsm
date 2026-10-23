@@ -92,7 +92,10 @@ describe("Macro Handling", () => {
 					nopnopnop 98
 			`;
 			expect(() => assembler.assemble(src)).toThrow(
-				expect.objectContaining({ message: "Macro 'NOPNOPNOP' expects 0 arguments, but got 1.", location: expect.objectContaining({ line: 9 }) }),
+				expect.objectContaining({
+					message: "Macro 'NOPNOPNOP' expects 0 arguments, but got 1.",
+					location: expect.objectContaining({ line: 9 }),
+				}),
 			);
 		});
 
@@ -334,7 +337,12 @@ describe("Macro Handling", () => {
 				expect.objectContaining({
 					message: "Macro 'm' redefined: a macro can only be defined once.",
 					location: expect.objectContaining({ line: 6 }),
-					notes: [expect.objectContaining({ message: "first defined here", location: expect.objectContaining({ line: 2 }) })],
+					notes: [
+						expect.objectContaining({
+							message: "first defined here",
+							location: expect.objectContaining({ line: 2 }),
+						}),
+					],
 				}),
 			);
 		});
@@ -360,7 +368,10 @@ describe("Macro Handling", () => {
 		});
 
 		it("should allow nesting up to maxMacroDepth", () => {
-			const assembler = new Assembler(new Cpu65C02Handler(), new MockFileHandler(), { segments: DEFAULT_SEGMENTS, maxMacroDepth: 3 });
+			const assembler = new Assembler(new Cpu65C02Handler(), new MockFileHandler(), {
+				segments: DEFAULT_SEGMENTS,
+				maxMacroDepth: 3,
+			});
 			assembler.assemble(nested);
 			expect(assembler.link()).toEqual([3]);
 		});
@@ -372,7 +383,10 @@ describe("Macro Handling", () => {
 		});
 
 		it("should throw beyond maxMacroDepth", () => {
-			const assembler = new Assembler(new Cpu65C02Handler(), new MockFileHandler(), { segments: DEFAULT_SEGMENTS, maxMacroDepth: 2 });
+			const assembler = new Assembler(new Cpu65C02Handler(), new MockFileHandler(), {
+				segments: DEFAULT_SEGMENTS,
+				maxMacroDepth: 2,
+			});
 			expect(() => assembler.assemble(nested)).toThrow("Macro 'M3' nested more than 2 levels deep");
 		});
 	});
@@ -528,7 +542,10 @@ describe("Macro Handling", () => {
 			`;
 
 			expect(() => assembler.assemble(src2)).toThrow(
-				expect.objectContaining({ message: "Macro 'DRAWSPRITE' expects 3 arguments, but got 1.", location: expect.objectContaining({ line: 6 }) }),
+				expect.objectContaining({
+					message: "Macro 'DRAWSPRITE' expects 3 arguments, but got 1.",
+					location: expect.objectContaining({ line: 6 }),
+				}),
 			);
 		});
 	});

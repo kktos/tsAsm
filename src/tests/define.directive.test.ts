@@ -24,11 +24,17 @@ const DEFAULT_SEGMENTS: SegmentDefinition[] = [{ name: "CODE", start: 0x1000, si
 
 describe(".DEFINE Directive", () => {
 	const createAssembler = (
-		defineSymbolHandlers: { default: string; map: Map<string, (blockContent: string, context: DirectiveContext) => SymbolValue> },
+		defineSymbolHandlers: {
+			default: string;
+			map: Map<string, (blockContent: string, context: DirectiveContext) => SymbolValue>;
+		},
 		segments: SegmentDefinition[] = DEFAULT_SEGMENTS,
 	) => {
 		const mockFileHandler = new MockFileHandler();
-		const assembler = new Assembler(fakeCPU, mockFileHandler, { segments, rawDataProcessors: defineSymbolHandlers });
+		const assembler = new Assembler(fakeCPU, mockFileHandler, {
+			segments,
+			rawDataProcessors: defineSymbolHandlers,
+		});
 		return { assembler, mockFileHandler };
 	};
 
@@ -110,7 +116,10 @@ describe(".DEFINE Directive", () => {
 			.END
 		`;
 			expect(() => assembler.assemble(source)).toThrow(
-				expect.objectContaining({ message: "Unknown Data Processor 'TOML'.", location: { file: "", line: 2, column: 5 } }),
+				expect.objectContaining({
+					message: "Unknown Data Processor 'TOML'.",
+					location: { file: "", line: 2, column: 5 },
+				}),
 			);
 		});
 
@@ -277,19 +286,31 @@ describe(".DEFINE Directive", () => {
 		it("should keep line and column numbers right after the block", () => {
 			const assembler = createTextAssembler();
 			expect(() => assembler.assemble(".DEFINE MY_SYMBOL\nfoo\nbar\n  .END @\n")).toThrow(
-				expect.objectContaining({ message: "Unexpected character '@' (U+0040).", location: expect.objectContaining({ line: 4, column: 8 }) }),
+				expect.objectContaining({
+					message: "Unexpected character '@' (U+0040).",
+					location: expect.objectContaining({ line: 4, column: 8 }),
+				}),
 			);
 			expect(() => createTextAssembler().assemble(".DEFINE MY_SYMBOL\nfoo\nbar\n.END\n  @\n")).toThrow(
-				expect.objectContaining({ message: "Unexpected character '@' (U+0040).", location: expect.objectContaining({ line: 5, column: 3 }) }),
+				expect.objectContaining({
+					message: "Unexpected character '@' (U+0040).",
+					location: expect.objectContaining({ line: 5, column: 3 }),
+				}),
 			);
 		});
 
 		it("should throw when the block has no .END", () => {
 			expect(() => createTextAssembler().assemble("BEFORE = 1\n.DEFINE MY_SYMBOL\nfoo\nAFTER = 1\n")).toThrow(
-				expect.objectContaining({ message: "Missing .END for the .DEFINE block.", location: expect.objectContaining({ line: 2 }) }),
+				expect.objectContaining({
+					message: "Missing .END for the .DEFINE block.",
+					location: expect.objectContaining({ line: 2 }),
+				}),
 			);
 			expect(() => createTextAssembler().assemble(".DEFINE MY_SYMBOL\nfoo\n.ENDIF\n")).toThrow(
-				expect.objectContaining({ message: "Missing .END for the .DEFINE block.", location: expect.objectContaining({ line: 1 }) }),
+				expect.objectContaining({
+					message: "Missing .END for the .DEFINE block.",
+					location: expect.objectContaining({ line: 1 }),
+				}),
 			);
 		});
 
@@ -297,7 +318,10 @@ describe(".DEFINE Directive", () => {
 			"should ask for the .END of a block started on the last line, without a newline: %j",
 			(source) => {
 				expect(() => createTextAssembler().assemble(source)).toThrow(
-					expect.objectContaining({ message: "Missing .END for the .DEFINE block.", location: expect.objectContaining({ line: source.split("\n").length }) }),
+					expect.objectContaining({
+						message: "Missing .END for the .DEFINE block.",
+						location: expect.objectContaining({ line: source.split("\n").length }),
+					}),
 				);
 			},
 		);
@@ -314,7 +338,10 @@ describe(".DEFINE Directive", () => {
 	describe(".DEFINE from file", () => {
 		it("should load the file on the last line, without a newline", () => {
 			const textHandler = vi.fn((blockContent: string, _context: DirectiveContext) => blockContent);
-			const { assembler, mockFileHandler } = createAssembler({ default: "TEXT", map: new Map([["TEXT", textHandler]]) });
+			const { assembler, mockFileHandler } = createAssembler({
+				default: "TEXT",
+				map: new Map([["TEXT", textHandler]]),
+			});
 			vi.spyOn(mockFileHandler, "readSourceFile").mockReturnValue("data");
 
 			assembler.assemble('.DEFINE MY_SYMBOL FROM "file.txt"');

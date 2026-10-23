@@ -1,15 +1,15 @@
 import { defineScalarTag, NOT_RESOLVED } from "js-yaml";
 
 function isHexCode(c: number) {
-	return (0x30 /* 0 */ <= c && c <= 0x39) /* 9 */ || (0x41 /* A */ <= c && c <= 0x46) /* F */ || (0x61 /* a */ <= c && c <= 0x66) /* f */;
+	return (0x30 /* 0 */ <= c && c <= 0x39) /* 9 */ || (0x41 /* A */ <= c && c <= 0x46) /* F */ || (0x61 /* a */ <= c && c <= 0x66); /* f */
 }
 
 function isOctCode(c: number) {
-	return 0x30 /* 0 */ <= c && c <= 0x37 /* 7 */;
+	return 0x30 /* 0 */ <= c && c <= 0x37; /* 7 */
 }
 
 function isDecCode(c: number) {
-	return 0x30 /* 0 */ <= c && c <= 0x39 /* 9 */;
+	return 0x30 /* 0 */ <= c && c <= 0x39; /* 9 */
 }
 
 function resolveYamlInteger(data: string) {

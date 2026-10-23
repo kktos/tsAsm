@@ -96,7 +96,13 @@ export class MacroHandler {
 		this.lister.macro(macroToken.raw as string, passedArgsArray);
 
 		// let's try to keep between pass 1 and 2 the symbol table
-		this.parser.pushTokenStream({ newTokens, macroArgs, macroName, macroCall: macroToken, onEndOfStream: () => this.symbolTable.popScope() });
+		this.parser.pushTokenStream({
+			newTokens,
+			macroArgs,
+			macroName,
+			macroCall: macroToken,
+			onEndOfStream: () => this.symbolTable.popScope(),
+		});
 		// this.parser.pushTokenStream({ newTokens, macroArgs });
 	}
 

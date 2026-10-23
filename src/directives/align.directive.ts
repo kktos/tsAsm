@@ -52,7 +52,7 @@ export class AlignDirective implements IDirective {
 		if (paddingBytesCount > 0) {
 			// Ensure filler value is a single byte
 			const filler = fillerValue & 0xff;
-			const bytes = new Array(paddingBytesCount).fill(filler);
+			const bytes = Array.from({ length: paddingBytesCount }, () => filler);
 			context.emitbytes(bytes);
 
 			this.runtime.lister.directiveWithBytes({

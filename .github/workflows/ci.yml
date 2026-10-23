@@ -3,27 +3,26 @@ name: CI
 on: [push, pull_request]
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+    build:
+        runs-on: ubuntu-latest
 
-    steps:
+        steps:
+            - name: Git checkout
+              uses: actions/checkout@v6
 
-      - name: Git checkout
-        uses: actions/checkout@v6
+            - name: Install pnpm
+              uses: pnpm/action-setup@v4
+              with:
+                  version: latest
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: latest
+            - name: Set up Node.js
+              uses: actions/setup-node@v6
+              with:
+                  node-version: "20"
+                  cache: "pnpm"
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: '20'
-          cache: 'pnpm'
+            - name: Run linter
+              run: pnpm lint:ci
 
-      - name: Run linter
-        run: pnpm lint:ci
-
-      - name: Run tests
-        run: pnpm test
+            - name: Run tests
+              run: pnpm test

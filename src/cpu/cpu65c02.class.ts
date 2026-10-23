@@ -612,8 +612,24 @@ export class Cpu65C02Handler implements CPUHandler {
 
 				const mode =
 					indexReg === "X"
-						? this.selectAddressMode(mnemonic, instructionModes, this.M65C02_MODES.ZEROPAGE_X, this.M65C02_MODES.ABSOLUTE_X, resolvedAddress, forcedSize, ",X")
-						: this.selectAddressMode(mnemonic, instructionModes, this.M65C02_MODES.ZEROPAGE_Y, this.M65C02_MODES.ABSOLUTE_Y, resolvedAddress, forcedSize, ",Y");
+						? this.selectAddressMode(
+								mnemonic,
+								instructionModes,
+								this.M65C02_MODES.ZEROPAGE_X,
+								this.M65C02_MODES.ABSOLUTE_X,
+								resolvedAddress,
+								forcedSize,
+								",X",
+							)
+						: this.selectAddressMode(
+								mnemonic,
+								instructionModes,
+								this.M65C02_MODES.ZEROPAGE_Y,
+								this.M65C02_MODES.ABSOLUTE_Y,
+								resolvedAddress,
+								forcedSize,
+								",Y",
+							);
 				const [opcode, bytes] = getOpcode(mode);
 				return { mode, opcode, bytes, resolvedAddress };
 			}
@@ -636,7 +652,15 @@ export class Cpu65C02Handler implements CPUHandler {
 		const resolvedAddress = resolveValue(operandTokens);
 		this.checkAddress(resolvedAddress, 0xffff);
 
-		const mode = this.selectAddressMode(mnemonic, instructionModes, this.M65C02_MODES.ZEROPAGE, this.M65C02_MODES.ABSOLUTE, resolvedAddress, forcedSize, "");
+		const mode = this.selectAddressMode(
+			mnemonic,
+			instructionModes,
+			this.M65C02_MODES.ZEROPAGE,
+			this.M65C02_MODES.ABSOLUTE,
+			resolvedAddress,
+			forcedSize,
+			"",
+		);
 		const [opcode, bytes] = getOpcode(mode);
 
 		return { mode, opcode, bytes, resolvedAddress };

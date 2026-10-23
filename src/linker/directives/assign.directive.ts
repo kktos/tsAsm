@@ -15,7 +15,12 @@ export class AssignDirective implements IDirective {
 		const expressionTokens = this.runtime.parser.getInstructionTokens();
 		const value = this.runtime.evaluator.evaluate(expressionTokens, context);
 		if (this.runtime.symbolTable.findSymbol(label)) this.runtime.symbolTable.assignVariable(label, value);
-		else this.runtime.symbolTable.defineVariable(label, value, { filename: context.filename, line: directive.line, column: directive.column });
+		else
+			this.runtime.symbolTable.defineVariable(label, value, {
+				filename: context.filename,
+				line: directive.line,
+				column: directive.column,
+			});
 	}
 
 	public handlePassOne(_directive: ScalarToken, _context: DirectiveContext): void {}

@@ -29,7 +29,10 @@ describe("Linker listing", () => {
 
 	it("should leave the logger as it was", () => {
 		const logger = new Logger({ sink: new MemorySink() });
-		const assembler = new Assembler(new Cpu6502Handler(), new MockFileHandler(), { logger, log: { linkerEnabled: true } });
+		const assembler = new Assembler(new Cpu6502Handler(), new MockFileHandler(), {
+			logger,
+			log: { linkerEnabled: true },
+		});
 		assembler.assemble("  nop");
 		logger.enabled = false;
 		assembler.link();

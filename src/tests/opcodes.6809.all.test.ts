@@ -8,7 +8,9 @@ describe("Assembler - 6809 All Opcodes", () => {
 	let assembler: Assembler;
 
 	function assembleAndLink(source: string): number[] {
-		assembler = new Assembler(new Cpu6809Handler(), fileHandler, { log: { pass1Enabled: true, pass2Enabled: true } });
+		assembler = new Assembler(new Cpu6809Handler(), fileHandler, {
+			log: { pass1Enabled: true, pass2Enabled: true },
+		});
 		const segments = assembler.assemble(source);
 		return assembler.link(segments);
 	}

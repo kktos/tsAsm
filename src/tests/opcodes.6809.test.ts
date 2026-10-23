@@ -73,7 +73,9 @@ describe("Assembler - 6809 Opcodes", () => {
 
 	it("should assemble a more complex example", () => {
 		const fileHandler = new MockFileHandler();
-		const assembler = new Assembler(new Cpu6809Handler(), fileHandler, { log: { pass1Enabled: true, pass2Enabled: true } });
+		const assembler = new Assembler(new Cpu6809Handler(), fileHandler, {
+			log: { pass1Enabled: true, pass2Enabled: true },
+		});
 
 		const source = `
 			.SEGMENT CODE { start: 0x4000, size: 0x1000 }

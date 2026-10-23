@@ -7,11 +7,7 @@ export class Logger<C = unknown> {
 	public enabled: boolean;
 	public cached: boolean;
 
-	constructor(options: {
-		sink: LogSink<C>;
-		enabled?: boolean;
-		cached?: boolean;
-	}) {
+	constructor(options: { sink: LogSink<C>; enabled?: boolean; cached?: boolean }) {
 		this.sink = options.sink;
 		this.enabled = options.enabled ?? true;
 		this.cached = options.cached ?? false;

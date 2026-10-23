@@ -102,7 +102,10 @@ describe("Directive: .fill", () => {
 		[".fill count\ncount = -2", ".FILL count: -2"],
 	])("should throw on a count that isn't a whole number of 0 or more: %j", (source, message) => {
 		expect(() => asm.assemble(`.org $2000\n${source}\nlabel: LDA #$42`)).toThrow(
-			expect.objectContaining({ message: `${message} isn't a whole number of bytes (0 or more).`, location: expect.objectContaining({ line: 2 }) }),
+			expect.objectContaining({
+				message: `${message} isn't a whole number of bytes (0 or more).`,
+				location: expect.objectContaining({ line: 2 }),
+			}),
 		);
 	});
 });
