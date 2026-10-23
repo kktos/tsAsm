@@ -39,15 +39,15 @@ export class Dispatcher {
 
 		this.register("FILL", new FillDirective(runtime));
 		this.register("ALIGN", new AlignDirective(runtime));
-		// The linker writes its output image little-endian (see Linker.emitWord/emitLong).
-		const littleEndian = () => "little" as const;
-		this.register("BYTE", new DataDirective(runtime, 1, littleEndian)); // Define Byte (1 byte)
-		this.register("WORD", new DataDirective(runtime, 2, littleEndian)); // Define Word (2 bytes)
-		this.register("LONG", new DataDirective(runtime, 4, littleEndian)); // Define Long (4 bytes)
-		this.register("STRING", new StringDirective(runtime, "TEXT", littleEndian));
-		this.register("PSTRING", new StringDirective(runtime, "PSTR", littleEndian));
-		this.register("PSTRINGLONG", new StringDirective(runtime, "PSTRL", littleEndian));
-		this.register("CSTRING", new StringDirective(runtime, "CSTR", littleEndian));
+		// Data follows the script's .ENDIAN, like .WRITE WORD/LONG.
+		const endianness = () => runtime.linker.endianness;
+		this.register("BYTE", new DataDirective(runtime, 1, endianness)); // Define Byte (1 byte)
+		this.register("WORD", new DataDirective(runtime, 2, endianness)); // Define Word (2 bytes)
+		this.register("LONG", new DataDirective(runtime, 4, endianness)); // Define Long (4 bytes)
+		this.register("STRING", new StringDirective(runtime, "TEXT", endianness));
+		this.register("PSTRING", new StringDirective(runtime, "PSTR", endianness));
+		this.register("PSTRINGLONG", new StringDirective(runtime, "PSTRL", endianness));
+		this.register("CSTRING", new StringDirective(runtime, "CSTR", endianness));
 
 		this.register("SECTION", new SectionDirective(runtime));
 

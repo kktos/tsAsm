@@ -4,6 +4,7 @@ import type { ValueHolder } from "../assembler/expression.types";
 import { Parser } from "../assembler/parser.class";
 import type { FileHandler, StreamState } from "../assembler/polyasm.types";
 import { PASymbolTable } from "../assembler/symbol.class";
+import type { Endianness } from "../cpu/cpuhandler.interface";
 import type { DirectiveContext, DirectiveRuntime } from "../directives/directive.interface";
 import { MacroHandler } from "../directives/macro/handler";
 import { NullLister } from "../helpers/lister.class";
@@ -203,6 +204,11 @@ export class Linker {
 
 	public setEndianess(endianess: "little" | "big") {
 		this.isLittleEndian = endianess === "little";
+	}
+
+	/** The byte order set by the linker script's .ENDIAN. Default: little. */
+	public get endianness(): Endianness {
+		return this.isLittleEndian ? "little" : "big";
 	}
 
 	public setOutputFile(filename: string, fixedSize?: number, padValue?: number, maxSize?: number) {
