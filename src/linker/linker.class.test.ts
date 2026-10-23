@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type { FileHandler } from "../assembler/polyasm.types";
+import { Logger } from "../helpers/logger.class";
+import { MemorySink } from "../helpers/memorysink.class";
 import { Linker } from "./linker.class";
 
 describe("Linker", () => {
@@ -435,6 +437,29 @@ describe("Linker", () => {
 			// .ALIGN 1 * 16 = 16. So, the first byte should be at offset 16.
 			const expected = [0xaa, ...Array(16).fill(0), 0xbb];
 			expect(result.data).toEqual(expected);
+		});
+	});
+
+	describe("Linker Scripting with .ENDIAN", () => {
+		const logger = new Logger({ sink: new MemorySink() });
+
+		it("should write the data directives in the .ENDIAN byte order, like .WRITE", () => {
+			const script = `
+				.ENDIAN BIG
+				.WRITE WORD $1234
+				.WORD $1234
+				.LONG $11223344
+				.PSTRINGLONG "A"
+				.ENDIAN LITTLE
+				.WORD $1234
+			`;
+			const result = linker.link(script, undefined, logger);
+			expect(result.data).toEqual([0x12, 0x34, 0x12, 0x34, 0x11, 0x22, 0x33, 0x44, 0x00, 0x01, 0x41, 0x34, 0x12]);
+		});
+
+		it("should write the data directives little-endian by default", () => {
+			const result = linker.link(".WORD $1234\n.LONG $11223344", undefined, logger);
+			expect(result.data).toEqual([0x34, 0x12, 0x44, 0x33, 0x22, 0x11]);
 		});
 	});
 
