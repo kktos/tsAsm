@@ -121,7 +121,12 @@ describe(".ALIGN", () => {
 	it.each([".align [4,8][0], $EA", ".align .iif(1,4,8), $EA"])("should only split %s at its top-level comma", (directive) => {
 		const segments = [{ name: "CODE", start: 0x1000, size: 0, resizable: true }];
 		const assembler = createAssembler(segments);
-		assembler.assemble(`.db 1\n${directive}\n.db 2`);
+		const source = `
+			.db 1
+			${directive}
+			.db 2
+		`;
+		assembler.assemble(source);
 		expect(assembler.link()).toEqual([1, 0xea, 0xea, 0xea, 2]);
 	});
 

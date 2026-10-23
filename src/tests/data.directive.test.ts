@@ -147,34 +147,61 @@ describe("Data Directives", () => {
 
 	describe("arrays and objects", () => {
 		const ARRAY = "value: an array can't be emitted as is: index it to emit one of its elements.";
+		const OBJECT = ".DB value: an object can't be emitted as is: use one of its fields.";
+		const errorAt = (message: string, line: number, column: number) =>
+			expect.objectContaining({ message, location: expect.objectContaining({ line, column }) });
+		const createJsonAssembler = () => {
+			const rawDataProcessors = { default: "JSON", map: new Map([["JSON", (block: string) => JSON.parse(block)]]) };
+			return new Assembler(fakeCPU, new MockFileHandler(), { segments: DEFAULT_SEGMENTS, rawDataProcessors });
+		};
 
 		it.each([
-			[".DB [1,2]", `.DB ${ARRAY}`, 1, 5],
-			[".DW 1, [1,2]", `.DW ${ARRAY}`, 1, 8],
-			["t = [1,2]\n.DL t", `.DL ${ARRAY}`, 2, 5],
-			['.DB .split("a b")', `.DB ${ARRAY}`, 1, 5],
-			[".DB []", `.DB ${ARRAY}`, 1, 5],
+			[".DB [1,2]", `.DB ${ARRAY}`, 5],
+			[".DW 1, [1,2]", `.DW ${ARRAY}`, 8],
+			['.DB .split("a b")', `.DB ${ARRAY}`, 5],
+			[".DB []", `.DB ${ARRAY}`, 5],
+		])("should throw on an array: %s", (source, message, column) => {
+			expect(() => createAssembler().assemble(source)).toThrow(errorAt(message, 1, column));
+		});
+
+		it("should throw on an array symbol", () => {
+			const source = `
+				t = [1,2]
+				.DL t
+			`;
+			expect(() => createAssembler().assemble(source)).toThrow(errorAt(`.DL ${ARRAY}`, 3, 9));
+		});
+
+		it("should throw on an array defined after the directive", () => {
 			// t isn't known in pass 1, counted as one byte: pass 2 emitted nothing for it
-			[".DB t\n.DB 9\nt = [1,2]", `.DB ${ARRAY}`, 1, 5],
-		])("should throw on an array: %j", (source, message, line, column) => {
-			expect(() => createAssembler().assemble(source)).toThrow(expect.objectContaining({ message, location: expect.objectContaining({ line, column }) }));
+			const source = `
+				.DB t
+				.DB 9
+				t = [1,2]
+			`;
+			expect(() => createAssembler().assemble(source)).toThrow(errorAt(`.DB ${ARRAY}`, 2, 9));
 		});
 
 		it("should throw on an object", () => {
-			const rawDataProcessors = { default: "JSON", map: new Map([["JSON", (block: string) => JSON.parse(block)]]) };
-			const assembler = new Assembler(fakeCPU, new MockFileHandler(), { segments: DEFAULT_SEGMENTS, rawDataProcessors });
-			expect(() => assembler.assemble('.DEFINE p\n{ "x": 1 }\n.END\n.DB p')).toThrow(
-				expect.objectContaining({
-					message: ".DB value: an object can't be emitted as is: use one of its fields.",
-					location: expect.objectContaining({ line: 4, column: 5 }),
-				}),
-			);
+			const source = `
+				.DEFINE p
+				{ "x": 1 }
+				.END
+				.DB p
+			`;
+			expect(() => createJsonAssembler().assemble(source)).toThrow(errorAt(OBJECT, 5, 9));
 		});
 
 		it("should emit an indexed array or an object's field", () => {
-			const rawDataProcessors = { default: "JSON", map: new Map([["JSON", (block: string) => JSON.parse(block)]]) };
-			const assembler = new Assembler(fakeCPU, new MockFileHandler(), { segments: DEFAULT_SEGMENTS, rawDataProcessors });
-			assembler.assemble('t = [2,3]\n.DEFINE p\n{ "x": 1 }\n.END\n.DB t[1], p.x');
+			const assembler = createJsonAssembler();
+			const source = `
+				t = [2,3]
+				.DEFINE p
+				{ "x": 1 }
+				.END
+				.DB t[1], p.x
+			`;
+			assembler.assemble(source);
 			expect(assembler.link()).toEqual([3, 1]);
 		});
 	});
