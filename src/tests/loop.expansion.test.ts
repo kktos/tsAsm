@@ -26,10 +26,12 @@ describe("Loops as line generators", () => {
 	});
 
 	it.each([
-		[".repeat 2\nlp: dex\n bne lp\n.end", "Symbol 'LP' redefined (first defined at 2:1)."],
-		[".for x of [1, 2]\nlp: dex\n.end", "Symbol 'LP' redefined (first defined at 2:1)."],
+		[".repeat 2\nlp: dex\n bne lp\n.end", "Symbol 'LP' redefined."],
+		[".for x of [1, 2]\nlp: dex\n.end", "Symbol 'LP' redefined."],
 	])("should report a label written in a body run more than once, as if the lines were written twice: %j", (source, message) => {
-		expect(() => assemble(source)).toThrow(message);
+		expect(() => assemble(source)).toThrow(
+			expect.objectContaining({ message, notes: [expect.objectContaining({ location: expect.objectContaining({ line: 2, column: 1 }) })] }),
+		);
 	});
 
 	it("should branch with anonymous labels in a body run more than once", () => {

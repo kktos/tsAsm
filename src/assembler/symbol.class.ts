@@ -1,6 +1,6 @@
 import type { ILister } from "../helpers/lister.class";
 import type { Token } from "../shared/lexer/lexer.class";
-import { describeLocation } from "../utils/error.utils";
+import { AsmError, type IncludeStack } from "../utils/error.utils";
 import { getHex } from "../utils/hex.util";
 
 // Internal unique key for the global namespace to avoid collisions with user namespaces
@@ -21,6 +21,8 @@ interface PASymbol {
 	source: string;
 	line: number | string;
 	column: number;
+	/** The `.include` directives its file was reached through. */
+	includeStack: IncludeStack;
 }
 
 /** A symbol's name for messages: in its namespace, unless it's the global one. */
@@ -28,9 +30,11 @@ function qualifiedName(namespace: string, name: string): string {
 	return namespace === INTERNAL_GLOBAL ? name : `${namespace}::${name}`;
 }
 
-/** Where a symbol is defined, as `file:line:column`. */
-function definedAt(symbol: PASymbol): string {
-	return describeLocation({ file: symbol.source, line: symbol.line, column: symbol.column });
+/** An error about a symbol already defined, with a note pointing at its definition. */
+function definitionError(message: string, symbol: PASymbol, note: string): AsmError {
+	const error = new AsmError(message);
+	error.notes.push({ message: note, location: { file: symbol.source, line: symbol.line, column: symbol.column }, includeStack: symbol.includeStack });
+	return error;
 }
 
 export class PASymbolTable {
@@ -40,7 +44,11 @@ export class PASymbolTable {
 	private savedSymbols: Map<string, Map<string, PASymbol>> = new Map();
 	private namespaceMetadata: Map<string, Record<string, SymbolValue>> = new Map();
 
-	constructor(private readonly lister: ILister) {
+	constructor(
+		private readonly lister: ILister,
+		/** The `.include` directives the file being assembled was reached through: kept with each symbol defined. */
+		private readonly includeStack: () => IncludeStack = () => [],
+	) {
 		this.reset();
 	}
 
@@ -219,7 +227,7 @@ export class PASymbolTable {
 
 		name = name.toUpperCase();
 		const existing = scope.get(name);
-		if (existing) throw new Error(`Symbol '${qualifiedName(ns, name)}' redefined (first defined at ${definedAt(existing)}).`);
+		if (existing) throw definitionError(`Symbol '${qualifiedName(ns, name)}' redefined.`, existing, "first defined here");
 
 		scope.set(name, {
 			name,
@@ -229,6 +237,7 @@ export class PASymbolTable {
 			source: source.filename,
 			line: source.line,
 			column: source.column,
+			includeStack: this.includeStack(),
 		});
 	}
 
@@ -254,7 +263,7 @@ export class PASymbolTable {
 		const name = variableName.toUpperCase();
 
 		const symbol = scope.get(name);
-		if (symbol?.isConstant) throw new Error(`Can't redefine constant '${qualifiedName(ns, name)}' (defined at ${definedAt(symbol)}).`);
+		if (symbol?.isConstant) throw definitionError(`Can't redefine constant '${qualifiedName(ns, name)}'.`, symbol, "defined here");
 
 		scope.set(name, {
 			name,
@@ -264,6 +273,7 @@ export class PASymbolTable {
 			source: source.filename,
 			line: source.line,
 			column: source.column,
+			includeStack: this.includeStack(),
 		});
 	}
 
@@ -289,7 +299,7 @@ export class PASymbolTable {
 			symbol = scope.get(name);
 		}
 
-		if (symbol?.isConstant) throw new Error(`Can't redefine constant '${qualifiedName(ns, name)}' (defined at ${definedAt(symbol)}).`);
+		if (symbol?.isConstant) throw definitionError(`Can't redefine constant '${qualifiedName(ns, name)}'.`, symbol, "defined here");
 
 		if (!symbol) throw new Error(`assignVariable: Unknown symbol "${ns === INTERNAL_GLOBAL ? "global" : ns}::${name}".`);
 

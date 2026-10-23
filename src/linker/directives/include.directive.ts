@@ -19,7 +19,7 @@ export class LinkerIncludeDirective implements IDirective {
 		}
 		const streamManager = this.runtime.linker.streamManager;
 
-		streamManager.startNewStream(filename);
+		streamManager.startNewStream(filename, true, directive);
 
 		this.runtime.parser.pushTokenStream({
 			cacheName: streamManager.currentFilepath,

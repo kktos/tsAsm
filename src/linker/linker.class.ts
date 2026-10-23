@@ -285,7 +285,7 @@ export class Linker {
 
 	public link(script: string, outputPath: string | undefined, logger: Logger) {
 		const lister = new NullLister();
-		const symbolTable = new PASymbolTable(lister);
+		const symbolTable = new PASymbolTable(lister, () => this.streamManager?.includeStack ?? []);
 		const parser = new Parser(new EventEmitter());
 		if (this.fileHandler) this.streamManager = new StreamManager(this.fileHandler, parser);
 
@@ -311,6 +311,7 @@ export class Linker {
 			macroHandler,
 			// link() doesn't locate its messages
 			warn: (message) => logger.warn(message),
+			includeStack: () => this.streamManager?.includeStack ?? [],
 		};
 		const dispatcher = new Dispatcher(runtime);
 

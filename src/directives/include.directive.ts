@@ -31,7 +31,7 @@ export class IncludeDirective implements IDirective {
 
 			// console.log("INCLUDE", logConfigDepth, filename);
 
-			this.assembler.streamManager.startNewStream(filename);
+			this.assembler.streamManager.startNewStream(filename, true, this.assembler.currentStatement ?? directive);
 			this.assembler.parser.pushTokenStream({
 				newTokens: this.assembler.parser.lexer.getBufferedTokens(),
 				cacheName: this.assembler.streamManager.currentFilepath,
@@ -56,7 +56,7 @@ export class IncludeDirective implements IDirective {
 		if (typeof filename !== "string") throw new Error(".INCLUDE requires a string argument.");
 
 		const logConfigDepth = this.assembler.logger.getConfigDepth();
-		this.assembler.streamManager.startNewStream(filename, false);
+		this.assembler.streamManager.startNewStream(filename, false, this.assembler.currentStatement ?? directive);
 		this.assembler.parser.pushTokenStream({
 			cacheName: this.assembler.streamManager.currentFilepath,
 			newTokens: [],

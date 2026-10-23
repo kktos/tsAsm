@@ -1,4 +1,5 @@
 import type { Token } from "../../shared/lexer/lexer.class";
+import type { IncludeStack } from "../../utils/error.utils";
 
 /** Represents a defined Macro. */
 export interface MacroDefinition {
@@ -12,4 +13,6 @@ export interface MacroDefinition {
 	/** Where its .MACRO directive is. */
 	line: number | string;
 	column: number;
+	/** The `.include` directives its file was reached through. */
+	includeStack: IncludeStack;
 }
