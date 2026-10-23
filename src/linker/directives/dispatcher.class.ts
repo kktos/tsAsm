@@ -14,7 +14,7 @@ import { EndianDirective } from "./endian.directive";
 import { LinkerIncludeDirective } from "./include.directive";
 import { LinkerMacroDirective } from "./linkermacro.directive";
 import { OutputDirective } from "./output.directive";
-import { SectionDirective } from "./segment.directive";
+import { SectionDirective } from "./section.directive";
 import { WriteDirective } from "./write.directive";
 
 export class Dispatcher {

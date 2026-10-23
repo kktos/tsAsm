@@ -109,7 +109,7 @@ A segment can be written more than once: each write appends a copy.
 
 **Byte order.** `.ENDIAN BIG` or `.ENDIAN LITTLE` sets the byte order of the words and longs that follow: `.WRITE WORD`, `.WRITE LONG`, and the data directives below. The default is little-endian.
 
-**`AT <offset>`** writes at that offset of the output instead of appending, and doesn't move `.PC`. Only use it with `BYTE`: see [Limitations](#limitations).
+**`AT <offset>`** writes at that offset of the output instead of appending, and doesn't move `.PC`. Like a [section](#sections), it is written once the output is complete: over what is there, whatever is written after it. An output that isn't `FIXED` is padded with `0` up to the offset. In a section too, the offset is an offset of the output. `SEGMENT` and `MODULE` ignore it: see [Limitations](#limitations).
 
 The assembler's data directives work too, and always append:
 
@@ -128,7 +128,7 @@ A section writes at a given offset of the output, over what is there.
 .SECTION <name> AT <offset>
 ```
 
-What follows is written at `offset`, one item after the other, until the next `.SECTION`. Sections are applied at the end, once the output is complete and padded: they overwrite it.
+What follows is written at `offset`, one item after the other, until the next `.SECTION`. In a section, `.PC` is the offset in the output where the next byte goes. Sections are applied at the end, in order, once the output is complete and padded: they overwrite it, and a later one overwrites an earlier one. A section past the end of the output extends it: an output that isn't `FIXED` is padded with `0` up to the section, and a `FIXED` one is then too large, which is an error.
 
 ```as
 .SECTION <name>
@@ -148,7 +148,7 @@ without `AT` goes back to appending to the output.
 .WRITE SEGMENT "DATA"       # appended after CODE
 ```
 
-In a section, only `.WRITE BYTE`, `WORD`, `LONG`, `BYTES`, `STRING` and the data directives go to the section: `.WRITE SEGMENT` and `.WRITE MODULE` always append to the output. To place a segment at an offset, write up to it with `.FILL`, as in the [example](#example). Use sections with a `FIXED` output.
+In a section, only `.WRITE BYTE`, `WORD`, `LONG`, `BYTES`, `STRING` and the data directives go to the section: `.WRITE SEGMENT` and `.WRITE MODULE` always append to the output. To place a segment at an offset, write up to it with `.FILL`, as in the [example](#example).
 
 ## Modules
 
@@ -229,7 +229,6 @@ output:
 
 ## Limitations
 
-- `.WRITE WORD` and `.WRITE LONG` with `AT` write a single wrong byte. `.WRITE STRING` and `.WRITE BYTES` ignore `AT`.
-- `.SECTION … AT` may be misplaced when the output isn't `FIXED`.
+- `.WRITE SEGMENT` and `.WRITE MODULE` ignore `AT`, and always append to the output, even in a section.
 - `.module` fails ("Segments were used before any module was defined") when the project file defines segments, as the first one is selected before the source starts.
 - Writing more than the `FIXED` size, or a fixed segment written past its end, fails with `RangeError: Invalid array length` instead of a clear error.
