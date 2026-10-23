@@ -8,7 +8,10 @@
 		"module": "ESNext",
 		"target": "ES2022",
 		"lib": ["ESNext", "DOM"],
-		"moduleResolution": "node",
+		// TS 6 no longer includes every @types package: the CLI and the tests use node's
+		"types": ["node"],
+		// Rollup bundles the code: resolve imports like a bundler (TS 6 deprecates "node")
+		"moduleResolution": "bundler",
 
 		// Environment Settings
 		// See also https://aka.ms/tsconfig/module
@@ -37,7 +40,6 @@
 		// "noFallthroughCasesInSwitch": true,
 		// "noPropertyAccessFromIndexSignature": true,
 
-		"esModuleInterop": false,
 		"forceConsistentCasingInFileNames": true,
 		"resolveJsonModule": true,
 
