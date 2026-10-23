@@ -11,7 +11,7 @@ Every repro below was re-checked on the code of #68.
   - reproduce on `main` first;
   - show a `main` vs PR table in the PR;
   - check that the new tests fail on `main`;
-  - keep `tsc` at 0 errors and lint unchanged (16 warnings).
+  - keep `tsc` at 0 errors and lint unchanged (18 warnings).
 - **Explicit, always:** something the assembler doesn't understand is an error, never silently ignored or truncated.
 - **Loops (`.repeat`, `.for`) are line generators, like the C preprocessor, not scopes:** what the body defines stays where the loop is, and only the iterators are local. Macros do have a scope per call.
 - **Errors:**
@@ -41,8 +41,15 @@ Likely fix: keep each call's scope from pass 1 for pass 2. Scope names are alrea
 ### 1.3 6502: no operand range checks (silent truncation)
 `lda $12345` → `ad 45 23`, `lda #$1FF` → `a9 ff`, `lda ($1234),y` → `b1 34`. The 65C02 rejects these with `checkAddress` / `assertFitsInBytes`. Bring the same checks to the 6502, or do 2.1 first and get them for free.
 
-### 1.4 Array literal indexing
-`.db [1,2][0]` → `Mismatched brackets in array literal.` (indexing a *named* array works).
+### 1.4 Array literal indexing — ✅ DONE (#88)
+✅ **DONE (#88)** — `.db [1,2][0]` → `Mismatched brackets in array literal.` (indexing a *named* array works).
+
+*The indexing worked: the comma inside the brackets cut the `.db` value. The directives' values (`.db`, `.dw`, `.text`, `.let`…) and the `.fill` / `.align` arguments are now only split at the commas outside `( )` and `[ ]`: `.fill .iif(1,2,3), $AB` failed too. Strings no longer count as brackets: `.db "(", 1` and `.db "["` failed.*
+
+Follow-ups found while doing it:
+- **Macro call arguments** are still split at a comma inside `[ ]`: `m [1,2][1]` → `Macro 'M' expects 1 argument, but got 2.` (`macro/handler.ts`, both call forms). Without parentheses, `m ($12,x)` is also split in two. Decision needed: should `( )` group a macro argument too?
+- `.db [1,2]` (a whole array) → `Unexpected object value 1,2.` Decision needed: emit its elements, or a clear error.
+- `getExpressionTokens`' `inParentheses` parameter is never used.
 
 ### 1.5 String operator with a symbol defined later
 `.text "a" + msg` with `msg` defined later → `Binary operator '+' requires two strings.` The evaluator should pass `null` (not known yet) through string operators in pass 1. The string directive then reports "must be defined before it is used".

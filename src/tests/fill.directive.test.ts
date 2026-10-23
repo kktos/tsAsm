@@ -86,6 +86,11 @@ describe("Directive: .fill", () => {
 		expect(segment.data[offset + 1]).toBe(0x42);
 	});
 
+	it.each([".fill [2,3][0], $AB", ".fill .iif(1,2,3), $AB"])("should only split %s at its top-level comma", (directive) => {
+		segments = asm.assemble(`${directive}\n.db 1`);
+		expect(segments[0]?.data).toEqual([0xab, 0xab, 1]);
+	});
+
 	it.each([
 		[".fill -5, $FF", ".FILL count: -5"],
 		[".ds -1", ".DS count: -1"],

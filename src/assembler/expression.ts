@@ -8,6 +8,7 @@ import type { PASymbolTable, SymbolValue } from "../assembler/symbol.class";
 import { FunctionDispatcher } from "../shared/functions/function.dispatcher";
 import type { FunctionToken, OperatorStackToken, OperatorToken, ScalarToken, Token } from "../shared/lexer/lexer.class";
 import { AsmError } from "../utils/error.utils";
+import { nestingDelta } from "../utils/token.utils";
 import { type EvaluationContext, PRECEDENCE } from "./expression.types";
 
 const UNARY_TEST_OPERATORS = new Set([")", "]"]);
@@ -274,13 +275,12 @@ export class ExpressionEvaluator {
 					lastToken.value === ")" || // closing parenthesis of a sub-expression
 					lastToken.value === "]"); // closing bracket of an array access: `t[1][0]` indexes again
 
-			if (processedToken?.value === "[" && !isPrecededByOperand) {
-				// Array literal detection
+			if (processedToken?.type === "OPERATOR" && processedToken.value === "[" && !isPrecededByOperand) {
+				// Array literal detection: its closing `]` is an operator, a string "]" isn't one.
 				let balance = 1;
 				let j = index + 1;
 				for (; j < tokens.length; j++) {
-					if (tokens[j]?.value === "[") balance++;
-					if (tokens[j]?.value === "]") balance--;
+					balance += nestingDelta(tokens[j] as Token);
 					if (balance === 0) break;
 				}
 

@@ -118,6 +118,13 @@ describe(".ALIGN", () => {
 		expect(assembler.link()).toEqual([1, 0xea, 0xea, 2]);
 	});
 
+	it.each([".align [4,8][0], $EA", ".align .iif(1,4,8), $EA"])("should only split %s at its top-level comma", (directive) => {
+		const segments = [{ name: "CODE", start: 0x1000, size: 0, resizable: true }];
+		const assembler = createAssembler(segments);
+		assembler.assemble(`.db 1\n${directive}\n.db 2`);
+		expect(assembler.link()).toEqual([1, 0xea, 0xea, 0xea, 2]);
+	});
+
 	it("should throw if the boundary can't be evaluated", () => {
 		const logger = new Logger({ sink: new MemorySink(), enabled: true });
 		const segments = [{ name: "CODE", start: 0x1000, size: 0, resizable: true }];
