@@ -4,6 +4,7 @@ import type { DirectiveContext, DirectiveRuntime } from "../directives/directive
 import { DirectiveHandler } from "../directives/handler";
 import { MacroHandler } from "../directives/macro/handler";
 import { ConsoleSink } from "../helpers/consolesink.class";
+import { ErrorLocator } from "../helpers/error-locator.class";
 import { Lister } from "../helpers/lister.class";
 import { Logger } from "../helpers/logger.class";
 import { StreamManager } from "../helpers/stream-manager.class";
@@ -53,6 +54,7 @@ export class Assembler {
 	public expressionEvaluator: ExpressionEvaluator;
 	public directiveHandler: DirectiveHandler;
 	public macroHandler: MacroHandler;
+	private errorLocator: ErrorLocator;
 	private rawDataProcessors?: Map<string, DataProcessor>;
 	private defaultRawDataProcessor = "";
 	public emitter: EventEmitter;
@@ -94,6 +96,7 @@ export class Assembler {
 		this.macroHandler = new MacroHandler(this.parser, this.symbolTable, this.lister, options?.maxMacroDepth, (tokens, macroArgs) =>
 			this.substituteTokens(tokens, macroArgs),
 		);
+		this.errorLocator = new ErrorLocator(this.parser, this.macroHandler, () => this.statementToken, this.streamManager);
 
 		const runtime: DirectiveRuntime = {
 			parser: this.parser,
@@ -237,7 +240,7 @@ export class Assembler {
 
 			this.logger.enabled = isLogEnabled;
 		} catch (e) {
-			throw this.toAsmError(e);
+			throw this.errorLocator.toAsmError(e);
 		} finally {
 			this.fileHandler.fullpath = fullpath;
 			this.fileHandler.filename = filename;
@@ -248,65 +251,9 @@ export class Assembler {
 		return this.linker.segments;
 	}
 
-	/**
-	 * Whatever was thrown, the user gets an AsmError: what is wrong, and where. A location the error doesn't give
-	 * is the current statement's (its first token), in the file being assembled.
-	 */
-	private toAsmError(e: unknown): AsmError {
-		return this.locate(e instanceof AsmError ? e : new AsmError(e instanceof Error ? e.message : String(e)));
-	}
-
 	/** Reports a warning, located like an error: at `position`, else at the current statement. */
 	public warn(message: string, position?: { line: number | string; column: number }) {
-		this.logger.warn(this.locate(AsmError.warning(message, position ? { line: position.line, column: position.column } : {})));
-	}
-
-	/** Fills in what the error doesn't say about where it is: the statement, the file, the source line, the macro calls. */
-	private locate(error: AsmError): AsmError {
-		const { location } = error;
-		if (location.line === undefined && this.statementToken) {
-			location.line = this.statementToken.line;
-			location.column = this.statementToken.column;
-		} else if (location.column === undefined && location.line === this.statementToken?.line) {
-			// On the statement's line: its column too.
-			location.column = this.statementToken?.column;
-		}
-		if (typeof location.line === "string") this.locateInMacro(error);
-		location.file ??= this.streamManager.currentFilepath;
-		if (error.sourceLine === undefined && typeof location.line === "number") error.sourceLine = this.streamManager.getSourceLine(location.file, location.line);
-		// The includes lead to the current file: the last place shown, the outermost macro call or else the error itself.
-		const lastFile = error.macroStack.at(-1)?.calledAt.file ?? location.file;
-		if (error.includeStack.length === 0 && lastFile === this.streamManager.currentFilepath) error.includeStack = this.streamManager.includeStack;
-		return error;
-	}
-
-	/**
-	 * A macro body line is numbered "<call line>.<body line>" ("4.2", "4.3.2" for a nested call): the error is
-	 * located at the body line, in the file the macro is defined in, and the macro calls go in its macro stack.
-	 */
-	private locateInMacro(error: AsmError) {
-		const expansions = this.parser.tokenStreamStack.filter((stream) => stream.macroName);
-		const definitionFile = (index: number) => {
-			const name = expansions[index]?.macroName;
-			return name !== undefined ? this.macroHandler.macroDefinitions.get(name)?.file : undefined;
-		};
-		const bodyLine = (line: number | string) => Number(String(line).split(".").at(-1));
-
-		const innermost = expansions.length - 1;
-		const file = definitionFile(innermost);
-		if (file === undefined) return;
-		error.location.file = file;
-		error.location.line = bodyLine(error.location.line as string);
-
-		// Innermost first: each macro is called from the body of the one before it, or from the source itself.
-		for (let index = innermost; index >= 0; index--) {
-			const { macroName, macroCall } = expansions[index] as StreamState;
-			if (!macroName || !macroCall) continue;
-			error.macroStack.push({
-				name: macroCall.raw ?? macroName,
-				calledAt: { file: definitionFile(index - 1) ?? this.streamManager.currentFilepath, line: bodyLine(macroCall.line), column: macroCall.column },
-			});
-		}
+		this.logger.warn(this.errorLocator.warning(message, position));
 	}
 
 	private passOne(): void {

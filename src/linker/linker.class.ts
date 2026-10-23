@@ -7,12 +7,14 @@ import { PASymbolTable } from "../assembler/symbol.class";
 import type { Endianness } from "../cpu/cpuhandler.interface";
 import type { DirectiveContext, DirectiveRuntime } from "../directives/directive.interface";
 import { MacroHandler } from "../directives/macro/handler";
+import { ErrorLocator } from "../helpers/error-locator.class";
 import { NullLister } from "../helpers/lister.class";
 import type { Logger } from "../helpers/logger.class";
 import { StreamManager } from "../helpers/stream-manager.class";
 import type { FunctionHandler } from "../shared/functions/types";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
 import { pushNumber } from "../utils/array.utils";
+import { AsmError } from "../utils/error.utils";
 import { getHex } from "../utils/hex.util";
 import { stringToBytes } from "../utils/string.utils";
 import { Dispatcher } from "./directives/dispatcher.class";
@@ -299,14 +301,17 @@ export class Linker {
 
 		const segHandler: FunctionHandler = (stack, token, _symbolTable, _argCount) => {
 			const segName = stack.pop();
-			if (typeof segName !== "string") throw new Error(`Argument to .SEGMENT() must be a string on line ${token.line}.`);
+			if (typeof segName !== "string") throw AsmError.at("Argument to .SEGMENT() must be a string.", token);
 			const seg = this.segments.find((s) => s.name === segName);
-			if (!seg) throw new Error(`Segment '${segName}' not found on line ${token.line}.`);
+			if (!seg) throw AsmError.at(`Segment '${segName}' not found.`, token);
 			stack.push(seg);
 		};
 		evaluator.functionDispatcher.register("SEGMENT", { handler: segHandler, minArgs: 1, maxArgs: 1 });
 
 		const macroHandler = new MacroHandler(parser, symbolTable, lister);
+		/** The first token of the statement being linked: where its errors are located. */
+		let statementToken: Token | undefined;
+		const errorLocator = new ErrorLocator(parser, macroHandler, () => statementToken, this.streamManager);
 		const runtime: DirectiveRuntime = {
 			parser,
 			symbolTable,
@@ -315,8 +320,7 @@ export class Linker {
 			lister,
 			linker: this,
 			macroHandler,
-			// link() doesn't locate its messages
-			warn: (message) => logger.warn(message),
+			warn: (message, position) => logger.warn(errorLocator.warning(message, position)),
 			includeStack: () => this.streamManager?.includeStack ?? [],
 		};
 		const dispatcher = new Dispatcher(runtime);
@@ -336,71 +340,83 @@ export class Linker {
 
 		let currentLabel: string | undefined;
 
-		while (parser.tokenStreamStack.length > 0) {
-			const token = parser.next();
-			// If no token or EOF, pop the active stream
-			if (!token || token.type === "EOF") {
-				const poppedStream = parser.popTokenStream(false);
-				if (parser.tokenStreamStack.length === 0) break;
-				if (poppedStream) parser.emitter.emit(`endOfStream:${poppedStream.id}`);
-				continue;
-			}
-
-			switch (token.type) {
-				case "DOT": {
-					const directiveToken = parser.next() as ScalarToken;
-					if (directiveToken?.type !== "IDENTIFIER") throw new Error(`Bad directive in line ${token.line} - ${directiveToken.value}`);
-
-					const directiveContext: DirectiveContext = {
-						filename: this.streamManager?.currentFilepath ?? "linker",
-						PC: this.PC,
-						currentLabel,
-						macroArgs: (parser.tokenStreamStack[parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
-						emitbytes: (bytes: number[]) => {
-							this.emitBytes(bytes);
-						},
-						readSourceFile: this.fileHandler?.readSourceFile.bind(this.fileHandler),
-					};
-					if (!dispatcher.dispatch(directiveToken, directiveContext))
-						throw new Error(`Syntax error in line ${token.line} - Unexpected directive '${directiveToken.value}'`);
-					break;
+		try {
+			while (parser.tokenStreamStack.length > 0) {
+				const token = parser.next();
+				// If no token or EOF, pop the active stream
+				if (!token || token.type === "EOF") {
+					const poppedStream = parser.popTokenStream(false);
+					if (parser.tokenStreamStack.length === 0) break;
+					if (poppedStream) parser.emitter.emit(`endOfStream:${poppedStream.id}`);
+					continue;
 				}
-				case "IDENTIFIER":
-					if (runtime.macroHandler.isMacro(token.value)) {
-						runtime.macroHandler.expandMacro(token);
-						break;
-					}
-					currentLabel = token.value;
-					break;
+				// `name = value` is one statement, from its name.
+				const isAssignment = token.type === "OPERATOR" && token.value === "=" && statementToken?.type === "IDENTIFIER" && statementToken.line === token.line;
+				if (!isAssignment) statementToken = token;
 
-				case "OPERATOR":
-					if (token.value === "=" && currentLabel) {
+				switch (token.type) {
+					case "DOT": {
+						const directiveToken = parser.next() as ScalarToken;
+						if (directiveToken?.type !== "IDENTIFIER") throw AsmError.at(`Expected a directive name after '.', got '${directiveToken.value}'.`, directiveToken);
+
 						const directiveContext: DirectiveContext = {
 							filename: this.streamManager?.currentFilepath ?? "linker",
 							PC: this.PC,
 							currentLabel,
 							macroArgs: (parser.tokenStreamStack[parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
-							emitbytes: (_bytes: number[]) => {},
+							emitbytes: (bytes: number[]) => {
+								this.emitBytes(bytes);
+							},
+							readSourceFile: this.fileHandler?.readSourceFile.bind(this.fileHandler),
 						};
-						if (!dispatcher.dispatch(token, directiveContext)) throw new Error(`Syntax error in line ${token.line} - Unexpected directive '${token.value}'`);
+						if (!dispatcher.dispatch(directiveToken, directiveContext))
+							throw AsmError.at(`Syntax error - Unexpected directive '${directiveToken.value}'`, directiveToken);
 						break;
 					}
-					break;
+					case "IDENTIFIER":
+						if (runtime.macroHandler.isMacro(token.value)) {
+							runtime.macroHandler.expandMacro(token);
+							break;
+						}
+						currentLabel = token.value;
+						break;
 
-				default:
-					throw new Error(`Syntax error in line ${token.line} : ${token.type} ${token.value}`);
+					case "OPERATOR":
+						if (token.value === "=" && currentLabel) {
+							const directiveContext: DirectiveContext = {
+								filename: this.streamManager?.currentFilepath ?? "linker",
+								PC: this.PC,
+								currentLabel,
+								macroArgs: (parser.tokenStreamStack[parser.tokenStreamStack.length - 1] as StreamState).macroArgs,
+								emitbytes: (_bytes: number[]) => {},
+							};
+							if (!dispatcher.dispatch(token, directiveContext)) throw AsmError.at(`Syntax error - Unexpected directive '${token.value}'`, token);
+							break;
+						}
+						break;
+
+					default:
+						throw AsmError.at(`Syntax error - Unexpected ${token.type} '${token.value}'`, token);
+				}
 			}
+
+			// What follows is about the whole output, not a statement.
+			statementToken = undefined;
+
+			if (!this.finalSegment.resizable && this.finalSegment.data.length) {
+				const padding = new Array(this.finalSegment.size - this.finalSegment.data.length).fill(this.finalSegment.padValue ?? 0);
+				this.finalSegment.data = this.finalSegment.data.concat(padding);
+			}
+
+			for (const section of this.linkerSections) this.finalSegment.data.splice(section.start, section.data.length, ...section.data);
+
+			if (this.finalSegment.data.length > this.finalSegment.size)
+				throw new Error(
+					`Output file is too large. Max size is ${this.finalSegment.size} bytes, but the linker output is ${this.finalSegment.data.length} bytes`,
+				);
+		} catch (e) {
+			throw errorLocator.toAsmError(e);
 		}
-
-		if (!this.finalSegment.resizable && this.finalSegment.data.length) {
-			const padding = new Array(this.finalSegment.size - this.finalSegment.data.length).fill(this.finalSegment.padValue ?? 0);
-			this.finalSegment.data = this.finalSegment.data.concat(padding);
-		}
-
-		for (const section of this.linkerSections) this.finalSegment.data.splice(section.start, section.data.length, ...section.data);
-
-		if (this.finalSegment.data.length > this.finalSegment.size)
-			throw new Error(`Output file is too large. Max size is ${this.finalSegment.size} bytes, but the linker output is ${this.finalSegment.data.length} bytes`);
 
 		runtime.logger.log(`\nOUTPUT FILE: ${this.finalSegment.name}`);
 		runtime.logger.log("\n--- Linker End ---");
@@ -448,7 +464,7 @@ export class Linker {
 			}
 
 			default:
-				throw new Error(`Unknown system variable: ${nameToken.value} on line ${nameToken.line}.`);
+				throw AsmError.at(`Unknown system variable: ${nameToken.value}.`, nameToken);
 		}
 	}
 }
