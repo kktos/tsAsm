@@ -101,4 +101,16 @@ describe(".FOR...OF", () => {
 		const arr = assembler.symbolTable.lookupSymbol("arr");
 		expect(arr).toEqual([10, 20]);
 	});
+
+	it.each([
+		[".for x of list\n.db x\n.end\nlist = [1, 2]", "'LIST'"],
+		[".for x of list AS i\n.db x\n.end\nlist .equ [1, 2]", "'LIST'"],
+	])("should throw when the array uses a symbol defined later: %j", (source, symbol) => {
+		expect(() => assembler.assemble(source)).toThrow(
+			expect.objectContaining({
+				message: `.FOR: ${symbol} must be defined before it is used here (the array is needed to place what follows).`,
+				location: expect.objectContaining({ line: 1 }),
+			}),
+		);
+	});
 });

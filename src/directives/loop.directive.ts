@@ -1,5 +1,6 @@
 import type { SymbolValue } from "../assembler/symbol.class";
 import type { IdentifierToken, ScalarToken, Token } from "../shared/lexer/lexer.class";
+import { undefinedSymbolName } from "../utils/symbol.utils";
 import type { DirectiveContext, DirectiveRuntime, IDirective } from "./directive.interface";
 
 interface LoopState {
@@ -66,6 +67,11 @@ export class LoopDirective implements IDirective {
 
 		// Resolve the array from the symbol table
 		const arrayValue = this.runtime.evaluator.evaluate(expressionTokens, context) as SymbolValue[];
+		// A symbol defined later is unknown in pass 1, where the number of iterations is needed to place what follows.
+		if (arrayValue === null)
+			throw new Error(
+				`.FOR: ${undefinedSymbolName(expressionTokens, context, this.runtime.symbolTable)} must be defined before it is used here (the array is needed to place what follows).`,
+			);
 		// if (!Array.isArray(arrayValue))
 		if (typeof arrayValue !== "object" || typeof arrayValue[Symbol.iterator] !== "function")
 			throw new Error(
@@ -110,6 +116,10 @@ export class LoopDirective implements IDirective {
 		if (asPos !== -1) iteratorToken = countExpressionTokens[asPos + 1] as IdentifierToken;
 
 		const count = this.runtime.evaluator.evaluateAsNumber(exprTokens, context);
+		if (count === null)
+			throw new Error(
+				`.REPEAT: ${undefinedSymbolName(exprTokens, context, this.runtime.symbolTable)} must be defined before it is used here (the count is needed to place what follows).`,
+			);
 		if (!Number.isInteger(count) || (count as number) < 0) throw new Error(`.REPEAT count: ${count} isn't a whole number (0 or more).`);
 
 		// Find loop body
