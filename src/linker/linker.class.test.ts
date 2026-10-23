@@ -266,10 +266,10 @@ describe("Linker", () => {
 			const logger = {
 				log: () => {},
 				warn: () => {},
-				error: (m: any) => {
-					throw new Error(m);
+				error: (m: unknown) => {
+					throw new Error(String(m));
 				},
-			} as any;
+			} as unknown as Logger;
 			const result = linker.link(script, undefined, logger);
 
 			expect(result.data).toEqual([0xaa, 0xff, 0x11, 0x22, 0x33, 0xcc, 0xdd]);
@@ -301,10 +301,10 @@ describe("Linker", () => {
 			const logger = {
 				log: () => {},
 				warn: () => {},
-				error: (m: any) => {
-					throw new Error(m);
+				error: (m: unknown) => {
+					throw new Error(String(m));
 				},
-			} as any;
+			} as unknown as Logger;
 			const result = linker.link(script, undefined, logger);
 
 			expect(result.data).toEqual([0xaa, 0xbb, 0xcc]);
@@ -315,10 +315,10 @@ describe("Linker", () => {
 		const logger = {
 			log: () => {},
 			warn: () => {},
-			error: (m: any) => {
-				throw new Error(m);
+			error: (m: unknown) => {
+				throw new Error(String(m));
 			},
-		} as any;
+		} as unknown as Logger;
 
 		it.each([
 			["a number", ".WRITE BYTE $12", [0x12]],
@@ -400,10 +400,10 @@ describe("Linker", () => {
 			const logger = {
 				log: () => {},
 				warn: () => {},
-				error: (m: any) => {
-					throw new Error(m);
+				error: (m: unknown) => {
+					throw new Error(String(m));
 				},
-			} as any;
+			} as unknown as Logger;
 			const result = linker.link(script, undefined, logger);
 
 			// Map access: 0x10, 0x20. Array iteration: 0x10, 0x20.
@@ -466,7 +466,7 @@ describe("Linker", () => {
 			mockFiles.set("included.ld", includedScript);
 
 			// 3. Run the linker
-			const logger = { log: () => {}, warn: () => {}, error: (m: any) => console.error(m) } as any;
+			const logger = { log: () => {}, warn: () => {}, error: (m: unknown) => console.error(m) } as unknown as Logger;
 			const result = linker.link(mainScript, undefined, logger);
 
 			// 4. Assert the output
@@ -497,7 +497,7 @@ describe("Linker", () => {
 			`;
 
 			// 2. Run the linker
-			const logger = { log: () => {}, warn: () => {}, error: (m: any) => console.error(m) } as any;
+			const logger = { log: () => {}, warn: () => {}, error: (m: unknown) => console.error(m) } as unknown as Logger;
 			const result = linker.link(script, undefined, logger);
 
 			// 3. Assert the output
@@ -524,7 +524,7 @@ describe("Linker", () => {
 			`;
 
 			// 2. Run the linker
-			const logger = { log: () => {}, warn: () => {}, error: (m: any) => console.error(m) } as any;
+			const logger = { log: () => {}, warn: () => {}, error: (m: unknown) => console.error(m) } as unknown as Logger;
 			const result = linker.link(script, undefined, logger);
 
 			// 3. Assert the output
@@ -580,7 +580,7 @@ describe("Linker", () => {
 				.WRITE BYTE 0xFF
 				.WRITE MODULE("MODULE1")
 			`;
-			const logger = { log: () => {}, warn: () => {}, error: (m: any) => console.error(m) } as any;
+			const logger = { log: () => {}, warn: () => {}, error: (m: unknown) => console.error(m) } as unknown as Logger;
 			const result = linker.link(script, undefined, logger);
 
 			// Expected: MOD2_CODE, 0xFF, MOD1_CODE, MOD1_DATA
@@ -608,7 +608,7 @@ describe("Linker", () => {
 					.WRITE MODULE(m.name)
 				.END
 			`;
-			const logger = { log: () => {}, warn: () => {}, error: (m: any) => console.error(m) } as any;
+			const logger = { log: () => {}, warn: () => {}, error: (m: unknown) => console.error(m) } as unknown as Logger;
 			const result = linker.link(script, undefined, logger);
 
 			// Expected: MODULE1 (0x11, 0x11) then MODULE2 (0x22, 0x22) via loop

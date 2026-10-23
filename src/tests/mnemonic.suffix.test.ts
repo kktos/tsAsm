@@ -37,16 +37,13 @@ describe("Mnemonic suffixes", () => {
 			expect(assemble(cpu(), "lda.w later\nlater = 5")).toEqual([0xad, 0x05, 0x00]);
 		});
 
-		it.each([
-			"nop.b",
-			"lda.w #1",
-			"asl.b a",
-			"lda.b ($10),y",
-			"bne.w next\nnext: nop",
-		])("should throw on a suffix for an operand that isn't a zero page or absolute address: %j", (source) => {
-			const suffix = source.split(/[ \n]/)[0]?.split(".")[1]?.toUpperCase();
-			expect(() => assemble(cpu(), source)).toThrow(`.${suffix} only applies to an address that can be zero page or absolute.`);
-		});
+		it.each(["nop.b", "lda.w #1", "asl.b a", "lda.b ($10),y", "bne.w next\nnext: nop"])(
+			"should throw on a suffix for an operand that isn't a zero page or absolute address: %j",
+			(source) => {
+				const suffix = source.split(/[ \n]/)[0]?.split(".")[1]?.toUpperCase();
+				expect(() => assemble(cpu(), source)).toThrow(`.${suffix} only applies to an address that can be zero page or absolute.`);
+			},
+		);
 
 		it.each([
 			["jmp.b $10", "'JMP.B': JMP has no zero page form."],

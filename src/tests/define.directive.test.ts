@@ -293,15 +293,14 @@ describe(".DEFINE Directive", () => {
 			);
 		});
 
-		it.each([
-			".DEFINE MY_SYMBOL",
-			"  nop\n.DEFINE MY_SYMBOL",
-			".DEFINE MY_SYMBOL AS TEXT",
-		])("should ask for the .END of a block started on the last line, without a newline: %j", (source) => {
-			expect(() => createTextAssembler().assemble(source)).toThrow(
-				expect.objectContaining({ message: "Missing .END for the .DEFINE block.", location: expect.objectContaining({ line: source.split("\n").length }) }),
-			);
-		});
+		it.each([".DEFINE MY_SYMBOL", "  nop\n.DEFINE MY_SYMBOL", ".DEFINE MY_SYMBOL AS TEXT"])(
+			"should ask for the .END of a block started on the last line, without a newline: %j",
+			(source) => {
+				expect(() => createTextAssembler().assemble(source)).toThrow(
+					expect.objectContaining({ message: "Missing .END for the .DEFINE block.", location: expect.objectContaining({ line: source.split("\n").length }) }),
+				);
+			},
+		);
 
 		it("should end the block on a .END followed by a comment", () => {
 			const assembler = createTextAssembler();
