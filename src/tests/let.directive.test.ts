@@ -51,7 +51,12 @@ describe(".LET directive", () => {
 			expect(() => asm.assemble(src)).toThrow(
 				expect.objectContaining({
 					message: "Can't redefine constant 'FOO'.",
-					notes: [expect.objectContaining({ message: "defined here", location: expect.objectContaining({ line: 2 }) })],
+					notes: [
+						expect.objectContaining({
+							message: "defined here",
+							location: expect.objectContaining({ line: 2 }),
+						}),
+					],
 				}),
 			);
 		});
@@ -76,7 +81,12 @@ describe(".LET directive", () => {
 			expect(() => asm.assemble(src)).toThrow(
 				expect.objectContaining({
 					message: "Symbol 'FOO' redefined.",
-					notes: [expect.objectContaining({ message: "first defined here", location: expect.objectContaining({ line: 2 }) })],
+					notes: [
+						expect.objectContaining({
+							message: "first defined here",
+							location: expect.objectContaining({ line: 2 }),
+						}),
+					],
 				}),
 			);
 		});

@@ -20,7 +20,11 @@ describe("Bug Fixes", () => {
 		const logger = new Logger({ sink, enabled: true });
 		cpu65C02 = new Cpu65C02Handler();
 		mockFileHandler = new MockFileHandler();
-		assembler = new Assembler(cpu65C02, mockFileHandler, { logger, segments: DEFAULT_SEGMENTS, log: { pass1Enabled: true, pass2Enabled: true } });
+		assembler = new Assembler(cpu65C02, mockFileHandler, {
+			logger,
+			segments: DEFAULT_SEGMENTS,
+			log: { pass1Enabled: true, pass2Enabled: true },
+		});
 	});
 
 	it("should access forward references correctly in function - clearScreen bug", () => {

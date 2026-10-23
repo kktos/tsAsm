@@ -22,7 +22,11 @@ const fakeCPU = {
 describe(".ALIGN", () => {
 	const createAssembler = (segments: SegmentDefinition[], logger?: Logger) => {
 		const mockFileHandler = new MockFileHandler();
-		return new Assembler(fakeCPU, mockFileHandler, { segments, logger, log: { pass1Enabled: true, pass2Enabled: true } });
+		return new Assembler(fakeCPU, mockFileHandler, {
+			segments,
+			logger,
+			log: { pass1Enabled: true, pass2Enabled: true },
+		});
 	};
 
 	it("should align the PC to the next boundary", () => {

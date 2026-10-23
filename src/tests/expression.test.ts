@@ -425,7 +425,10 @@ describe("ExpressionEvaluator", () => {
 			const tokens = tokenize("UndefinedSymbol");
 			// located at the symbol's token
 			expect(() => evaluator.evaluateAsNumber(tokens, { PC: { value: 0 } })).toThrow(
-				expect.objectContaining({ message: "Undefined symbol 'UNDEFINEDSYMBOL'.", location: { line: 1, column: 1 } }),
+				expect.objectContaining({
+					message: "Undefined symbol 'UNDEFINEDSYMBOL'.",
+					location: { line: 1, column: 1 },
+				}),
 			);
 		});
 
@@ -452,7 +455,10 @@ describe("ExpressionEvaluator", () => {
 			const { evaluator, tokenize } = setup();
 			const tokens = tokenize("5 5 +");
 			expect(() => evaluator.evaluateAsNumber(tokens, { PC: { value: 0 } })).toThrow(
-				expect.objectContaining({ message: "Invalid expression format: Unexpected token '5'.", location: { line: 1, column: 3 } }),
+				expect.objectContaining({
+					message: "Invalid expression format: Unexpected token '5'.",
+					location: { line: 1, column: 3 },
+				}),
 			);
 		});
 	});
@@ -474,7 +480,11 @@ describe("ExpressionEvaluator", () => {
 		});
 		it("should evaluate property access from array item too", () => {
 			const { evaluator, tokenize, symbolTable } = setup();
-			symbolTable.defineVariable("personList", [{ name: "tom" }, { name: "bob" }], { filename: "test", line: 1, column: 1 });
+			symbolTable.defineVariable("personList", [{ name: "tom" }, { name: "bob" }], {
+				filename: "test",
+				line: 1,
+				column: 1,
+			});
 			const tokens = tokenize("personList[1].name");
 			const result = evaluator.evaluate(tokens, { PC: { value: 0 } });
 			expect(result).toEqual("bob");

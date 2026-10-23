@@ -29,7 +29,8 @@ describe("Data Directives", () => {
 		return new Assembler(fakeCPU, mockFileHandler, { segments });
 	};
 	/** An error with this message, located there. */
-	const errorAt = (message: string, line: number, column: number) => expect.objectContaining({ message, location: expect.objectContaining({ line, column }) });
+	const errorAt = (message: string, line: number, column: number) =>
+		expect.objectContaining({ message, location: expect.objectContaining({ line, column }) });
 
 	it("should handle .DB with single and multiple numbers", () => {
 		const assembler = createAssembler();
@@ -115,7 +116,10 @@ describe("Data Directives", () => {
 	it("should compute the data size in pass one and in pass two", () => {
 		const sink = new MemorySink();
 		const logger = new Logger({ sink, enabled: true });
-		const assembler = new Assembler(new Cpu65C02Handler(), new MockFileHandler(), { logger, log: { pass1Enabled: true, pass2Enabled: true } });
+		const assembler = new Assembler(new Cpu65C02Handler(), new MockFileHandler(), {
+			logger,
+			log: { pass1Enabled: true, pass2Enabled: true },
+		});
 
 		const source = `
 				bra test
@@ -151,7 +155,10 @@ describe("Data Directives", () => {
 		const ARRAY = "value: an array can't be emitted as is: index it to emit one of its elements, or spread it (...) to emit them all.";
 		const OBJECT = ".DB value: an object can't be emitted as is: use one of its fields.";
 		const createJsonAssembler = () => {
-			const rawDataProcessors = { default: "JSON", map: new Map([["JSON", (block: string) => JSON.parse(block)]]) };
+			const rawDataProcessors = {
+				default: "JSON",
+				map: new Map([["JSON", (block: string) => JSON.parse(block)]]),
+			};
 			return new Assembler(fakeCPU, new MockFileHandler(), { segments: DEFAULT_SEGMENTS, rawDataProcessors });
 		};
 
@@ -264,7 +271,9 @@ describe("Data Directives", () => {
 				.DB ...t
 				t = [1, 2]
 			`;
-			expect(() => assemble(source)).toThrow(errorAt(".DB: 'T' must be defined before it is used here (its length is needed to place what follows).", 2, 9));
+			expect(() => assemble(source)).toThrow(
+				errorAt(".DB: 'T' must be defined before it is used here (its length is needed to place what follows).", 2, 9),
+			);
 		});
 
 		it("should check each element's range", () => {
@@ -319,7 +328,9 @@ describe("Data Directives", () => {
 		});
 
 		it("should follow the CPU selected with .CPU", () => {
-			expect(assembleWith(new Cpu65C02Handler(), '.DW $1234\n.CPU "6809"\n.DW $1234\n.CPU "65C02"\n.DW $1234')).toEqual([0x34, 0x12, 0x12, 0x34, 0x34, 0x12]);
+			expect(assembleWith(new Cpu65C02Handler(), '.DW $1234\n.CPU "6809"\n.DW $1234\n.CPU "65C02"\n.DW $1234')).toEqual([
+				0x34, 0x12, 0x12, 0x34, 0x34, 0x12,
+			]);
 		});
 	});
 });

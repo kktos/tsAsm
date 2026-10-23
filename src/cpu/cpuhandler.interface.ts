@@ -22,7 +22,10 @@ export interface ModeInfo {
 }
 
 /** What encodeInstruction gets, in pass 2: the operand's value is known, and the PC is added. */
-export type ResolvedModeInfo<TModeInfo extends ModeInfo = ModeInfo> = TModeInfo & { resolvedAddress: number; pc: number };
+export type ResolvedModeInfo<TModeInfo extends ModeInfo = ModeInfo> = TModeInfo & {
+	resolvedAddress: number;
+	pc: number;
+};
 
 export interface CPUHandler<TModeInfo extends ModeInfo = ModeInfo> {
 	cpuType: string;

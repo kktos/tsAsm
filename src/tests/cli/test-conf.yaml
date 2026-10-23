@@ -1,12 +1,12 @@
 src: src/main.asm
 out: test.bin
 options:
-  symbols: true
-  listing: true
-  segments: true
+    symbols: true
+    listing: true
+    segments: true
 
 link:
-  post: jsasm/post-link.mjs
+    post: jsasm/post-link.mjs
 
 # segments:
 

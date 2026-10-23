@@ -6,10 +6,10 @@ The project file names the script:
 
 ```yaml
 output:
-  object:
-    path: game.bin
-  linker:
-    script: rom.ld
+    object:
+        path: game.bin
+    linker:
+        script: rom.ld
 ```
 
 Without a script, the segments are written directly to `output.object.path`, each at its address relative to the lowest one. With a script, the script decides, and the file is written once the script has run. The script runs after the assembly, and only when linking is on (`--link true`, the default).
@@ -55,13 +55,13 @@ A 64-byte ROM: the code, then the other segments, then the 6 bytes of `VECTORS` 
 
 A linker script is written like assembler source: directives start with a dot, are case-insensitive, and take the same [expressions](../../REFERENCE.md#values-and-expressions) (numbers, strings, arrays, objects, operators, [system functions](../../REFERENCE.md#system-functions)).
 
-- **Comments** start with `#`, or are written `//` and `/* … */`. `;` is *not* a comment: that is what tells a linker script from assembler source.
+- **Comments** start with `#`, or are written `//` and `/* … */`. `;` is _not_ a comment: that is what tells a linker script from assembler source.
 - **Variables** are assigned with `=`, and can be reassigned:
 
-  ```as
-  romSize = 32 * 1024
-  .OUTPUT "game.rom" FIXED romSize
-  ```
+    ```as
+    romSize = 32 * 1024
+    .OUTPUT "game.rom" FIXED romSize
+    ```
 
 - There are no labels and no CPU instructions.
 - **Errors** are reported like the assembler's: `rom.ld:3:16: error: Segment 'NOPE' not found.`, then the script line with a caret under the column. In an included script or a macro body, they say through which `.INCLUDE` or macro call it was reached. Warnings (`.WARNING`) are located the same way.
@@ -85,15 +85,15 @@ The script writes to the output file, one item after the other. `.PC` is the off
 .WRITE <type> <value> [AT <offset>]
 ```
 
-| Type | Writes |
-|---|---|
-| `SEGMENT <name>` | The content of a segment, padded to its size when it is a fixed segment |
-| `MODULE <name>` | Every segment of a [module](#modules), in the order they were first used |
-| `BYTE <value>` | A byte, `0` to `255` |
-| `WORD <value>` | 2 bytes, `0` to `$FFFF` |
-| `LONG <value>` | 4 bytes, `0` to `$FFFFFFFF` |
-| `BYTES <array>` | The bytes of an array |
-| `STRING <string>` | The characters of a string, one byte each |
+| Type              | Writes                                                                   |
+| ----------------- | ------------------------------------------------------------------------ |
+| `SEGMENT <name>`  | The content of a segment, padded to its size when it is a fixed segment  |
+| `MODULE <name>`   | Every segment of a [module](#modules), in the order they were first used |
+| `BYTE <value>`    | A byte, `0` to `255`                                                     |
+| `WORD <value>`    | 2 bytes, `0` to `$FFFF`                                                  |
+| `LONG <value>`    | 4 bytes, `0` to `$FFFFFFFF`                                              |
+| `BYTES <array>`   | The bytes of an array                                                    |
+| `STRING <string>` | The characters of a string, one byte each                                |
 
 ```as
 .WRITE SEGMENT "CODE"
@@ -113,12 +113,12 @@ A segment can be written more than once: each write appends a copy.
 
 The assembler's data directives work too, and always append:
 
-| Directive | Writes |
-|---|---|
-| `.byte`, `.word`, `.long` `<value> [, <value> …]` | 8, 16, 32-bit values, in the `.ENDIAN` byte order |
-| `.string`, `.cstring`, `.pstring`, `.pstringlong` `"<text>"` | A string: plain, zero-terminated, preceded by its length on 1 byte, on 2 bytes |
-| `.fill <count> [, <value>]` | `count` bytes of `value` (default `0`) |
-| `.align <boundary> [, <value>]` | `value` bytes (default `0`) up to the next multiple of `boundary`, counted from the start of the output |
+| Directive                                                    | Writes                                                                                                  |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| `.byte`, `.word`, `.long` `<value> [, <value> …]`            | 8, 16, 32-bit values, in the `.ENDIAN` byte order                                                       |
+| `.string`, `.cstring`, `.pstring`, `.pstringlong` `"<text>"` | A string: plain, zero-terminated, preceded by its length on 1 byte, on 2 bytes                          |
+| `.fill <count> [, <value>]`                                  | `count` bytes of `value` (default `0`)                                                                  |
+| `.align <boundary> [, <value>]`                              | `value` bytes (default `0`) up to the next multiple of `boundary`, counted from the start of the output |
 
 ## Sections
 
@@ -188,15 +188,15 @@ The script writes a whole module with `.WRITE MODULE`:
 
 Read-only values, prefixed with a dot.
 
-| Variable | Value |
-|---|---|
-| `.pc` | Offset in the output where the next item goes |
-| `.image_end` | The size of the output: its `FIXED` size, otherwise what has been written so far |
-| `.filename` | The current script file |
-| `.segments_list` | Every segment, as an array of [segments](#segments-and-modules) |
-| `.unwritten_segments` | The segments not written yet |
-| `.modules_list` | Every module, as an array of [modules](#segments-and-modules) |
-| `.unwritten_modules` | The modules not written yet |
+| Variable              | Value                                                                            |
+| --------------------- | -------------------------------------------------------------------------------- |
+| `.pc`                 | Offset in the output where the next item goes                                    |
+| `.image_end`          | The size of the output: its `FIXED` size, otherwise what has been written so far |
+| `.filename`           | The current script file                                                          |
+| `.segments_list`      | Every segment, as an array of [segments](#segments-and-modules)                  |
+| `.unwritten_segments` | The segments not written yet                                                     |
+| `.modules_list`       | Every module, as an array of [modules](#segments-and-modules)                    |
+| `.unwritten_modules`  | The modules not written yet                                                      |
 
 The function `.segment("<name>")` returns a segment by name.
 
@@ -217,21 +217,21 @@ Read the fields from a variable: `.segment("CODE").size` doesn't work.
 
 ## Other directives
 
-| Directive | Effect |
-|---|---|
-| `.include "<file>"` | Run another script file, relative to the current one |
-| `.if` / `.else` / `.end` | [Conditional](../../REFERENCE.md#conditional-assembly) |
-| `.for … of …` / `.repeat` | [Loops](../../REFERENCE.md#loops) |
-| `.macro` / `.end` | [Macros](../../REFERENCE.md#macros), called by name |
-| `.log`, `.warning`, `.error` `<value> [, <value> …]` | Print the values; `.error` stops the link |
+| Directive                                            | Effect                                                 |
+| ---------------------------------------------------- | ------------------------------------------------------ |
+| `.include "<file>"`                                  | Run another script file, relative to the current one   |
+| `.if` / `.else` / `.end`                             | [Conditional](../../REFERENCE.md#conditional-assembly) |
+| `.for … of …` / `.repeat`                            | [Loops](../../REFERENCE.md#loops)                      |
+| `.macro` / `.end`                                    | [Macros](../../REFERENCE.md#macros), called by name    |
+| `.log`, `.warning`, `.error` `<value> [, <value> …]` | Print the values; `.error` stops the link              |
 
 `.log` writes to the listing, with the linker's own report (`--- Linker Begin ---`, the output file name, `--- Linker End ---`), when the project file turns the linker's listing on. Warnings and errors always go to the console as well.
 
 ```yaml
 output:
-  listing:
-    enabled: true
-    linker: true
+    listing:
+        enabled: true
+        linker: true
 ```
 
 ## Limitations

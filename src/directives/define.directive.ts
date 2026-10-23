@@ -96,7 +96,11 @@ export class DefineDirective implements IDirective {
 		const value = processor ? processor(blockContent, context) : blockContent;
 
 		if (pass === 1)
-			this.assembler.symbolTable.defineVariable(symbolNameToken.value, value, { filename: context.filename, line: directive.line, column: directive.column });
+			this.assembler.symbolTable.defineVariable(symbolNameToken.value, value, {
+				filename: context.filename,
+				line: directive.line,
+				column: directive.column,
+			});
 		else this.assembler.symbolTable.assignVariable(symbolNameToken.value, value);
 
 		this.lister.directive(directive, symbolNameToken.value);

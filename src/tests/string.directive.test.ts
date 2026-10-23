@@ -94,7 +94,10 @@ describe("String Directives", () => {
             .TEXT 12345
         `;
 		expect(() => assembler.assemble(source)).toThrow(
-			expect.objectContaining({ message: ".TEXT expression must evaluate to a string.", location: expect.objectContaining({ line: 2 }) }),
+			expect.objectContaining({
+				message: ".TEXT expression must evaluate to a string.",
+				location: expect.objectContaining({ line: 2 }),
+			}),
 		);
 	});
 
@@ -105,7 +108,10 @@ describe("String Directives", () => {
             .PSTR "${longString}"
         `;
 		expect(() => assembler.assemble(source)).toThrow(
-			expect.objectContaining({ message: ".PSTR string length cannot exceed 255 bytes.", location: expect.objectContaining({ line: 2 }) }),
+			expect.objectContaining({
+				message: ".PSTR string length cannot exceed 255 bytes.",
+				location: expect.objectContaining({ line: 2 }),
+			}),
 		);
 	});
 
@@ -186,7 +192,9 @@ describe("String Directives", () => {
 		['.pstr msg\nmsg = "hi"', ".PSTR: 'MSG'"],
 		['.macro m s\n.text s\n.end\n m msg\nmsg = "hi"', ".TEXT: 'MSG'"],
 	])("should throw when the string uses a symbol defined later: %j", (source, message) => {
-		expect(() => createAssembler().assemble(source)).toThrow(`${message} must be defined before it is used here (its length is needed to place what follows).`);
+		expect(() => createAssembler().assemble(source)).toThrow(
+			`${message} must be defined before it is used here (its length is needed to place what follows).`,
+		);
 	});
 
 	it("should throw when the value isn't a string", () => {

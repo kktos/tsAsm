@@ -35,7 +35,8 @@ const ranges = {
 };
 export function pushSignedNumber(list: number[], value: number, bitSize: 8 | 16 | 32, isLittleEndian: boolean) {
 	const { min, max } = ranges[bitSize];
-	if (!Number.isInteger(value) || value < min || value > max) throw new RangeError(`Value ${value} out of range for signed ${bitSize}-bit (${min} to ${max})`);
+	if (!Number.isInteger(value) || value < min || value > max)
+		throw new RangeError(`Value ${value} out of range for signed ${bitSize}-bit (${min} to ${max})`);
 	// 2 ** bitSize, not 1 << bitSize: JS shifts are 32-bit, so 1 << 32 is 1.
 	const unsignedValue = value < 0 ? 2 ** bitSize + value : value;
 	const converter = converters[isLittleEndian ? 0 : 1][bitSize];

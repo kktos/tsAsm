@@ -43,7 +43,10 @@ describe("File Directive .INCBIN", () => {
 		});
 
 		expect(() => assembler.assemble(source)).toThrow(
-			expect.objectContaining({ message: "Can't include binary file 'nonexistent.bin': File not found", location: expect.objectContaining({ line: 1 }) }),
+			expect.objectContaining({
+				message: "Can't include binary file 'nonexistent.bin': File not found",
+				location: expect.objectContaining({ line: 1 }),
+			}),
 		);
 		expect(readBinaryFileSpy).toHaveBeenCalledWith("nonexistent.bin");
 	});
@@ -53,7 +56,10 @@ describe("File Directive .INCBIN", () => {
 		const source = ".INCBIN";
 
 		expect(() => assembler.assemble(source)).toThrow(
-			expect.objectContaining({ message: ".INCBIN requires a string argument.", location: expect.objectContaining({ line: 1 }) }),
+			expect.objectContaining({
+				message: ".INCBIN requires a string argument.",
+				location: expect.objectContaining({ line: 1 }),
+			}),
 		);
 	});
 });

@@ -1,4 +1,3 @@
 allowBuilds:
-  '@biomejs/biome': true
-  rollup: true
-  esbuild: false
+    rollup: true
+    esbuild: false

@@ -47,7 +47,8 @@ export class ErrorLocator {
 		if (!this.streamManager) return error;
 
 		location.file ??= this.streamManager.currentFilepath;
-		if (error.sourceLine === undefined && typeof location.line === "number") error.sourceLine = this.streamManager.getSourceLine(location.file, location.line);
+		if (error.sourceLine === undefined && typeof location.line === "number")
+			error.sourceLine = this.streamManager.getSourceLine(location.file, location.line);
 		// The includes lead to the current file: the last place shown, the outermost macro call or else the error itself.
 		const lastFile = error.macroStack.at(-1)?.calledAt.file ?? location.file;
 		if (error.includeStack.length === 0 && lastFile === this.streamManager.currentFilepath) error.includeStack = this.streamManager.includeStack;
@@ -78,7 +79,11 @@ export class ErrorLocator {
 			if (!macroName || !macroCall) continue;
 			error.macroStack.push({
 				name: macroCall.raw ?? macroName,
-				calledAt: { file: definitionFile(index - 1) ?? this.streamManager?.currentFilepath, line: bodyLine(macroCall.line), column: macroCall.column },
+				calledAt: {
+					file: definitionFile(index - 1) ?? this.streamManager?.currentFilepath,
+					line: bodyLine(macroCall.line),
+					column: macroCall.column,
+				},
 			});
 		}
 	}

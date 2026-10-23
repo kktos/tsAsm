@@ -274,8 +274,7 @@ describe("AssemblyLexer", () => {
 			{ type: "IDENTIFIER", value: "DEFINE", raw: "DEFINE" },
 			{
 				type: "RAW_TEXT",
-				value:
-					"					This is some raw data.\n					It can span multiple lines.\n					The lexer should preserve it.\n					LDA #$10 ; this is inside raw",
+				value: "					This is some raw data.\n					It can span multiple lines.\n					The lexer should preserve it.\n					LDA #$10 ; this is inside raw",
 				raw: undefined,
 			},
 			{ type: "IDENTIFIER", value: "JMP", raw: "JMP" },
@@ -307,7 +306,10 @@ describe("AssemblyLexer", () => {
 		["NOP\n  LDA #'A", "'", 2, 8],
 	])("should throw on an unterminated string, at its opening quote: %j", (source, quote, line, column) => {
 		expect(() => lexer.tokenize(source)).toThrow(
-			expect.objectContaining({ message: `Unterminated string: missing closing ${quote}.`, location: { line, column } }),
+			expect.objectContaining({
+				message: `Unterminated string: missing closing ${quote}.`,
+				location: { line, column },
+			}),
 		);
 	});
 
@@ -317,7 +319,12 @@ describe("AssemblyLexer", () => {
 		[".DB 1 /* AB*", 1, 7],
 		["NOP\n/* A\nB\n.DB 2", 2, 1],
 	])("should throw on an unterminated comment, at its /*: %j", (source, line, column) => {
-		expect(() => lexer.tokenize(source)).toThrow(expect.objectContaining({ message: "Unterminated comment: missing closing */.", location: { line, column } }));
+		expect(() => lexer.tokenize(source)).toThrow(
+			expect.objectContaining({
+				message: "Unterminated comment: missing closing */.",
+				location: { line, column },
+			}),
+		);
 	});
 
 	test.each([
@@ -362,6 +369,8 @@ describe("AssemblyLexer", () => {
 
 	test("should skip a byte order mark at the start of the source only", () => {
 		expect(lexer.tokenize("﻿NOP")).toEqual([{ type: "IDENTIFIER", value: "NOP", raw: "NOP", line: 1, column: 1 }]);
-		expect(() => lexer.tokenize("NOP﻿")).toThrow(expect.objectContaining({ message: "Unexpected character '﻿' (U+FEFF).", location: { line: 1, column: 4 } }));
+		expect(() => lexer.tokenize("NOP﻿")).toThrow(
+			expect.objectContaining({ message: "Unexpected character '﻿' (U+FEFF).", location: { line: 1, column: 4 } }),
+		);
 	});
 });

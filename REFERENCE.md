@@ -92,17 +92,17 @@ Data directives only emit numbers and strings: `.db list` is an error. Index the
 
 ### Operators
 
-| Operators | Meaning |
-|---|---|
-| `+` `-` `*` `/` `%` | Arithmetic. `/` is not an integer division: `7 / 2` is `3.5` (see `.floor`, `.ceil`, `.round`). |
-| `-` (unary) | Negation |
-| `<<` `>>` | Shifts |
-| `&` `\|` `^` | Bitwise AND, OR, XOR. Bitwise and shift results are 32-bit: unsigned when the operands are not negative (`$80000000 >> 4` is `$08000000`), signed (two's complement) when one is (`-8 >> 1` is `-4`). |
-| `=` or `==`, `!=` | Equality. Works on numbers and on strings. |
-| `<` `<=` `>` `>=` | Numeric comparison |
-| `!` `&&` `\|\|` | Logical NOT, AND, OR. The result is `1` (true) or `0` (false). |
-| `<` `>` (unary) | Low byte and high byte of a 16-bit value |
-| `+` on strings | Concatenation: `"A" + "B"` is `"AB"` |
+| Operators           | Meaning                                                                                                                                                                                               |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `+` `-` `*` `/` `%` | Arithmetic. `/` is not an integer division: `7 / 2` is `3.5` (see `.floor`, `.ceil`, `.round`).                                                                                                       |
+| `-` (unary)         | Negation                                                                                                                                                                                              |
+| `<<` `>>`           | Shifts                                                                                                                                                                                                |
+| `&` `\|` `^`        | Bitwise AND, OR, XOR. Bitwise and shift results are 32-bit: unsigned when the operands are not negative (`$80000000 >> 4` is `$08000000`), signed (two's complement) when one is (`-8 >> 1` is `-4`). |
+| `=` or `==`, `!=`   | Equality. Works on numbers and on strings.                                                                                                                                                            |
+| `<` `<=` `>` `>=`   | Numeric comparison                                                                                                                                                                                    |
+| `!` `&&` `\|\|`     | Logical NOT, AND, OR. The result is `1` (true) or `0` (false).                                                                                                                                        |
+| `<` `>` (unary)     | Low byte and high byte of a 16-bit value                                                                                                                                                              |
+| `+` on strings      | Concatenation: `"A" + "B"` is `"AB"`                                                                                                                                                                  |
 
 Precedence follows [ca65](https://cc65.github.io/doc/ca65.html#ss5.5), from the tightest binding to the loosest. Operators on the same line are evaluated left to right.
 
@@ -223,15 +223,15 @@ The linker script writes a module's segments with `.WRITE MODULE "GAME"`. Withou
 
 ## Data
 
-| Directive | Emits |
-|---|---|
-| `.db` / `.byte` | 8-bit values |
-| `.dw` / `.word` | 16-bit values, in the CPU's byte order |
-| `.dl` / `.long` | 32-bit values, in the CPU's byte order |
-| `.fill` / `.ds` / `.res` `<count> [, <value>]` | `count` bytes of `value` (default `0`); `count` is a whole number, 0 or more |
-| `.align <boundary> [, <value>]` | `value` bytes (default `0`) up to the next multiple of `boundary`, which must be a power of two |
-| `.hex` | Bytes written as hexadecimal digits |
-| `.incbin "<file>"` | The content of a binary file |
+| Directive                                      | Emits                                                                                           |
+| ---------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `.db` / `.byte`                                | 8-bit values                                                                                    |
+| `.dw` / `.word`                                | 16-bit values, in the CPU's byte order                                                          |
+| `.dl` / `.long`                                | 32-bit values, in the CPU's byte order                                                          |
+| `.fill` / `.ds` / `.res` `<count> [, <value>]` | `count` bytes of `value` (default `0`); `count` is a whole number, 0 or more                    |
+| `.align <boundary> [, <value>]`                | `value` bytes (default `0`) up to the next multiple of `boundary`, which must be a power of two |
+| `.hex`                                         | Bytes written as hexadecimal digits                                                             |
+| `.incbin "<file>"`                             | The content of a binary file                                                                    |
 
 The CPU's byte order is little-endian (`.dw $1234` gives `34 12`), except on the 6809, which is big-endian (`12 34`).
 
@@ -266,12 +266,12 @@ table = [2, 3]
 
 ## Strings
 
-| Directive | Emits |
-|---|---|
-| `.text` / `.str` / `.string` | The characters |
-| `.cstr` / `.cstring` / `.asciiz` | The characters, then a `0` byte |
-| `.pstr` | A length byte, then the characters |
-| `.pstrl` | A 16-bit length in the CPU's byte order, then the characters |
+| Directive                        | Emits                                                        |
+| -------------------------------- | ------------------------------------------------------------ |
+| `.text` / `.str` / `.string`     | The characters                                               |
+| `.cstr` / `.cstring` / `.asciiz` | The characters, then a `0` byte                              |
+| `.pstr`                          | A length byte, then the characters                           |
+| `.pstrl`                         | A 16-bit length in the CPU's byte order, then the characters |
 
 ```as
 .text "AB"      ; 41 42
@@ -338,6 +338,7 @@ colours = ["red", "green", "blue"]
 ```
 
 A loop only generates lines, as if the block were written out once per iteration: it has no scope of its own.
+
 - What the block defines (labels, variables) stays after the loop, and a variable carries over to the next iteration.
 - A label written in a block run more than once is defined more than once, which is an error: branch with [anonymous labels](#labels) (`:` and `:-`) instead.
 - The iterators (`i`, `colour`, `idx`) are local to the loop, like macro parameters: after it, a symbol of the same name has its previous value again.
@@ -429,13 +430,13 @@ Symbols defined inside `.namespace <name>` … `.end namespace` belong to that n
 
 ## Messages and listing
 
-| Directive | Effect |
-|---|---|
-| `.log` / `.echo` / `.out` `<value> [, <value> …]` | Print the values |
-| `.warning` / `.warn` `<value> [, <value> …]` | Print a warning |
-| `.error` / `.err` `<value> [, <value> …]` | Stop the assembly with this error |
-| `.list on` / `.list off` | Turn the listing on or off (when the listing is enabled in the project file) |
-| `.list file = "<name>"` | Write the listing of the current file to another file |
+| Directive                                         | Effect                                                                       |
+| ------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `.log` / `.echo` / `.out` `<value> [, <value> …]` | Print the values                                                             |
+| `.warning` / `.warn` `<value> [, <value> …]`      | Print a warning                                                              |
+| `.error` / `.err` `<value> [, <value> …]`         | Stop the assembly with this error                                            |
+| `.list on` / `.list off`                          | Turn the listing on or off (when the listing is enabled in the project file) |
+| `.list file = "<name>"`                           | Write the listing of the current file to another file                        |
 
 ```as
 .log "count = ", count
@@ -443,58 +444,59 @@ Symbols defined inside `.namespace <name>` … `.end namespace` belong to that n
 
 ## Assembler settings
 
-| Directive | Effect |
-|---|---|
-| `.cpu "65C02"` (aliases `.setcpu`, `.processor`) | Select the CPU |
-| `.option local_label_char "<char>"` | Change the prefix of [local labels](#local-labels) (default `:`) |
+| Directive                                        | Effect                                                           |
+| ------------------------------------------------ | ---------------------------------------------------------------- |
+| `.cpu "65C02"` (aliases `.setcpu`, `.processor`) | Select the CPU                                                   |
+| `.option local_label_char "<char>"`              | Change the prefix of [local labels](#local-labels) (default `:`) |
 
 ## System variables
 
 Read-only values, prefixed with a dot.
 
-| Variable | Value |
-|---|---|
-| `.pc` (or `*`) | Current address |
-| `.namespace` / `.ns` | Current namespace |
-| `.segment` | Current segment, with `.segment.name`, `.segment.start` and `.segment.size` |
-| `.filename`, `.filepath` | Current source file |
-| `.pass` | Current assembler pass (`1` or `2`) |
+| Variable                 | Value                                                                       |
+| ------------------------ | --------------------------------------------------------------------------- |
+| `.pc` (or `*`)           | Current address                                                             |
+| `.namespace` / `.ns`     | Current namespace                                                           |
+| `.segment`               | Current segment, with `.segment.name`, `.segment.start` and `.segment.size` |
+| `.filename`, `.filepath` | Current source file                                                         |
+| `.pass`                  | Current assembler pass (`1` or `2`)                                         |
 
 ## System functions
 
-| Function | Returns |
-|---|---|
-| `.len(<array or string>)` | Its length |
-| `.def(<symbol>)`, `.undef(<symbol>)` | `1` if the symbol is defined (`.def`) or not defined (`.undef`), else `0`. The name can be given as a string: `.def("utils::getKey")`. |
-| `.label(<name>)` | The address of the label with that name |
-| `.type(<value>)` | `"number"`, `"string"`, `"array"` or `"object"` |
-| `.hex(<value> [, <digits>])` | The value as a hexadecimal string: `.hex(10, 4)` is `"$000A"`. A negative value gives its two's complement: `.hex(-1)` is `"$FF"` |
-| `.str(<value>)` | The value as a string |
-| `.json(<value>)` | The value as a JSON string |
-| `.lobyte(<value>)`, `.hibyte(<value>)` | Low byte, high byte |
-| `.floor(<n>)`, `.ceil(<n>)`, `.round(<n>)` | `n` rounded down, up, or to the nearest integer |
-| `.iif(<condition>, <then>, <else>)` | `then` if the condition is not `0`, else `else` |
-| `.array(<item>, …)` | A new array |
-| `.push(<array>, <item>, …)` | The array, with the items added at the end |
-| `.pop(<array>)` | The last item, removed from the array |
-| `.split(<string> [, <separator>])` | An array of the parts (separator: space by default) |
-| `.join(<array>, <separator>)` | A string of the items joined by the separator |
+| Function                                   | Returns                                                                                                                                |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `.len(<array or string>)`                  | Its length                                                                                                                             |
+| `.def(<symbol>)`, `.undef(<symbol>)`       | `1` if the symbol is defined (`.def`) or not defined (`.undef`), else `0`. The name can be given as a string: `.def("utils::getKey")`. |
+| `.label(<name>)`                           | The address of the label with that name                                                                                                |
+| `.type(<value>)`                           | `"number"`, `"string"`, `"array"` or `"object"`                                                                                        |
+| `.hex(<value> [, <digits>])`               | The value as a hexadecimal string: `.hex(10, 4)` is `"$000A"`. A negative value gives its two's complement: `.hex(-1)` is `"$FF"`      |
+| `.str(<value>)`                            | The value as a string                                                                                                                  |
+| `.json(<value>)`                           | The value as a JSON string                                                                                                             |
+| `.lobyte(<value>)`, `.hibyte(<value>)`     | Low byte, high byte                                                                                                                    |
+| `.floor(<n>)`, `.ceil(<n>)`, `.round(<n>)` | `n` rounded down, up, or to the nearest integer                                                                                        |
+| `.iif(<condition>, <then>, <else>)`        | `then` if the condition is not `0`, else `else`                                                                                        |
+| `.array(<item>, …)`                        | A new array                                                                                                                            |
+| `.push(<array>, <item>, …)`                | The array, with the items added at the end                                                                                             |
+| `.pop(<array>)`                            | The last item, removed from the array                                                                                                  |
+| `.split(<string> [, <separator>])`         | An array of the parts (separator: space by default)                                                                                    |
+| `.join(<array>, <separator>)`              | A string of the items joined by the separator                                                                                          |
 
 ## CPU
 
 tsAsm assembles 65C02 code, with the usual syntax:
 
-| Addressing mode | Example |
-|---|---|
-| Implied / accumulator | `inx`, `asl a` |
-| Immediate | `lda #$12` |
-| Zero page / absolute | `lda $12`, `lda $1234` |
-| Indexed | `lda $12,x`, `lda $1234,y` |
-| Indirect | `jmp ($1234)`, `lda ($12)` |
+| Addressing mode                     | Example                      |
+| ----------------------------------- | ---------------------------- |
+| Implied / accumulator               | `inx`, `asl a`               |
+| Immediate                           | `lda #$12`                   |
+| Zero page / absolute                | `lda $12`, `lda $1234`       |
+| Indexed                             | `lda $12,x`, `lda $1234,y`   |
+| Indirect                            | `jmp ($1234)`, `lda ($12)`   |
 | Indexed indirect / indirect indexed | `lda ($12,x)`, `lda ($12),y` |
-| Relative | `bne loop` |
+| Relative                            | `bne loop`                   |
 
 A `.b` or `.w` suffix forces the addressing mode of an address, whatever its value. Without one, an address that fits in the zero page uses it.
+
 - `.b` uses zero page, with the address's low byte: with `X = $1234`, `lda.b X` is `lda $34` (`a5 34`).
 - `.w` uses absolute: with `X = $10`, `lda.w X` is `lda $0010` (`ad 10 00`).
 - A suffix only applies to an address that can be zero page or absolute: `nop.b`, `lda.w #1` or `lda.b ($10),y` are errors, and so is a form the instruction doesn't have (`jmp.b`, `lda.b $10,y`).

@@ -43,7 +43,10 @@ describe(".EQU - constant assignment", () => {
 				foo .EQU 456
 			`;
 		expect(() => asm.assemble(src)).toThrow(
-			expect.objectContaining({ message: "Symbol 'FOO' redefined.", notes: [expect.objectContaining({ location: expect.objectContaining({ line: 2 }) })] }),
+			expect.objectContaining({
+				message: "Symbol 'FOO' redefined.",
+				notes: [expect.objectContaining({ location: expect.objectContaining({ line: 2 }) })],
+			}),
 		);
 	});
 

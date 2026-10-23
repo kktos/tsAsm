@@ -36,7 +36,11 @@ export class AssignDirective implements IDirective {
 			return;
 		}
 
-		this.assembler.symbolTable.defineVariable(label, value, { filename: context.filename, line: directive.line, column: directive.column });
+		this.assembler.symbolTable.defineVariable(label, value, {
+			filename: context.filename,
+			line: directive.line,
+			column: directive.column,
+		});
 	}
 
 	public handlePassTwo(directive: ScalarToken, context: DirectiveContext): void {
@@ -60,7 +64,11 @@ export class AssignDirective implements IDirective {
 
 		// In functions & Macros, the scope is lost between the passes
 		if (this.assembler.symbolTable.isVolatileScope() && this.assembler.symbolTable.findSymbol(label) === undefined)
-			this.assembler.symbolTable.defineVariable(label, value, { filename: context.filename, line: directive.line, column: directive.column });
+			this.assembler.symbolTable.defineVariable(label, value, {
+				filename: context.filename,
+				line: directive.line,
+				column: directive.column,
+			});
 		else this.assembler.symbolTable.assignVariable(label, value);
 	}
 }

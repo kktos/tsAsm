@@ -62,7 +62,9 @@ describe("CLI conf", () => {
 		}
 
 		it("reports a missing file", () => {
-			const notFound = Object.assign(new Error("ENOENT: no such file or directory, open 'project.yaml'"), { code: "ENOENT" });
+			const notFound = Object.assign(new Error("ENOENT: no such file or directory, open 'project.yaml'"), {
+				code: "ENOENT",
+			});
 			expect(
 				confError(() => {
 					throw notFound;

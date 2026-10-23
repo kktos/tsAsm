@@ -375,7 +375,11 @@ export class Assembler {
 				case "LABEL": {
 					this.lastGlobalLabel = token.value;
 					this.lastGlobalLabelLine = token.line;
-					this.symbolTable.defineConstant(token.value, this.PC.value, { filename: this.streamManager.currentFilepath, line: token.line, column: token.column });
+					this.symbolTable.defineConstant(token.value, this.PC.value, {
+						filename: this.streamManager.currentFilepath,
+						line: token.line,
+						column: token.column,
+					});
 					this.lister.label(token.raw ?? token.value, this.PC.value);
 					break;
 				}
@@ -592,7 +596,11 @@ export class Assembler {
 		}
 
 		this.parser.advance(2);
-		return { ...token, value: `${token.value}.${suffix.value}`, raw: `${token.raw ?? token.value}.${suffix.raw ?? suffix.value}` };
+		return {
+			...token,
+			value: `${token.value}.${suffix.value}`,
+			raw: `${token.raw ?? token.value}.${suffix.raw ?? suffix.value}`,
+		};
 	}
 
 	private handleInstructionPassOne(mnemonicToken: ScalarToken): void {
@@ -726,6 +734,10 @@ export class Assembler {
 			if (!seg) throw AsmError.at(`Segment '${segName}' not found.`, token);
 			stack.push(seg);
 		};
-		this.expressionEvaluator.functionDispatcher.register("SEGMENT", { handler: segHandler, minArgs: 1, maxArgs: 1 });
+		this.expressionEvaluator.functionDispatcher.register("SEGMENT", {
+			handler: segHandler,
+			minArgs: 1,
+			maxArgs: 1,
+		});
 	}
 }

@@ -21,7 +21,10 @@ const fakeCPU = {
 function makeAssembler() {
 	const sink = new MemorySink();
 	const logger = new Logger({ sink, enabled: true });
-	const asm = new Assembler(fakeCPU, new MockFileHandler(), { logger, log: { pass1Enabled: true, pass2Enabled: true } });
+	const asm = new Assembler(fakeCPU, new MockFileHandler(), {
+		logger,
+		log: { pass1Enabled: true, pass2Enabled: true },
+	});
 	return { asm, sink };
 }
 
@@ -90,7 +93,11 @@ describe("Logging directives", () => {
 		const sink = new MemorySink();
 		const logger = new Logger({ sink, enabled: true });
 		const rawDataProcessors = { default: "JSON", map: new Map([["JSON", (block: string) => JSON.parse(block)]]) };
-		const asm = new Assembler(fakeCPU, new MockFileHandler(), { logger, rawDataProcessors, log: { pass1Enabled: false, pass2Enabled: true } });
+		const asm = new Assembler(fakeCPU, new MockFileHandler(), {
+			logger,
+			rawDataProcessors,
+			log: { pass1Enabled: false, pass2Enabled: true },
+		});
 		const consoleLog = vi.spyOn(console, "log").mockImplementation(() => {});
 
 		asm.assemble('.DEFINE obj\n{"a": 1}\n.END\n.LOG obj');

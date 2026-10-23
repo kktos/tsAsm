@@ -61,7 +61,10 @@ describe("CpuDirective", () => {
 		// expect(codeSegment?.data).toEqual([0x64, 0x44]);
 
 		expect(() => assembler.assemble(source)).toThrow(
-			expect.objectContaining({ message: "Syntax error : NUMBER 68", location: { file: "", line: 2, column: 8 } }),
+			expect.objectContaining({
+				message: "Syntax error : NUMBER 68",
+				location: { file: "", line: 2, column: 8 },
+			}),
 		);
 	});
 });
