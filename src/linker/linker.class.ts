@@ -34,6 +34,7 @@ export interface Segment {
 
 export class Linker {
 	public segments: Segment[] = [];
+	/** What the script writes at an offset (a .SECTION … AT, a .WRITE … AT): applied in order over the complete output. */
 	public linkerSections: Segment[] = [];
 
 	private modules: Map<string, Segment[]> = new Map();
@@ -82,13 +83,16 @@ export class Linker {
 		this.segments.push(newSeg);
 	}
 
+	/** What follows is written at `offset` of the output: `.PC` is the offset where the next byte goes. */
 	public addLinkerSection(name: string, offset: number) {
 		const seg = this.segments.find((s) => s.name === name);
 		if (seg) throw new Error(`Segment already defined : ${name}`);
+		checkOffset(offset);
 
 		const newSeg: Segment = { name, start: offset, size: 0, data: [] };
 		this.linkerSections.push(newSeg);
 		this.currentSegment = newSeg;
+		this.PC.value = offset;
 	}
 
 	public addInlineSection(_name: string) {
@@ -228,42 +232,40 @@ export class Linker {
 		return this.currentSegment;
 	}
 
-	public emitString(value: string, _offset?: number) {
-		const bytes = stringToBytes(value, "Invalid write string directive -");
+	/**
+	 * Writes the bytes after what was written last, in the output or the section. At `offset` of the output instead,
+	 * over it once it is complete, without moving `.PC`.
+	 */
+	private write(bytes: number[], offset?: number) {
+		if (offset !== undefined) {
+			checkOffset(offset);
+			this.linkerSections.push({ name: "", start: offset, size: 0, data: bytes });
+			return;
+		}
 		this.activeSegment().data.push(...bytes);
 		this.PC.value += bytes.length;
 	}
+
+	private writeNumber(value: number, bits: 8 | 16 | 32, offset?: number) {
+		const bytes: number[] = [];
+		pushNumber(bytes, value, bits, this.isLittleEndian);
+		this.write(bytes, offset);
+	}
+
+	public emitString(value: string, offset?: number) {
+		this.write(stringToBytes(value, "Invalid write string directive -"), offset);
+	}
 	public emitByte(value: number, offset?: number) {
-		if (offset !== undefined) {
-			this.activeSegment().data[offset] = value;
-			return;
-		}
-		pushNumber(this.activeSegment().data, value, 8, this.isLittleEndian);
-		this.PC.value += 1;
+		this.writeNumber(value, 8, offset);
 	}
 	public emitWord(value: number, offset?: number) {
-		if (offset !== undefined) {
-			this.activeSegment().data[offset] = value;
-			return;
-		}
-		pushNumber(this.activeSegment().data, value, 16, this.isLittleEndian);
-		this.PC.value += 2;
+		this.writeNumber(value, 16, offset);
 	}
 	public emitLong(value: number, offset?: number) {
-		if (offset !== undefined) {
-			this.activeSegment().data[offset] = value;
-			return;
-		}
-		pushNumber(this.activeSegment().data, value, 32, this.isLittleEndian);
-		this.PC.value += 4;
+		this.writeNumber(value, 32, offset);
 	}
-	public emitBytes(value: number[], _offset?: number) {
-		// if (offset !== undefined) {
-		// 	this.finalObj[offset] = value;
-		// 	return;
-		// }
-		this.activeSegment().data.push(...value);
-		this.PC.value += value.length;
+	public emitBytes(value: number[], offset?: number) {
+		this.write(value, offset);
 	}
 
 	public emitSegment(name: string, _offset?: number) {
@@ -402,12 +404,14 @@ export class Linker {
 			// What follows is about the whole output, not a statement.
 			statementToken = undefined;
 
-			if (!this.finalSegment.resizable && this.finalSegment.data.length) {
-				const padding = new Array(this.finalSegment.size - this.finalSegment.data.length).fill(this.finalSegment.padValue ?? 0);
-				this.finalSegment.data = this.finalSegment.data.concat(padding);
+			const output = this.finalSegment.data;
+			const pad = this.finalSegment.padValue ?? 0;
+			// Up to its FIXED size, then up to each section past its end.
+			if (!this.finalSegment.resizable) padTo(output, this.finalSegment.size, pad);
+			for (const section of this.linkerSections) {
+				padTo(output, section.start, pad);
+				output.splice(section.start, section.data.length, ...section.data);
 			}
-
-			for (const section of this.linkerSections) this.finalSegment.data.splice(section.start, section.data.length, ...section.data);
 
 			if (this.finalSegment.data.length > this.finalSegment.size)
 				throw new Error(
@@ -466,4 +470,13 @@ export class Linker {
 				throw AsmError.at(`Unknown system variable: ${nameToken.value}.`, nameToken);
 		}
 	}
+}
+
+function checkOffset(offset: number) {
+	if (offset < 0) throw new Error(`Invalid offset ${offset}: it can't be negative.`);
+}
+
+/** Pads `data` with `value` up to `length`, if it's shorter. */
+function padTo(data: number[], length: number, value: number) {
+	while (data.length < length) data.push(value);
 }
