@@ -18,8 +18,8 @@ Every repro below was re-checked on the code of #68.
   - throw `AsmError.at(message, token)` when a token is at hand, else a plain `Error` (the assembler locates it at the statement);
   - messages say *what* is wrong, never "on line N";
   - warnings go through `assembler.warn()` / `runtime.warn()`.
-- **Checking the CLI:** build it with `TARGET=cli npx rollup -c rollup.config.js` (the `build:cli` script is Windows-only), then run `node dist/tsasm proj.yaml` on a small project.
-- **Don't commit `pnpm-workspace.yaml`:** running pnpm creates it.
+- **Checking the CLI:** build it with `pnpm exec rollup -c rollup.config.js --environment TARGET:cli` (`pnpm build:cli` bumps the version since #70), then run `node dist/tsasm proj.yaml` on a small project.
+- **`pnpm-workspace.yaml` is committed** since #71: it holds the pnpm 12 `allowBuilds` settings.
 
 ## 1. Bugs
 
@@ -53,8 +53,15 @@ Likely fix: keep each call's scope from pass 1 for pass 2. Scope names are alrea
 - `.repeat n` with `n` defined later → `.REPEAT count: null isn't a whole number (0 or more).` It should say the count must be defined before the `.REPEAT`, as the string directives do.
 - `.define X` on the last line (no newline) → `Syntax Error - Unexpected token in .DEFINE`, which is misleading.
 
+### 1.7b Found while doing #75
+- **Definition columns:** what a directive defines (`.macro`, `.equ`, `=`, `.let`, `.define`, `.function`, loop iterators) records the directive name's column, after the `.`, while errors point at the statement's start. A redefinition shows `1:2` for the error and `1:3` for its `first defined here` note. Record the statement's position (`Assembler.currentStatement`, added in #75).
+- `.macro m {` without parameters → `Unexpected token in the macro parameter list.`
+- `lda #` (no operand) is accepted silently.
+- **No include guard:** a file defining macros can't be included by two modules (`Macro … redefined`). Decision needed: `.include once`, an automatic once-only include, or `.ifdef` / `defined()`.
+- An `.include` inside a macro body gets an `included from file:4.2:…` line (the macro's "call.body" line number).
+
 ### 1.8 CLI
-- Included file paths come out as `./././nope.asm`.
+- ~~Included file paths come out as `./././nope.asm`.~~ Normalized in #75.
 - The linker prints a debug `Linker` / `- CODE offset: …` after each run (`console.log` in `linker.class.ts`).
 
 ## 2. Code review, items left
@@ -79,14 +86,13 @@ Likely fix: keep each call's scope from pass 1 for pass 2. Scope names are alrea
 - **Done this session:** 6502 `LDA $12,Y` (#57), `.B` / `.W` suffixes (#57), ARM byte order (#56).
 
 ### 2.2 Linker / CLI / build
-(A `fix/cli-conf-errors` branch exists: check what it already covers.)
 - **Linker errors aren't located:** `link()` doesn't use `AsmError`. Messages like `Syntax error in line N` and the linker's `.SEGMENT()` / system variable errors still carry their line. Give `link()` the same mechanism: `toAsmError`, statement token, file.
 - Relative config path applied twice (`chdir` + `dirname`), so `tsasm proj/conf.yaml` fails.
-- The config validator crashes on `cpu: 6502` (a YAML number, `toUpperCase` TypeError) and on an empty file.
+- ~~The config validator crashes on `cpu: 6502` and on an empty file.~~ Fixed in #69 and #73 (missing file and YAML syntax errors too).
 - A write past the end of a fixed segment is accepted. Through a linker script it gives `RangeError: Invalid array length`. `.OUTPUT … FIXED n` too large fails the same way before the friendly check.
 - `.SECTION x AT off` is misplaced when the output isn't fixed. `.WRITE WORD/LONG … AT` writes one element (truncated). `STRING` / `BYTES` ignore `AT`.
-- `link()` isn't idempotent. An empty `.lst` is always created in the current directory.
-- **Build:** `build:cli` / `build:lib` are broken on macOS/Linux (`set TARGET=cli&&`). Use `rollup -c --environment TARGET:cli`.
+- `link()` isn't idempotent. ~~An empty `.lst` is always created in the current directory.~~ Fixed in #72.
+- ~~**Build:** `build:cli` / `build:lib` are broken on macOS/Linux.~~ Fixed in #69.
 - **Package unpublishable:**
   - `main` / `bin` point to `tsasm.js`, which isn't in `dist/`;
   - `publishIt` has no `dist/package.json`;
