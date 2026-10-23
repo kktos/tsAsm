@@ -28,6 +28,8 @@ describe("Data Directives", () => {
 		const mockFileHandler = new MockFileHandler();
 		return new Assembler(fakeCPU, mockFileHandler, { segments });
 	};
+	/** An error with this message, located there. */
+	const errorAt = (message: string, line: number, column: number) => expect.objectContaining({ message, location: expect.objectContaining({ line, column }) });
 
 	it("should handle .DB with single and multiple numbers", () => {
 		const assembler = createAssembler();
@@ -146,10 +148,8 @@ describe("Data Directives", () => {
 	});
 
 	describe("arrays and objects", () => {
-		const ARRAY = "value: an array can't be emitted as is: index it to emit one of its elements.";
+		const ARRAY = "value: an array can't be emitted as is: index it to emit one of its elements, or spread it (...) to emit them all.";
 		const OBJECT = ".DB value: an object can't be emitted as is: use one of its fields.";
-		const errorAt = (message: string, line: number, column: number) =>
-			expect.objectContaining({ message, location: expect.objectContaining({ line, column }) });
 		const createJsonAssembler = () => {
 			const rawDataProcessors = { default: "JSON", map: new Map([["JSON", (block: string) => JSON.parse(block)]]) };
 			return new Assembler(fakeCPU, new MockFileHandler(), { segments: DEFAULT_SEGMENTS, rawDataProcessors });
@@ -203,6 +203,72 @@ describe("Data Directives", () => {
 			`;
 			assembler.assemble(source);
 			expect(assembler.link()).toEqual([3, 1]);
+		});
+	});
+
+	describe("spread", () => {
+		const assemble = (source: string) => {
+			const assembler = createAssembler();
+			assembler.assemble(source);
+			return assembler.link();
+		};
+		it.each([
+			[".DB 1, ...[2,3], 4", [1, 2, 3, 4]],
+			[".DW ...[$1234, 5]", [0x34, 0x12, 5, 0]],
+			['.DB ...["ab", 1]', [0x61, 0x62, 1]],
+			[".DB ...[]", []],
+		])("should emit each element as if written there: %s", (source, expected) => {
+			expect(assemble(source)).toEqual(expected);
+		});
+
+		it("should spread an array symbol, or an expression", () => {
+			const source = `
+				t = [1, 2]
+				n = [[3, 4]]
+				.DL ...t
+				.DB ...n[0]
+			`;
+			expect(assemble(source)).toEqual([1, 0, 0, 0, 2, 0, 0, 0, 3, 4]);
+		});
+
+		it("should count the elements in pass 1", () => {
+			const source = `
+				t = [1, 2, 3]
+				.DB ...t
+				next: .DW next
+			`;
+			expect(assemble(source)).toEqual([1, 2, 3, 0x03, 0x10]);
+		});
+
+		it("should spread a macro's rest parameter", () => {
+			const source = `
+				.macro bytes first, ...rest
+					.DB first, ...rest
+				.end
+				bytes 1, 2+1, "xy"
+			`;
+			expect(assemble(source)).toEqual([1, 3, 0x78, 0x79]);
+		});
+
+		it.each([
+			[".DB ...5", ".DB: '...' must be followed by an array, not a number.", 5],
+			['.DB 1, ..."ab"', ".DB: '...' must be followed by an array, not a string.", 8],
+			[".DB ...", ".DB: '...' must be followed by an array.", 5],
+			[".DB ...[[1,2]]", `.DB value: an array can't be emitted as is: index it to emit one of its elements, or spread it (...) to emit them all.`, 5],
+		])("should throw on %s", (source, message, column) => {
+			expect(() => assemble(source)).toThrow(errorAt(message, 1, column));
+		});
+
+		it("should throw on an array defined after the directive", () => {
+			const source = `
+				.DB ...t
+				t = [1, 2]
+			`;
+			expect(() => assemble(source)).toThrow(errorAt(".DB: 'T' must be defined before it is used here (its length is needed to place what follows).", 2, 9));
+		});
+
+		it("should check each element's range", () => {
+			expect(() => assemble(".DB ...[1, 256]")).toThrow(".DB value: 256 doesn't fit in a byte (-128..255).");
 		});
 	});
 

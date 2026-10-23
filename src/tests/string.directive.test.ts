@@ -201,6 +201,27 @@ describe("String Directives", () => {
 		expect(() => createAssembler().assemble(source)).toThrow(`${message} doesn't fit in a byte.`);
 	});
 
+	it("should write each element of a spread array as a string", () => {
+		const assembler = createAssembler();
+		const source = `
+			names = ["a", "bc"]
+			.CSTR ...names, "d"
+			.PSTR ...["e"]
+		`;
+		assembler.assemble(source);
+		expect(assembler.link()).toEqual([0x61, 0, 0x62, 0x63, 0, 0x64, 0, 1, 0x65]);
+	});
+
+	it("should throw on a spread array defined after the directive", () => {
+		const source = `
+			.TEXT ...names
+			names = ["a"]
+		`;
+		expect(() => createAssembler().assemble(source)).toThrow(
+			".TEXT: 'NAMES' must be defined before it is used here (its length is needed to place what follows).",
+		);
+	});
+
 	it("should write characters up to 255 as bytes", () => {
 		const assembler = createAssembler();
 		assembler.assemble('.pstr "café"');
