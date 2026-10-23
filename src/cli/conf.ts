@@ -106,6 +106,7 @@ export function readConf(fileHandler: FileHandler, filename: string) {
 		conf = yamlparse(confFile) as Record<string, unknown>;
 	} catch (e) {
 		if (!(e instanceof YAMLException)) throw e;
+		if (!e.mark) throw new AsmError(e.reason, { file: filename });
 		const error = new AsmError(e.reason, { file: filename, line: e.mark.line + 1, column: e.mark.column + 1 });
 		error.sourceLine = confFile.split(/\r?\n/)[e.mark.line];
 		throw error;
