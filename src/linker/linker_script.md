@@ -74,7 +74,7 @@ A linker script is written like assembler source: directives start with a dot, a
 
 Sets the name of the output file, relative to the project file. Without `.OUTPUT`, the file is `output.object.path`.
 
-- `FIXED <size>`: the file is exactly `size` bytes. What the script doesn't write is filled with `PAD` (default `0`). Writing more is an error (see [Limitations](#limitations)).
+- `FIXED <size>`: the file is exactly `size` bytes. What the script doesn't write is filled with `PAD` (default `0`). Writing more is an error.
 - `MAX <size>`: the file grows with what is written, up to `size` bytes. Writing more is an error.
 
 ## Writing data
@@ -109,7 +109,7 @@ A segment can be written more than once: each write appends a copy.
 
 **Byte order.** `.ENDIAN BIG` or `.ENDIAN LITTLE` sets the byte order of the words and longs that follow: `.WRITE WORD`, `.WRITE LONG`, and the data directives below. The default is little-endian.
 
-**`AT <offset>`** writes at that offset of the output instead of appending, and doesn't move `.PC`. Like a [section](#sections), it is written once the output is complete: over what is there, whatever is written after it. An output that isn't `FIXED` is padded with `0` up to the offset. In a section too, the offset is an offset of the output. `SEGMENT` and `MODULE` ignore it: see [Limitations](#limitations).
+**`AT <offset>`** writes at that offset of the output instead of appending, and doesn't move `.PC`. Like a [section](#sections), it is written once the output is complete: over what is there, whatever is written after it. An output that isn't `FIXED` is padded with `0` up to the offset. In a section too, the offset is an offset of the output.
 
 The assembler's data directives work too, and always append:
 
@@ -148,7 +148,14 @@ without `AT` goes back to appending to the output.
 .WRITE SEGMENT "DATA"       # appended after CODE
 ```
 
-In a section, only `.WRITE BYTE`, `WORD`, `LONG`, `BYTES`, `STRING` and the data directives go to the section: `.WRITE SEGMENT` and `.WRITE MODULE` always append to the output. To place a segment at an offset, write up to it with `.FILL`, as in the [example](#example).
+Everything written in a section goes to the section, segments and modules too. So a segment can be placed at an offset with a section, or with `AT`:
+
+```as
+.SECTION TOP AT $7FFA
+.WRITE SEGMENT "VECTORS"
+
+.WRITE SEGMENT "VECTORS" AT $7FFA     # the same
+```
 
 ## Modules
 
@@ -229,6 +236,4 @@ output:
 
 ## Limitations
 
-- `.WRITE SEGMENT` and `.WRITE MODULE` ignore `AT`, and always append to the output, even in a section.
 - `.module` fails ("Segments were used before any module was defined") when the project file defines segments, as the first one is selected before the source starts.
-- Writing more than the `FIXED` size, or a fixed segment written past its end, fails with `RangeError: Invalid array length` instead of a clear error.

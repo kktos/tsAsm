@@ -96,6 +96,14 @@ describe("Linker", () => {
 			expect(() => linker.writeBytes(0x110, [0x42])).toThrow("Write out of bounds: address $110 outside fixed segment 'CODE' (start $100, size 16).");
 		});
 
+		it("should throw when a write starts in a fixed segment and goes past its end", () => {
+			linker.addModule("MAIN");
+			linker.useSegment("CODE");
+			expect(() => linker.writeBytes(0x10e, [1, 2, 3])).toThrow("Write out of bounds: address $110 outside fixed segment 'CODE' (start $100, size 16).");
+			expect(linker.segments[0]?.data.length).toBe(16);
+			linker.writeBytes(0x10e, [1, 2]);
+		});
+
 		it("should resize a resizable segment when writing past its end", () => {
 			linker.addModule("MAIN");
 			linker.useSegment("BSS");
@@ -212,7 +220,8 @@ describe("Linker", () => {
 			linker.useSegment("SEG2");
 			linker.writeBytes(0x200, [0xcc, 0xdd]);
 
-			// 1. Emit SEG1
+			// 1. Emit SEG1, to the output (link() selects it first)
+			linker.addInlineSection("START");
 			linker.emitSegment("SEG1");
 
 			// 2. Inline Section

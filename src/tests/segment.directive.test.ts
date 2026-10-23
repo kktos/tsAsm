@@ -130,6 +130,17 @@ describe("Segments", () => {
 		expect(() => assembler.assemble(source)).toThrow(/Segment already defined : SEG/);
 	});
 
+	it("should fail, at its line, on a write that starts in a fixed segment and goes past its end", () => {
+		const assembler = new Assembler(new Cpu6502Handler(), new MockFileHandler());
+		const source = ".SEGMENT SEG { start: $800, size: 4 }\n.SEGMENT SEG\n  nop\n  .byte 1, 2, 3, 4";
+		expect(() => assembler.assemble(source)).toThrow(
+			expect.objectContaining({
+				message: "Write out of bounds: address $804 outside fixed segment 'SEG' (start $800, size 4).",
+				location: expect.objectContaining({ line: 4, column: 3 }),
+			}),
+		);
+	});
+
 	describe("pass 2 starts where pass 1 started", () => {
 		const createAssembler = () =>
 			new Assembler(new Cpu6502Handler(), new MockFileHandler(), {

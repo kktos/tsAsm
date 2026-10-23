@@ -161,10 +161,13 @@ export class Linker {
 				`Write out of bounds: address $${addr.toString(16).toUpperCase()} is below segment '${active.name}' start $${active.start.toString(16).toUpperCase()}.`,
 			);
 
-		if (offset >= active.size && !active.resizable)
+		// The whole write must fit: the first address past the end is the one reported.
+		if ((offset >= active.size || offset + values.length > active.size) && !active.resizable) {
+			const outside = active.start + Math.max(offset, active.size);
 			throw new Error(
-				`Write out of bounds: address $${addr.toString(16).toUpperCase()} outside fixed segment '${active.name}' (start $${active.start.toString(16).toUpperCase()}, size ${active.size}).`,
+				`Write out of bounds: address $${outside.toString(16).toUpperCase()} outside fixed segment '${active.name}' (start $${active.start.toString(16).toUpperCase()}, size ${active.size}).`,
 			);
+		}
 
 		if (offset >= active.data.length) {
 			if (!active.resizable) throw new Error(`Internal error: segment '${active.name}' data shorter than declared size and not resizable.`);
@@ -268,27 +271,21 @@ export class Linker {
 		this.write(value, offset);
 	}
 
-	public emitSegment(name: string, _offset?: number) {
-		// if (offset !== undefined) {
-		// 	this.finalObj[offset] = value;
-		// 	return;
-		// }
-
+	public emitSegment(name: string, offset?: number) {
 		const seg = this.segments.find((s) => s.name === name);
 		if (!seg) throw new Error(`Segment not found: ${name}`);
 
-		const startOffset = this.finalSegment.data.length;
-		this.finalSegment.data.push(...seg.data);
-		if (!seg.resizable) this.finalSegment.data.push(...new Array(seg.size - seg.data.length).fill(seg.padValue ?? 0));
-		this.PC.value += this.finalSegment.data.length - startOffset;
+		this.write(segmentBytes(seg), offset);
 		seg.emitted = true;
 	}
 
-	public emitModule(name: string, _offset?: number) {
+	/** Every segment of the module, one after the other, in the order they were first used. */
+	public emitModule(name: string, offset?: number) {
 		const module = this.modules.get(name);
 		if (!module) throw new Error(`Module not found: ${name}`);
 
-		for (const segment of module) this.emitSegment(segment.name);
+		this.write(module.flatMap(segmentBytes), offset);
+		for (const segment of module) segment.emitted = true;
 		this.emittedModules.add(name);
 	}
 
@@ -470,6 +467,13 @@ export class Linker {
 				throw AsmError.at(`Unknown system variable: ${nameToken.value}.`, nameToken);
 		}
 	}
+}
+
+/** A segment's bytes: a fixed segment is padded to its size. */
+function segmentBytes(segment: Segment): number[] {
+	const bytes = [...segment.data];
+	if (!segment.resizable) padTo(bytes, segment.size, segment.padValue ?? 0);
+	return bytes;
 }
 
 function checkOffset(offset: number) {
