@@ -1,28 +1,15 @@
-import { DEFAULT_SCHEMA, type DumpOptions, dump, load } from "js-yaml";
-import { intType } from "./int.type";
+import { binaryTag, CORE_SCHEMA, type DumpOptions, dump, loadAll, mergeTag, omapTag, pairsTag, setTag, timestampTag, YAMLException } from "js-yaml";
+import { intTag } from "./int.tag";
 
-// biome-ignore lint/suspicious/noExplicitAny: until I find a better way
-const schema: any = DEFAULT_SCHEMA;
-
-let idx: number;
-
-// biome-ignore lint/suspicious/noExplicitAny: until I find a better way
-idx = schema.compiledImplicit.findIndex((type: any) => {
-	return type.tag !== "tag:yaml.org,2002:int";
-});
-schema.compiledImplicit[idx] = intType;
-
-// biome-ignore lint/suspicious/noExplicitAny: until I find a better way
-idx = schema.implicit.findIndex((type: any) => {
-	return type.tag !== "tag:yaml.org,2002:int";
-});
-schema.implicit[idx] = intType;
-
-schema.compiledTypeMap.scalar["tag:yaml.org,2002:int"] = intType;
-schema.compiledTypeMap.fallback["tag:yaml.org,2002:int"] = intType;
+// the js-yaml v4 default schema (core + timestamp, merge, binary, omap, pairs, set),
+// with ints also accepting the $hex notation and dumped as hex
+const schema = CORE_SCHEMA.withTags(intTag, timestampTag, mergeTag, binaryTag, omapTag, pairsTag, setTag);
 
 export const yamlparse = (src: string) => {
-	return load(src, { schema });
+	// like js-yaml v4: an empty source gives undefined, where v5 `load` throws
+	const docs = loadAll(src, { schema });
+	if (docs.length > 1) throw new YAMLException("expected a single document in the stream, but found more");
+	return docs[0];
 };
 
 export const yamlstringify = (obj: object, opts?: DumpOptions) => {

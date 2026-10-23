@@ -1,4 +1,4 @@
-import { Type } from "js-yaml";
+import { defineScalarTag, NOT_RESOLVED } from "js-yaml";
 
 function isHexCode(c: number) {
 	return (0x30 /* 0 */ <= c && c <= 0x39) /* 9 */ || (0x41 /* A */ <= c && c <= 0x46) /* F */ || (0x61 /* a */ <= c && c <= 0x66) /* f */;
@@ -12,9 +12,7 @@ function isDecCode(c: number) {
 	return 0x30 /* 0 */ <= c && c <= 0x39 /* 9 */;
 }
 
-function resolveYamlInteger(data: string | null) {
-	if (data === null) return false;
-
+function resolveYamlInteger(data: string) {
 	const max = data.length;
 	let index = 0;
 	let hasDigits = false;
@@ -147,28 +145,10 @@ function isNegativeZero(number: number) {
 	return number === 0 && Number.NEGATIVE_INFINITY === 1 / number;
 }
 
-export const intType = new Type("tag:yaml.org,2002:int", {
-	kind: "scalar",
-	resolve: resolveYamlInteger,
-	construct: constructYamlInteger,
-	predicate: isInteger,
-	represent: {
-		binary: (obj: object) =>
-			(obj as unknown as number) >= 0 ? `0b${(obj as unknown as number).toString(2)}` : `-0b${(obj as unknown as number).toString(2).slice(1)}`,
-		octal: (obj: object) =>
-			(obj as unknown as number) >= 0 ? `0o${(obj as unknown as number).toString(8)}` : `-0o${(obj as unknown as number).toString(8).slice(1)}`,
-		decimal: (obj: object) => (obj as unknown as number).toString(10),
-		/* eslint-disable max-len */
-		hexadecimal: (obj: object) =>
-			(obj as unknown as number) >= 0
-				? `0x${(obj as unknown as number).toString(16).toUpperCase()}`
-				: `-0x${(obj as unknown as number).toString(16).toUpperCase().slice(1)}`,
-	},
-	defaultStyle: "hexadecimal",
-	styleAliases: {
-		binary: [2, "bin"],
-		octal: [8, "oct"],
-		decimal: [10, "dec"],
-		hexadecimal: [16, "hex"],
-	},
+export const intTag = defineScalarTag("tag:yaml.org,2002:int", {
+	implicit: true,
+	implicitFirstChars: ["-", "+", "$", ..."0123456789"],
+	resolve: (data) => (resolveYamlInteger(data) ? constructYamlInteger(data) : NOT_RESOLVED),
+	identify: isInteger,
+	represent: (obj: number) => (obj >= 0 ? `0x${obj.toString(16).toUpperCase()}` : `-0x${obj.toString(16).toUpperCase().slice(1)}`),
 });
