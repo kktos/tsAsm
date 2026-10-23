@@ -94,6 +94,19 @@ describe("Repeat Directives", () => {
 		);
 	});
 
+	it.each([
+		[".repeat n\n.db 1\n.end\nn = 2", "'N'"],
+		[".repeat n + 1 AS i\n.db i\n.end\nn .equ 2", "'N'"],
+		[".macro m count\n.repeat count\n.db 1\n.end\n.end\n m n\nn = 2", "'N'"],
+	])("should throw when the count uses a symbol defined later: %j", (source, symbol) => {
+		expect(() => createAssembler().assemble(source)).toThrow(
+			expect.objectContaining({
+				message: `.REPEAT: ${symbol} must be defined before it is used here (the count is needed to place what follows).`,
+				location: expect.objectContaining({ line: source.startsWith(".macro") ? 2 : 1 }),
+			}),
+		);
+	});
+
 	it("can't repeat a fractional count", () => {
 		const assembler = createAssembler();
 		expect(() => assembler.assemble(".repeat 5/2\n.db 1\n.end")).toThrow(

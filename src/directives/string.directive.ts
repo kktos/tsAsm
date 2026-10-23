@@ -1,6 +1,7 @@
 import type { Endianness } from "../cpu/cpuhandler.interface";
-import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
+import type { ScalarToken } from "../shared/lexer/lexer.class";
 import { stringToBytes } from "../utils/string.utils";
+import { undefinedSymbolName } from "../utils/symbol.utils";
 import type { DirectiveContext, DirectiveRuntime, IDirective } from "./directive.interface";
 
 export type StringFormat = "TEXT" | "CSTR" | "PSTR" | "PSTRL";
@@ -41,11 +42,10 @@ export class StringDirective implements IDirective {
 			const exprTokens = this.runtime.parser.getExpressionTokens(directive);
 			const value = this.runtime.evaluator.evaluate(exprTokens, context);
 			// A symbol defined later is unknown in pass 1, where the string's length is needed to place what follows.
-			if (value === null) {
-				const unknown = this.findUndefinedSymbol(exprTokens, context);
-				const symbol = unknown ? `'${unknown}'` : "Its symbol";
-				throw new Error(`.${directive.value}: ${symbol} must be defined before it is used here (its length is needed to place what follows).`);
-			}
+			if (value === null)
+				throw new Error(
+					`.${directive.value}: ${undefinedSymbolName(exprTokens, context, this.runtime.symbolTable)} must be defined before it is used here (its length is needed to place what follows).`,
+				);
 			if (typeof value !== "string") throw new Error(`.${directive.value} expression must evaluate to a string.`);
 			strings.push(value);
 			if (!this.runtime.parser.is("COMMA")) break;
@@ -56,14 +56,6 @@ export class StringDirective implements IDirective {
 	}
 
 	/** The first symbol of the expression that isn't defined yet, looking into the arguments of macro parameters. */
-	private findUndefinedSymbol(tokens: Token[], context: DirectiveContext): string | undefined {
-		for (const token of tokens) {
-			if (token.type !== "IDENTIFIER") continue;
-			for (const t of context.macroArgs?.get(token.value) ?? [token])
-				if (t.type === "IDENTIFIER" && this.runtime.symbolTable.findSymbol(t.value) === undefined) return t.value;
-		}
-		return undefined;
-	}
 
 	private calculateSize(directive: ScalarToken, context: DirectiveContext): number {
 		const strings = this.getStrings(directive, context);
