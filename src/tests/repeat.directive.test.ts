@@ -114,13 +114,12 @@ describe("Repeat Directives", () => {
 		);
 	});
 
-	it.each([
-		[".repeat 0\n.db 1\n.end\n.db 2"],
-		[".repeat 0 { .db 1 }\n.db 2"],
-		[".repeat 0 AS i\n.db i\n.end\n.db 2"],
-	])("should do nothing for a count of 0: %j", (source) => {
-		const assembler = createAssembler();
-		assembler.assemble(source);
-		expect(assembler.link()).toEqual([2]);
-	});
+	it.each([[".repeat 0\n.db 1\n.end\n.db 2"], [".repeat 0 { .db 1 }\n.db 2"], [".repeat 0 AS i\n.db i\n.end\n.db 2"]])(
+		"should do nothing for a count of 0: %j",
+		(source) => {
+			const assembler = createAssembler();
+			assembler.assemble(source);
+			expect(assembler.link()).toEqual([2]);
+		},
+	);
 });

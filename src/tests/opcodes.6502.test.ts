@@ -280,11 +280,11 @@ describe("6502 Opcodes", () => {
 			expect(assembleAndGetCode(source)).toEqual(bytes);
 		});
 
-		it.each([
-			["LDA zp\nnext: NOP\nzp = $10"],
-			["LDA zp,X\nnext: NOP\nzp = $10"],
-		])("should report a zero page address defined later when code after it moves: %j", (source) => {
-			expect(() => assembleAndGetCode(source)).toThrow("Phase error: label 'NEXT' is $8003 in pass 1 but $8002 in pass 2.");
-		});
+		it.each([["LDA zp\nnext: NOP\nzp = $10"], ["LDA zp,X\nnext: NOP\nzp = $10"]])(
+			"should report a zero page address defined later when code after it moves: %j",
+			(source) => {
+				expect(() => assembleAndGetCode(source)).toThrow("Phase error: label 'NEXT' is $8003 in pass 1 but $8002 in pass 2.");
+			},
+		);
 	});
 });

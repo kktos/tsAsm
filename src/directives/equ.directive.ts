@@ -15,7 +15,7 @@ export class EquDirective implements IDirective {
 	public handlePassOne(directive: ScalarToken, context: DirectiveContext): void {
 		const labelToken = this.assembler.parser.ensureToken(this.assembler.parser.getPosition() - 3);
 
-		if (!labelToken || labelToken.type !== "IDENTIFIER" || labelToken.line !== directive.line) throw new Error("Missing symbol name before .EQU.");
+		if (labelToken?.type !== "IDENTIFIER" || labelToken.line !== directive.line) throw new Error("Missing symbol name before .EQU.");
 
 		const label = this.assembler.lastGlobalLabel;
 		if (!label) throw new Error("Missing symbol name before .EQU.");

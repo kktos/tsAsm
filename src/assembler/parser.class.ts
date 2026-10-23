@@ -145,14 +145,14 @@ export class Parser {
 
 	public string(expectedString?: string) {
 		const token = this.next();
-		if (!token || token.type !== "STRING" || (expectedString && token.value !== expectedString))
+		if (token?.type !== "STRING" || (expectedString && token.value !== expectedString))
 			throw new ParserError(`Syntax error - Expecting a string ${expectedString}`, token);
 		return token as StringToken;
 	}
 
 	public number(expectedNumber?: string) {
 		const token = this.next();
-		if (!token || token.type !== "NUMBER" || (expectedNumber && token.value !== expectedNumber))
+		if (token?.type !== "NUMBER" || (expectedNumber && token.value !== expectedNumber))
 			throw new ParserError(`Syntax error - Expecting a number ${expectedNumber}`, token);
 		return token as NumberToken;
 	}
@@ -163,7 +163,7 @@ export class Parser {
 
 	public operator(expectedOperator?: string) {
 		const token = this.next();
-		if (!token || token.type !== "OPERATOR" || (expectedOperator && token.value !== expectedOperator))
+		if (token?.type !== "OPERATOR" || (expectedOperator && token.value !== expectedOperator))
 			throw new ParserError(`Syntax error - Expecting an Operator ${expectedOperator}`, token);
 		return token as IdentifierToken;
 	}
