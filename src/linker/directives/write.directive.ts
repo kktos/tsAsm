@@ -1,5 +1,5 @@
 import type { DirectiveContext, DirectiveRuntime, IDirective } from "../../directives/directive.interface";
-import type { ScalarToken } from "../../shared/lexer/lexer.class";
+import type { ScalarToken, Token } from "../../shared/lexer/lexer.class";
 
 export class WriteDirective implements IDirective {
 	public isBlockDirective = false;
@@ -13,7 +13,9 @@ export class WriteDirective implements IDirective {
 		if (!parser.isIdentifier(["BYTE", "BYTES", "WORD", "LONG", "STRING", "SEGMENT", "MODULE"])) throw new Error("Invalid write directive");
 		const cmd = parser.identifier().value;
 
-		const value = this.runtime.evaluator.evaluate(parser.getExpressionTokens(directive, true), context);
+		const valueTokens = this.getValueTokens(directive);
+		if (valueTokens.length === 0) throw new Error(`Missing value for .WRITE ${cmd}`);
+		const value = this.runtime.evaluator.evaluate(valueTokens, context);
 
 		let offset: number | undefined;
 
@@ -58,4 +60,27 @@ export class WriteDirective implements IDirective {
 	}
 
 	public handlePassOne(_directive: ScalarToken, _context: DirectiveContext) {}
+
+	/**
+	 * The value runs to the end of the line, or to an AT outside brackets.
+	 * So `BYTE(x)` and `BYTE x` are the same: the parentheses are part of the expression.
+	 */
+	private getValueTokens(directive: ScalarToken): Token[] {
+		const parser = this.runtime.parser;
+		const tokens: Token[] = [];
+		let depth = 0;
+
+		while (true) {
+			const token = parser.peek();
+			if (!token || token.line !== directive.line || token.type === "EOF" || token.type === "LBRACE" || token.type === "RBRACE") break;
+			if (depth === 0 && token.type === "IDENTIFIER" && token.value === "AT") break;
+
+			if (token.value === "(" || token.value === "[") depth++;
+			else if (token.value === ")" || token.value === "]") depth--;
+
+			tokens.push(token);
+			parser.advance();
+		}
+		return tokens;
+	}
 }
