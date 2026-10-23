@@ -3,6 +3,7 @@ import type { ScalarToken } from "../shared/lexer/lexer.class";
 import { stringToBytes } from "../utils/string.utils";
 import { undefinedSymbolName } from "../utils/symbol.utils";
 import type { DirectiveContext, DirectiveRuntime, IDirective } from "./directive.interface";
+import { readListElement } from "./list-element";
 
 export type StringFormat = "TEXT" | "CSTR" | "PSTR" | "PSTRL";
 
@@ -39,15 +40,16 @@ export class StringDirective implements IDirective {
 		const strings: string[] = [];
 
 		while (!this.runtime.parser.isEOS()) {
-			const exprTokens = this.runtime.parser.getExpressionTokens(directive);
-			const value = this.runtime.evaluator.evaluate(exprTokens, context);
-			// A symbol defined later is unknown in pass 1, where the string's length is needed to place what follows.
-			if (value === null)
-				throw new Error(
-					`.${directive.value}: ${undefinedSymbolName(exprTokens, context, this.runtime.symbolTable)} must be defined before it is used here (its length is needed to place what follows).`,
-				);
-			if (typeof value !== "string") throw new Error(`.${directive.value} expression must evaluate to a string.`);
-			strings.push(value);
+			const { tokens, values } = readListElement(this.runtime, directive, context);
+			for (const value of values) {
+				// A symbol defined later is unknown in pass 1, where the string's length is needed to place what follows.
+				if (value === null)
+					throw new Error(
+						`.${directive.value}: ${undefinedSymbolName(tokens, context, this.runtime.symbolTable)} must be defined before it is used here (its length is needed to place what follows).`,
+					);
+				if (typeof value !== "string") throw new Error(`.${directive.value} expression must evaluate to a string.`);
+				strings.push(value);
+			}
 			if (!this.runtime.parser.is("COMMA")) break;
 			this.runtime.parser.next();
 		}

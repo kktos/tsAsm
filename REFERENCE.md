@@ -88,7 +88,7 @@ list = [5, 6, 7]
 
 Arrays and objects also come from [`.define`](#structured-data-define) blocks, where object properties are read with a dot: `sprites[0].x`.
 
-Data directives only emit numbers and strings: `.db list` is an error, index the array (`list[1]`) or read the object's field. To emit every element, loop over it with [`.for`](#loops).
+Data directives only emit numbers and strings: `.db list` is an error. Index the array (`list[1]`), read the object's field, or spread the array to emit every element (`.db ...list`, see [Data](#data)).
 
 ### Operators
 
@@ -252,6 +252,18 @@ The CPU's byte order is little-endian (`.dw $1234` gives `34 12`), except on the
 
 `.hex` data is digits only, in pairs, with optional spaces and comments: quoted strings are rejected.
 
+`...` spreads an array in `.db`, `.dw` and `.dl`: each element is emitted as if it were written there. The array must be defined before the directive, where its number of elements places what follows.
+
+```as
+table = [2, 3]
+.db 1, ...table, 4      ; 01 02 03 04
+.dw ...[$1234, 5]       ; 34 12 05 00
+
+.macro bytes ...values  ; a macro's rest parameter can be spread too
+    .db ...values
+.end
+```
+
 ## Strings
 
 | Directive | Emits |
@@ -268,7 +280,7 @@ The CPU's byte order is little-endian (`.dw $1234` gives `34 12`), except on the
 .pstrl "AB"     ; 02 00 41 42
 ```
 
-Each directive accepts several strings separated by commas.
+Each directive accepts several strings separated by commas, and `...` spreads an array of strings: `.cstr ...names` writes one string per element.
 
 ## Structured data: `.define`
 
