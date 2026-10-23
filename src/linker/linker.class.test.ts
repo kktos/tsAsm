@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FileHandler } from "../assembler/polyasm.types";
 import { Logger } from "../helpers/logger.class";
 import { MemorySink } from "../helpers/memorysink.class";
@@ -181,6 +181,23 @@ describe("Linker", () => {
 			linker.writeBytes(0x100, [0xda]);
 			linker.writeBytes(0x101, [0xdb]);
 			expect(linker.rawBinaryLink()).toEqual([0xda, 0xdb, 0xff, 0xff, 0xff]);
+		});
+
+		it("should log each segment's place in the binary to the logger given, and print nothing without one", () => {
+			linker.addModule("MAIN");
+			linker.addSegment("CODE", 0x1000, 2);
+			linker.addSegment("DATA", 0x1004, 1);
+			const consoleLog = vi.spyOn(console, "log").mockImplementation(() => {});
+			try {
+				linker.rawBinaryLink();
+				expect(consoleLog).not.toHaveBeenCalled();
+			} finally {
+				consoleLog.mockRestore();
+			}
+
+			const sink = new MemorySink();
+			linker.rawBinaryLink(undefined, new Logger({ sink }));
+			expect(sink.logs).toEqual(["\n--- Linker ---", "- CODE offset: $00 addr: $1000 size: $02 len: $02", "- DATA offset: $04 addr: $1004 size: $01 len: $01"]);
 		});
 	});
 

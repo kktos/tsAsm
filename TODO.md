@@ -105,7 +105,7 @@ Likely fix: keep each call's scope from pass 1 for pass 2. Scope names are alrea
 - The assembler's `.module` (`module.directive.ts`; it groups segments for the linker's `.WRITE MODULE`) always fails when the project file defines segments → `Segments were used before any module was defined.` The first project segment is selected before the source starts (`polyasm.ts:191`), which puts it in the implicit `__MAIN__` module. Modules only work with segments defined in the source.
 - `.WRITE SEGMENT` / `.WRITE MODULE` in a `.SECTION … AT` silently go to the end of the output, not to the section. With `.OUTPUT "x" FIXED 4`, `.SECTION S AT 2`, `.WRITE SEGMENT "CODE"` puts `CODE` at 0. Either write them to the section or make it an error.
 - One skipped linker test: the hybrid `SEGMENTS` variable (the maintainer didn't remember what it held).
-- The linker prints a debug `Linker` / `- CODE offset: …` after each run (`console.log` in `linker.class.ts`).
+- ✅ **DONE (#85)** — The linker prints a debug `Linker` / `- CODE offset: …` after each run (`console.log` in `linker.class.ts`). *It goes to the listing now, with the linker script's report and `.log`s, when `output.listing.linker` is on (`log.linkerEnabled` for the library). Off by default: the console only shows warnings and errors.*
 
 ### 2.3 CLI
 - Relative config path applied twice (`chdir` + `dirname`), so `tsasm proj/conf.yaml` fails.

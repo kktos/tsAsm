@@ -15,7 +15,6 @@ import colors from "./colors";
 import { readConf } from "./conf";
 import { NodeFileHandler } from "./file";
 import type { ValidationError } from "./schema";
-import { ColoredConsoleSink } from "./sinks/coloredconsolesink.class";
 import { ConsoleErrorSink } from "./sinks/consoleerrorsink.class";
 import { FileSink } from "./sinks/filesink.class";
 
@@ -84,6 +83,7 @@ const options: AssemblerOptions = {
 	log: {
 		pass1Enabled: conf.output?.listing?.passes?.pass1 === true,
 		pass2Enabled: conf.output?.listing?.passes?.pass2 === true,
+		linkerEnabled: listing?.linker === true,
 	},
 };
 if (segments) options.segments = segments;
@@ -122,12 +122,9 @@ try {
 		if (conf.output.linker?.script) {
 			fileHandler.basedir = `${dirname(confFilename)}/`;
 			const scriptFile = fileHandler.readSourceFile(conf.output?.linker?.script);
-			const logger = new Logger({
-				sink: new ColoredConsoleSink(),
-				enabled: true,
-				cached: false,
-			});
-			const result = assembler.linker.link(scriptFile, conf.output.object?.path, logger);
+			// The linker's report and the script's .LOG go to the listing, like the assembler's; warnings and errors to the console.
+			const linkerLogger = new Logger({ sink, enabled: listingEnabled && listing?.linker === true, cached: false });
+			const result = assembler.linker.link(scriptFile, conf.output.object?.path, linkerLogger);
 
 			const buffer = Buffer.from(result.data);
 			writeOutputFile(result.name, buffer);

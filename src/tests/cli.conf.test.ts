@@ -34,6 +34,15 @@ describe("CLI conf", () => {
 		expect(errors).toEqual([{ path: "input.cpu", message: expect.stringContaining("Invalid cpu") }]);
 	});
 
+	it("accepts output.listing.linker, a boolean", () => {
+		const { conf, errors } = readConfFrom(`${confWithCpu("6502")}output:\n  listing:\n    linker: true\n`);
+		expect(errors).toBeUndefined();
+		expect(conf.output?.listing?.linker).toBe(true);
+		expect(readConfFrom(`${confWithCpu("6502")}output:\n  listing:\n    linker: 1\n`).errors).toEqual([
+			{ path: "output.listing.linker", message: "Expected boolean" },
+		]);
+	});
+
 	it("reports a cpu of the wrong type instead of crashing", () => {
 		const { errors } = readConfFrom(confWithCpu("true"));
 		expect(errors).toEqual([{ path: "input.cpu", message: "Expected string, got boolean" }]);

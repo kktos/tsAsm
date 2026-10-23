@@ -53,6 +53,8 @@ export interface AssemblerOptions {
 	log?: {
 		pass1Enabled?: boolean;
 		pass2Enabled?: boolean;
+		/** Whether link() lists each segment's place in the binary. */
+		linkerEnabled?: boolean;
 	};
 	rawDataProcessors?: { default: string; map: Map<string, DataProcessor> };
 	/** Maximum number of nested macro expansions, to stop runaway recursion (default: 32). */

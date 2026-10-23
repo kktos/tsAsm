@@ -218,9 +218,17 @@ Read the fields from a variable: `.segment("CODE").size` doesn't work.
 | `.macro` / `.end` | [Macros](../../REFERENCE.md#macros), called by name |
 | `.log`, `.warning`, `.error` `<value> [, <value> …]` | Print the values; `.error` stops the link |
 
+`.log` writes to the listing, with the linker's own report (`--- Linker Begin ---`, the output file name, `--- Linker End ---`), when the project file turns the linker's listing on. Warnings and errors always go to the console as well.
+
+```yaml
+output:
+  listing:
+    enabled: true
+    linker: true
+```
+
 ## Limitations
 
-- Errors in a linker script don't give the file and column, and some give no line at all.
 - `.WRITE WORD` and `.WRITE LONG` with `AT` write a single wrong byte. `.WRITE STRING` and `.WRITE BYTES` ignore `AT`.
 - `.SECTION … AT` may be misplaced when the output isn't `FIXED`.
 - `.module` fails ("Segments were used before any module was defined") when the project file defines segments, as the first one is selected before the source starts.

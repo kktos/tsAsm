@@ -50,6 +50,7 @@ export class Assembler {
 
 	private wannaLogPass1 = false;
 	private wannaLogPass2 = false;
+	private wannaLogLinker = false;
 
 	public expressionEvaluator: ExpressionEvaluator;
 	public directiveHandler: DirectiveHandler;
@@ -117,6 +118,7 @@ export class Assembler {
 
 		if (options?.log?.pass1Enabled) this.wannaLogPass1 = true;
 		if (options?.log?.pass2Enabled) this.wannaLogPass2 = true;
+		if (options?.log?.linkerEnabled) this.wannaLogLinker = true;
 	}
 
 	/** The first token of the statement being assembled: where its errors are located. */
@@ -157,7 +159,13 @@ export class Assembler {
 
 	/** Convenience: link segments via the linker. */
 	public link(segments?: Segment[]): number[] {
-		return this.linker.rawBinaryLink(segments);
+		const isLogEnabled = this.logger.enabled;
+		this.logger.enabled = isLogEnabled && this.wannaLogLinker;
+		try {
+			return this.linker.rawBinaryLink(segments, this.logger);
+		} finally {
+			this.logger.enabled = isLogEnabled;
+		}
 	}
 
 	/** Select the active segment for subsequent writes. */
