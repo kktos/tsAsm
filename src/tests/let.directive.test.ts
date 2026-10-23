@@ -48,7 +48,12 @@ describe(".LET directive", () => {
 			foo .EQU 10
 			.LET foo = 20
 		`;
-			expect(() => asm.assemble(src)).toThrow(/Can't redefine constant 'FOO' \(defined at \d+:\d+\)/);
+			expect(() => asm.assemble(src)).toThrow(
+				expect.objectContaining({
+					message: "Can't redefine constant 'FOO'.",
+					notes: [expect.objectContaining({ message: "defined here", location: expect.objectContaining({ line: 2 }) })],
+				}),
+			);
 		});
 
 		it("should allow re-defining a variable with .LET", () => {
@@ -68,7 +73,12 @@ describe(".LET directive", () => {
 			.LET foo = 10
 			foo .EQU 20
 		`;
-			expect(() => asm.assemble(src)).toThrow(/Symbol 'FOO' redefined \(first defined at \d+:\d+\)/);
+			expect(() => asm.assemble(src)).toThrow(
+				expect.objectContaining({
+					message: "Symbol 'FOO' redefined.",
+					notes: [expect.objectContaining({ message: "first defined here", location: expect.objectContaining({ line: 2 }) })],
+				}),
+			);
 		});
 
 		it("should handle complex expressions", () => {

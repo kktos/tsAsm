@@ -132,10 +132,12 @@ describe("Error locations", () => {
 	});
 
 	it.each([
-		["lbl: nop\n  nop\nlbl: nop", "Symbol 'LBL' redefined (first defined at main.asm:1:1)."],
-		[".macro m\n.end\n  nop\n.macro m\n.end", "Macro 'm' redefined (first defined at main.asm:1:2): a macro can only be defined once."],
-	])("should say where a redefined name is first defined: %j", (source, message) => {
-		expect((assemble(source) as AsmError).message).toBe(message);
+		["lbl: nop\n  nop\nlbl: nop", "Symbol 'LBL' redefined.", "main.asm:1:1: note: first defined here"],
+		[".macro m\n.end\n  nop\n.macro m\n.end", "Macro 'm' redefined: a macro can only be defined once.", "main.asm:1:2: note: first defined here"],
+	])("should say where a redefined name is first defined: %j", (source, message, note) => {
+		const error = assemble(source) as AsmError;
+		expect(error.message).toBe(message);
+		expect(error.format().split("\n").at(-1)).toBe(note);
 	});
 
 	it("should locate and format a warning like an error", () => {

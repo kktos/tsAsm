@@ -8,6 +8,7 @@ import type { ILister } from "../helpers/lister.class";
 import type { Logger } from "../helpers/logger.class";
 import type { Linker } from "../linker/linker.class";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
+import type { IncludeStack } from "../utils/error.utils";
 import type { MacroHandler } from "./macro/handler";
 
 export type DirectiveContext = Prettify<
@@ -44,4 +45,6 @@ export interface DirectiveRuntime {
 	macroHandler: MacroHandler;
 	/** Reports a warning, located like an error: at `position`, else at the current statement. */
 	warn: (message: string, position?: { line: number | string; column: number }) => void;
+	/** The `.include` directives the file being assembled was reached through, innermost first. */
+	includeStack: () => IncludeStack;
 }

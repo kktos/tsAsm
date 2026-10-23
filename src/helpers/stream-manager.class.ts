@@ -1,10 +1,16 @@
 import type { Parser } from "../assembler/parser.class";
 import type { FileHandler } from "../assembler/polyasm.types";
+import type { IncludeStack } from "../utils/error.utils";
 
 export class StreamManager {
 	public currentFilepath = "";
 	public currentFilename = "";
-	private filenameStack: { path: string; name: string }[] = [];
+	/**
+	 * The `.include` directives the current file was reached through, innermost first. A new array for each file
+	 * included, never changed: what is defined in the file can keep it.
+	 */
+	public includeStack: IncludeStack = [];
+	private filenameStack: { path: string; name: string; includeStack: IncludeStack }[] = [];
 	/** The text of each file read, by path: for errors to show their source line. */
 	private sources = new Map<string, string>();
 
@@ -17,6 +23,7 @@ export class StreamManager {
 		this.currentFilepath = filepath ?? "";
 		this.currentFilename = filename ?? "";
 		this.filenameStack = [];
+		this.includeStack = [];
 		this.sources = new Map([[this.currentFilepath, source]]);
 		this.parser.start(source);
 	}
@@ -27,7 +34,8 @@ export class StreamManager {
 		return text?.replace(/\r$/, "").replace(/^\uFEFF/, "");
 	}
 
-	public startNewStream(filename: string, tokenize = true) {
+	/** Reads and enters an included file. `includedAt` is where the `.include` directive is, in the current file. */
+	public startNewStream(filename: string, tokenize = true, includedAt?: { line: number | string; column: number }) {
 		const rawContent = this.fileHandler.readSourceFile(filename, this.currentFilepath);
 		this.sources.set(this.fileHandler.fullpath, rawContent);
 
@@ -36,7 +44,8 @@ export class StreamManager {
 		const cycleStart = includeChain.indexOf(this.fileHandler.fullpath);
 		if (cycleStart !== -1) throw new Error(`Include cycle: ${[...includeChain.slice(cycleStart), this.fileHandler.fullpath].join(" -> ")}`);
 
-		this.filenameStack.push({ path: this.currentFilepath, name: this.currentFilename });
+		this.filenameStack.push({ path: this.currentFilepath, name: this.currentFilename, includeStack: this.includeStack });
+		this.includeStack = [{ file: this.currentFilepath, line: includedAt?.line, column: includedAt?.column }, ...this.includeStack];
 		this.currentFilepath = this.fileHandler.fullpath;
 		this.currentFilename = this.fileHandler.filename;
 		if (tokenize) this.parser.lexer.startStream(rawContent);
@@ -47,9 +56,11 @@ export class StreamManager {
 		if (file) {
 			this.currentFilepath = file.path;
 			this.currentFilename = file.name;
+			this.includeStack = file.includeStack;
 		} else {
 			this.currentFilepath = "";
 			this.currentFilename = "";
+			this.includeStack = [];
 		}
 	}
 }

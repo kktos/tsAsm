@@ -80,7 +80,7 @@ export class Assembler {
 			if (!this.rawDataProcessors.has(this.defaultRawDataProcessor)) throw new Error("Default data processor not found.");
 		}
 
-		this.symbolTable = new PASymbolTable(this.lister);
+		this.symbolTable = new PASymbolTable(this.lister, () => this.streamManager.includeStack);
 
 		const resolveSysValue = (nameToken: Token) => this.resolveSysValue(nameToken);
 		this.expressionEvaluator = new ExpressionEvaluator(this.symbolTable, this.namelessLabels.findNearest.bind(this.namelessLabels), resolveSysValue);
@@ -104,6 +104,7 @@ export class Assembler {
 			linker: this.linker,
 			macroHandler: this.macroHandler,
 			warn: (message, position) => this.warn(message, position),
+			includeStack: () => this.streamManager.includeStack,
 		};
 		this.directiveHandler = new DirectiveHandler(this, runtime);
 
@@ -113,6 +114,11 @@ export class Assembler {
 
 		if (options?.log?.pass1Enabled) this.wannaLogPass1 = true;
 		if (options?.log?.pass2Enabled) this.wannaLogPass2 = true;
+	}
+
+	/** The first token of the statement being assembled: where its errors are located. */
+	public get currentStatement(): Token | undefined {
+		return this.statementToken;
 	}
 
 	private resolveSysValue(nameToken: Token) {
@@ -268,6 +274,9 @@ export class Assembler {
 		if (typeof location.line === "string") this.locateInMacro(error);
 		location.file ??= this.streamManager.currentFilepath;
 		if (error.sourceLine === undefined && typeof location.line === "number") error.sourceLine = this.streamManager.getSourceLine(location.file, location.line);
+		// The includes lead to the current file: the last place shown, the outermost macro call or else the error itself.
+		const lastFile = error.macroStack.at(-1)?.calledAt.file ?? location.file;
+		if (error.includeStack.length === 0 && lastFile === this.streamManager.currentFilepath) error.includeStack = this.streamManager.includeStack;
 		return error;
 	}
 

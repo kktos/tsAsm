@@ -1,5 +1,5 @@
 import type { ScalarToken } from "../../shared/lexer/lexer.class";
-import { describeLocation } from "../../utils/error.utils";
+import { AsmError } from "../../utils/error.utils";
 import type { DirectiveContext, DirectiveRuntime, IDirective } from "../directive.interface";
 
 export class MacroDirective implements IDirective {
@@ -31,8 +31,12 @@ export class MacroDirective implements IDirective {
 
 		// Pass 2 skips a definition by looking it up by name, so a name can only be defined once.
 		const existing = this.runtime.macroHandler.macroDefinitions.get(macroName);
-		if (existing)
-			throw new Error(`Macro '${nameToken.raw ?? macroName}' redefined (first defined at ${describeLocation(existing)}): a macro can only be defined once.`);
+		if (existing) {
+			const error = new AsmError(`Macro '${nameToken.raw ?? macroName}' redefined: a macro can only be defined once.`);
+			const { file, line, column, includeStack } = existing;
+			error.notes.push({ message: "first defined here", location: { file, line, column }, includeStack });
+			throw error;
+		}
 
 		const { parameters, restParameter } = this.handleMacroParametersDefinition(directive);
 
@@ -50,6 +54,7 @@ export class MacroDirective implements IDirective {
 			file: context.filename,
 			line: directive.line,
 			column: directive.column,
+			includeStack: this.runtime.includeStack(),
 		});
 
 		this.runtime.lister.directive(
