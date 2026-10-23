@@ -12,7 +12,7 @@ export class LinkerIncludeDirective implements IDirective {
 	public handlePassTwo(directive: ScalarToken, context: DirectiveContext) {
 		const expressionTokens = this.runtime.parser.getInstructionTokens();
 		const filename = this.runtime.evaluator.evaluate(expressionTokens, context);
-		if (typeof filename !== "string") throw new Error(`.INCLUDE requires a string argument on line ${directive.line}.`);
+		if (typeof filename !== "string") throw new Error(".INCLUDE requires a string argument.");
 
 		if (!this.runtime.linker.streamManager) {
 			throw new Error(".INCLUDE is not supported in this linker context (no file handler).");

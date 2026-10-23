@@ -64,6 +64,7 @@ A linker script is written like assembler source: directives start with a dot, a
   ```
 
 - There are no labels and no CPU instructions.
+- **Errors** are reported like the assembler's: `rom.ld:3:16: error: Segment 'NOPE' not found.`, then the script line with a caret under the column. In an included script or a macro body, they say through which `.INCLUDE` or macro call it was reached. Warnings (`.WARNING`) are located the same way.
 
 ## Output file
 

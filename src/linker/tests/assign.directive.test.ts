@@ -38,7 +38,7 @@ describe("Linker Script: = - variable assignment", () => {
 				foo = 123
 				= 456
 			`;
-		expect(() => linker.link(src, "", logger)).toThrow(/Syntax error in line 3 : OPERATOR =/);
+		expect(() => linker.link(src, "", logger)).toThrow("Syntax error - Unexpected OPERATOR '='");
 	});
 
 	it.skip("should not work with label", () => {
@@ -46,6 +46,6 @@ describe("Linker Script: = - variable assignment", () => {
 				boo:
 					= 456
 			`;
-		expect(() => linker.link(src, "", logger)).toThrow(/- Missing symbol name before =/);
+		expect(() => linker.link(src, "", logger)).toThrow("Syntax error - Missing symbol name before '='");
 	});
 });

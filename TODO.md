@@ -85,7 +85,9 @@ Likely fix: keep each call's scope from pass 1 for pass 2. Scope names are alrea
 - **Done this session:** 6502 `LDA $12,Y` (#57), `.B` / `.W` suffixes (#57), ARM byte order (#56).
 
 ### 2.2 Linker
-- **Linker errors aren't located:** `link()` doesn't use `AsmError`. Messages like `Syntax error in line N` and the linker's `.SEGMENT()` / system variable errors still carry their line. Give `link()` the same mechanism: `toAsmError`, statement token, file.
+- ✅ **DONE (#84)** — **Linker errors aren't located:** `link()` doesn't use `AsmError`. Messages like `Syntax error in line N` and the linker's `.SEGMENT()` / system variable errors still carry their line. Give `link()` the same mechanism: `toAsmError`, statement token, file.
+
+  *The assembler's locating code is now shared (`ErrorLocator`): a linker error or warning is located at its token, else at its statement, in the script or included file, through macro calls, with the source line. The messages no longer carry their line.*
 - A write past the end of a fixed segment is accepted. Through a linker script it gives `RangeError: Invalid array length`. `.OUTPUT … FIXED n` too large fails the same way before the friendly check.
 - `.SECTION x AT off` is misplaced when the output isn't fixed. `.WRITE WORD/LONG … AT` writes one element (truncated). `STRING` / `BYTES` ignore `AT`.
 - `link()` isn't idempotent.

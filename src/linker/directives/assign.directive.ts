@@ -1,5 +1,6 @@
 import type { DirectiveContext, DirectiveRuntime, IDirective } from "../../directives/directive.interface";
 import type { ScalarToken } from "../../shared/lexer/lexer.class";
+import { AsmError } from "../../utils/error.utils";
 
 export class AssignDirective implements IDirective {
 	public isBlockDirective = false;
@@ -9,7 +10,7 @@ export class AssignDirective implements IDirective {
 
 	public handlePassTwo(directive: ScalarToken, context: DirectiveContext): void {
 		const label = context.currentLabel;
-		if (!label) throw new Error(`Syntax error in line ${directive.line} - Missing symbol name before =`);
+		if (!label) throw AsmError.at("Syntax error - Missing symbol name before '='", directive);
 
 		const expressionTokens = this.runtime.parser.getInstructionTokens();
 		const value = this.runtime.evaluator.evaluate(expressionTokens, context);
