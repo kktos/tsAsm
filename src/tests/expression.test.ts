@@ -534,5 +534,10 @@ describe("ExpressionEvaluator", () => {
 			const result = evaluator.evaluateAsNumber(tokens, { PC: { value: 0 } });
 			expect(result).toBe(1);
 		});
+		it.each([`"he" + Later`, `Later + "llo"`, `"he" = Later`, `"he" * Later`])("should pass a forward reference through: %s", (expr) => {
+			const { evaluator, tokenize } = setup();
+			const result = evaluator.evaluate(tokenize(expr), { PC: { value: 0 }, allowForwardRef: true });
+			expect(result).toBe(null);
+		});
 	});
 });

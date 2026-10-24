@@ -197,6 +197,44 @@ describe("String Directives", () => {
 		);
 	});
 
+	it.each([
+		{
+			source: `
+				.text "a" + msg
+				msg = "hi"
+			`,
+			message: ".TEXT: 'MSG'",
+		},
+		{
+			source: `
+				.cstr msg + "a"
+				msg = "hi"
+			`,
+			message: ".CSTR: 'MSG'",
+		},
+		{
+			source: `
+				.pstr "a" + msg + "b"
+				msg = "hi"
+			`,
+			message: ".PSTR: 'MSG'",
+		},
+	])("should throw when a string operation uses a symbol defined later: $message", ({ source, message }) => {
+		expect(() => createAssembler().assemble(source)).toThrow(
+			`${message} must be defined before it is used here (its length is needed to place what follows).`,
+		);
+	});
+
+	it("should concatenate a string with a symbol defined before", () => {
+		const assembler = createAssembler();
+		const source = `
+			msg = "b"
+			.text "a" + msg
+		`;
+		assembler.assemble(source);
+		expect(assembler.link()).toEqual([0x61, 0x62]);
+	});
+
 	it("should throw when the value isn't a string", () => {
 		expect(() => createAssembler().assemble(".text 65")).toThrow(".TEXT expression must evaluate to a string.");
 	});

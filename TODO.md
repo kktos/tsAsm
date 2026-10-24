@@ -59,9 +59,15 @@ Follow-ups found while doing it:
 - Indexing an array defined later fails in pass 1: `.db t[1]` / `t = [2,3]` → `Attempted to index a non-array value.` The evaluator should pass `null` (not known yet) through `[ ]` in pass 1, as for 1.5.
 - `getExpressionTokens`' `inParentheses` parameter is never used.
 
-### 1.5 String operator with a symbol defined later
+### 1.5 String operator with a symbol defined later — ✅ DONE (#96)
 
-`.text "a" + msg` with `msg` defined later → `Binary operator '+' requires two strings.` The evaluator should pass `null` (not known yet) through string operators in pass 1. The string directive then reports "must be defined before it is used".
+✅ **DONE (#96)** — `.text "a" + msg` with `msg` defined later → `Binary operator '+' requires two strings.` The evaluator should pass `null` (not known yet) through string operators in pass 1. The string directive then reports "must be defined before it is used".
+
+_Now `.TEXT: 'MSG' must be defined before it is used here (its length is needed to place what follows).` Only a string on the left failed: `msg + "a"` already passed `null` through, as numbers do._
+
+### 1.5b Found while doing #96
+
+- **Functions don't pass `null` through:** with `msg` defined later, `.db .len(msg)` → `.LEN() requires a string or array argument.`, `.db .str(msg)` → `First argument to .STR() must be a number.` In pass 1 they should give `null` (not known yet), as the operators do, and let pass 2 or the directive report it.
 
 ### 1.6 `.option local_label_char` takes effect one line late
 

@@ -563,6 +563,11 @@ export class ExpressionEvaluator {
 				}
 			}
 
+			// when pass 1 and forward ref: not known yet, as with a number
+			if (right === null) {
+				stack.push(null);
+				return;
+			}
 			if (typeof right !== "string") throw AsmError.at(`Binary operator '${token.value}' requires two strings.`, token);
 
 			switch (token.value) {
