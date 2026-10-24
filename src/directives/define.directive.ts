@@ -15,8 +15,26 @@ export class DefineDirective implements IDirective {
 		private readonly lister: ILister,
 	) {}
 
+	/**
+	 * Reads the directive's line and its block, as a RAW_TEXT token, for a block collector (.macro, .repeat, .if…).
+	 * Pass 2 and blocks read again replay the tokens read the first time, the RAW_TEXT token included.
+	 */
 	getRawBlock(parser: Parser, directive: Token): Token[] {
-		const lineTokens = parser.getInstructionTokens(directive);
+		if (!parser.isAtUnlexedSource()) {
+			const lineTokens = parser.getInstructionTokens(directive);
+			const block = parser.peek();
+			if (block?.type !== "RAW_TEXT") return lineTokens;
+			parser.advance();
+			return [...lineTokens, block];
+		}
+
+		// Only the directive's line is lexed: a token read past it would be cut from the block.
+		const lineTokens: Token[] = [];
+		while (!parser.lexer.isRestOfLineBlank() && parser.lexer.nextCharOnLine() !== "}") {
+			const token = parser.next();
+			if (!token || token.type === "EOF") break;
+			lineTokens.push(token);
+		}
 		// .DEFINE symbol [AS processor] FROM file is inline
 		if (lineTokens.findIndex((token) => token.type === "IDENTIFIER" && token.value === "FROM") >= 0) return lineTokens;
 		// .DEFINE symbol [AS processor] .... .END is block

@@ -36,9 +36,11 @@ Every repro below was re-checked on the code of #68.
 
 _Each call's scope is now kept from pass 1 for pass 2 (`restoreAndPushScope` / `popScope({ wannaSave })`, as `.function` does). The call line didn't make the scope names unique: calls from a loop (`.repeat`, `.for`) or from two files share it. The expansions are now numbered in each pass too (`@@macro_<name>_<call line>#<n>__`), the way the anonymous labels are matched between the passes._
 
-### 1.2 `.define` block inside `.repeat 1 { … }`
+### 1.2 `.define` block inside `.repeat 1 { … }` — ✅ DONE (#101)
 
-`.repeat 1 {` / `.define X` / `abc` / `.end` / `}` / `.db 1` → `Missing .END for the .DEFINE block.` The raw block isn't replayed correctly in a brace block. Check how `getBracedBlock` stores the `RAW_TEXT` token.
+✅ **DONE (#101)** — `.repeat 1 {` / `.define X` / `abc` / `.end` / `}` / `.db 1` → `Missing .END for the .DEFINE block.` The raw block isn't replayed correctly in a brace block. Check how `getBracedBlock` stores the `RAW_TEXT` token.
+
+_The block was stored right in pass 1, but pass 2 read it again from the source, past its end: in a `.repeat` (`{ }` or `.end`) or an `.if { }`. Pass 2 now replays the `RAW_TEXT` token, as `.hex` does. In a macro body the block lost its start silently (`abc` gave `"c"`): reading the `.define` line lexed a token of the block. Only that line is lexed now._
 
 ### 1.3 6502: no operand range checks (silent truncation)
 

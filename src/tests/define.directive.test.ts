@@ -335,6 +335,115 @@ describe(".DEFINE Directive", () => {
 		});
 	});
 
+	describe(".DEFINE block inside another block", () => {
+		const assemble = (source: string) => {
+			const textHandler = vi.fn((blockContent: string, _context: DirectiveContext) => blockContent);
+			const assembler = createAssembler({ default: "TEXT", map: new Map([["TEXT", textHandler]]) }).assembler;
+			assembler.assemble(source);
+			return assembler.link();
+		};
+
+		it.each([
+			[
+				".repeat { }",
+				`.repeat 1 {
+.define X
+abc
+.end
+}
+.text X`,
+			],
+			[
+				".repeat … .end",
+				`.repeat 1
+.define X
+abc
+.end
+.end
+.text X`,
+			],
+			[
+				".if { }",
+				`.if 1 {
+.define X
+abc
+.end
+}
+.text X`,
+			],
+			[
+				".if { } in a .repeat { }",
+				`.repeat 1 {
+.if 1 {
+.define X
+abc
+.end
+}
+}
+.text X`,
+			],
+			[
+				".repeat { }, with AS and a comment on the .define line",
+				`.repeat 1 {
+.define X AS TEXT ; the data
+abc
+.end
+}
+.text X`,
+			],
+		])("should read the block in a %s", (_, source) => {
+			expect(assemble(source)).toEqual([0x61, 0x62, 0x63]);
+		});
+
+		it("should place what follows the block in both passes", () => {
+			const source = `.repeat 1 {
+.define X
+abc
+.end
+}
+lbl: .db 1
+.dw lbl`;
+			expect(assemble(source)).toEqual([0x01, 0x00, 0x10]);
+		});
+
+		it.each([
+			[
+				".macro { }",
+				`.macro m(v) {
+.define X
+abc
+.end
+.text X
+.db v
+}
+m(1)
+m(2)`,
+			],
+			[
+				".macro … .end",
+				`.macro m v
+.define X
+abc
+.end
+.text X
+.db v
+.end
+m 1
+m 2`,
+			],
+		])("should read the whole block in a %s", (_, source) => {
+			expect(assemble(source)).toEqual([0x61, 0x62, 0x63, 0x01, 0x61, 0x62, 0x63, 0x02]);
+		});
+
+		it("should ask for the .END of a block missing it", () => {
+			const source = `.repeat 1 {
+.define X
+abc
+}`;
+			expect(() => assemble(source)).toThrow("Missing .END for the .DEFINE block.");
+		});
+	});
+
 	describe(".DEFINE from file", () => {
 		it("should load the file on the last line, without a newline", () => {
 			const textHandler = vi.fn((blockContent: string, _context: DirectiveContext) => blockContent);
