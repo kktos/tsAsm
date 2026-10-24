@@ -271,3 +271,9 @@ _Decided: `m(` glued is the call form, `m (` starts an argument, and substitutio
     - output files: no crash on a missing directory, listing only when enabled (#72);
     - no crash on a missing, invalid or empty project file (#73).
 - **Messages:** `.REPEAT` / `.FOR` with a symbol defined later (#76), `.DEFINE` on the last line (#77).
+
+## 4. Features (ideas)
+
+### 4.1 Default values for macro parameters
+
+As in JavaScript: `.macro m x, y = 2, z = 3`. Parameters with a default come last, after those without one, and are filled from the first: `m 1` gives `y = 2, z = 3`, `m 1, 5` gives `z = 3`. An argument can still not be empty (`m 1,,4` stays an error, see 1.23). To decide: when the default is evaluated (at the definition or at each call), whether it can use the previous parameters (`y = x*2`), and how it mixes with a rest parameter.
