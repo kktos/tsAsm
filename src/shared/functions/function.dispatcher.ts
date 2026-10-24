@@ -3,7 +3,7 @@ import { AsmError } from "../../utils/error.utils";
 import type { Token } from "../lexer/lexer.class";
 import { arrayFunction } from "./array.function";
 import { ceilFunction } from "./ceil.function";
-import { defFunction, undefFunction } from "./def.function";
+import { defFunctions } from "./def.function";
 import { floorFunction } from "./floor.function";
 import { hexFunction } from "./hex.function";
 import { hibyteFunction } from "./hibyte.function";
@@ -32,12 +32,21 @@ export class FunctionDispatcher {
 		this.functions.set(name.toUpperCase(), definition);
 	}
 
+	/** `.def()` / `.undef()`, which also see the macros `isMacroDefined` says are defined. */
+	public registerDefFunctions(isMacroDefined?: (name: string) => boolean): void {
+		for (const [name, definition] of Object.entries(defFunctions(isMacroDefined))) this.register(name, definition);
+	}
+
+	/** Whether the argument at `index` of the function, when a lone identifier, is the symbol's name: see `IFunctionDef.nameArgs`. */
+	public isNameArgument(name: string, index: number): boolean {
+		return index < (this.functions.get(name.toUpperCase())?.nameArgs ?? 0);
+	}
+
 	private registerDefaultFunctions(): void {
 		// Register functions with their argument constraints
 		this.register("LEN", { handler: lenFunction, minArgs: 1, maxArgs: 1 });
 		this.register("LABEL", { handler: labelFunction, minArgs: 1, maxArgs: 1 });
-		this.register("DEF", { handler: defFunction, minArgs: 1, maxArgs: 1, knownArgs: 0 });
-		this.register("UNDEF", { handler: undefFunction, minArgs: 1, maxArgs: 1, knownArgs: 0 });
+		this.registerDefFunctions();
 		this.register("STR", { handler: strFunction, minArgs: 1, maxArgs: 2 });
 		this.register("HEX", { handler: hexFunction, minArgs: 1, maxArgs: 2 });
 		this.register("SPLIT", { handler: splitFunction, minArgs: 1, maxArgs: 2 });

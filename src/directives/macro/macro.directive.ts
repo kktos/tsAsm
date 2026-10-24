@@ -19,6 +19,7 @@ export class MacroDirective implements IDirective {
 		const definition = this.runtime.macroHandler.macroDefinitions.get(nameToken.value);
 		if (!definition) throw new Error(`Unable to find the definition of macro '${nameToken.value}'.`);
 
+		this.runtime.macroHandler.markReached(definition.name);
 		this.runtime.parser.setPosition(definition.endPosition);
 	}
 
@@ -56,6 +57,7 @@ export class MacroDirective implements IDirective {
 			column: directive.column,
 			includeStack: this.runtime.includeStack(),
 		});
+		this.runtime.macroHandler.markReached(macroName);
 
 		this.runtime.lister.directive(
 			directive,

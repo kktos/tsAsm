@@ -147,9 +147,11 @@ _In pass 1, an array, an index or an object not known yet now gives `null`, and 
 
 _A file already read to its end has its tokens cached: pass 1 now pushes them without starting a lexer stream on the file, as pass 2 does. Raw blocks (`.hex`) and labels in two namespaces work in the second copy._
 
-### 1.22 An `.if .undef(…)` include guard drops the content
+### 1.22 An `.if .undef(…)` include guard drops the content — ✅ DONE (#110)
 
-`.if .undef("R_INC") {` / `R_INC = 1` / `spr: .db 7,8` / `}`, included once, emits nothing: pass 1 defines `R_INC`, so pass 2 skips the block. No error, an empty output. It only seems to work for macros, which are defined in pass 1 only. `.once` (1.11) is the include guard now, but the trap is there for any `.if .undef(X)` / `X = …` pair. Also, `.def("m")` is `0` for a macro `m`.
+✅ **DONE (#110)** — `.if .undef("R_INC") {` / `R_INC = 1` / `spr: .db 7,8` / `}`, included once, emits nothing: pass 1 defines `R_INC`, so pass 2 skips the block. No error, an empty output. It only seems to work for macros, which are defined in pass 1 only. `.once` (1.11) is the include guard now, but the trap is there for any `.if .undef(X)` / `X = …` pair. Also, `.def("m")` is `0` for a macro `m`.
+
+_Fixed: `.def` / `.undef` tell whether a symbol or a macro is defined at this point of the source, the same in both passes: a symbol keeps the pass that last defined it. A label defined further down isn't, in both passes. The argument is a name: `.def(X)` doesn't evaluate `X` (a function's `nameArgs`), so an undefined `X` isn't an error and `Z = 0` is defined. In a macro, `.def(param)` checks the name passed. Any other expression gives the name: `.def("X")`, `.def((name))` for the name held by `name`._
 
 ### 1.23 An empty macro argument — ✅ DONE (#106)
 

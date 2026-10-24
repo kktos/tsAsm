@@ -326,6 +326,23 @@ describe("File Directive .INCLUDE", () => {
 			expect(assembler.link()).toEqual([1]);
 		});
 
+		it("should keep the content of a file guarded by .if .undef(X), included twice", () => {
+			const assembler = withFiles({
+				"res.asm": `
+					.if .undef(R_INC) {
+						R_INC = 1
+						spr: .db 7, 8
+					}
+				`,
+			});
+			assembler.assemble(`
+				.include "res.asm"
+				.include "res.asm"
+				lda spr
+			`);
+			expect(assembler.link()).toEqual([7, 8, 0xad, 0x00, 0x10]);
+		});
+
 		it("should still include twice a file without .once", () => {
 			const assembler = withFiles({
 				"once.asm": `

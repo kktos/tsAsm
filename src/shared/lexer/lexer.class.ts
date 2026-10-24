@@ -10,6 +10,7 @@ export type TokenType =
 	| "ANONYMOUS_LABEL_DEF" // :
 	| "FUNCTION"
 	| "SYSVAR"
+	| "SYMBOL_NAME" // a symbol's name, not its value: `X` in `.def(X)`
 	| "ANONYMOUS_LABEL_REF" // :- or :+ or :-- or :+3
 
 	// Literals
