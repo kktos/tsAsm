@@ -3,6 +3,7 @@ import type { CPUHandler } from "../cpu/cpuhandler.interface";
 import type { DirectiveContext, DirectiveRuntime } from "../directives/directive.interface";
 import { DirectiveHandler } from "../directives/handler";
 import { MacroHandler } from "../directives/macro/handler";
+import { isTextArg, markAsText } from "../directives/macro/text-arg";
 import { ConsoleSink } from "../helpers/consolesink.class";
 import { ErrorLocator } from "../helpers/error-locator.class";
 import { Lister } from "../helpers/lister.class";
@@ -95,7 +96,7 @@ export class Assembler {
 		this.streamManager = new StreamManager(this.fileHandler, this.parser);
 
 		this.macroHandler = new MacroHandler(this.parser, this.symbolTable, this.lister, options?.maxMacroDepth, (tokens, macroArgs) =>
-			this.substituteTokens(tokens, macroArgs),
+			this.substituteArgument(tokens, macroArgs),
 		);
 		this.errorLocator = new ErrorLocator(this.parser, this.macroHandler, () => this.statementToken, this.streamManager);
 
@@ -619,6 +620,7 @@ export class Assembler {
 				PC: this.PC,
 				allowForwardRef: true,
 				currentLabel: this.lastGlobalLabel,
+				macroArgs: currentStream.macroArgs,
 				numberMax,
 			}),
 		);
@@ -646,6 +648,7 @@ export class Assembler {
 				this.expressionEvaluator.evaluateAsNumber(exprTokens, {
 					PC: this.PC,
 					currentLabel: this.lastGlobalLabel,
+					macroArgs: currentStream.macroArgs,
 					numberMax,
 				}),
 			);
@@ -672,7 +675,36 @@ export class Assembler {
 		}
 	}
 
+	/**
+	 * The macro parameters in an instruction's operand: a text argument is pasted, a value is left to the evaluator,
+	 * as in a directive. `lda src*2` with `src` = `1+2` is `lda 6`.
+	 */
 	private substituteTokens(tokens: Token[], macroArgs: Map<string, Token[]>): Token[] {
+		return this.replaceMacroArgs(tokens, macroArgs, (argTokens, reference) => (isTextArg(argTokens) ? argTokens : reference));
+	}
+
+	/**
+	 * The macro parameters in an argument of a nested macro call: they are pasted, as that argument is evaluated without them.
+	 * A value is pasted in ( ), unless it's one token or goes in a text argument: `inner src*2` with `src` = `1+2` passes 6.
+	 * An argument that is only a text parameter stays text.
+	 */
+	private substituteArgument(tokens: Token[], macroArgs: Map<string, Token[]>): Token[] {
+		const intoText = isTextArg(tokens);
+		let forwardsText = false;
+		const result = this.replaceMacroArgs(tokens, macroArgs, (argTokens, reference) => {
+			if (isTextArg(argTokens)) {
+				forwardsText = reference.length === tokens.length;
+				return argTokens;
+			}
+			if (intoText || argTokens.length <= 1) return argTokens;
+			const { line, column } = reference[0] as Token;
+			return [{ type: "OPERATOR", value: "(", line, column }, ...argTokens, { type: "OPERATOR", value: ")", line, column }];
+		});
+		return intoText || forwardsText ? markAsText(result) : result;
+	}
+
+	/** Replaces each macro parameter in `tokens`, or element of its rest parameter (`p[1]`), by what `replace` gives for its argument. */
+	private replaceMacroArgs(tokens: Token[], macroArgs: Map<string, Token[]>, replace: (argTokens: Token[], reference: Token[]) => Token[]): Token[] {
 		const result: Token[] = [];
 		for (let i = 0; i < tokens.length; i++) {
 			const token = tokens[i] as Token;
@@ -716,14 +748,14 @@ export class Assembler {
 					if (indexValue < 0 || indexValue >= expressions.length)
 						throw new Error(`Macro argument index ${indexValue} out of bounds for argument '${token.value}'.`);
 
-					result.push(...(expressions[indexValue] as Token[]));
+					result.push(...replace(expressions[indexValue] as Token[], tokens.slice(i, j + 1)));
 					i = j; // Advance main loop past `]`
 					continue;
 				}
 			}
 
 			// If not array access, it's a simple substitution
-			result.push(...(macroArgs.get(token.value) ?? []));
+			result.push(...replace(macroArgs.get(token.value) ?? [], [token]));
 		}
 		return result;
 	}

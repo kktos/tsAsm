@@ -367,7 +367,7 @@ The parameters can also be written in parentheses, and the body in braces:
 }
 ```
 
-An argument can carry an addressing mode. Wrap an argument that contains a comma in `< >`:
+An argument is a value: an expression, evaluated where the macro uses it, in an instruction as in a directive. An argument in `< >` is text, pasted as is: that's how an addressing mode is passed. `#` and a comma in `( )` are not in expressions, so `copy #10, $2001` or `copy ($12,x), $2001` are errors.
 
 ```as
 .macro copy src, dst
@@ -376,8 +376,12 @@ An argument can carry an addressing mode. Wrap an argument that contains a comma
 .end
 
     copy <table,x>, $2000   ; lda table,x / sta $2000
-    copy #10, $2001         ; lda #10 / sta $2001
+    copy <#10>, $2001       ; lda #10 / sta $2001
+    copy <($12,x)>, $2002   ; lda ($12,x) / sta $2002
+    copy 1+2, $2003         ; lda 3 / sta $2003: `lda src*2` would be lda 6
 ```
+
+The arguments can also be written in parentheses, the `(` glued to the macro name: `copy(<#10>, $2001)`. With a space, the `(` starts the first argument: in `copy (1+2)*3, $2004`, `src` is 9.
 
 A last parameter written `...name` collects the remaining arguments into an array:
 

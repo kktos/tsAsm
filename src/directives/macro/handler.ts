@@ -5,6 +5,7 @@ import type { ScalarToken, Token } from "../../shared/lexer/lexer.class";
 import { AsmError } from "../../utils/error.utils";
 import { nestingDelta } from "../../utils/token.utils";
 import type { MacroDefinition } from "./macro.interface";
+import { isTextArg, markAsText } from "./text-arg";
 
 const DEFAULT_MAX_MACRO_DEPTH = 32;
 
@@ -44,7 +45,7 @@ export class MacroHandler {
 		if (activeExpansions >= this.maxDepth)
 			throw AsmError.at(`Macro '${macroName}' nested more than ${this.maxDepth} levels deep. Is it recursive without an end condition?`, macroToken);
 
-		let passedArgsArray = this.parseMacroArguments(macroToken.line);
+		let passedArgsArray = this.parseMacroArguments(macroToken);
 
 		// Called from inside another macro: the arguments can use that macro's parameters.
 		// Replace them now, as arguments are evaluated without any macro parameters in scope.
@@ -96,6 +97,8 @@ export class MacroHandler {
 			});
 		}
 
+		passedArgsArray.forEach((argTokens) => this.checkValueArgument(macroName, argTokens));
+
 		// Create a clean copy of the body tokens with updated line numbers.
 		const newTokens = definition.body.map((bodyToken) => ({
 			...bodyToken,
@@ -114,87 +117,113 @@ export class MacroHandler {
 	}
 
 	/**
-	 * Parses a list of argument tokens into a list of token arrays, one for each argument.
+	 * Parses the call's arguments into a list of token arrays, one for each argument.
 	 * This method correctly handles empty arguments (e.g., `arg1,,arg3`).
 	 * A comma inside `( )` or `[ ]` belongs to the argument: `m .iif(c, 1, 2), [3, 4][0]` has two.
-	 * @param argTokens The tokens to parse.
+	 * An argument in `< >` is text, pasted as is: `m <($12,x)>`. The others are expressions.
+	 * The `m(1, 2)` form needs its `(` glued to the name: `m (1+2)*3` has one argument.
 	 */
-	private parseMacroArguments(callLine?: string | number): Token[][] {
+	private parseMacroArguments(macroToken: ScalarToken): Token[][] {
 		const argsArray: Token[][] = [];
 		let currentArgTokens: Token[] = [];
-		let depth = 0;
 
 		const firstPeek = this.parser.peek();
 		if (!firstPeek || firstPeek.type === "EOF") return [];
-		const hasParens = firstPeek.type === "OPERATOR" && firstPeek.value === "(";
-		const callLineNum = callLine ?? firstPeek.line;
+		const hasParens =
+			firstPeek.type === "OPERATOR" &&
+			firstPeek.value === "(" &&
+			firstPeek.line === macroToken.line &&
+			firstPeek.column === macroToken.column + macroToken.value.length;
 
-		if (hasParens) {
-			// consume opening '('
+		// Without parentheses, the arguments end with the call's line.
+		const isEnd = (token: Token | null): token is null => !token || token.type === "EOF" || (!hasParens && token.line !== macroToken.line);
+
+		// The commas separating the arguments are at this depth: inside the call's ( ), or outside any.
+		const argDepth = hasParens ? 1 : 0;
+		if (hasParens) this.parser.advance(1); // consume opening '('
+		let depth = argDepth;
+
+		while (true) {
+			const token = this.parser.peek();
+			if (isEnd(token)) break;
 			this.parser.advance(1);
-			depth = 1;
-			while (true) {
-				const token = this.parser.peek();
-				if (!token || token.type === "EOF") break;
-				this.parser.advance(1);
 
-				if (token.type === "COMMA" && depth === 1) {
-					argsArray.push(currentArgTokens);
-					currentArgTokens = [];
-					continue;
-				}
-
-				depth += nestingDelta(token);
-				if (depth === 0) {
-					argsArray.push(currentArgTokens);
-					currentArgTokens = [];
-					break; // finished argument list
-				}
-
-				currentArgTokens.push(token);
+			if (token.type === "COMMA" && depth === argDepth) {
+				argsArray.push(currentArgTokens);
+				currentArgTokens = [];
+				continue;
 			}
-		} else {
-			// No parentheses: only take tokens on the same line as the macro call
-			while (true) {
-				const token = this.parser.peek();
-				if (!token || token.type === "EOF" || token.line !== callLineNum) break;
 
-				// Handle angle-bracketed arguments. Inside ( ) or [ ], '<' is an operator: `.iif(a < b, 1, 2)`.
-				if (depth === 0 && token.type === "OPERATOR" && token.value === "<") {
-					this.parser.advance(1); // consume '<'
-					let bracketDepth = 1;
-					while (bracketDepth > 0) {
-						const innerToken = this.parser.peek();
-						if (!innerToken || innerToken.type === "EOF" || innerToken.line !== callLineNum) {
-							throw new Error("Unmatched '<' in macro arguments.");
-						}
-						this.parser.advance(1);
-						if (innerToken.type === "OPERATOR") {
-							if (innerToken.value === "<") bracketDepth++;
-							if (innerToken.value === ">") bracketDepth--;
-						}
-
-						if (bracketDepth > 0) {
-							currentArgTokens.push(innerToken);
-						}
-					}
-				} else {
-					this.parser.advance(1);
-					if (token.type === "COMMA" && depth <= 0) {
-						argsArray.push(currentArgTokens);
-						currentArgTokens = [];
-					} else {
-						depth += nestingDelta(token);
-						currentArgTokens.push(token);
-					}
-				}
+			// '<' starts a text argument only as its first token. Elsewhere it's an operator: `.iif(a < b, 1, 2)`.
+			if (depth === argDepth && currentArgTokens.length === 0 && token.type === "OPERATOR" && token.value === "<") {
+				currentArgTokens = markAsText(this.readTextArgument(hasParens ? undefined : macroToken.line));
+				const next = this.parser.peek();
+				const endsHere = isEnd(next) || next.type === "COMMA" || (hasParens && next.type === "OPERATOR" && next.value === ")");
+				if (!endsHere) throw AsmError.at(`Unexpected '${next.value}' after '>': a macro argument in < > ends at its '>'.`, next);
+				continue;
 			}
-			if (currentArgTokens.length > 0) argsArray.push(currentArgTokens);
+
+			depth += nestingDelta(token);
+			if (hasParens && depth === 0) {
+				argsArray.push(currentArgTokens);
+				return this.withoutEmptyCall(argsArray); // finished argument list
+			}
+
+			currentArgTokens.push(token);
 		}
 
+		if (currentArgTokens.length > 0 || isTextArg(currentArgTokens)) argsArray.push(currentArgTokens);
+		return this.withoutEmptyCall(argsArray);
+	}
+
+	/** The tokens up to the `>` matching an already consumed `<`. Without parentheses, they must be on the call's `line`. */
+	private readTextArgument(line?: string | number): Token[] {
+		const tokens: Token[] = [];
+		let bracketDepth = 1;
+		while (true) {
+			const token = this.parser.peek();
+			if (!token || token.type === "EOF" || (line !== undefined && token.line !== line)) throw new Error("Unmatched '<' in macro arguments.");
+			this.parser.advance(1);
+			if (token.type === "OPERATOR") {
+				if (token.value === "<") bracketDepth++;
+				if (token.value === ">" && --bracketDepth === 0) return tokens;
+			}
+			tokens.push(token);
+		}
+	}
+
+	/**
+	 * An argument not in < > is a value: an expression. An addressing mode isn't one, it's passed as text:
+	 * `#` isn't an operator, and a comma in ( ) only separates a function's arguments: `m ($12,x)` needs `m <($12,x)>`.
+	 */
+	private checkValueArgument(macroName: string, argTokens: Token[]) {
+		if (isTextArg(argTokens)) return;
+
+		// For each open ( or [: can it hold commas (an array, a function's arguments)?
+		const openings: boolean[] = [];
+		const isAddressingMode = argTokens.some((token, index) => {
+			if (token.type === "COMMA") return openings.at(-1) === false;
+			if (token.type !== "OPERATOR") return false;
+			if (token.value === "#") return true;
+			if (token.value === "[") openings.push(true);
+			if (token.value === "(") openings.push(argTokens[index - 1]?.type === "IDENTIFIER");
+			if (token.value === ")" || token.value === "]") openings.pop();
+			return false;
+		});
+		if (!isAddressingMode) return;
+
+		const text = argTokens.map((token) => token.raw ?? token.value).join("");
+		throw AsmError.at(
+			`Macro '${macroName}': '${text}' is an addressing mode, not an expression. Pass it as text, in < >: <${text}>.`,
+			argTokens[0] as Token,
+		);
+	}
+
+	private withoutEmptyCall(argsArray: Token[][]): Token[][] {
 		// If the original tokens were empty, or if the only argument found is empty,
-		// it means there were no actual arguments.
-		if (argsArray.length === 1 && argsArray[0]?.length === 0) return [];
+		// it means there were no actual arguments. An empty `<>` is one.
+		const [first] = argsArray;
+		if (argsArray.length === 1 && first?.length === 0 && !isTextArg(first)) return [];
 
 		return argsArray;
 	}
