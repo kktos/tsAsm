@@ -137,9 +137,9 @@ _An element of the rest parameter is now evaluated when it's indexed, like a mac
 
 _In pass 1, an array, an index or an object not known yet now gives `null`, and what is known is still checked (`5[i]`, `t["a"]`). An index not known yet was taken as 0: `.text ["a","bc"][i]` was placed with `"a"`, a phase error if a label followed. In pass 2, a `null` index is now an error, not 0._
 
-### 1.20 `getExpressionTokens`' unused parameter
+### 1.20 `getExpressionTokens`' unused parameter — ✅ DONE (#109)
 
-`getExpressionTokens`' `inParentheses` parameter is never used.
+`getExpressionTokens`' `inParentheses` parameter is never used. _Removed, with the early break it guarded._
 
 ### 1.21 A file included twice breaks what follows — ✅ DONE (#100)
 
