@@ -9,6 +9,8 @@ const DEFAULT_MAX_MACRO_DEPTH = 32;
 
 export class MacroHandler {
 	public macroDefinitions = new Map<string, MacroDefinition>();
+	/** Expansions done in this pass: numbers each call's scope, the same in both passes (a loop calls from the same line). */
+	private expansionCount = 0;
 
 	constructor(
 		private readonly parser: Parser,
@@ -19,6 +21,11 @@ export class MacroHandler {
 		/** Replaces macro parameters in tokens by their arguments. Needed to forward parameters to a nested macro call. */
 		private readonly substituteArgs?: (tokens: Token[], macroArgs: Map<string, Token[]>) => Token[],
 	) {}
+
+	/** At the start of a pass: the expansions are numbered from 0 again, so pass 2 finds pass 1's scopes. */
+	public rewind() {
+		this.expansionCount = 0;
+	}
 
 	public isMacro(name: string): boolean {
 		return this.macroDefinitions.has(name);
@@ -46,8 +53,9 @@ export class MacroHandler {
 
 		const macroArgs = new Map<string, Token[]>();
 
-		const scopeName = `@@macro_${macroName}_${macroToken.line}__`;
-		this.symbolTable.pushScope(scopeName);
+		// Pass 2 gets back the symbols pass 1 defined in this call: its body can use them before defining them.
+		const scopeName = `@@macro_${macroName}_${macroToken.line}#${this.expansionCount++}__`;
+		this.symbolTable.restoreAndPushScope(scopeName);
 
 		// Argument validation and mapping
 		if (definition.restParameter) {
@@ -95,15 +103,13 @@ export class MacroHandler {
 
 		this.lister.macro(macroToken.raw as string, passedArgsArray);
 
-		// let's try to keep between pass 1 and 2 the symbol table
 		this.parser.pushTokenStream({
 			newTokens,
 			macroArgs,
 			macroName,
 			macroCall: macroToken,
-			onEndOfStream: () => this.symbolTable.popScope(),
+			onEndOfStream: () => this.symbolTable.popScope({ wannaSave: true }),
 		});
-		// this.parser.pushTokenStream({ newTokens, macroArgs });
 	}
 
 	/**
