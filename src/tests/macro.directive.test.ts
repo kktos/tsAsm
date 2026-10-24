@@ -370,6 +370,67 @@ lbl: .dw lbl`);
 		});
 	});
 
+	describe("Commas in a macro argument", () => {
+		const assemble = (source: string) => {
+			const { assembler } = setup();
+			assembler.assemble(source);
+			return assembler.link();
+		};
+		const one = (call: string) => `.macro m a
+.db a
+.end
+${call}`;
+
+		it.each([
+			["[ ]", "m [1,2][1]", [0x02]],
+			["[ ], with ( ) around the arguments", "m([1,2][1])", [0x02]],
+			["a function call", "m .iif(1,2,3)", [0x02]],
+			["a function call with a '<'", "m .iif(1<2, 3, 4)", [0x03]],
+		])("should keep a comma inside %s in its argument", (_, call, bytes) => {
+			expect(assemble(one(call))).toEqual(bytes);
+		});
+
+		it("should split the arguments at the commas outside ( ) and [ ]", () => {
+			expect(
+				assemble(`.macro m a, b, c
+.db a, b, c
+.end
+m .iif(1,2,3), [3,4][0], 5`),
+			).toEqual([0x02, 0x03, 0x05]);
+		});
+
+		it("should keep an indirect addressing mode in its argument", () => {
+			expect(
+				assemble(`.macro m a, b
+.db a
+lda b
+.end
+m 1, ($12,x)`),
+			).toEqual([0x01, 0xa1, 0x12]);
+		});
+
+		it("should pass an array to a rest parameter as one argument", () => {
+			expect(
+				assemble(`.macro m ...a
+.db .len(a), a[0][1]
+.end
+m [1,2], 3`),
+			).toEqual([0x02, 0x02]);
+		});
+
+		it("should forward an argument with a comma to a nested macro", () => {
+			expect(
+				assemble(`.macro inner a
+.db a
+.end
+.macro outer b
+inner b
+.end
+outer [1,2][0]`),
+			).toEqual([0x01]);
+		});
+	});
+
 	describe("Indexing a rest parameter", () => {
 		const assemble = (source: string) => {
 			const { assembler } = setup();

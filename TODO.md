@@ -107,9 +107,11 @@ Missed by #75: `.define` has its own redefinition check, `Cannot redefine symbol
 
 `.define` without a name → `Syntax error - Expecting IDENTIFIER ` (trailing space, and it should say a symbol name is needed).
 
-### 1.15 Macro call arguments split at a comma inside `[ ]`
+### 1.15 Macro call arguments split at a comma inside `[ ]` — ✅ DONE (#104)
 
-`m [1,2][1]` → `Macro 'M' expects 1 argument, but got 2.` (`macro/handler.ts`, both call forms). Without parentheses, `m ($12,x)` is also split in two. Decision needed: should `( )` group a macro argument too?
+✅ **DONE (#104)** — `m [1,2][1]` → `Macro 'M' expects 1 argument, but got 2.` (`macro/handler.ts`, both call forms). Without parentheses, `m ($12,x)` is also split in two. Decision needed: should `( )` group a macro argument too?
+
+_Yes, decided: a comma inside `( )` or `[ ]` stays in its argument, in both call forms, as in the directives' values (#88). `m .iif(c,1,2)` and `m 1, ($12,x)` work too. Inside them, `<` is an operator, not the start of a `< >` argument: `m .iif(a<b, 1, 2)` gave `Unmatched '<'`. `($12),y` still needs `< >`: its comma is outside the parentheses. A first argument starting with `(` is 1.24._
 
 ### 1.16 A whole array in `.db` — ✅ DONE (#89)
 
@@ -152,6 +154,10 @@ _A file already read to its end has its tokens cached: pass 1 now pushes them wi
 ### 1.23 An empty macro argument
 
 `.macro m x, y, z` / `.db y` / `.end` / `m 1,,2` emits `0`, silently. In a rest parameter (`.macro m ...a`), `.db a[1]` and `.db ...a` say `an array can't be emitted as is`, which is misleading. Decision needed: an error, or a value for an empty argument (as an omitted optional parameter?).
+
+### 1.24 A macro call whose first argument starts with `(`
+
+Without parentheses around the arguments, a first argument starting with `(` is read as the `m(…)` call form: `m ($12,x)` (one parameter) → `Macro 'M' expects 1 argument, but got 2.`, `m (1+2)*3` → `Syntax error : NUMBER 3`. `< >` works around it (`m <($12,x)>`). Decision needed: how to tell the two forms apart (e.g. `m(` glued is the call form, `m (` starts an argument; or the `)` must end the line).
 
 ## 2. Code review, items left
 
