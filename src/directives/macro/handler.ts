@@ -3,6 +3,7 @@ import type { PASymbolTable } from "../../assembler/symbol.class";
 import type { ILister } from "../../helpers/lister.class";
 import type { ScalarToken, Token } from "../../shared/lexer/lexer.class";
 import { AsmError } from "../../utils/error.utils";
+import { nestingDelta } from "../../utils/token.utils";
 import type { MacroDefinition } from "./macro.interface";
 
 const DEFAULT_MAX_MACRO_DEPTH = 32;
@@ -115,12 +116,13 @@ export class MacroHandler {
 	/**
 	 * Parses a list of argument tokens into a list of token arrays, one for each argument.
 	 * This method correctly handles empty arguments (e.g., `arg1,,arg3`).
+	 * A comma inside `( )` or `[ ]` belongs to the argument: `m .iif(c, 1, 2), [3, 4][0]` has two.
 	 * @param argTokens The tokens to parse.
 	 */
 	private parseMacroArguments(callLine?: string | number): Token[][] {
 		const argsArray: Token[][] = [];
 		let currentArgTokens: Token[] = [];
-		let parenDepth = 0;
+		let depth = 0;
 
 		const firstPeek = this.parser.peek();
 		if (!firstPeek || firstPeek.type === "EOF") return [];
@@ -130,33 +132,23 @@ export class MacroHandler {
 		if (hasParens) {
 			// consume opening '('
 			this.parser.advance(1);
-			parenDepth = 1;
+			depth = 1;
 			while (true) {
 				const token = this.parser.peek();
 				if (!token || token.type === "EOF") break;
 				this.parser.advance(1);
 
-				if (token.type === "OPERATOR" && token.value === "(") {
-					parenDepth++;
-					currentArgTokens.push(token);
-					continue;
-				}
-
-				if (token.type === "OPERATOR" && token.value === ")") {
-					parenDepth--;
-					if (parenDepth === 0) {
-						argsArray.push(currentArgTokens);
-						currentArgTokens = [];
-						break; // finished argument list
-					}
-					currentArgTokens.push(token);
-					continue;
-				}
-
-				if (token.type === "COMMA" && parenDepth === 1) {
+				if (token.type === "COMMA" && depth === 1) {
 					argsArray.push(currentArgTokens);
 					currentArgTokens = [];
 					continue;
+				}
+
+				depth += nestingDelta(token);
+				if (depth === 0) {
+					argsArray.push(currentArgTokens);
+					currentArgTokens = [];
+					break; // finished argument list
 				}
 
 				currentArgTokens.push(token);
@@ -167,8 +159,8 @@ export class MacroHandler {
 				const token = this.parser.peek();
 				if (!token || token.type === "EOF" || token.line !== callLineNum) break;
 
-				// Handle angle-bracketed arguments
-				if (token.type === "OPERATOR" && token.value === "<") {
+				// Handle angle-bracketed arguments. Inside ( ) or [ ], '<' is an operator: `.iif(a < b, 1, 2)`.
+				if (depth === 0 && token.type === "OPERATOR" && token.value === "<") {
 					this.parser.advance(1); // consume '<'
 					let bracketDepth = 1;
 					while (bracketDepth > 0) {
@@ -188,10 +180,11 @@ export class MacroHandler {
 					}
 				} else {
 					this.parser.advance(1);
-					if (token.type === "COMMA") {
+					if (token.type === "COMMA" && depth <= 0) {
 						argsArray.push(currentArgTokens);
 						currentArgTokens = [];
 					} else {
+						depth += nestingDelta(token);
 						currentArgTokens.push(token);
 					}
 				}
