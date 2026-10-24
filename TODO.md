@@ -123,9 +123,11 @@ _An error, decided: `[1,2]` doesn't say it means its elements. Now `.DB value: a
 
 _Done in `.db` / `.dw` / `.dl` and the string directives (`.text`, `.cstr`, `.pstr`, `.pstrl`), a macro's rest parameter included. The array must be known in pass 1: an array defined later is an error, like a string. Spreading in a macro call (`m(...list)`) isn't supported._
 
-### 1.18 Indexing a macro's rest parameter
+### 1.18 Indexing a macro's rest parameter — ✅ DONE (#103)
 
-Indexing a macro's rest parameter gives the argument's tokens, not its value: in `.macro m(...a)`, `.db a[1]` → `an array can't be emitted as is`. `.for f of a` and `...a` evaluate them.
+✅ **DONE (#103)** — Indexing a macro's rest parameter gives the argument's tokens, not its value: in `.macro m(...a)`, `.db a[1]` → `an array can't be emitted as is`. `.for f of a` and `...a` evaluate them.
+
+_An element of the rest parameter is now evaluated when it's indexed, like a macro argument: in the caller's scope, without the macro's parameters. It failed in every directive (`.dw`, `.text`, `.if`, operators…), and `.len(a[2])` silently gave the number of tokens of `"ab"`, 1. Instructions (`lda a[1]`) and forwarding (`inner a[0]`) already pasted the argument's tokens, and still do: an argument can be an addressing mode (`<table,x>`)._
 
 ### 1.19 Indexing an array defined later — ✅ DONE (#98)
 
@@ -146,6 +148,10 @@ _A file already read to its end has its tokens cached: pass 1 now pushes them wi
 ### 1.22 An `.if .undef(…)` include guard drops the content
 
 `.if .undef("R_INC") {` / `R_INC = 1` / `spr: .db 7,8` / `}`, included once, emits nothing: pass 1 defines `R_INC`, so pass 2 skips the block. No error, an empty output. It only seems to work for macros, which are defined in pass 1 only. `.once` (1.11) is the include guard now, but the trap is there for any `.if .undef(X)` / `X = …` pair. Also, `.def("m")` is `0` for a macro `m`.
+
+### 1.23 An empty macro argument
+
+`.macro m x, y, z` / `.db y` / `.end` / `m 1,,2` emits `0`, silently. In a rest parameter (`.macro m ...a`), `.db a[1]` and `.db ...a` say `an array can't be emitted as is`, which is misleading. Decision needed: an error, or a value for an empty argument (as an omitted optional parameter?).
 
 ## 2. Code review, items left
 

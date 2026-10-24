@@ -370,6 +370,82 @@ lbl: .dw lbl`);
 		});
 	});
 
+	describe("Indexing a rest parameter", () => {
+		const assemble = (source: string) => {
+			const { assembler } = setup();
+			assembler.assemble(source);
+			return assembler.link();
+		};
+		const callM = (body: string) => `.macro m ...a
+${body}
+.end
+m 1, 2+3, "ab"`;
+
+		it.each([
+			[".db", ".db a[1]", [0x05]],
+			["an operator", ".db a[1] + 1, a[0]", [0x06, 0x01]],
+			[".dw", ".dw a[0]", [0x01, 0x00]],
+			[".text", ".text a[2]", [0x61, 0x62]],
+			[".len()", ".db .len(a[2])", [0x02]],
+			[".if", ".if a[0] = 1\n.db 9\n.end", [0x09]],
+			["an index from .for", ".for i of [0, 1]\n.db a[i]\n.end", [0x01, 0x05]],
+			["a copy", "t = a\n.db t[1]", [0x05]],
+		])("should give the argument's value in %s", (_, body, bytes) => {
+			expect(assemble(callM(body))).toEqual(bytes);
+		});
+
+		it("should evaluate the argument in the caller's scope, not against the macro's parameters", () => {
+			expect(
+				assemble(`a = 50
+.macro m ...a
+.db a[0]
+.end
+m a`),
+			).toEqual([50]);
+		});
+
+		it("should evaluate the argument after a regular parameter, and with ( )", () => {
+			expect(
+				assemble(`.macro m first, ...a
+.db first, a[0]
+.end
+.macro n(...a) {
+.db a[1]
+}
+m 1, 2
+n(3, 4)`),
+			).toEqual([0x01, 0x02, 0x04]);
+		});
+
+		it("should take a label defined later", () => {
+			expect(
+				assemble(`.macro m ...a
+.dw a[0]
+.end
+m lbl
+lbl: .db 7`),
+			).toEqual([0x02, 0x10, 0x07]);
+		});
+
+		it("should index an array argument", () => {
+			expect(
+				assemble(`.macro m ...a
+.db a[0][0]
+.end
+m [4]`),
+			).toEqual([0x04]);
+		});
+
+		it("should report an error in the argument", () => {
+			expect(() =>
+				assemble(`.macro m ...a
+.db a[0]
+.end
+m nope`),
+			).toThrow("Undefined symbol 'NOPE'.");
+		});
+	});
+
 	describe("Macro redefinition", () => {
 		it("should throw when a macro is defined twice", () => {
 			const { assembler } = setup();
