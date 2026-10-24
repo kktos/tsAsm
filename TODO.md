@@ -24,9 +24,9 @@ Every repro below was re-checked on the code of #68.
 
 ## 1. Bugs
 
-### 1.1 Macros forget their symbols between the passes
+### 1.1 Macros forget their symbols between the passes — ✅ DONE (#95)
 
-A macro call's scope is deleted after pass 1, so pass 2 doesn't know the body's symbols yet when it needs them:
+✅ **DONE (#95)** — A macro call's scope is deleted after pass 1, so pass 2 doesn't know the body's symbols yet when it needs them:
 
 | Source                                                   | Result                                               |
 | -------------------------------------------------------- | ---------------------------------------------------- |
@@ -34,7 +34,7 @@ A macro call's scope is deleted after pass 1, so pass 2 doesn't know the body's 
 | `.macro m` / `k .equ 1` / `.db k` / `.end` / `m`         | `Unknown symbol "@@macro_M_5__::K".`                 |
 | a `.define` block in a macro body                        | `assignVariable: Unknown symbol "@@macro_M_7__::X".` |
 
-Likely fix: keep each call's scope from pass 1 for pass 2. Scope names are already unique per call (`@@macro_<name>_<call line>__`), and `restoreAndPushScope` / `savedSymbols` exist (used by `.function`).
+_Each call's scope is now kept from pass 1 for pass 2 (`restoreAndPushScope` / `popScope({ wannaSave })`, as `.function` does). The call line didn't make the scope names unique: calls from a loop (`.repeat`, `.for`) or from two files share it. The expansions are now numbered in each pass too (`@@macro_<name>_<call line>#<n>__`), the way the anonymous labels are matched between the passes._
 
 ### 1.2 `.define` block inside `.repeat 1 { … }`
 

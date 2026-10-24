@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { Assembler } from "../assembler/polyasm";
 import type { SegmentDefinition } from "../assembler/polyasm.types";
+import type { SymbolValue } from "../assembler/symbol.class";
+import { yamlparse } from "../cli/asm-yaml";
 import { Cpu65C02Handler } from "../cpu/cpu65c02.class";
 import type { Token } from "../shared/lexer/lexer.class";
 import { MockFileHandler } from "./mockfilehandler.class";
@@ -388,6 +390,79 @@ describe("Macro Handling", () => {
 				maxMacroDepth: 2,
 			});
 			expect(() => assembler.assemble(nested)).toThrow("Macro 'M3' nested more than 2 levels deep");
+		});
+	});
+
+	describe("Macro defining symbols", () => {
+		it("should be able to resolve labels defined within a macro", () => {
+			const { assembler } = setup();
+			const src = `
+				.macro log
+					beq skip
+					nop
+					skip:
+				.end
+				log
+			`;
+			assembler.assemble(src);
+			const machineCode6502 = assembler.link();
+
+			expect(machineCode6502).toEqual([0xf0, 0x01, 0xea]);
+		});
+
+		it("should give each call its own labels, even from the same line in a loop", () => {
+			const { assembler } = setup();
+			const src = `
+				.macro log
+					beq skip
+					nop
+					skip:
+				.end
+				.repeat 2 {
+					log
+				}
+				log
+			`;
+			assembler.assemble(src);
+			const machineCode6502 = assembler.link();
+
+			expect(machineCode6502).toEqual([0xf0, 0x01, 0xea, 0xf0, 0x01, 0xea, 0xf0, 0x01, 0xea]);
+		});
+
+		it("should keep an .EQU defined within a macro", () => {
+			const { assembler } = setup();
+			const src = `
+				.macro m
+					k .equ 1
+					.db k
+				.end
+				m
+			`;
+			assembler.assemble(src);
+			const machineCode6502 = assembler.link();
+
+			expect(machineCode6502).toEqual([1]);
+		});
+
+		it("should keep a .DEFINE block within a macro", () => {
+			const assembler = new Assembler(new Cpu65C02Handler(), new MockFileHandler(), {
+				segments: DEFAULT_SEGMENTS,
+				rawDataProcessors: { default: "yaml", map: new Map([["yaml", (blockContent: string) => yamlparse(blockContent) as SymbolValue]]) },
+			});
+			const src = `
+				.macro m
+					.define x
+- 5
+- 6
+					.end
+					.db x[1]
+				.end
+				m
+			`;
+			assembler.assemble(src);
+			const machineCode6502 = assembler.link();
+
+			expect(machineCode6502).toEqual([6]);
 		});
 	});
 

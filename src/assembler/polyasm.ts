@@ -272,6 +272,7 @@ export class Assembler {
 		this.pass = 1;
 		this.statementToken = undefined;
 		this.namelessLabels.clear();
+		this.macroHandler.rewind();
 		this.lastGlobalLabel = null;
 
 		let blockDepth = 0;
@@ -420,6 +421,7 @@ export class Assembler {
 		this.pass = 2;
 		this.statementToken = undefined;
 		this.namelessLabels.rewind();
+		this.macroHandler.rewind();
 		// Start where pass 1 started, not where it ended (the last .segment used) nor at a segment the source defined.
 		this.linker.currentSegment = this.passStart.segment;
 		this.PC.value = this.passStart.PC;
