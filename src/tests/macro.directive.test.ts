@@ -482,6 +482,43 @@ ${call}`),
 			).toThrow(message);
 		});
 
+		it.each([
+			["in the middle", ".macro m x, y, z", "m 1,,2", "argument 2 is empty"],
+			["at the end", ".macro m x, y", "m 1,", "argument 2 is empty"],
+			["at the start", ".macro m x, y", "m ,1", "argument 1 is empty"],
+			["with ( )", ".macro m(x, y, z)", "m(1,,2)", "argument 2 is empty"],
+			["at the end, with ( )", ".macro m(x, y)", "m(1,)", "argument 2 is empty"],
+			["in a rest parameter", ".macro m ...a", "m 1,,2", "argument 2 is empty"],
+			["at the end of a rest parameter", ".macro m ...a", "m 1,", "argument 2 is empty"],
+		])("should reject an empty argument %s", (_, definition, call, message) => {
+			expect(() =>
+				assemble(`${definition}
+.end
+${call}`),
+			).toThrow(`Macro 'M': ${message}. An argument is a value; pass empty text as <>.`);
+		});
+
+		it("should accept empty text in < >", () => {
+			expect(
+				assemble(`.macro m x, y, z
+.db x
+y
+.db z
+.end
+m 1,<>,2`),
+			).toEqual([0x01, 0x02]);
+		});
+
+		it("should still call a macro without arguments", () => {
+			expect(
+				assemble(`.macro m
+.db 1
+.end
+m
+m()`),
+			).toEqual([0x01, 0x01]);
+		});
+
 		it("should end a text argument at its '>'", () => {
 			expect(() =>
 				assemble(`.macro m a

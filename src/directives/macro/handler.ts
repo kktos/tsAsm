@@ -118,7 +118,7 @@ export class MacroHandler {
 
 	/**
 	 * Parses the call's arguments into a list of token arrays, one for each argument.
-	 * This method correctly handles empty arguments (e.g., `arg1,,arg3`).
+	 * An empty argument is an error (`m 1,,3`, `m 1,`): empty text is written `<>`.
 	 * A comma inside `( )` or `[ ]` belongs to the argument: `m .iif(c, 1, 2), [3, 4][0]` has two.
 	 * An argument in `< >` is text, pasted as is: `m <($12,x)>`. The others are expressions.
 	 * The `m(1, 2)` form needs its `(` glued to the name: `m (1+2)*3` has one argument.
@@ -142,6 +142,17 @@ export class MacroHandler {
 		const argDepth = hasParens ? 1 : 0;
 		if (hasParens) this.parser.advance(1); // consume opening '('
 		let depth = argDepth;
+		let lastComma: Token | undefined;
+
+		// An argument next to a comma can't be empty. Without any comma, an empty argument list is a call without arguments.
+		const pushArgument = () => {
+			if (lastComma && currentArgTokens.length === 0 && !isTextArg(currentArgTokens))
+				throw AsmError.at(
+					`Macro '${macroToken.value}': argument ${argsArray.length + 1} is empty. An argument is a value; pass empty text as <>.`,
+					lastComma,
+				);
+			argsArray.push(currentArgTokens);
+		};
 
 		while (true) {
 			const token = this.parser.peek();
@@ -149,7 +160,8 @@ export class MacroHandler {
 			this.parser.advance(1);
 
 			if (token.type === "COMMA" && depth === argDepth) {
-				argsArray.push(currentArgTokens);
+				lastComma = token;
+				pushArgument();
 				currentArgTokens = [];
 				continue;
 			}
@@ -165,14 +177,14 @@ export class MacroHandler {
 
 			depth += nestingDelta(token);
 			if (hasParens && depth === 0) {
-				argsArray.push(currentArgTokens);
+				pushArgument();
 				return this.withoutEmptyCall(argsArray); // finished argument list
 			}
 
 			currentArgTokens.push(token);
 		}
 
-		if (currentArgTokens.length > 0 || isTextArg(currentArgTokens)) argsArray.push(currentArgTokens);
+		if (lastComma || currentArgTokens.length > 0 || isTextArg(currentArgTokens)) pushArgument();
 		return this.withoutEmptyCall(argsArray);
 	}
 

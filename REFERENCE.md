@@ -383,6 +383,8 @@ An argument is a value: an expression, evaluated where the macro uses it, in an 
 
 The arguments can also be written in parentheses, the `(` glued to the macro name: `copy(<#10>, $2001)`. With a space, the `(` starts the first argument: in `copy (1+2)*3, $2004`, `src` is 9.
 
+An argument can't be empty: `copy 1,` or `m 1,,2` is an error. Empty text is written `<>`.
+
 A last parameter written `...name` collects the remaining arguments into an array:
 
 ```as

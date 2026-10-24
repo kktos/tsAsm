@@ -151,9 +151,11 @@ _A file already read to its end has its tokens cached: pass 1 now pushes them wi
 
 `.if .undef("R_INC") {` / `R_INC = 1` / `spr: .db 7,8` / `}`, included once, emits nothing: pass 1 defines `R_INC`, so pass 2 skips the block. No error, an empty output. It only seems to work for macros, which are defined in pass 1 only. `.once` (1.11) is the include guard now, but the trap is there for any `.if .undef(X)` / `X = …` pair. Also, `.def("m")` is `0` for a macro `m`.
 
-### 1.23 An empty macro argument
+### 1.23 An empty macro argument — ✅ DONE (#106)
 
-`.macro m x, y, z` / `.db y` / `.end` / `m 1,,2` emits `0`, silently. In a rest parameter (`.macro m ...a`), `.db a[1]` and `.db ...a` say `an array can't be emitted as is`, which is misleading. Decision needed: an error, or a value for an empty argument (as an omitted optional parameter?).
+✅ **DONE (#106)** — `.macro m x, y, z` / `.db y` / `.end` / `m 1,,2` emits `0`, silently. In a rest parameter (`.macro m ...a`), `.db a[1]` and `.db ...a` say `an array can't be emitted as is`, which is misleading. Decision needed: an error, or a value for an empty argument (as an omitted optional parameter?).
+
+_Decided: an error, as an argument is a value. It's located at the comma: `Macro 'M': argument 2 is empty. An argument is a value; pass empty text as <>.` A trailing comma (`m 1,`) is an empty argument too, no longer dropped. Empty text is `<>`. Default values for parameters are an idea for later: 4.1._
 
 ### 1.24 A macro call whose first argument starts with `(` — ✅ DONE (#105)
 
@@ -271,3 +273,9 @@ _Decided: `m(` glued is the call form, `m (` starts an argument, and substitutio
     - output files: no crash on a missing directory, listing only when enabled (#72);
     - no crash on a missing, invalid or empty project file (#73).
 - **Messages:** `.REPEAT` / `.FOR` with a symbol defined later (#76), `.DEFINE` on the last line (#77).
+
+## 4. Features (ideas)
+
+### 4.1 Default values for macro parameters
+
+As in JavaScript: `.macro m x, y = 2, z = 3`. Parameters with a default come last, after those without one, and are filled from the first: `m 1` gives `y = 2, z = 3`, `m 1, 5` gives `z = 3`. An argument can still not be empty (`m 1,,4` stays an error, see 1.23). To decide: when the default is evaluated (at the definition or at each call), whether it can use the previous parameters (`y = x*2`), and how it mixes with a rest parameter.
