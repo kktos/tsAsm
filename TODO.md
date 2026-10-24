@@ -151,9 +151,11 @@ _A file already read to its end has its tokens cached: pass 1 now pushes them wi
 
 `.if .undef("R_INC") {` / `R_INC = 1` / `spr: .db 7,8` / `}`, included once, emits nothing: pass 1 defines `R_INC`, so pass 2 skips the block. No error, an empty output. It only seems to work for macros, which are defined in pass 1 only. `.once` (1.11) is the include guard now, but the trap is there for any `.if .undef(X)` / `X = …` pair. Also, `.def("m")` is `0` for a macro `m`.
 
-### 1.23 An empty macro argument
+### 1.23 An empty macro argument — ✅ DONE (#106)
 
-`.macro m x, y, z` / `.db y` / `.end` / `m 1,,2` emits `0`, silently. In a rest parameter (`.macro m ...a`), `.db a[1]` and `.db ...a` say `an array can't be emitted as is`, which is misleading. Decision needed: an error, or a value for an empty argument (as an omitted optional parameter?).
+✅ **DONE (#106)** — `.macro m x, y, z` / `.db y` / `.end` / `m 1,,2` emits `0`, silently. In a rest parameter (`.macro m ...a`), `.db a[1]` and `.db ...a` say `an array can't be emitted as is`, which is misleading. Decision needed: an error, or a value for an empty argument (as an omitted optional parameter?).
+
+_Decided: an error, as an argument is a value. It's located at the comma: `Macro 'M': argument 2 is empty. An argument is a value; pass empty text as <>.` A trailing comma (`m 1,`) is an empty argument too, no longer dropped. Empty text is `<>`. Default values for parameters are an idea for later: 4.1._
 
 ### 1.24 A macro call whose first argument starts with `(` — ✅ DONE (#105)
 
