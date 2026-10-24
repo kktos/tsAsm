@@ -241,7 +241,7 @@ export class Assembler {
 			this.linker.resetModules();
 
 			// Reset stream stack for Pass 2 (fresh position)
-			this.parser.restart();
+			this.streamManager.restart();
 			this.logger.enabled = isLogEnabled && this.wannaLogPass2;
 
 			this.passTwo();

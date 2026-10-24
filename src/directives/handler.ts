@@ -29,6 +29,7 @@ import { LoopDirective } from "./loop.directive";
 import { MacroDirective } from "./macro/macro.directive";
 import { ModuleDirective } from "./module.directive";
 import { NamespaceDirective } from "./namespace.directive";
+import { OnceDirective } from "./once.directive";
 import { OptionDirective } from "./option.directive";
 import { OrgDirective } from "./org.directive";
 import { SegmentDirective } from "./segment.directive";
@@ -58,6 +59,7 @@ export class DirectiveHandler {
 
 		this.register("OPTION", new OptionDirective(assembler));
 		this.register("INCLUDE", new IncludeDirective(assembler, runtime.lister));
+		this.register("ONCE", new OnceDirective(assembler));
 		this.register("INCBIN", new IncbinDirective(assembler, runtime.logger));
 
 		this.register("HEX", new HexDirective(assembler, runtime.lister));
