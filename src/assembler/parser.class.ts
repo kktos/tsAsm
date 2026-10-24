@@ -255,6 +255,11 @@ export class Parser {
 		this.setPosition(i);
 	}
 
+	/** True when the tokens of the stream `cacheName` (a file read to its end) are kept: pushing it reuses them. */
+	public hasCachedStream(cacheName: string): boolean {
+		return this.tokenStreamCache.has(cacheName);
+	}
+
 	/** Returns the ID that will be used for the next stream. */
 	public getNextStreamId(): number {
 		return this.streamIdCounter + 1;

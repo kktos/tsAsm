@@ -183,6 +183,75 @@ describe("File Directive .INCLUDE", () => {
 		});
 	});
 
+	describe("a file included several times", () => {
+		const withFiles = (files: Record<string, string>) => {
+			const { assembler, mockFileHandler } = createAssembler();
+			vi.spyOn(mockFileHandler, "readSourceFile").mockImplementation(function (this: MockFileHandler, filename: string) {
+				this.fullpath = filename;
+				this.filename = filename;
+				return files[filename] ?? "";
+			});
+			return assembler;
+		};
+
+		it("should go on with the statements after the second include", () => {
+			const assembler = withFiles({ "res.asm": ".db 5" });
+			assembler.assemble(`
+				.include "res.asm"
+				.db 8
+				.include "res.asm"
+				.db 9
+				.db 10
+			`);
+			expect(assembler.link()).toEqual([5, 8, 5, 9, 10]);
+		});
+
+		it("should go on with the including file when it was included from another file", () => {
+			const assembler = withFiles({
+				"lib.asm": `
+					.include "res.asm"
+					.db 1
+				`,
+				"res.asm": ".db 5",
+			});
+			assembler.assemble(`
+				.include "lib.asm"
+				.include "res.asm"
+				.db 9
+			`);
+			expect(assembler.link()).toEqual([5, 1, 5, 9]);
+		});
+
+		it("should assemble the raw blocks of a file included twice", () => {
+			const assembler = withFiles({ "res.asm": ".hex { 0E 60 }" });
+			assembler.assemble(`
+				.include "res.asm"
+				.include "res.asm"
+				.db 9
+			`);
+			expect(assembler.link()).toEqual([0x0e, 0x60, 0x0e, 0x60, 9]);
+		});
+
+		it("should define the labels of a file included in two namespaces in each", () => {
+			const assembler = withFiles({
+				"res.asm": `
+					sprite:
+					.db 1, 2
+				`,
+			});
+			assembler.assemble(`
+				.namespace a
+				.include "res.asm"
+				.end namespace
+				.namespace b
+				.include "res.asm"
+				.end namespace
+				.db <a::sprite, <b::sprite
+			`);
+			expect(assembler.link()).toEqual([1, 2, 1, 2, 0x00, 0x02]);
+		});
+	});
+
 	describe(".once", () => {
 		// Paths are resolved from the including file, as the CLI does.
 		const withFiles = (files: Record<string, string>) => {
@@ -267,8 +336,8 @@ describe("File Directive .INCLUDE", () => {
 			});
 			assembler.assemble(`
 				.include "once.asm"
-				.include "once.asm"
 				.include "res.asm"
+				.include "once.asm"
 			`);
 			expect(assembler.link()).toEqual([5, 5]);
 		});

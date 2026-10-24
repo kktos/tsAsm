@@ -70,7 +70,8 @@ export class StreamManager {
 		this.includeStack = [{ file: this.currentFilepath, line: includedAt?.line, column: includedAt?.column }, ...this.includeStack];
 		this.currentFilepath = this.fileHandler.fullpath;
 		this.currentFilename = this.fileHandler.filename;
-		if (tokenize) this.parser.lexer.startStream(rawContent);
+		// A file already read to its end is pushed from its cached tokens: a lexer stream on it would never be read.
+		if (tokenize && !this.parser.hasCachedStream(this.currentFilepath)) this.parser.lexer.startStream(rawContent);
 		return true;
 	}
 
