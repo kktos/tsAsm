@@ -36,8 +36,8 @@ export class FunctionDispatcher {
 		// Register functions with their argument constraints
 		this.register("LEN", { handler: lenFunction, minArgs: 1, maxArgs: 1 });
 		this.register("LABEL", { handler: labelFunction, minArgs: 1, maxArgs: 1 });
-		this.register("DEF", { handler: defFunction, minArgs: 1, maxArgs: 1 });
-		this.register("UNDEF", { handler: undefFunction, minArgs: 1, maxArgs: 1 });
+		this.register("DEF", { handler: defFunction, minArgs: 1, maxArgs: 1, knownArgs: 0 });
+		this.register("UNDEF", { handler: undefFunction, minArgs: 1, maxArgs: 1, knownArgs: 0 });
 		this.register("STR", { handler: strFunction, minArgs: 1, maxArgs: 2 });
 		this.register("HEX", { handler: hexFunction, minArgs: 1, maxArgs: 2 });
 		this.register("SPLIT", { handler: splitFunction, minArgs: 1, maxArgs: 2 });
@@ -45,16 +45,18 @@ export class FunctionDispatcher {
 			handler: arrayFunction,
 			minArgs: 0,
 			maxArgs: Number.POSITIVE_INFINITY,
+			knownArgs: 0,
 		});
 		this.register("PUSH", {
 			handler: pushFunction,
 			minArgs: 2,
 			maxArgs: Number.POSITIVE_INFINITY,
+			knownArgs: 1,
 		});
 		this.register("POP", { handler: popFunction, minArgs: 1, maxArgs: 1 });
 		this.register("TYPE", { handler: typeFunction, minArgs: 1, maxArgs: 1 });
 		this.register("JSON", { handler: jsonFunction, minArgs: 1, maxArgs: 1 });
-		this.register("IIF", { handler: iifFunction, minArgs: 3, maxArgs: 3 });
+		this.register("IIF", { handler: iifFunction, minArgs: 3, maxArgs: 3, knownArgs: 1 });
 		this.register("JOIN", { handler: joinFunction, minArgs: 2, maxArgs: 2 });
 		this.register("LOBYTE", { handler: lobyteFunction, minArgs: 1, maxArgs: 1 });
 		this.register("HIBYTE", { handler: hibyteFunction, minArgs: 1, maxArgs: 1 });
@@ -64,13 +66,32 @@ export class FunctionDispatcher {
 		this.register("ROUND", { handler: roundFunction, minArgs: 1, maxArgs: 1 });
 	}
 
-	public dispatch(name: string, stack: EvaluationStack, token: Token, symbolTable: PASymbolTable, argCount = 0, resolver?: SymbolResolver): void {
+	public dispatch(
+		name: string,
+		stack: EvaluationStack,
+		token: Token,
+		symbolTable: PASymbolTable,
+		argCount = 0,
+		resolver?: SymbolResolver,
+		allowForwardRef = false,
+	): void {
 		const funcDef = this.functions.get(name.toUpperCase());
 		if (!funcDef) throw AsmError.at(`Unknown function '${name}'.`, token);
 
 		// Centralized argument count validation
 		if (argCount < funcDef.minArgs || argCount > funcDef.maxArgs)
 			throw AsmError.at(`Function '${name}' expects between ${funcDef.minArgs} and ${funcDef.maxArgs} arguments, but got ${argCount}.`, token);
+
+		// Pass 1: an argument not known yet makes the result not known yet.
+		if (allowForwardRef) {
+			const firstArg = stack.length - argCount;
+			const knownArgs = stack.slice(firstArg, firstArg + (funcDef.knownArgs ?? argCount));
+			if (knownArgs.includes(null)) {
+				stack.length = firstArg;
+				stack.push(null);
+				return;
+			}
+		}
 
 		funcDef.handler(stack, token, symbolTable, argCount, resolver);
 	}

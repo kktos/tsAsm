@@ -56,7 +56,7 @@ Follow-ups found while doing it:
 - ✅ **DONE (#89)** — `.db [1,2]` (a whole array) → `Unexpected object value 1,2.` Decision needed: emit its elements, or a clear error. _An error, decided: `[1,2]` doesn't say it means its elements. Now `.DB value: an array can't be emitted as is: index it to emit one of its elements.` (or `an object … use one of its fields`), at the value. An array defined after the `.db` was silently emitted as nothing (`.db t` / `t = [1,2]`): it's the same error now._
 - ✅ **DONE (#90)** — **Spread, decided:** `.db 1, ...table, 2` emits each element as if written there (strings too), in `.db` / `.dw` / `.dl` and probably `.text`. `...` is already the lexer's `REST_OPERATOR`, as in macro rest parameters. The array error then adds "or spread it". _Done in `.db` / `.dw` / `.dl` and the string directives (`.text`, `.cstr`, `.pstr`, `.pstrl`), a macro's rest parameter included. The array must be known in pass 1: an array defined later is an error, like a string. Spreading in a macro call (`m(...list)`) isn't supported._
 - Indexing a macro's rest parameter gives the argument's tokens, not its value: in `.macro m(...a)`, `.db a[1]` → `an array can't be emitted as is`. `.for f of a` and `...a` evaluate them.
-- Indexing an array defined later fails in pass 1: `.db t[1]` / `t = [2,3]` → `Attempted to index a non-array value.` The evaluator should pass `null` (not known yet) through `[ ]` in pass 1, as for 1.5.
+- Indexing an array defined later fails in pass 1: `.db t[1]` / `t = [2,3]` → `Attempted to index a non-array value.` The evaluator should pass `null` (not known yet) through `[ ]` in pass 1, as for 1.5. Same for a field: `.text .str(cfg.n)` / `.let cfg = {n: 5}` → `Invalid property access on a non-object value.`
 - `getExpressionTokens`' `inParentheses` parameter is never used.
 
 ### 1.5 String operator with a symbol defined later — ✅ DONE (#96)
@@ -65,9 +65,11 @@ Follow-ups found while doing it:
 
 _Now `.TEXT: 'MSG' must be defined before it is used here (its length is needed to place what follows).` Only a string on the left failed: `msg + "a"` already passed `null` through, as numbers do._
 
-### 1.5b Found while doing #96
+### 1.5b Functions don't pass `null` through — ✅ DONE (#97)
 
-- **Functions don't pass `null` through:** with `msg` defined later, `.db .len(msg)` → `.LEN() requires a string or array argument.`, `.db .str(msg)` → `First argument to .STR() must be a number.` In pass 1 they should give `null` (not known yet), as the operators do, and let pass 2 or the directive report it.
+✅ **DONE (#97)** — With `msg` defined later, `.db .len(msg)` → `.LEN() requires a string or array argument.`, `.db .str(msg)` → `First argument to .STR() must be a number.` In pass 1 they should give `null` (not known yet), as the operators do, and let pass 2 or the directive report it.
+
+_The dispatcher does it for every function in pass 1: an argument not known yet makes the call give `null` without running it. A function says how many leading arguments it needs (`knownArgs`, all by default): `.iif` only its condition, `.push` its array, `.def` / `.undef` / `.array` none. The "must be defined before" messages named the function (`.text .str(n)` → `'STR' must be defined…`): they skip the identifier after a `.` now, and say `'N'`._
 
 ### 1.6 `.option local_label_char` takes effect one line late
 
@@ -78,15 +80,33 @@ _Now `.TEXT: 'MSG' must be defined before it is used here (its length is needed 
 - ✅ **DONE (#76)** — `.repeat n` with `n` defined later → `.REPEAT count: null isn't a whole number (0 or more).` It should say the count must be defined before the `.REPEAT`, as the string directives do. _Now `.REPEAT: 'N' must be defined before it is used here (the count is needed to place what follows).` `.for x of list` had the same bug (it crashed with `object null is not iterable`) and is fixed too._
 - ✅ **DONE (#77)** — `.define X` on the last line (no newline) → `Syntax Error - Unexpected token in .DEFINE`, which is misleading. _Now `Missing .END for the .DEFINE block.` `.define X FROM "file"` on a last line, which was rejected, works too._
 
-### 1.7b Found while doing #75
+### 1.8 Definition columns
 
-- **Definition columns:** what a directive defines (`.macro`, `.equ`, `=`, `.let`, `.define`, `.function`, loop iterators) records the directive name's column, after the `.`, while errors point at the statement's start. A redefinition shows `1:2` for the error and `1:3` for its `first defined here` note. Record the statement's position (`Assembler.currentStatement`, added in #75).
-- `.macro m {` without parameters → `Unexpected token in the macro parameter list.`
-- `lda #` (no operand) is accepted silently.
-- **No include guard:** a file defining macros can't be included by two modules (`Macro … redefined`). Decision needed: `.include once`, an automatic once-only include, or `.ifdef` / `defined()`.
-- An `.include` inside a macro body gets an `included from file:4.2:…` line (the macro's "call.body" line number).
-- **Missed by #75:** `.define` has its own redefinition check, `Cannot redefine symbol 'X' (first defined at …)` (`define.directive.ts`): still the old message, without the `first defined here` note and its include chain.
-- `.define` without a name → `Syntax error - Expecting IDENTIFIER ` (trailing space, and it should say a symbol name is needed).
+What a directive defines (`.macro`, `.equ`, `=`, `.let`, `.define`, `.function`, loop iterators) records the directive name's column, after the `.`, while errors point at the statement's start. A redefinition shows `1:2` for the error and `1:3` for its `first defined here` note. Record the statement's position (`Assembler.currentStatement`, added in #75).
+
+### 1.9 `.macro m {` without parameters
+
+`.macro m {` → `Unexpected token in the macro parameter list.`
+
+### 1.10 `lda #` without an operand
+
+`lda #` (no operand) is accepted silently.
+
+### 1.11 No include guard
+
+A file defining macros can't be included by two modules (`Macro … redefined`). Decision needed: `.include once`, an automatic once-only include, or `.ifdef` / `defined()`.
+
+### 1.12 `.include` in a macro body: include chain line
+
+An `.include` inside a macro body gets an `included from file:4.2:…` line (the macro's "call.body" line number).
+
+### 1.13 `.define` redefinition message
+
+Missed by #75: `.define` has its own redefinition check, `Cannot redefine symbol 'X' (first defined at …)` (`define.directive.ts`): still the old message, without the `first defined here` note and its include chain.
+
+### 1.14 `.define` without a name
+
+`.define` without a name → `Syntax error - Expecting IDENTIFIER ` (trailing space, and it should say a symbol name is needed).
 
 ## 2. Code review, items left
 

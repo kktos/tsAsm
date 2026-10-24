@@ -219,7 +219,21 @@ describe("String Directives", () => {
 			`,
 			message: ".PSTR: 'MSG'",
 		},
-	])("should throw when a string operation uses a symbol defined later: $message", ({ source, message }) => {
+		{
+			source: `
+				.text .str(n)
+				n = 5
+			`,
+			message: ".TEXT: 'N'",
+		},
+		{
+			source: `
+				.cstr .type(n)
+				n = 5
+			`,
+			message: ".CSTR: 'N'",
+		},
+	])("should throw when a string is computed from a symbol defined later: $message", ({ source, message }) => {
 		expect(() => createAssembler().assemble(source)).toThrow(
 			`${message} must be defined before it is used here (its length is needed to place what follows).`,
 		);

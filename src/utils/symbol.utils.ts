@@ -4,8 +4,9 @@ import type { Token } from "../shared/lexer/lexer.class";
 
 /** The first symbol of an expression that isn't defined (yet): through a macro parameter, the argument's. */
 export function findUndefinedSymbol(tokens: Token[], context: DirectiveContext, symbolTable: PASymbolTable): string | undefined {
-	for (const token of tokens) {
-		if (token.type !== "IDENTIFIER") continue;
+	for (const [index, token] of tokens.entries()) {
+		// After a '.', it's a function (`.len(s)`) or a field (`cfg.size`), not a symbol.
+		if (token.type !== "IDENTIFIER" || tokens[index - 1]?.type === "DOT") continue;
 		for (const t of context.macroArgs?.get(token.value) ?? [token])
 			if (t.type === "IDENTIFIER" && symbolTable.findSymbol(t.value) === undefined) return t.value;
 	}
