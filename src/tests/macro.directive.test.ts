@@ -212,7 +212,7 @@ lbl: .dw lbl`);
 					LDA arg2
 					STA $2001
 				.END
-				MY_MACRO #$10, $300
+				MY_MACRO <#$10>, $300
 			`);
 
 			const machineCode6502 = assembler.link();
@@ -236,7 +236,7 @@ lbl: .dw lbl`);
 				.END
 
 				.org $1000
-				save <data,x>, #10 ; Call macro with '<data,x>' and '#10'
+				save <data,x>, <#10> ; Call macro with '<data,x>' and '<#10>'
 
 				data: .db 0,1,2,3,4,5,6,7,8,9
 			`);
@@ -399,13 +399,13 @@ m .iif(1,2,3), [3,4][0], 5`),
 			).toEqual([0x02, 0x03, 0x05]);
 		});
 
-		it("should keep an indirect addressing mode in its argument", () => {
+		it("should keep an indirect addressing mode in its text argument", () => {
 			expect(
 				assemble(`.macro m a, b
 .db a
 lda b
 .end
-m 1, ($12,x)`),
+m 1, <($12,x)>`),
 			).toEqual([0x01, 0xa1, 0x12]);
 		});
 
@@ -428,6 +428,91 @@ inner b
 .end
 outer [1,2][0]`),
 			).toEqual([0x01]);
+		});
+	});
+
+	describe("Value and text arguments", () => {
+		const assemble = (source: string) => {
+			const { assembler } = setup();
+			assembler.assemble(source);
+			return assembler.link();
+		};
+
+		it("should read a '(' after a space as the start of an argument", () => {
+			expect(
+				assemble(`.macro m a
+.db a
+.end
+m (1+2)*3`),
+			).toEqual([0x09]);
+		});
+
+		it("should evaluate a value argument in an instruction, as in a directive", () => {
+			expect(
+				assemble(`.macro m a
+lda a*2
+.db a*2
+.end
+m 1+2`),
+			).toEqual([0xa5, 0x06, 0x06]);
+		});
+
+		it.each([
+			["without ( )", "m <($12,x)>"],
+			["with ( )", "m(<($12,x)>)"],
+		])("should paste a text argument %s", (_, call) => {
+			expect(
+				assemble(`.macro m a
+lda a
+.end
+${call}`),
+			).toEqual([0xa1, 0x12]);
+		});
+
+		it.each([
+			["an immediate", "m #5", "'#5' is an addressing mode, not an expression. Pass it as text, in < >: <#5>."],
+			["an indirect mode", "m ($12,x)", "'($12,x)' is an addressing mode"],
+			["an indirect mode, with ( )", "m(($12,x))", "'($12,x)' is an addressing mode"],
+		])("should reject %s outside < >", (_, call, message) => {
+			expect(() =>
+				assemble(`.macro m a
+lda a
+.end
+${call}`),
+			).toThrow(message);
+		});
+
+		it("should end a text argument at its '>'", () => {
+			expect(() =>
+				assemble(`.macro m a
+.db a
+.end
+m <1>+1`),
+			).toThrow("Unexpected '+' after '>': a macro argument in < > ends at its '>'.");
+		});
+
+		it("should forward a text argument as text", () => {
+			expect(
+				assemble(`.macro inner v
+lda v
+.end
+.macro outer t
+inner t
+.end
+outer <#5>`),
+			).toEqual([0xa9, 0x05]);
+		});
+
+		it("should forward a value argument as a value", () => {
+			expect(
+				assemble(`.macro inner v
+.db v
+.end
+.macro outer b
+inner b*2
+.end
+outer 1+2`),
+			).toEqual([0x06]);
 		});
 	});
 
@@ -775,7 +860,7 @@ m nope`),
 				}
 
 				start:
-					ifx $300, "<", #10, end
+					ifx $300, "<", <#10>, end
 
 					nop
 
