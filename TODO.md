@@ -133,9 +133,11 @@ _In pass 1, an array, an index or an object not known yet now gives `null`, and 
 
 `getExpressionTokens`' `inParentheses` parameter is never used.
 
-### 1.21 A file included twice breaks what follows
+### 1.21 A file included twice breaks what follows — ✅ DONE (#100)
 
-A file included a second time breaks the statements after that `.include`: `.include "r.asm"` / `.include "r.asm"` / `.db 9` → `Cannot read properties of null (reading 'value')` at `.db 9`. Nothing after it (the existing test) hides it. It blocks a resource included in two places, in two namespaces too. In pass 1, `startNewStream` starts a lexer stream on the file again, but `pushTokenStream` takes the parser's cached tokens: that lexer stream is never read, and the including file goes on from it.
+✅ **DONE (#100)** — A file included a second time breaks the statements after that `.include`: `.include "r.asm"` / `.include "r.asm"` / `.db 9` → `Cannot read properties of null (reading 'value')` at `.db 9`. Nothing after it (the existing test) hides it. It blocks a resource included in two places, in two namespaces too. In pass 1, `startNewStream` starts a lexer stream on the file again, but `pushTokenStream` takes the parser's cached tokens: that lexer stream is never read, and the including file goes on from it.
+
+_A file already read to its end has its tokens cached: pass 1 now pushes them without starting a lexer stream on the file, as pass 2 does. Raw blocks (`.hex`) and labels in two namespaces work in the second copy._
 
 ### 1.22 An `.if .undef(…)` include guard drops the content
 
