@@ -450,7 +450,15 @@ export class ExpressionEvaluator {
 
 						return context.allowForwardRef ? null : undefined;
 					};
-					this.functionDispatcher.dispatch(token.value.toUpperCase(), stack, token, this.symbolTable, token.argCount, resolver);
+					this.functionDispatcher.dispatch(
+						token.value.toUpperCase(),
+						stack,
+						token,
+						this.symbolTable,
+						token.argCount,
+						resolver,
+						context.allowForwardRef,
+					);
 					break;
 				}
 

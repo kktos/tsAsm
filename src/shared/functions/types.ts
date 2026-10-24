@@ -11,4 +11,9 @@ export interface IFunctionDef {
 	handler: FunctionHandler;
 	minArgs: number;
 	maxArgs: number;
+	/**
+	 * How many leading arguments must be known for the result to be: in pass 1, if one isn't (a symbol defined later),
+	 * the call gives null (not known yet) without running the handler, as the operators do. All of them by default.
+	 */
+	knownArgs?: number;
 }

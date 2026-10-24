@@ -97,4 +97,55 @@ describe("ExpressionEvaluator", () => {
 			expect(result).toBe(0x00);
 		});
 	});
+
+	describe("Arguments defined later (pass 1)", () => {
+		it.each([
+			".LEN(Later)",
+			".STR(Later)",
+			".HEX(Later)",
+			".SPLIT(Later)",
+			".POP(Later)",
+			'.JOIN(Later, ",")',
+			".TYPE(Later)",
+			".JSON(Later)",
+			".FLOOR(Later)",
+			".IIF(Later, 1, 2)",
+			".PUSH(Later, 1)",
+			".LEN(.STR(Later))",
+		])("should give null (not known yet): %s", (expr) => {
+			const { evaluator, tokenize } = setup();
+			const result = evaluator.evaluate(tokenize(expr), { PC: { value: 0 }, allowForwardRef: true });
+			expect(result).toBe(null);
+		});
+
+		it.each([
+			[".IIF(1, 2, Later)", 2],
+			[".LEN(.ARRAY(1, Later))", 2],
+			[".LEN(.PUSH([1], Later))", 2],
+			[".DEF(Later)", 0],
+		])("should still compute what the unknown argument doesn't change: %s", (expr, expected) => {
+			const { evaluator, tokenize } = setup();
+			const result = evaluator.evaluate(tokenize(expr), { PC: { value: 0 }, allowForwardRef: true });
+			expect(result).toBe(expected);
+		});
+
+		it("should still check the arguments that are known", () => {
+			const { evaluator, tokenize } = setup();
+			expect(() => evaluator.evaluate(tokenize(".LEN(5)"), { PC: { value: 0 }, allowForwardRef: true })).toThrow(
+				".LEN() requires a string or array argument.",
+			);
+		});
+
+		it("should assemble with symbols defined after the functions using them", () => {
+			const { assembler } = setup();
+			const src = `
+				.db .len(msg), .iif(flag, 1, 2), .len(.split(list, ","))
+				msg = "bc"
+				flag = 0
+				list = "a,b,c"
+			`;
+			assembler.assemble(src);
+			expect(assembler.link()).toEqual([2, 2, 3]);
+		});
+	});
 });
