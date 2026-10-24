@@ -485,7 +485,7 @@ export class ExpressionEvaluator {
 				case "OPERATOR": {
 					const right = stack.pop();
 					if (this.handleUnaryOperator(token as OperatorToken, right, stack)) break;
-					if (this.handleArrayAccessOperator(token as OperatorToken, right, stack, context.allowForwardRef)) break;
+					if (this.handleArrayAccessOperator(token as OperatorToken, right, stack, context)) break;
 					this.handleBinaryOperator(token as OperatorToken, right, stack);
 					break;
 				}
@@ -546,9 +546,10 @@ export class ExpressionEvaluator {
 		token: OperatorToken,
 		right: SymbolValue | undefined | null,
 		stack: (SymbolValue | null)[],
-		allowForwardRef = false,
+		context: EvaluationContext,
 	): boolean {
 		if (token.value === "ARRAY_ACCESS") {
+			const { allowForwardRef } = context;
 			const arrIdx = right;
 			const array = stack.pop() as SymbolValue[] | null;
 
@@ -565,7 +566,11 @@ export class ExpressionEvaluator {
 
 			if (arrIdx < 0 || arrIdx >= array.length) throw AsmError.at(`Array index ${arrIdx} out of bounds for array of length ${array.length}.`, token);
 
-			stack.push(array[arrIdx] as SymbolValue);
+			// A macro's rest parameter holds each argument as its tokens: evaluated like a macro argument, without the macro's own.
+			const element = array[arrIdx];
+			stack.push(
+				Array.isArray(element) && element[0]?.type ? this.evaluate(element as Token[], { ...context, macroArgs: undefined }) : (element as SymbolValue),
+			);
 			return true;
 		}
 		return false;
