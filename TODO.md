@@ -79,9 +79,11 @@ _The dispatcher does it for every function in pass 1: an argument not known yet 
 
 What a directive defines (`.macro`, `.equ`, `=`, `.let`, `.define`, `.function`, loop iterators) records the directive name's column, after the `.`, while errors point at the statement's start. A redefinition shows `1:2` for the error and `1:3` for its `first defined here` note. Record the statement's position (`Assembler.currentStatement`, added in #75).
 
-### 1.9 `.macro m {` without parameters
+### 1.9 `.macro m {` without parameters — ✅ DONE (#102)
 
-`.macro m {` → `Unexpected token in the macro parameter list.`
+✅ **DONE (#102)** — `.macro m {` → `Unexpected token in the macro parameter list.`
+
+_`getInstructionTokens` stopped at a `{`, except when it was the line's first token: the `{` was read as a parameter. A `{` is never part of the line now. `.macro m() {` and `.macro m a {` already worked. A stray `}` keeps its error (`.macro m }`, `nop }`)._
 
 ### 1.10 `lda #` without an operand
 

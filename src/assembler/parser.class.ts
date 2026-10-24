@@ -321,7 +321,8 @@ export class Parser {
 		const tokens: Token[] = [];
 
 		const startToken = this.peek();
-		if (startToken?.type === "EOF") return tokens;
+		// A '{' opens the directive's block: it's never part of its line, as below (`.macro m {`).
+		if (startToken?.type === "EOF" || startToken?.type === "LBRACE") return tokens;
 		if (instructionToken && instructionToken.line !== startToken?.line) return tokens;
 
 		this.advance(1);
