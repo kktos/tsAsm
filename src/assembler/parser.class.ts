@@ -342,7 +342,7 @@ export class Parser {
 		return tokens;
 	}
 
-	public getExpressionTokens(instructionToken?: Token, inParentheses = false): Token[] {
+	public getExpressionTokens(instructionToken?: Token): Token[] {
 		const tokens: Token[] = [];
 		// Inside ( ) or [ ]: a comma there belongs to a function call or an array literal, not the directive.
 		let depth = 0;
@@ -375,8 +375,6 @@ export class Parser {
 
 			this.advance(1);
 			tokens.push(token);
-
-			if (inParentheses && depth === 0) break;
 		}
 		return tokens;
 	}
