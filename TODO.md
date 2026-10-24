@@ -50,14 +50,7 @@ _Each call's scope is now kept from pass 1 for pass 2 (`restoreAndPushScope` / `
 
 _The indexing worked: the comma inside the brackets cut the `.db` value. The directives' values (`.db`, `.dw`, `.text`, `.let`…) and the `.fill` / `.align` arguments are now only split at the commas outside `( )` and `[ ]`: `.fill .iif(1,2,3), $AB` failed too. Strings no longer count as brackets: `.db "(", 1` and `.db "["` failed._
 
-Follow-ups found while doing it:
-
-- **Macro call arguments** are still split at a comma inside `[ ]`: `m [1,2][1]` → `Macro 'M' expects 1 argument, but got 2.` (`macro/handler.ts`, both call forms). Without parentheses, `m ($12,x)` is also split in two. Decision needed: should `( )` group a macro argument too?
-- ✅ **DONE (#89)** — `.db [1,2]` (a whole array) → `Unexpected object value 1,2.` Decision needed: emit its elements, or a clear error. _An error, decided: `[1,2]` doesn't say it means its elements. Now `.DB value: an array can't be emitted as is: index it to emit one of its elements.` (or `an object … use one of its fields`), at the value. An array defined after the `.db` was silently emitted as nothing (`.db t` / `t = [1,2]`): it's the same error now._
-- ✅ **DONE (#90)** — **Spread, decided:** `.db 1, ...table, 2` emits each element as if written there (strings too), in `.db` / `.dw` / `.dl` and probably `.text`. `...` is already the lexer's `REST_OPERATOR`, as in macro rest parameters. The array error then adds "or spread it". _Done in `.db` / `.dw` / `.dl` and the string directives (`.text`, `.cstr`, `.pstr`, `.pstrl`), a macro's rest parameter included. The array must be known in pass 1: an array defined later is an error, like a string. Spreading in a macro call (`m(...list)`) isn't supported._
-- Indexing a macro's rest parameter gives the argument's tokens, not its value: in `.macro m(...a)`, `.db a[1]` → `an array can't be emitted as is`. `.for f of a` and `...a` evaluate them.
-- Indexing an array defined later fails in pass 1: `.db t[1]` / `t = [2,3]` → `Attempted to index a non-array value.` The evaluator should pass `null` (not known yet) through `[ ]` in pass 1, as for 1.5. Same for a field: `.text .str(cfg.n)` / `.let cfg = {n: 5}` → `Invalid property access on a non-object value.`
-- `getExpressionTokens`' `inParentheses` parameter is never used.
+Its follow-ups are 1.15 to 1.20.
 
 ### 1.5 String operator with a symbol defined later — ✅ DONE (#96)
 
@@ -107,6 +100,36 @@ Missed by #75: `.define` has its own redefinition check, `Cannot redefine symbol
 ### 1.14 `.define` without a name
 
 `.define` without a name → `Syntax error - Expecting IDENTIFIER ` (trailing space, and it should say a symbol name is needed).
+
+### 1.15 Macro call arguments split at a comma inside `[ ]`
+
+`m [1,2][1]` → `Macro 'M' expects 1 argument, but got 2.` (`macro/handler.ts`, both call forms). Without parentheses, `m ($12,x)` is also split in two. Decision needed: should `( )` group a macro argument too?
+
+### 1.16 A whole array in `.db` — ✅ DONE (#89)
+
+✅ **DONE (#89)** — `.db [1,2]` (a whole array) → `Unexpected object value 1,2.` Decision needed: emit its elements, or a clear error.
+
+_An error, decided: `[1,2]` doesn't say it means its elements. Now `.DB value: an array can't be emitted as is: index it to emit one of its elements.` (or `an object … use one of its fields`), at the value. An array defined after the `.db` was silently emitted as nothing (`.db t` / `t = [1,2]`): it's the same error now._
+
+### 1.17 Spread — ✅ DONE (#90)
+
+✅ **DONE (#90)** — **Decided:** `.db 1, ...table, 2` emits each element as if written there (strings too), in `.db` / `.dw` / `.dl` and probably `.text`. `...` is already the lexer's `REST_OPERATOR`, as in macro rest parameters. The array error then adds "or spread it".
+
+_Done in `.db` / `.dw` / `.dl` and the string directives (`.text`, `.cstr`, `.pstr`, `.pstrl`), a macro's rest parameter included. The array must be known in pass 1: an array defined later is an error, like a string. Spreading in a macro call (`m(...list)`) isn't supported._
+
+### 1.18 Indexing a macro's rest parameter
+
+Indexing a macro's rest parameter gives the argument's tokens, not its value: in `.macro m(...a)`, `.db a[1]` → `an array can't be emitted as is`. `.for f of a` and `...a` evaluate them.
+
+### 1.19 Indexing an array defined later — ✅ DONE (#98)
+
+✅ **DONE (#98)** — Indexing an array defined later fails in pass 1: `.db t[1]` / `t = [2,3]` → `Attempted to index a non-array value.` The evaluator should pass `null` (not known yet) through `[ ]` in pass 1, as for 1.5. Same for a field: `.text .str(cfg.n)` / `.define cfg` … → `Invalid property access on a non-object value.`
+
+_In pass 1, an array, an index or an object not known yet now gives `null`, and what is known is still checked (`5[i]`, `t["a"]`). An index not known yet was taken as 0: `.text ["a","bc"][i]` was placed with `"a"`, a phase error if a label followed. In pass 2, a `null` index is now an error, not 0._
+
+### 1.20 `getExpressionTokens`' unused parameter
+
+`getExpressionTokens`' `inParentheses` parameter is never used.
 
 ## 2. Code review, items left
 

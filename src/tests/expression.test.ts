@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Assembler } from "../assembler/polyasm";
+import type { SymbolValue } from "../assembler/symbol.class";
 import { MockFileHandler } from "./mockfilehandler.class";
 
 // Minimal fake CPU handler
@@ -538,6 +539,42 @@ describe("ExpressionEvaluator", () => {
 			const { evaluator, tokenize } = setup();
 			const result = evaluator.evaluate(tokenize(expr), { PC: { value: 0 }, allowForwardRef: true });
 			expect(result).toBe(null);
+		});
+	});
+
+	describe("Defined later (pass 1)", () => {
+		it.each(["Later[1]", "[1, 2][Later]", "Later[0][1]", "Later.name", "Later.towns[1].name", ".LEN(Later[0])"])(
+			"should give null (not known yet): %s",
+			(expr) => {
+				const { evaluator, tokenize } = setup();
+				const result = evaluator.evaluate(tokenize(expr), { PC: { value: 0 }, allowForwardRef: true });
+				expect(result).toBe(null);
+			},
+		);
+
+		it.each([
+			["123[Later]", "Attempted to index a non-array value."],
+			['Later["a"]', "Array index must be a number."],
+		])("should still check what is known: %s", (expr, message) => {
+			const { evaluator, tokenize } = setup();
+			expect(() => evaluator.evaluate(tokenize(expr), { PC: { value: 0 }, allowForwardRef: true })).toThrow(message);
+		});
+
+		it("should not take a null index as 0 in pass 2", () => {
+			const { evaluator, tokenize, symbolTable } = setup();
+			symbolTable.defineVariable("NoValue", null as unknown as SymbolValue, { filename: "test", line: 1, column: 1 });
+			expect(() => evaluator.evaluate(tokenize("[1, 2][NoValue]"), { PC: { value: 0 } })).toThrow("Array index must be a number.");
+		});
+
+		it("should assemble with an array and an index defined after their use", () => {
+			const { assembler } = setup();
+			const src = `
+				.db table[1], table[index], [4, 5][index]
+				table = [2, 3]
+				index = 0
+			`;
+			assembler.assemble(src);
+			expect(assembler.link()).toEqual([3, 2, 4]);
 		});
 	});
 });
