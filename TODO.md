@@ -214,7 +214,7 @@ _Decided: `m(` glued is the call form, `m (` starts an argument, and substitutio
 
 ### 2.3 CLI
 
-- Relative config path applied twice (`chdir` + `dirname`), so `tsasm proj/conf.yaml` fails.
+- ✅ **DONE (#108)** — Relative config path applied twice (`chdir` + `dirname`), so `tsasm proj/conf.yaml` fails. _The project directory is made absolute once and every path of the project file is resolved against it, without `chdir`: the linker script and its includes were the ones read from `proj/proj/`._
 - ✅ **DONE (#69, #73)** — The config validator crashes on `cpu: 6502` and on an empty file. _A missing file and YAML syntax errors are reported too, as `file:line:column: error:`._
 - ✅ **DONE (#72)** — An empty `.lst` is always created in the current directory. _The listing is only written when enabled, relative to the project file, its directory created; a write failure is a clean error, not a node crash._
 - ✅ **DONE (#75)** — Included file paths come out as `./././nope.asm`. _Now normalized (`includes/x.asm`), and every error in an included file says through which includes it was reached._
