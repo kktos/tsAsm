@@ -278,4 +278,12 @@ _Decided: `m(` glued is the call form, `m (` starts an argument, and substitutio
 
 ### 4.1 Default values for macro parameters
 
-As in JavaScript: `.macro m x, y = 2, z = 3`. Parameters with a default come last, after those without one, and are filled from the first: `m 1` gives `y = 2, z = 3`, `m 1, 5` gives `z = 3`. An argument can still not be empty (`m 1,,4` stays an error, see 1.23). To decide: when the default is evaluated (at the definition or at each call), whether it can use the previous parameters (`y = x*2`), and how it mixes with a rest parameter.
+As in JavaScript: `.macro m x, y = 2, z = 3`. Parameters with a default come last, after those without one, and are filled from the first: `m 1` gives `y = 2, z = 3`, `m 1, 5` gives `z = 3`. An argument can still not be empty (`m 1,,4` stays an error, see 1.23).
+
+_Decided: an omitted argument is as if its default had been written at the call. The default's tokens are injected in its place, so it's evaluated at each call, where the macro uses it, like any argument (as MASM's `:=` and NASM's defaults do; not once at the definition, as Python does). Evaluating at the definition would break forward references in pass 1 (`y = BUFFER_END` defined later), and Python's surprise (one mutable default shared by the calls) doesn't apply to these values._
+
+- A default can use the parameters before it, as in JavaScript: `y = x*2`. They are substituted into its tokens with `substituteArgs`, as for a nested call. Using a later parameter is an error.
+- A default in `< >` is text, like a text argument: `y = <#5>`.
+- At the definition, only the form is checked: defaults come after the parameters without one, and the rest parameter has none. Nothing is evaluated there.
+- A default that changes between calls follows: with `count = 1`, `.macro m x = count`, `count = 2`, `m` gives 2. `x = *` is the address where `x` is used, so `.dw x, x` gives two addresses, as an explicit `m *` already does.
+- To note in REFERENCE.md: a default's symbols are resolved inside the macro, so a local of the body with the same name takes the place of the outer symbol. Explicit arguments already behave this way.
