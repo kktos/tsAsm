@@ -428,6 +428,16 @@ Symbols defined inside `.namespace <name>` … `.end namespace` belong to that n
 .incbin "data/logo.bin"     ; insert a binary file
 ```
 
+A file can be included several times: each `.include` assembles it again. A file of definitions (macros, constants) starts with `.once`: an `.include` of it after its `.once` was reached does nothing.
+
+```as
+; macros.asm
+.once
+.macro twice v
+    .db v, v
+.end
+```
+
 ## Messages and listing
 
 | Directive                                         | Effect                                                                       |

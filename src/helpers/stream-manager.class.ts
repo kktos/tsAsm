@@ -13,6 +13,8 @@ export class StreamManager {
 	private filenameStack: { path: string; name: string; includeStack: IncludeStack }[] = [];
 	/** The text of each file read, by path: for errors to show their source line. */
 	private sources = new Map<string, string>();
+	/** The files whose `.once` was reached in this pass, by path: including one of them again does nothing. */
+	private onceFiles = new Set<string>();
 
 	constructor(
 		private readonly fileHandler: FileHandler,
@@ -25,7 +27,19 @@ export class StreamManager {
 		this.filenameStack = [];
 		this.includeStack = [];
 		this.sources = new Map([[this.currentFilepath, source]]);
+		this.onceFiles = new Set();
 		this.parser.start(source);
+	}
+
+	/** Back to the start of the main file, for pass 2: it includes the same files as pass 1, `.once` ones once. */
+	public restart() {
+		this.onceFiles = new Set();
+		this.parser.restart();
+	}
+
+	/** `.once`: the current file won't be included again. */
+	public markOnce() {
+		this.onceFiles.add(this.currentFilepath);
 	}
 
 	/** A line (1-based) of a file read in this assembly, without its line ending (or a leading byte order mark). */
@@ -34,9 +48,13 @@ export class StreamManager {
 		return text?.replace(/\r$/, "").replace(/^\uFEFF/, "");
 	}
 
-	/** Reads and enters an included file. `includedAt` is where the `.include` directive is, in the current file. */
-	public startNewStream(filename: string, tokenize = true, includedAt?: { line: number | string; column: number }) {
+	/**
+	 * Reads and enters an included file. `includedAt` is where the `.include` directive is, in the current file.
+	 * @returns false, without entering it, for a file whose `.once` was already reached.
+	 */
+	public startNewStream(filename: string, tokenize = true, includedAt?: { line: number | string; column: number }): boolean {
 		const rawContent = this.fileHandler.readSourceFile(filename, this.currentFilepath);
+		if (this.onceFiles.has(this.fileHandler.fullpath)) return false;
 		this.sources.set(this.fileHandler.fullpath, rawContent);
 
 		// A file already being included would include itself again, forever.
@@ -53,6 +71,7 @@ export class StreamManager {
 		this.currentFilepath = this.fileHandler.fullpath;
 		this.currentFilename = this.fileHandler.filename;
 		if (tokenize) this.parser.lexer.startStream(rawContent);
+		return true;
 	}
 
 	public endCurrentStream() {

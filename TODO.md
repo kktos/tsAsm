@@ -85,9 +85,11 @@ What a directive defines (`.macro`, `.equ`, `=`, `.let`, `.define`, `.function`,
 
 `lda #` (no operand) is accepted silently.
 
-### 1.11 No include guard
+### 1.11 No include guard — ✅ DONE (#99)
 
-A file defining macros can't be included by two modules (`Macro … redefined`). Decision needed: `.include once`, an automatic once-only include, or `.ifdef` / `defined()`.
+✅ **DONE (#99)** — A file defining macros can't be included by two modules (`Macro … redefined`). Decision needed: `.include once`, an automatic once-only include, or `.ifdef` / `defined()`.
+
+_`.once`, decided: the file says it holds definitions, like C's `#pragma once`, and an `.include` of it after its `.once` was reached does nothing. Files are known by their resolved path. An automatic once-only include would forbid a resource included in two places; `.include once` must be remembered by every includer; a guard written with `.if .undef(…)` breaks with two passes (1.22). Both passes skip the same includes: the files seen are forgotten before pass 2._
 
 ### 1.12 `.include` in a macro body: include chain line
 
@@ -130,6 +132,14 @@ _In pass 1, an array, an index or an object not known yet now gives `null`, and 
 ### 1.20 `getExpressionTokens`' unused parameter
 
 `getExpressionTokens`' `inParentheses` parameter is never used.
+
+### 1.21 A file included twice breaks what follows
+
+A file included a second time breaks the statements after that `.include`: `.include "r.asm"` / `.include "r.asm"` / `.db 9` → `Cannot read properties of null (reading 'value')` at `.db 9`. Nothing after it (the existing test) hides it. It blocks a resource included in two places, in two namespaces too. In pass 1, `startNewStream` starts a lexer stream on the file again, but `pushTokenStream` takes the parser's cached tokens: that lexer stream is never read, and the including file goes on from it.
+
+### 1.22 An `.if .undef(…)` include guard drops the content
+
+`.if .undef("R_INC") {` / `R_INC = 1` / `spr: .db 7,8` / `}`, included once, emits nothing: pass 1 defines `R_INC`, so pass 2 skips the block. No error, an empty output. It only seems to work for macros, which are defined in pass 1 only. `.once` (1.11) is the include guard now, but the trap is there for any `.if .undef(X)` / `X = …` pair. Also, `.def("m")` is `0` for a macro `m`.
 
 ## 2. Code review, items left
 

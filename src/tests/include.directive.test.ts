@@ -1,3 +1,4 @@
+import { posix } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { Assembler } from "../assembler/polyasm";
 import type { SegmentDefinition } from "../assembler/polyasm.types";
@@ -179,6 +180,114 @@ describe("File Directive .INCLUDE", () => {
 			const assembler = withFiles();
 			assembler.assemble('.include "leaf.asm"\n.include "leaf.asm"');
 			expect(assembler.link()).toEqual([1, 1]);
+		});
+	});
+
+	describe(".once", () => {
+		// Paths are resolved from the including file, as the CLI does.
+		const withFiles = (files: Record<string, string>) => {
+			const { assembler, mockFileHandler } = createAssembler();
+			vi.spyOn(mockFileHandler, "readSourceFile").mockImplementation(function (this: MockFileHandler, filename: string, from?: string) {
+				this.fullpath = from ? posix.join(posix.dirname(from), filename) : filename;
+				this.filename = posix.basename(filename);
+				const source = files[this.fullpath];
+				if (source === undefined) throw new Error(`no file ${this.fullpath}`);
+				return source;
+			});
+			return assembler;
+		};
+
+		it("should define the macros of a file included twice only once", () => {
+			const assembler = withFiles({
+				"macros.asm": `
+					.once
+					.macro twice v
+						.db v, v
+					.end
+				`,
+				"a.asm": `
+					.include "macros.asm"
+					twice 1
+				`,
+				"b.asm": `
+					.include "macros.asm"
+					twice 2
+				`,
+			});
+			assembler.assemble(`
+				.include "a.asm"
+				.include "b.asm"
+			`);
+			expect(assembler.link()).toEqual([1, 1, 2, 2]);
+		});
+
+		it("should assemble the code and labels of a file included twice only once, in both passes", () => {
+			const assembler = withFiles({
+				"data.asm": `
+					.once
+					table:
+					.db 7, 8
+				`,
+			});
+			assembler.assemble(`
+				.include "data.asm"
+				.include "data.asm"
+				lda table
+			`);
+			expect(assembler.link()).toEqual([7, 8, 0xad, 0x00, 0x10]);
+		});
+
+		it("should know a file by its path, whatever the path it is included with", () => {
+			const assembler = withFiles({
+				"includes/macros.asm": `
+					.once
+					.macro one
+						.db 1
+					.end
+				`,
+				"modules/lib/lib.asm": `
+					.include "../../includes/macros.asm"
+					one
+				`,
+			});
+			assembler.assemble(`
+				.include "includes/macros.asm"
+				.include "modules/lib/lib.asm"
+			`);
+			expect(assembler.link()).toEqual([1]);
+		});
+
+		it("should still include twice a file without .once", () => {
+			const assembler = withFiles({
+				"once.asm": `
+					.once
+					.include "res.asm"
+				`,
+				"res.asm": ".db 5",
+			});
+			assembler.assemble(`
+				.include "once.asm"
+				.include "once.asm"
+				.include "res.asm"
+			`);
+			expect(assembler.link()).toEqual([5, 5]);
+		});
+
+		it("should include a .once file again in a new assembly", () => {
+			const assembler = withFiles({
+				"data.asm": `
+					.once
+					.db 3
+				`,
+			});
+			assembler.assemble('.include "data.asm"');
+			expect(assembler.link()).toEqual([3]);
+			assembler.assemble('.include "data.asm"');
+			expect(assembler.link()).toEqual([3]);
+		});
+
+		it("should throw when .once is given an argument", () => {
+			expect(() => withFiles({}).assemble(".once 1")).toThrow(".ONCE takes no argument.");
 		});
 	});
 });
