@@ -11,6 +11,8 @@ const DEFAULT_MAX_MACRO_DEPTH = 32;
 
 export class MacroHandler {
 	public macroDefinitions = new Map<string, MacroDefinition>();
+	/** The macros whose `.macro` this pass has reached: see `isDefined`. */
+	private reached = new Set<string>();
 	/** Expansions done in this pass: numbers each call's scope, the same in both passes (a loop calls from the same line). */
 	private expansionCount = 0;
 
@@ -27,10 +29,21 @@ export class MacroHandler {
 	/** At the start of a pass: the expansions are numbered from 0 again, so pass 2 finds pass 1's scopes. */
 	public rewind() {
 		this.expansionCount = 0;
+		this.reached.clear();
 	}
 
 	public isMacro(name: string): boolean {
 		return this.macroDefinitions.has(name);
+	}
+
+	/** The `.macro` of `name` was reached in this pass. */
+	public markReached(name: string) {
+		this.reached.add(name);
+	}
+
+	/** Whether the macro is defined at this point of the source, as `PASymbolTable.isDefined` for a symbol. */
+	public isDefined(name: string): boolean {
+		return this.reached.has(name.toUpperCase());
 	}
 
 	/** Pass 2: Expands a macro by injecting its tokens into the stream with argument substitution. */

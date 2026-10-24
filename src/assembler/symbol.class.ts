@@ -23,6 +23,8 @@ interface PASymbol {
 	column: number;
 	/** The `.include` directives its file was reached through. */
 	includeStack: IncludeStack;
+	/** The pass that last defined it, 0 outside the passes: see `isDefined`. */
+	definedInPass: number;
 }
 
 /** A symbol's name for messages: in its namespace, unless it's the global one. */
@@ -47,6 +49,8 @@ export class PASymbolTable {
 	private scopeCounter = 0;
 	private savedSymbols: Map<string, Map<string, PASymbol>> = new Map();
 	private namespaceMetadata: Map<string, Record<string, SymbolValue>> = new Map();
+	/** The pass being assembled, kept with each symbol defined. 0 outside the passes (symbols set up before assembling, the linker). */
+	public pass = 0;
 
 	constructor(
 		private readonly lister: ILister,
@@ -242,6 +246,7 @@ export class PASymbolTable {
 			line: source.line,
 			column: source.column,
 			includeStack: this.includeStack(),
+			definedInPass: this.pass,
 		});
 	}
 
@@ -278,6 +283,7 @@ export class PASymbolTable {
 			line: source.line,
 			column: source.column,
 			includeStack: this.includeStack(),
+			definedInPass: this.pass,
 		});
 	}
 
@@ -307,7 +313,7 @@ export class PASymbolTable {
 
 		if (!symbol) throw new Error(`assignVariable: Unknown symbol "${ns === INTERNAL_GLOBAL ? "global" : ns}::${name}".`);
 
-		scope.set(name, { ...symbol, value });
+		scope.set(name, { ...symbol, value, definedInPass: this.pass });
 
 		// scope.set(name, {
 		// 	name,
@@ -350,7 +356,7 @@ export class PASymbolTable {
 		const symbol = scope.get(name);
 		if (!symbol) throw new Error(`Unknown symbol "${ns === INTERNAL_GLOBAL ? "global" : ns}::${name}".`);
 
-		scope.set(name, { ...symbol, value });
+		scope.set(name, { ...symbol, value, definedInPass: this.pass });
 	}
 
 	lookupSymbolInScope(symbolName: string) {
@@ -387,20 +393,33 @@ export class PASymbolTable {
 	}
 
 	lookupSymbol(symbolName: string) {
+		return this.lookup(symbolName)?.value;
+	}
+
+	/**
+	 * Whether the symbol is defined at this point of the source: pass 2 still has every symbol of pass 1,
+	 * so one defined further down isn't, as in pass 1. Both passes take the same `.if .undef(X)` branch.
+	 */
+	isDefined(symbolName: string): boolean {
+		const symbol = this.lookup(symbolName);
+		return symbol !== undefined && (symbol.definedInPass === 0 || symbol.definedInPass === this.pass);
+	}
+
+	private lookup(symbolName: string): PASymbol | undefined {
 		const name = symbolName.toUpperCase();
 
 		// Handle namespaced lookup (TOTO::LABEL)
 		if (name.includes("::")) {
 			const [ns, symName] = name.split("::") as [string, string];
 			const targetScope = ns.toLowerCase() === "global" ? this.symbols.get(INTERNAL_GLOBAL) : this.symbols.get(ns);
-			if (targetScope?.has(symName)) return targetScope.get(symName)?.value;
+			if (targetScope?.has(symName)) return targetScope.get(symName);
 		}
 
 		// Search from the local scopes up to the current scope.
 		for (let i = this.scopeStack.length - 1; i >= 0; i--) {
 			const scopeName = this.scopeStack[i] as string;
 			const scope = this.symbols.get(scopeName);
-			if (scope?.has(name)) return scope.get(name)?.value;
+			if (scope?.has(name)) return scope.get(name);
 			// if (!scopeName.startsWith("@@")) break;
 		}
 

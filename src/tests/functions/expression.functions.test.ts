@@ -41,7 +41,7 @@ describe("ExpressionEvaluator", () => {
 			expect(result).toBe(0);
 		});
 
-		it.skip("should evaluate .UNDEF() on an undefined symbol", () => {
+		it("should evaluate .UNDEF() on an undefined symbol", () => {
 			const { evaluator, tokenize } = setup();
 			const tokens = tokenize(".UNDEF(Unknown)");
 			const result = evaluator.evaluateAsNumber(tokens, { PC: { value: 0 } });

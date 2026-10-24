@@ -251,6 +251,8 @@ export class Assembler {
 		} catch (e) {
 			throw this.errorLocator.toAsmError(e);
 		} finally {
+			// Symbols set up between two assemblies are known in both passes of the next one.
+			this.symbolTable.pass = 0;
 			this.fileHandler.fullpath = fullpath;
 			this.fileHandler.filename = filename;
 		}
@@ -271,6 +273,7 @@ export class Assembler {
 		this.symbolTable.setNamespace("global");
 
 		this.pass = 1;
+		this.symbolTable.pass = 1;
 		this.statementToken = undefined;
 		this.namelessLabels.clear();
 		this.macroHandler.rewind();
@@ -420,6 +423,7 @@ export class Assembler {
 	private passTwo(): void {
 		this.logger.log("\n--- Starting Pass 2: Code Generation ---");
 		this.pass = 2;
+		this.symbolTable.pass = 2;
 		this.statementToken = undefined;
 		this.namelessLabels.rewind();
 		this.macroHandler.rewind();
@@ -761,6 +765,8 @@ export class Assembler {
 	}
 
 	private addFunctions() {
+		this.expressionEvaluator.functionDispatcher.registerDefFunctions((name) => this.macroHandler.isDefined(name));
+
 		const segHandler: FunctionHandler = (stack, token, _symbolTable, _argCount) => {
 			const segName = stack.pop();
 			if (typeof segName !== "string") throw AsmError.at("Argument to .SEGMENT() must be a string.", token);

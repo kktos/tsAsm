@@ -810,9 +810,9 @@ m nope`),
 					missingLabels = .array()
 					.for label of neededLabels
 
-						.log "label = ",label, "undef?", .undef(label)
+						.log "label = ",label, "undef?", .undef((label))
 
-						.if .undef(label)
+						.if .undef((label))
 							.log "add label", label
 							missingLabels= .push(missingLabels, label)
 						.end

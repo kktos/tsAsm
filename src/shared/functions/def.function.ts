@@ -1,33 +1,21 @@
 import type { PASymbolTable } from "../../assembler/symbol.class";
+import { AsmError } from "../../utils/error.utils";
 import type { Token } from "../lexer/lexer.class";
-import type { EvaluationStack, FunctionHandler } from "./types";
+import type { EvaluationStack, IFunctionDef } from "./types";
 
-export const defFunction: FunctionHandler = (stack: EvaluationStack, _token: Token, symbolTable: PASymbolTable): void => {
-	stack.push(checkIfDefined(stack, symbolTable) ? 1 : 0);
-};
+/**
+ * `.def(name)` / `.undef(name)`: whether a symbol, or a macro when `isMacroDefined` says so, is defined at this point.
+ * The name is written as is, `.def(X)`, or given as a string, `.def("X")`.
+ */
+export function defFunctions(isMacroDefined: (name: string) => boolean = () => false): Record<"DEF" | "UNDEF", IFunctionDef> {
+	const isDefined = (stack: EvaluationStack, token: Token, symbolTable: PASymbolTable) => {
+		const name = stack.pop();
+		if (typeof name !== "string") throw AsmError.at(`.${token.value}() needs a symbol name: .${token.value}(X) or .${token.value}("X").`, token);
+		return symbolTable.isDefined(name) || isMacroDefined(name);
+	};
 
-export const undefFunction: FunctionHandler = (stack: EvaluationStack, _token: Token, symbolTable: PASymbolTable): void => {
-	stack.push(checkIfDefined(stack, symbolTable) ? 0 : 1);
-};
-
-function checkIfDefined(stack: EvaluationStack, symbolTable: PASymbolTable) {
-	const arg = stack.pop();
-	let isDefined = false;
-
-	switch (typeof arg) {
-		case "undefined":
-			isDefined = false;
-			break;
-		case "object":
-			isDefined = arg !== null;
-			break;
-		case "number":
-			isDefined = arg !== 0;
-			break;
-		case "string":
-			isDefined = symbolTable.lookupSymbol(arg) !== undefined;
-			break;
-	}
-
-	return isDefined;
+	return {
+		DEF: { handler: (stack, token, symbolTable) => stack.push(isDefined(stack, token, symbolTable) ? 1 : 0), minArgs: 1, maxArgs: 1, nameArgs: 1 },
+		UNDEF: { handler: (stack, token, symbolTable) => stack.push(isDefined(stack, token, symbolTable) ? 0 : 1), minArgs: 1, maxArgs: 1, nameArgs: 1 },
+	};
 }

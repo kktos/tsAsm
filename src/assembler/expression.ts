@@ -251,6 +251,21 @@ export class ExpressionEvaluator {
 		operatorStack.push(token);
 	}
 
+	/**
+	 * Whether the identifier between `previous` and `next` is a whole argument that its function takes as a name,
+	 * `X` in `.def(X)`: see `IFunctionDef.nameArgs`. Not in `.def((X))`, whose `(` isn't the function's.
+	 */
+	private isNameArgument(next: Token | undefined, previous: Token | undefined, operatorStack: OperatorStackToken[]): boolean {
+		const endsArgument = next?.type === "COMMA" || (next?.type === "OPERATOR" && next.value === ")");
+		const startsArgument = previous?.type === "COMMA" || (previous?.type === "OPERATOR" && previous.value === "(");
+		if (!endsArgument || !startsArgument || operatorStack.at(-1)?.value !== "(") return false;
+
+		const funcToken = operatorStack.at(-2);
+		if (funcToken?.type !== "FUNCTION") return false;
+		// A comma already counted the argument it starts.
+		return this.functionDispatcher.isNameArgument(funcToken.value, (funcToken.argCount ?? 1) - 1);
+	}
+
 	/** Converts an infix token stream to Reverse Polish Notation (RPN). */
 	private infixToRPN(tokens: Token[], context: EvaluationContext) {
 		const outputQueue: Token[] = [];
@@ -305,6 +320,12 @@ export class ExpressionEvaluator {
 					// An operand should not follow another operand without an operator in between.
 					if (lastToken && lastToken.type !== "OPERATOR" && lastToken.type !== "COMMA" && lastToken.value !== "(")
 						throw AsmError.at(`Invalid expression format: Unexpected token '${processedToken.value}'.`, processedToken);
+
+					if (this.isNameArgument(tokens[index + 1], lastToken, operatorStack)) {
+						processedToken = { ...processedToken, type: "SYMBOL_NAME" };
+						outputQueue.push(processedToken);
+						break;
+					}
 
 					outputQueue.push(processedToken);
 					break;
@@ -416,6 +437,15 @@ export class ExpressionEvaluator {
 					// resolveValue handles all symbol, macro arg, and special value lookups.
 					const value = this.resolveValue(token, context);
 					stack.push(value);
+					break;
+				}
+
+				case "SYMBOL_NAME": {
+					// A macro parameter stands for its argument: `.def(p)` with `m X` is `.def(X)`.
+					const argTokens = context.macroArgs?.get(token.value);
+					if (!argTokens) stack.push(token.value);
+					else if (argTokens.length === 1 && argTokens[0]?.type === "IDENTIFIER") stack.push(argTokens[0].value);
+					else stack.push(this.evaluate(argTokens, { ...context, macroArgs: undefined }));
 					break;
 				}
 
