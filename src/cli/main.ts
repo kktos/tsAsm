@@ -1,6 +1,5 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
-import { chdir } from "node:process";
 import { name, version } from "../../package.json";
 import { Assembler } from "../assembler/polyasm";
 import type { AssemblerOptions } from "../assembler/polyasm.types";
@@ -27,12 +26,6 @@ const printErrorsAndExit = (errors: ValidationError[]) => {
 	process.exit(-1);
 };
 
-// Output paths may name directories that don't exist yet
-const writeOutputFile = (path: string, data: string | Buffer) => {
-	mkdirSync(dirname(path), { recursive: true });
-	writeFileSync(path, data);
-};
-
 const cliArgs = parseCliArgs(process.argv.slice(2), name);
 
 const confFilename = cliArgs.projectName as string;
@@ -48,7 +41,18 @@ try {
 const { conf, errors } = confResult;
 if (errors) printErrorsAndExit(errors);
 
-fileHandler.basedir = `${dirname(confFilename)}/${dirname(conf.input.source)}/`;
+// Every path in the project file is relative to the project file
+const projectDir = resolve(dirname(confFilename));
+const projectPath = (path: string) => resolve(projectDir, path);
+
+// Output paths may name directories that don't exist yet
+const writeOutputFile = (path: string, data: string | Buffer) => {
+	const fullpath = projectPath(path);
+	mkdirSync(dirname(fullpath), { recursive: true });
+	writeFileSync(fullpath, data);
+};
+
+fileHandler.basedir = `${projectPath(dirname(conf.input.source))}/`;
 
 const segments = conf.input.segments;
 
@@ -64,11 +68,9 @@ const dataProcessorhandlers = {
 	]),
 };
 
-// Like the other outputs, the listing path is relative to the project file. It's made absolute
-// as the file is only opened once the assembly is over, after the chdir below.
 const listing = conf.output?.listing;
 const listingEnabled = listing?.enabled ?? false;
-const listingPath = resolve(dirname(confFilename), listing?.path ?? `${conf.input.source}.lst`);
+const listingPath = projectPath(listing?.path ?? `${conf.input.source}.lst`);
 const sink = listingEnabled ? new TeeSink(new FileSink(dirname(listingPath), basename(listingPath)), new ConsoleErrorSink()) : new ConsoleErrorSink();
 
 const logger = new Logger({
@@ -104,8 +106,6 @@ try {
 
 	if (!conf.output) process.exit(0);
 
-	chdir(dirname(confFilename));
-
 	if (conf.output.segments?.enabled === true) {
 		const segmentsFilename = conf.output.segments.path ?? `${basename(conf.input.source)}.seg`;
 		const map: Record<string, unknown> = {};
@@ -120,7 +120,7 @@ try {
 
 	if (cliArgs.link) {
 		if (conf.output.linker?.script) {
-			fileHandler.basedir = `${dirname(confFilename)}/`;
+			fileHandler.basedir = `${projectDir}/`;
 			const scriptFile = fileHandler.readSourceFile(conf.output?.linker?.script);
 			// The linker's report and the script's .LOG go to the listing, like the assembler's; warnings and errors to the console.
 			const linkerLogger = new Logger({
