@@ -464,6 +464,11 @@ export class ExpressionEvaluator {
 
 				case "PROPERTY_ACCESS": {
 					const obj = stack.pop() as Record<string, SymbolValue>;
+					// Pass 1: an object defined later isn't known yet, nor its field
+					if (obj === null && context.allowForwardRef) {
+						stack.push(null);
+						break;
+					}
 					// To allow the SEGMENTS in Linker to be an array and a Map....
 					// if (typeof obj !== "object" || obj === null || Array.isArray(obj)) throw new Error("Invalid property access on a non-object value.");
 					if (typeof obj !== "object" || obj === null) throw new Error("Invalid property access on a non-object value.");
@@ -480,7 +485,7 @@ export class ExpressionEvaluator {
 				case "OPERATOR": {
 					const right = stack.pop();
 					if (this.handleUnaryOperator(token as OperatorToken, right, stack)) break;
-					if (this.handleArrayAccessOperator(token as OperatorToken, right, stack)) break;
+					if (this.handleArrayAccessOperator(token as OperatorToken, right, stack, context.allowForwardRef)) break;
 					this.handleBinaryOperator(token as OperatorToken, right, stack);
 					break;
 				}
@@ -537,12 +542,25 @@ export class ExpressionEvaluator {
 		return false;
 	}
 
-	private handleArrayAccessOperator(token: OperatorToken, right: SymbolValue | undefined | null, stack: (SymbolValue | null)[]): boolean {
+	private handleArrayAccessOperator(
+		token: OperatorToken,
+		right: SymbolValue | undefined | null,
+		stack: (SymbolValue | null)[],
+		allowForwardRef = false,
+	): boolean {
 		if (token.value === "ARRAY_ACCESS") {
-			const arrIdx = right === null ? 0 : right;
-			if (typeof arrIdx !== "number") throw AsmError.at("Array index must be a number.", token);
+			const arrIdx = right;
+			const array = stack.pop() as SymbolValue[] | null;
 
-			const array = stack.pop() as SymbolValue[];
+			// Pass 1: an array or an index defined later isn't known yet, nor the element. What is known is still checked.
+			if (allowForwardRef && (array === null || arrIdx === null)) {
+				if (arrIdx !== null && typeof arrIdx !== "number") throw AsmError.at("Array index must be a number.", token);
+				if (array !== null && !Array.isArray(array)) throw AsmError.at("Attempted to index a non-array value.", token);
+				stack.push(null);
+				return true;
+			}
+
+			if (typeof arrIdx !== "number") throw AsmError.at("Array index must be a number.", token);
 			if (!Array.isArray(array)) throw AsmError.at("Attempted to index a non-array value.", token);
 
 			if (arrIdx < 0 || arrIdx >= array.length) throw AsmError.at(`Array index ${arrIdx} out of bounds for array of length ${array.length}.`, token);
