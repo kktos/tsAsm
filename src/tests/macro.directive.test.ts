@@ -81,6 +81,53 @@ describe("Macro Handling", () => {
 			expect(machineCode6502).toEqual([0xea, 0xea, 0xea]);
 		});
 
+		it.each([
+			[
+				"{ on its line",
+				`.macro twonops {
+nop
+nop
+}
+twonops
+twonops`,
+			],
+			[
+				"{ right after its name",
+				`.macro twonops{
+nop
+nop
+}
+twonops
+twonops`,
+			],
+		])("should define a macro without parameters and with %s", (_, src) => {
+			const { assembler } = setup();
+			assembler.assemble(src);
+
+			expect(assembler.link()).toEqual([0xea, 0xea, 0xea, 0xea]);
+		});
+
+		it("should define a macro without parameters and with a one-line body", () => {
+			const { assembler } = setup();
+			assembler.assemble(`.macro onenop { nop }
+onenop
+onenop`);
+
+			expect(assembler.link()).toEqual([0xea, 0xea]);
+		});
+
+		it("should place what follows a { } macro without parameters in both passes", () => {
+			const { assembler } = setup();
+			assembler.assemble(`.macro m {
+nop
+}
+.db 7
+m
+lbl: .dw lbl`);
+
+			expect(assembler.link()).toEqual([0x07, 0xea, 0x02, 0x10]);
+		});
+
 		it("should raise an error for a macro with extra parameters", () => {
 			const { assembler } = setup();
 			const src = `
