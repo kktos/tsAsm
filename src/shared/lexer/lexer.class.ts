@@ -659,14 +659,14 @@ export class AssemblyLexer {
 		);
 	}
 
-	/** A local label like ':loop'. */
+	/** A local label like ':loop'. Its raw text has the prefix: messages name it as written. */
 	private scanLocalLabel(line: number, column: number): Token {
-		this.advance(); // consume the prefix
 		const start = this.currentStream.pos;
+		this.advance(); // consume the prefix
 		while (this.isIdentifierPart(this.peek())) this.advance();
 
-		const value = this.currentStream.source.slice(start, this.currentStream.pos);
-		return this.makeToken("LOCAL_LABEL", value.toUpperCase(), line, column, value);
+		const raw = this.currentStream.source.slice(start, this.currentStream.pos);
+		return this.makeToken("LOCAL_LABEL", raw.slice(1).toUpperCase(), line, column, raw);
 	}
 
 	/** A reference to an anonymous label like ':-' or ':++' or ':+3'. */

@@ -400,7 +400,7 @@ export class Assembler {
 				}
 
 				case "LOCAL_LABEL": {
-					if (!this.lastGlobalLabel) throw new ParserError(`Local label ':${token.value}' defined without a preceding global label.`, token);
+					if (!this.lastGlobalLabel) throw new ParserError(`Local label '${token.raw ?? token.value}' defined without a preceding global label.`, token);
 
 					const qualifiedName = `${this.lastGlobalLabel}.${token.value}`;
 					this.symbolTable.defineConstant(qualifiedName, this.PC.value, {
