@@ -5,7 +5,7 @@
  * * Acts as a dispatcher to specialized directive handlers.
  */
 
-import { blockDirectives, rawDirectives } from "../assembler/parser.class";
+import type { Parser } from "../assembler/parser.class";
 import type { Assembler } from "../assembler/polyasm";
 import type { ScalarToken } from "../shared/lexer/lexer.class";
 import { AlignDirective } from "./align.directive";
@@ -37,8 +37,10 @@ import { StringDirective } from "./string.directive";
 
 export class DirectiveHandler {
 	private readonly directiveMap: Map<string, IDirective>;
+	private readonly parser: Parser;
 	constructor(assembler: Assembler, runtime: DirectiveRuntime) {
 		this.directiveMap = new Map();
+		this.parser = runtime.parser;
 		const cpuEndianness = () => assembler.getCPUHandler().endianness;
 
 		this.register("ORG", new OrgDirective(assembler));
@@ -120,8 +122,7 @@ export class DirectiveHandler {
 	}
 
 	public register(name: string, handler: IDirective): void {
-		if (handler.isBlockDirective) blockDirectives.add(name);
-		if (handler.isRawDirective) rawDirectives.set(name, handler.getRawBlock);
+		this.parser.registerDirective(name, handler);
 
 		this.directiveMap.set(name, handler);
 	}

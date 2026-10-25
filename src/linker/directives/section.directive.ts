@@ -2,7 +2,7 @@ import type { DirectiveContext, DirectiveRuntime, IDirective } from "../../direc
 import type { ScalarToken } from "../../shared/lexer/lexer.class";
 
 export class SectionDirective implements IDirective {
-	public isBlockDirective = true;
+	public isBlockDirective = false;
 	public isRawDirective = false;
 
 	constructor(private readonly runtime: DirectiveRuntime) {}
