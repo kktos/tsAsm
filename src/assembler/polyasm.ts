@@ -111,6 +111,7 @@ export class Assembler {
 			macroHandler: this.macroHandler,
 			warn: (message, position) => this.warn(message, position),
 			includeStack: () => this.streamManager.includeStack,
+			includeSites: (position) => this.errorLocator.includeSites(position),
 		};
 		this.directiveHandler = new DirectiveHandler(this, runtime);
 

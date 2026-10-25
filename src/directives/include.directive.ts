@@ -1,7 +1,6 @@
 import type { Assembler } from "../assembler/polyasm";
-import type { ILister } from "../helpers/lister.class";
 import type { ScalarToken } from "../shared/lexer/lexer.class";
-import type { DirectiveContext, IDirective } from "./directive.interface";
+import type { DirectiveContext, DirectiveRuntime, IDirective } from "./directive.interface";
 
 export class IncludeDirective implements IDirective {
 	public isBlockDirective = false;
@@ -9,7 +8,7 @@ export class IncludeDirective implements IDirective {
 
 	constructor(
 		private readonly assembler: Assembler,
-		private readonly lister: ILister,
+		private readonly runtime: DirectiveRuntime,
 	) {}
 
 	public handlePassOne(directive: ScalarToken, context: DirectiveContext) {
@@ -31,7 +30,7 @@ export class IncludeDirective implements IDirective {
 
 			// console.log("INCLUDE", logConfigDepth, filename);
 
-			if (!this.assembler.streamManager.startNewStream(filename, true, this.assembler.currentStatement ?? directive)) return;
+			if (!this.assembler.streamManager.startNewStream(filename, true, this.runtime.includeSites(this.assembler.currentStatement ?? directive))) return;
 			this.assembler.parser.pushTokenStream({
 				newTokens: this.assembler.parser.lexer.getBufferedTokens(),
 				cacheName: this.assembler.streamManager.currentFilepath,
@@ -44,7 +43,7 @@ export class IncludeDirective implements IDirective {
 				},
 			});
 
-			this.lister.directive(directive, this.assembler.streamManager.currentFilepath);
+			this.runtime.lister.directive(directive, this.assembler.streamManager.currentFilepath);
 		} catch (e) {
 			throw new Error(`Can't include '${filename}': ${e instanceof Error ? e.message : e}`);
 		}
@@ -56,7 +55,7 @@ export class IncludeDirective implements IDirective {
 		if (typeof filename !== "string") throw new Error(".INCLUDE requires a string argument.");
 
 		const logConfigDepth = this.assembler.logger.getConfigDepth();
-		if (!this.assembler.streamManager.startNewStream(filename, false, this.assembler.currentStatement ?? directive)) return;
+		if (!this.assembler.streamManager.startNewStream(filename, false, this.runtime.includeSites(this.assembler.currentStatement ?? directive))) return;
 		this.assembler.parser.pushTokenStream({
 			cacheName: this.assembler.streamManager.currentFilepath,
 			newTokens: [],
@@ -67,6 +66,6 @@ export class IncludeDirective implements IDirective {
 			},
 		});
 
-		this.lister.directive(directive, this.assembler.streamManager.currentFilepath);
+		this.runtime.lister.directive(directive, this.assembler.streamManager.currentFilepath);
 	}
 }

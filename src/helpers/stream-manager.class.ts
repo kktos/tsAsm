@@ -49,10 +49,11 @@ export class StreamManager {
 	}
 
 	/**
-	 * Reads and enters an included file. `includedAt` is where the `.include` directive is, in the current file.
+	 * Reads and enters an included file. `includedFrom` is where the `.include` directive is, innermost first: in a
+	 * macro body, its place in the macro's file then the macro calls that led there.
 	 * @returns false, without entering it, for a file whose `.once` was already reached.
 	 */
-	public startNewStream(filename: string, tokenize = true, includedAt?: { line: number | string; column: number }): boolean {
+	public startNewStream(filename: string, tokenize = true, includedFrom: IncludeStack = []): boolean {
 		const rawContent = this.fileHandler.readSourceFile(filename, this.currentFilepath);
 		if (this.onceFiles.has(this.fileHandler.fullpath)) return false;
 		this.sources.set(this.fileHandler.fullpath, rawContent);
@@ -67,7 +68,7 @@ export class StreamManager {
 			name: this.currentFilename,
 			includeStack: this.includeStack,
 		});
-		this.includeStack = [{ file: this.currentFilepath, line: includedAt?.line, column: includedAt?.column }, ...this.includeStack];
+		this.includeStack = [...includedFrom, ...this.includeStack];
 		this.currentFilepath = this.fileHandler.fullpath;
 		this.currentFilename = this.fileHandler.filename;
 		// A file already read to its end is pushed from its cached tokens: a lexer stream on it would never be read.

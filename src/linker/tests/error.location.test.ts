@@ -74,6 +74,16 @@ describe("Linker Script: error locations", () => {
 		expect(text.at(-1)).toBe("  included from link.ld:2:2");
 	});
 
+	it("should say where an .INCLUDE in a macro body is, then the macro call", () => {
+		const script = `.MACRO M
+  .INCLUDE "lib.ld"
+.END
+.OUTPUT "x"
+M`;
+		const text = (link(script) as AsmError).format().split("\n");
+		expect(text.slice(3)).toEqual(["  included from link.ld:2:4", "  in macro M, called at link.ld:5:1"]);
+	});
+
 	it("should say in which macro call a macro body line was reached", () => {
 		const text = (link('.MACRO M\n  .WRITE BYTE 300\n.END\n.OUTPUT "x"\nM') as AsmError).format().split("\n");
 		expect(text.at(-1)).toBe("  in macro M, called at link.ld:5:1");

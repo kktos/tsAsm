@@ -14,8 +14,14 @@ export function describeLocation({ file, line, column }: SourceLocation): string
 	return [file, line, column].filter((part) => part !== undefined && part !== "").join(":");
 }
 
-/** The `.include` directives a file was reached through, innermost first. */
-export type IncludeStack = readonly SourceLocation[];
+/** A step of an include chain: an `.include` directive or, for one in a macro body, a call that led to it. */
+export interface IncludeSite extends SourceLocation {
+	/** Set on a macro call: the macro's name. */
+	macro?: string;
+}
+
+/** The `.include` directives a file was reached through, and the macro calls they are in, innermost first. */
+export type IncludeStack = readonly IncludeSite[];
 
 /** Another place the error is about, such as the first definition of what is redefined. */
 export interface AsmNote {
@@ -31,7 +37,9 @@ function formatLocation(location: SourceLocation): string {
 }
 
 function formatIncludeStack(includeStack: IncludeStack): string[] {
-	return includeStack.map((include) => `  included from ${describeLocation(include)}`);
+	return includeStack.map((site) =>
+		site.macro !== undefined ? `  in macro ${site.macro}, called at ${describeLocation(site)}` : `  included from ${describeLocation(site)}`,
+	);
 }
 
 export class AsmError extends Error {

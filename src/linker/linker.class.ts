@@ -326,6 +326,7 @@ export class Linker {
 			macroHandler,
 			warn: (message, position) => logger.warn(errorLocator.warning(message, position)),
 			includeStack: () => this.streamManager?.includeStack ?? [],
+			includeSites: (position) => errorLocator.includeSites(position),
 		};
 		const dispatcher = new Dispatcher(runtime);
 
