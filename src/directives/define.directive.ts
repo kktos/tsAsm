@@ -1,6 +1,6 @@
 import { type Parser, ParserError } from "../assembler/parser.class";
 import type { Assembler } from "../assembler/polyasm";
-import { definitionError, qualifiedName, type SymbolValue } from "../assembler/symbol.class";
+import type { SymbolValue } from "../assembler/symbol.class";
 import type { ILister } from "../helpers/lister.class";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
 import type { DirectiveContext, IDirective } from "./directive.interface";
@@ -90,7 +90,7 @@ export class DefineDirective implements IDirective {
 
 		if (pass === 1 && this.assembler.symbolTable.hasSymbolInScope(symbolNameToken.value)) {
 			const existing = this.assembler.symbolTable.findSymbol(symbolNameToken.value)?.symbol;
-			if (existing) throw definitionError(`Symbol '${qualifiedName(existing.namespace, existing.name)}' redefined.`, existing, "first defined here");
+			if (existing) throw this.assembler.symbolTable.redefinitionError(existing);
 		}
 
 		// this.assembler.symbolTable.assignVariable(symbolNameToken.value, 0);

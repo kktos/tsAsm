@@ -27,13 +27,8 @@ interface PASymbol {
 	definedInPass: number;
 }
 
-/** A symbol's name for messages: in its namespace, unless it's the global one. */
-export function qualifiedName(namespace: string, name: string): string {
-	return namespace === INTERNAL_GLOBAL ? name : `${namespace}::${name}`;
-}
-
 /** An error about a symbol already defined, with a note pointing at its definition. */
-export function definitionError(message: string, symbol: PASymbol, note: string): AsmError {
+function definitionError(message: string, symbol: PASymbol, note: string): AsmError {
 	const error = new AsmError(message);
 	error.notes.push({
 		message: note,
@@ -49,6 +44,8 @@ export class PASymbolTable {
 	private scopeCounter = 0;
 	private savedSymbols: Map<string, Map<string, PASymbol>> = new Map();
 	private namespaceMetadata: Map<string, Record<string, SymbolValue>> = new Map();
+	/** What messages call the scopes the user can't name (a macro call's, a function's): `macro m`, `function f`. */
+	private scopeLabels: Map<string, string> = new Map();
 	/** The pass being assembled, kept with each symbol defined. 0 outside the passes (symbols set up before assembling, the linker). */
 	public pass = 0;
 
@@ -67,6 +64,7 @@ export class PASymbolTable {
 		this.scopeCounter = 0;
 		this.savedSymbols = new Map();
 		this.namespaceMetadata = new Map();
+		this.scopeLabels = new Map();
 	}
 
 	/** Pushes a new scope onto the stack, making it the current scope. */
@@ -76,11 +74,35 @@ export class PASymbolTable {
 		if (!this.symbols.has(newScopeName)) this.symbols.set(newScopeName, new Map());
 	}
 
-	restoreAndPushScope(name: string) {
+	/** `label` is what messages call the scope, when the user can't name it: `macro m`, `function f`. */
+	restoreAndPushScope(name: string, label?: string) {
 		let scope = this.savedSymbols.get(name);
 		if (!scope) scope = new Map();
 		this.scopeStack.push(name);
 		if (!this.symbols.has(name)) this.symbols.set(name, scope);
+		if (label) this.scopeLabels.set(name, label);
+	}
+
+	/** `Symbol 'X' redefined.`, with a note at its first definition. */
+	redefinitionError(symbol: PASymbol): AsmError {
+		const { name, scope } = this.messageName(symbol);
+		return definitionError(`Symbol '${name}' redefined${scope}.`, symbol, "first defined here");
+	}
+
+	/** `Can't redefine constant 'X'.`, with a note at its definition. */
+	private constantRedefinitionError(symbol: PASymbol): AsmError {
+		const { name, scope } = this.messageName(symbol);
+		return definitionError(`Can't redefine constant '${name}'${scope}.`, symbol, "defined here");
+	}
+
+	/**
+	 * A symbol's name for messages: in its namespace, unless it's the global one, or the scope it's in when the user
+	 * can't name it (`'X'` and ` in macro m`).
+	 */
+	private messageName(symbol: PASymbol): { name: string; scope: string } {
+		const label = this.scopeLabels.get(symbol.namespace);
+		if (label) return { name: symbol.name, scope: ` in ${label}` };
+		return { name: symbol.namespace === INTERNAL_GLOBAL ? symbol.name : `${symbol.namespace}::${symbol.name}`, scope: "" };
 	}
 
 	/**
@@ -235,7 +257,7 @@ export class PASymbolTable {
 
 		name = name.toUpperCase();
 		const existing = scope.get(name);
-		if (existing) throw definitionError(`Symbol '${qualifiedName(ns, name)}' redefined.`, existing, "first defined here");
+		if (existing) throw this.redefinitionError(existing);
 
 		scope.set(name, {
 			name,
@@ -272,7 +294,7 @@ export class PASymbolTable {
 		const name = variableName.toUpperCase();
 
 		const symbol = scope.get(name);
-		if (symbol?.isConstant) throw definitionError(`Can't redefine constant '${qualifiedName(ns, name)}'.`, symbol, "defined here");
+		if (symbol?.isConstant) throw this.constantRedefinitionError(symbol);
 
 		scope.set(name, {
 			name,
@@ -309,7 +331,7 @@ export class PASymbolTable {
 			symbol = scope.get(name);
 		}
 
-		if (symbol?.isConstant) throw definitionError(`Can't redefine constant '${qualifiedName(ns, name)}'.`, symbol, "defined here");
+		if (symbol?.isConstant) throw this.constantRedefinitionError(symbol);
 
 		if (!symbol) throw new Error(`assignVariable: Unknown symbol "${ns === INTERNAL_GLOBAL ? "global" : ns}::${name}".`);
 

@@ -186,6 +186,32 @@ describe("Include chains in errors", () => {
 		]);
 	});
 
+	it("should name the macro of a symbol redefined in a file included from its body", () => {
+		const files = {
+			"c.asm": `count:
+	nop
+count:
+`,
+		};
+		const source = `	.macro m
+		.include "c.asm"
+	.end
+	m
+`;
+		expect(errorOf(source, files)).toBe(
+			[
+				"c.asm:3:1: error: Symbol 'COUNT' redefined in macro m.",
+				"    3 | count:",
+				"      | ^",
+				"  included from main.asm:2:3",
+				"  in macro m, called at main.asm:4:2",
+				"c.asm:1:1: note: first defined here",
+				"  included from main.asm:2:3",
+				"  in macro m, called at main.asm:4:2",
+			].join("\n"),
+		);
+	});
+
 	it("should give the include chain of a warning", () => {
 		const { assembler, sink } = makeAssembler({ "lib.asm": '\t.warning "careful"\n' });
 		assembler.assemble('\t.include "lib.asm"\n');
