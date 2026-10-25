@@ -66,9 +66,11 @@ _Now `.TEXT: 'MSG' must be defined before it is used here (its length is needed 
 
 _The dispatcher does it for every function in pass 1: an argument not known yet makes the call give `null` without running it. A function says how many leading arguments it needs (`knownArgs`, all by default): `.iif` only its condition, `.push` its array, `.def` / `.undef` / `.array` none. The "must be defined before" messages named the function (`.text .str(n)` → `'STR' must be defined…`): they skip the identifier after a `.` now, and say `'N'`._
 
-### 1.6 `.option local_label_char` takes effect one line late
+### 1.6 `.option local_label_char` takes effect one line late — ✅ DONE (#120)
 
-`.option local_label_char "@"` / `:` / `nop`: the line after the `.option` was already lexed with the old prefix, so `:` is still accepted.
+✅ **DONE (#120)** — `.option local_label_char "@"` / `:` / `nop`: the line after the `.option` was already lexed with the old prefix, so `:` is still accepted.
+
+_Replaced by `local.prefix` and `anon.marker` (two chars, as most assemblers have), also in the project file's `input.options` / `AssemblerOptions.options`. The parser lexes again what the file being read lexed ahead with another label syntax, after an `.option` and back from an included file; an unknown char lexed ahead is an `INVALID` token, an error once read. Included files are cached per label syntax, and the options are set again in pass 2. An anonymous label stands alone (`!=` stays an operator with `anon.marker "!"`). Macro bodies keep the chars of their definition; in a block (`.if`, `.repeat`), an option takes effect after it. Follow-up: 1.32._
 
 ### 1.7 Small messages — ✅ DONE (#76, #77)
 
@@ -206,6 +208,10 @@ _Where a symbol or a macro is defined is now resolved when it's defined, as an `
 ### 1.31 A `{ }` block in a macro body closed by `.end`
 
 `.macro m` / `.repeat 2 {` / `nop` / `}` / `.end` / `m` → `Missing .END for the .MACRO block.` Same with `.function f {`. It works in a `.macro m { … }` body, and with the `.end` form of the inner block.
+
+### 1.32 Local label messages say `:`
+
+`Local label ':LOOP' defined without a preceding global label.`, `Local label reference ':LOOP' used without…`, `Undefined local label ':LOOP' in scope…`: the `:` is written in the message, whatever `local.prefix` is (`@loop` gives `':LOOP'`). The token doesn't keep its prefix (its `raw` is `loop`, which the listing prints).
 
 ## 2. Code review, items left
 
