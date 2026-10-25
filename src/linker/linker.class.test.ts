@@ -515,6 +515,22 @@ describe("Linker", () => {
 			// 3. Assert the output
 			expect(result.data).toEqual([0xaa, 0xbb, 0xcc, 0xdd]);
 		});
+
+		it("should see a macro with .def() / .undef() once its .macro is reached", () => {
+			const script = `
+				.OUTPUT "test.bin"
+				.WRITE BYTE .def(m)
+				.MACRO m
+					.WRITE BYTE 9
+				.END
+				.WRITE BYTE .def(m)
+				.WRITE BYTE .def("m")
+				.WRITE BYTE .undef(m)
+			`;
+			const logger = { log: () => {}, warn: () => {}, error: () => {} } as unknown as Logger;
+			const result = linker.link(script, undefined, logger);
+			expect(result.data).toEqual([0, 1, 1, 0]);
+		});
 	});
 
 	describe("Linker Scripting with .ALIGN and Expressions", () => {

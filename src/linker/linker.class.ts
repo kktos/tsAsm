@@ -306,12 +306,13 @@ export class Linker {
 		const parser = new Parser(new EventEmitter());
 		if (this.fileHandler) this.streamManager = new StreamManager(this.fileHandler, parser);
 
+		const macroHandler = new MacroHandler(parser, symbolTable, lister);
 		const evaluator = new ExpressionEvaluator(symbolTable, {
 			resolveSysValue: (nameToken) => this.resolveSysValue(nameToken),
 			findSegment: (name) => this.findSegment(name),
+			isMacroDefined: (name) => macroHandler.isDefined(name),
 		});
 
-		const macroHandler = new MacroHandler(parser, symbolTable, lister);
 		/** The first token of the statement being linked: where its errors are located. */
 		let statementToken: Token | undefined;
 		const errorLocator = new ErrorLocator(parser, macroHandler, () => statementToken, this.streamManager);

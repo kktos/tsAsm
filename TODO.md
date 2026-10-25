@@ -171,6 +171,12 @@ _Decided: `m(` glued is the call form, `m (` starts an argument, and substitutio
 
 _In pass 1, an unknown segment gives `null` (not known yet), as the other functions do (1.5b). Pass 2 still reports a segment that is never defined. The dispatcher passes `allowForwardRef` to the handlers. Follow-ups: `.SEGMENT()` is registered twice, in `polyasm.ts` and `linker.class.ts`; `.segment("X").start` reads `.start` as a system variable; `.segment()` isn't in REFERENCE.md._
 
+### 1.26 `.def(m)` in a link script doesn't see its macros — ✅ DONE (#114)
+
+✅ **DONE (#114)** — In a link script, `.def(m)` is `0` after `.macro m`, and `.undef(m)` is `1`: `link()` has its own `MacroHandler` but doesn't give it to the evaluator (#113's question).
+
+_Decided: a link script's macros count, as in a source. `link()` passes `isMacroDefined` in its `EvaluatorHost`: a macro is defined once its `.macro` is reached._
+
 ## 2. Code review, items left
 
 ### 2.1 CPU back-ends
