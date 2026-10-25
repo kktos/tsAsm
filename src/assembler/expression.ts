@@ -114,7 +114,11 @@ export class ExpressionEvaluator {
 	/** Handles all operator tokens, including parentheses and unary operators. Returns a potentially modified token. */
 	private handleOperator(token: OperatorToken, outputQueue: Token[], operatorStack: OperatorStackToken[], lastToken: Token | undefined): Token {
 		const op = token.value;
-		const isUnary = !lastToken || (lastToken.type === "OPERATOR" && (lastToken.value === "(" || !UNARY_TEST_OPERATORS.has(lastToken.value as string)));
+		// An operand starts the expression, an argument (after a comma) or follows an operator.
+		const isUnary =
+			!lastToken ||
+			lastToken.type === "COMMA" ||
+			(lastToken.type === "OPERATOR" && (lastToken.value === "(" || !UNARY_TEST_OPERATORS.has(lastToken.value as string)));
 
 		switch (op) {
 			case "[": // Array access

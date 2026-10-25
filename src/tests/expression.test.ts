@@ -94,6 +94,25 @@ describe("ExpressionEvaluator", () => {
 		});
 	});
 
+	describe("Unary operators after a comma", () => {
+		// An argument starts an operand: a prefix operator there is unary, not the binary one.
+		it.each([
+			[".IIF(1, -2, 0)", -2],
+			[".IIF(1, - 2, 0)", -2],
+			[".IIF(1, -X, 0)", -2],
+			[".IIF(0, 0, -(X))", -2],
+			[".IIF(0, 0, -.LOBYTE(2))", -2],
+			[".IIF(1, !X, 5)", 0],
+			[".IIF(1, <$1234, 0)", 0x34],
+			[".IIF(1, >$1234, 0)", 0x12],
+			[".IIF(1, *, 0)", 0x1000], // the program counter, not a multiplication
+		])("%s = %d", (expression, expected) => {
+			const { evaluator, tokenize, symbolTable } = setup();
+			symbolTable.defineVariable("X", 2, { filename: "test", line: 1, column: 1 });
+			expect(evaluator.evaluateAsNumber(tokenize(expression as string), { PC: { value: 0x1000 } })).toBe(expected);
+		});
+	});
+
 	describe("Number Formats and Symbols", () => {
 		it("should evaluate different number formats (hex, binary, decimal)", () => {
 			const { evaluator, tokenize } = setup();

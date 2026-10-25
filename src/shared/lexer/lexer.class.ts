@@ -83,7 +83,6 @@ type Stream = {
 	line: number;
 	column: number;
 	length: number;
-	lastToken: Token | null;
 	tokenBuffer: Token[];
 	/** The start of each token of `tokenBuffer`. */
 	tokenStarts: TokenStart[];
@@ -105,7 +104,7 @@ export class AssemblyLexer {
 	}
 
 	private newStream(source: string): Stream {
-		return { source, pos: 0, line: 1, column: 1, length: source.length, lastToken: null, tokenBuffer: [], tokenStarts: [] };
+		return { source, pos: 0, line: 1, column: 1, length: source.length, tokenBuffer: [], tokenStarts: [] };
 	}
 
 	/** Tokenizes a whole source on its own stream: the stream being lexed, if any, is left as it was. */
@@ -237,7 +236,6 @@ export class AssemblyLexer {
 		stream.line = pos.line;
 		stream.column = pos.column;
 		stream.pos = pos.pos;
-		stream.lastToken = stream.tokenBuffer[stream.tokenBuffer.length - 1] as Token;
 	}
 
 	/**
@@ -256,7 +254,6 @@ export class AssemblyLexer {
 		stream.pos = start.pos;
 		stream.line = start.line;
 		stream.column = start.column;
-		stream.lastToken = stream.tokenBuffer[index - 1] ?? null;
 	}
 
 	private tokenStart(): TokenStart {
@@ -265,7 +262,6 @@ export class AssemblyLexer {
 	}
 
 	private bufferToken(token: Token, start: TokenStart) {
-		this.currentStream.lastToken = token;
 		this.currentStream.tokenBuffer.push(token);
 		this.currentStream.tokenStarts.push(start);
 	}
@@ -443,21 +439,9 @@ export class AssemblyLexer {
 				return null;
 		}
 
-		// Minus or negative number
+		// Always an operator: whether it's unary is the expression parser's call (UNARY_MINUS).
 		if (ch === "-") {
 			this.advance();
-			// A minus is a negative number if it's at the start of an expression
-			// (no previous token) or follows an operator, comma, or parenthesis.
-			const isUnary =
-				!this.currentStream.lastToken || // Start of expression
-				this.currentStream.lastToken.type === "COMMA" || // After a comma
-				(this.currentStream.lastToken.type === "OPERATOR" &&
-					this.currentStream.lastToken.value !== ")" && // Not after a closing parenthesis
-					this.currentStream.lastToken.value !== "]"); // Not after a closing bracket
-			if (isUnary && this.isDigit(this.peek())) {
-				return this.scanNumber(startLine, startColumn, true);
-			}
-			// return this.makeToken("MINUS", "-", startLine, startColumn);
 			return this.makeToken("OPERATOR", "-", startLine, startColumn);
 		}
 
@@ -611,7 +595,7 @@ export class AssemblyLexer {
 		return this.makeToken("STRING", value, line, column, delimiter);
 	}
 
-	private scanNumber(line: number, column: number, negative = false): Token {
+	private scanNumber(line: number, column: number): Token {
 		const firstChar = this.peek();
 		const secondChar = this.peek(1).toLowerCase();
 		const prefixStart = this.currentStream.pos;
@@ -647,8 +631,7 @@ export class AssemblyLexer {
 			throw new AsmError(`Invalid number '${word}'.`, { line, column });
 		}
 
-		let numericValue = Number.parseInt(numberString, radix);
-		if (negative) numericValue = -numericValue;
+		const numericValue = Number.parseInt(numberString, radix);
 
 		return this.makeToken(
 			"NUMBER",
