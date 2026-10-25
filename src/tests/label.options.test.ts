@@ -199,4 +199,40 @@ describe("local.prefix and anon.marker options", () => {
 			expect(() => setup({}, { options: { "anon.marker": "." } })).toThrow("'anon.marker' must be one of ':', '@', '!', '?', '_', '~'.");
 		});
 	});
+
+	describe("messages name a local label as written, with its prefix", () => {
+		const options: AssemblerOptions = { options: { "local.prefix": "@" } };
+
+		it("defined without a global label", () => {
+			const source = `
+				@loop	nop
+			`;
+			expect(() => assemble(source, {}, options)).toThrow("Local label '@loop' defined without a preceding global label.");
+		});
+
+		it("used without a global label", () => {
+			const source = `
+					lda @loop
+			`;
+			expect(() => assemble(source, {}, options)).toThrow("Local label reference '@loop' used without a preceding global label.");
+		});
+
+		it("undefined", () => {
+			const source = `
+				start:
+					lda @nope
+			`;
+			expect(() => assemble(source, {}, options)).toThrow("Undefined local label '@nope' in scope 'START'.");
+		});
+
+		it("moved between the passes", () => {
+			const source = `
+				main:
+					lda zp
+				@done	rts
+				zp = $10
+			`;
+			expect(() => assemble(source, {}, options)).toThrow("Phase error: local label '@done' of 'MAIN'");
+		});
+	});
 });

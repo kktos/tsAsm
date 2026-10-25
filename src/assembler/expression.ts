@@ -758,7 +758,7 @@ export class ExpressionEvaluator {
 			}
 
 			case "LOCAL_LABEL": {
-				if (!context.currentLabel) throw AsmError.at(`Local label reference ':${token.value}' used without a preceding global label.`, token);
+				if (!context.currentLabel) throw AsmError.at(`Local label reference '${token.raw ?? token.value}' used without a preceding global label.`, token);
 
 				const qualifiedName = `${context.currentLabel}.${token.value}`;
 				const value = this.symbolTable.lookupSymbol(qualifiedName);
@@ -766,7 +766,7 @@ export class ExpressionEvaluator {
 
 				if (context.allowForwardRef) return null; // Pass 1: Assume 0 for forward references.
 
-				throw AsmError.at(`Undefined local label ':${token.value}' in scope '${context.currentLabel}'.`, token);
+				throw AsmError.at(`Undefined local label '${token.raw ?? token.value}' in scope '${context.currentLabel}'.`, token);
 			}
 
 			case "ANONYMOUS_LABEL_REF": {

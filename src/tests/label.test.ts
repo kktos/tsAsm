@@ -286,7 +286,7 @@ describe("Label References", () => {
 				rts
 			zp = $10
 			`;
-			expect(() => assembler.assemble(source)).toThrow("Phase error: local label 'done' of 'MAIN' is $1006 in pass 1 but $1005 in pass 2");
+			expect(() => assembler.assemble(source)).toThrow("Phase error: local label ':done' of 'MAIN' is $1006 in pass 1 but $1005 in pass 2");
 		});
 
 		it("should assemble when the symbol is defined before its use", () => {
