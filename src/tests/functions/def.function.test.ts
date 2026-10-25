@@ -1,6 +1,12 @@
+import { EventEmitter } from "node:events";
 import { describe, expect, it } from "vitest";
+import { ExpressionEvaluator } from "../../assembler/expression";
+import type { EvaluatorHost } from "../../assembler/expression.types";
 import { Assembler } from "../../assembler/polyasm";
+import { PASymbolTable } from "../../assembler/symbol.class";
 import { Cpu6502Handler } from "../../cpu/cpu6502.class";
+import { NullLister } from "../../helpers/lister.class";
+import { AssemblyLexer } from "../../shared/lexer/lexer.class";
 import { MockFileHandler } from "../mockfilehandler.class";
 
 describe("Functions DEF() / UNDEF()", () => {
@@ -125,5 +131,32 @@ describe("Functions DEF() / UNDEF()", () => {
 			assembler.assemble(".db .def(PRESET)");
 			expect(assembler.link()).toEqual([1]);
 		});
+	});
+});
+
+describe("Functions DEF() / UNDEF(), with a stub host", () => {
+	const setup = (isMacroDefined?: EvaluatorHost["isMacroDefined"]) => {
+		const evaluator = new ExpressionEvaluator(new PASymbolTable(new NullLister()), {
+			resolveSysValue: () => undefined,
+			findSegment: () => undefined,
+			isMacroDefined,
+		});
+		const lexer = new AssemblyLexer(new EventEmitter());
+		const evaluate = (expr: string) =>
+			evaluator.evaluate(
+				lexer.tokenize(expr).filter((t) => t.type !== "EOF"),
+				{ PC: { value: 0 } },
+			);
+		return { evaluate };
+	};
+
+	it("should see the macros the host says are defined", () => {
+		const { evaluate } = setup((name) => name === "M");
+		expect([evaluate(".def(M)"), evaluate(".undef(M)"), evaluate(".def(N)")]).toEqual([1, 0, 0]);
+	});
+
+	it("should see no macro when the host has no isMacroDefined", () => {
+		const { evaluate } = setup();
+		expect([evaluate(".def(M)"), evaluate(".undef(M)")]).toEqual([0, 1]);
 	});
 });

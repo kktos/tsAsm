@@ -70,4 +70,6 @@ export interface EvaluatorHost {
 	findSegment(name: string): Segment | undefined;
 	/** The anonymous label `distance` labels away from `address`. Without it, there are none. */
 	findNearestLabel?(address: number, distance: number): number | null;
+	/** Whether a macro is defined at this point, for `.def(name)` / `.undef(name)`. Without it, there are none. */
+	isMacroDefined?(name: string): boolean;
 }
