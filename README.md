@@ -1,6 +1,6 @@
 # tsAsm
 
-A 65C02 assembler written in TypeScript, usable as a command-line tool or as a library.
+A multi-cpu assembler written in TypeScript, usable as a command-line tool or as a library.
 
 Features include macros, conditional assembly, loops, namespaces, functions, segments, YAML/JSON data blocks, and a linker scripting language.
 
