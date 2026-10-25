@@ -29,7 +29,7 @@ export class FunctionDirective implements IDirective {
 		this.lister.directive(directive, nameToken.raw as string);
 
 		const scopeId = `@@function_${this.assembler.symbolTable.getSymbolFullPath(nameToken.value)}`;
-		this.assembler.symbolTable.restoreAndPushScope(scopeId);
+		this.assembler.symbolTable.restoreAndPushScope(scopeId, `function ${nameToken.raw ?? nameToken.value}`);
 
 		const body = this.assembler.parser.getDirectiveBlockTokens(directive.value);
 		this.assembler.parser.pushTokenStream({

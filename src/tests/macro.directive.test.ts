@@ -737,6 +737,46 @@ m nope`),
 		});
 	});
 
+	describe("Symbol redefined in a macro body", () => {
+		it("should name the macro of a redefined label", () => {
+			const { assembler } = setup();
+			const source = `
+				.macro m
+				count:
+				count:
+				.end
+				m
+			`;
+			expect(() => assembler.assemble(source)).toThrow(expect.objectContaining({ message: "Symbol 'COUNT' redefined in macro m." }));
+		});
+
+		it("should name the macro of a redefined constant", () => {
+			const { assembler } = setup();
+			const source = `
+				.macro m
+				k .equ 1
+				k = 2
+				.end
+				m
+			`;
+			expect(() => assembler.assemble(source)).toThrow(expect.objectContaining({ message: "Can't redefine constant 'K' in macro m." }));
+		});
+
+		it("should name the function of a label redefined in a function of a macro body", () => {
+			const { assembler } = setup();
+			const source = `
+				.macro m
+				.function f
+				count:
+				count:
+				.end
+				.end
+				m
+			`;
+			expect(() => assembler.assemble(source)).toThrow(expect.objectContaining({ message: "Symbol 'COUNT' redefined in function f." }));
+		});
+	});
+
 	describe("Macro defining symbols", () => {
 		it("should be able to resolve labels defined within a macro", () => {
 			const { assembler } = setup();

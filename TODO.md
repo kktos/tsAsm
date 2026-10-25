@@ -191,9 +191,19 @@ _The name must be an identifier on the directive's line, in both passes: else `A
 
 `.include "inc/bad.asm"` in a macro defined in `macros.asm`, called from `lib/lib.asm`, reads `lib/inc/bad.asm`: the path is resolved from the file being assembled, not from the macro's. Since #117 the chain says `included from macros.asm:2:2` for it. Decision needed: relative to the macro's file (as C's `#include` in a header), or to the caller's (a macro is text expansion)?
 
-### 1.29 Redefinition in a file included from a macro names the macro's scope
+### 1.29 Redefinition in a file included from a macro names the macro's scope — ✅ DONE (#118)
 
-`.macro m` / `.include "c.asm"` / `.end` / `m`, with `count:` twice in `c.asm` → `Symbol '@@macro_M_4#0__::COUNT' redefined.`: the internal scope name of the expansion.
+✅ **DONE (#118)** — `.macro m` / `.include "c.asm"` / `.end` / `m`, with `count:` twice in `c.asm` → `Symbol '@@macro_M_4#0__::COUNT' redefined.`: the internal scope name of the expansion.
+
+_Not only from an included file: any symbol redefined in a macro body or a function was named by its scope's id (`@@function_NS::F::COUNT`, `Can't redefine constant '@@macro_M_5#0__::K'.`). Decided: `Symbol 'COUNT' redefined in macro m.`, `… in function f.` (a function's labels can't be named from outside: `f::count` is undefined). Namespaces keep `NS::COUNT`. The symbol table keeps a label for each scope a macro call or a function pushes. Follow-ups: 1.30, 1.31._
+
+### 1.30 A note at a definition in a macro body has its "call.body" line
+
+`.macro m` / `count:` / `count:` / `.end` / `m` → the error is right, but its note is `5.2:1: note: first defined here`: the line a symbol keeps is the macro's "call.body" line, with no file, as the include chain was before #117. The note needs the body line in the macro's file and its own macro calls.
+
+### 1.31 A `{ }` block in a macro body closed by `.end`
+
+`.macro m` / `.repeat 2 {` / `nop` / `}` / `.end` / `m` → `Missing .END for the .MACRO block.` Same with `.function f {`. It works in a `.macro m { … }` body, and with the `.end` form of the inner block.
 
 ## 2. Code review, items left
 

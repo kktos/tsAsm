@@ -86,4 +86,17 @@ describe("FunctionDirective Scoping", () => {
 			}),
 		);
 	});
+
+	it("should name the function of a label redefined in its body", () => {
+		const source = `
+            .NAMESPACE ns
+            .FUNCTION MyRoutine {
+                count:
+                count:
+                    RTS
+            }
+        `;
+
+		expect(() => assembler.assemble(source)).toThrow(expect.objectContaining({ message: "Symbol 'COUNT' redefined in function MyRoutine." }));
+	});
 });

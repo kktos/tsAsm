@@ -70,7 +70,7 @@ export class MacroHandler {
 
 		// Pass 2 gets back the symbols pass 1 defined in this call: its body can use them before defining them.
 		const scopeName = `@@macro_${macroName}_${macroToken.line}#${this.expansionCount++}__`;
-		this.symbolTable.restoreAndPushScope(scopeName);
+		this.symbolTable.restoreAndPushScope(scopeName, `macro ${macroToken.raw ?? macroName}`);
 
 		// Argument validation and mapping
 		if (definition.restParameter) {
