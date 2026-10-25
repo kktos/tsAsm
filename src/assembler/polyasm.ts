@@ -89,9 +89,8 @@ export class Assembler {
 			resolveSysValue: (nameToken) => this.resolveSysValue(nameToken),
 			findSegment: (name) => this.linker.findSegment(name),
 			findNearestLabel: (address, distance) => this.namelessLabels.findNearest(address, distance),
+			isMacroDefined: (name) => this.macroHandler.isDefined(name),
 		});
-
-		this.addFunctions();
 
 		this.emitter = new EventEmitter();
 		this.parser = new Parser(this.emitter);
@@ -764,9 +763,5 @@ export class Assembler {
 			result.push(...replace(macroArgs.get(token.value) ?? [], [token]));
 		}
 		return result;
-	}
-
-	private addFunctions() {
-		this.expressionEvaluator.functionDispatcher.registerDefFunctions((name) => this.macroHandler.isDefined(name));
 	}
 }

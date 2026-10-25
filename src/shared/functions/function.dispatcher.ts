@@ -34,11 +34,6 @@ export class FunctionDispatcher {
 		this.functions.set(name.toUpperCase(), definition);
 	}
 
-	/** `.def()` / `.undef()`, which also see the macros `isMacroDefined` says are defined. */
-	public registerDefFunctions(isMacroDefined?: (name: string) => boolean): void {
-		for (const [name, definition] of Object.entries(defFunctions(isMacroDefined))) this.register(name, definition);
-	}
-
 	/** Whether the argument at `index` of the function, when a lone identifier, is the symbol's name: see `IFunctionDef.nameArgs`. */
 	public isNameArgument(name: string, index: number): boolean {
 		return index < (this.functions.get(name.toUpperCase())?.nameArgs ?? 0);
@@ -48,7 +43,7 @@ export class FunctionDispatcher {
 		// Register functions with their argument constraints
 		this.register("LEN", { handler: lenFunction, minArgs: 1, maxArgs: 1 });
 		this.register("LABEL", { handler: labelFunction, minArgs: 1, maxArgs: 1 });
-		this.registerDefFunctions();
+		for (const [name, definition] of Object.entries(defFunctions((name) => this.host.isMacroDefined?.(name) ?? false))) this.register(name, definition);
 		this.register("STR", { handler: strFunction, minArgs: 1, maxArgs: 2 });
 		this.register("HEX", { handler: hexFunction, minArgs: 1, maxArgs: 2 });
 		this.register("SPLIT", { handler: splitFunction, minArgs: 1, maxArgs: 2 });

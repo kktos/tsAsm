@@ -7,7 +7,7 @@ import type { EvaluationStack, IFunctionDef } from "./types";
  * `.def(name)` / `.undef(name)`: whether a symbol, or a macro when `isMacroDefined` says so, is defined at this point.
  * The name is written as is, `.def(X)`, or given as a string, `.def("X")`.
  */
-export function defFunctions(isMacroDefined: (name: string) => boolean = () => false): Record<"DEF" | "UNDEF", IFunctionDef> {
+export function defFunctions(isMacroDefined: (name: string) => boolean): Record<"DEF" | "UNDEF", IFunctionDef> {
 	const isDefined = (stack: EvaluationStack, token: Token, symbolTable: PASymbolTable) => {
 		const name = stack.pop();
 		if (typeof name !== "string") throw AsmError.at(`.${token.value}() needs a symbol name: .${token.value}(X) or .${token.value}("X").`, token);
