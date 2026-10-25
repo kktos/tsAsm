@@ -656,6 +656,44 @@ m nope`),
 		});
 	});
 
+	describe("Macro name", () => {
+		it("should ask for a name, not take the first word of the body", () => {
+			const { assembler } = setup();
+			const source = `
+				.macro
+					nop
+				.end
+			`;
+			expect(() => assembler.assemble(source)).toThrow(
+				expect.objectContaining({ message: "A macro needs a name.", location: { file: "", line: 2, column: 6 } }),
+			);
+		});
+
+		it("should ask for a name, not a number", () => {
+			const { assembler } = setup();
+			const source = `
+				.macro 12
+					nop
+				.end
+			`;
+			expect(() => assembler.assemble(source)).toThrow(
+				expect.objectContaining({ message: "A macro needs a name.", location: { file: "", line: 2, column: 12 } }),
+			);
+		});
+
+		it("should ask for a name before a { } body", () => {
+			const { assembler } = setup();
+			const source = `
+				.macro {
+					nop
+				}
+			`;
+			expect(() => assembler.assemble(source)).toThrow(
+				expect.objectContaining({ message: "A macro needs a name.", location: { file: "", line: 2, column: 12 } }),
+			);
+		});
+	});
+
 	describe("Macro nesting depth", () => {
 		const nested = `
 			.macro m3

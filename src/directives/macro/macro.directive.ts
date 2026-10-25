@@ -1,4 +1,4 @@
-import type { ScalarToken } from "../../shared/lexer/lexer.class";
+import type { IdentifierToken, ScalarToken } from "../../shared/lexer/lexer.class";
 import { AsmError } from "../../utils/error.utils";
 import type { DirectiveContext, DirectiveRuntime, IDirective } from "../directive.interface";
 
@@ -12,9 +12,8 @@ export class MacroDirective implements IDirective {
 		this.handleMacroDefinition(directive, _context);
 	}
 
-	public handlePassTwo(_directive: ScalarToken, _context: DirectiveContext) {
-		const nameToken = this.runtime.parser.identifier();
-		if (!nameToken) throw new Error("A macro needs a name.");
+	public handlePassTwo(directive: ScalarToken, _context: DirectiveContext) {
+		const nameToken = this.macroName(directive);
 
 		const definition = this.runtime.macroHandler.macroDefinitions.get(nameToken.value);
 		if (!definition) throw new Error(`Unable to find the definition of macro '${nameToken.value}'.`);
@@ -25,8 +24,7 @@ export class MacroDirective implements IDirective {
 
 	/** Pass 1: Parses and stores a macro definition. */
 	public handleMacroDefinition(directive: ScalarToken, context: DirectiveContext) {
-		const nameToken = this.runtime.parser.identifier();
-		if (!nameToken) throw new Error("A macro needs a name.");
+		const nameToken = this.macroName(directive);
 
 		const macroName = nameToken.value;
 
@@ -63,6 +61,15 @@ export class MacroDirective implements IDirective {
 			directive,
 			`${nameToken.raw}(${parameters.join(", ")}${restParameter ? `${parameters.length ? ", " : ""}...${restParameter}` : ""})`,
 		);
+	}
+
+	/** The macro's name, on the directive's line: a word on the next line is the body's. */
+	private macroName(directive: ScalarToken): IdentifierToken {
+		const token = this.runtime.parser.peek();
+		if (!token || token.type === "EOF" || token.line !== directive.line) throw AsmError.at("A macro needs a name.", directive);
+		if (token.type !== "IDENTIFIER") throw AsmError.at("A macro needs a name.", token);
+		this.runtime.parser.advance();
+		return token as IdentifierToken;
 	}
 
 	private handleMacroParametersDefinition(directive: ScalarToken) {
