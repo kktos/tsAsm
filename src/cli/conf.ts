@@ -1,5 +1,5 @@
 import { YAMLException } from "js-yaml";
-import { isLabelChar, LABEL_CHARS_TEXT } from "../assembler/options";
+import { isLabelChar, isListingCase, LABEL_CHARS_TEXT, LISTING_CASES_TEXT } from "../assembler/options";
 import type { FileHandler } from "../assembler/polyasm.types";
 import handlers from "../cpu";
 import { AsmError } from "../utils/error.utils";
@@ -13,6 +13,13 @@ const labelChar = {
 	optional: true,
 	validate: isLabelChar,
 	errorMessage: `Must be one of ${LABEL_CHARS_TEXT}`,
+} as const;
+
+const listingCase = {
+	type: "string",
+	optional: true,
+	validate: isListingCase,
+	errorMessage: `Must be one of ${LISTING_CASES_TEXT}`,
 } as const;
 
 const confSchema = {
@@ -47,6 +54,7 @@ const confSchema = {
 				schema: {
 					"local.prefix": labelChar,
 					"anon.marker": labelChar,
+					"listing.case": listingCase,
 				},
 			},
 		},

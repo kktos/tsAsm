@@ -1,3 +1,5 @@
+import type { EventEmitter } from "node:events";
+import type { ListingCase } from "../assembler/options";
 import type { SymbolValue } from "../assembler/symbol.class";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
 import { getHex } from "../utils/hex.util";
@@ -23,7 +25,28 @@ export interface ILister {
 }
 
 export class Lister implements ILister {
-	constructor(private logger: Logger) {}
+	private listingCase: ListingCase = "upper";
+
+	constructor(
+		private logger: Logger,
+		emitter: EventEmitter,
+	) {
+		emitter.on("option:listing.case", (listingCase: ListingCase) => {
+			this.listingCase = listingCase;
+		});
+	}
+
+	/** An instruction's mnemonic, in the case `.option listing.case` asks for. */
+	public mnemonic(token: ScalarToken): string {
+		switch (this.listingCase) {
+			case "lower":
+				return token.value.toLowerCase();
+			case "source":
+				return token.raw ?? token.value;
+			default:
+				return token.value;
+		}
+	}
 
 	// The methods below already match the ILister interface,
 	// so no changes are needed here.

@@ -44,9 +44,9 @@ describe("CLI conf", () => {
 	});
 
 	it("accepts input.options, the .option values the source starts with", () => {
-		const { conf, errors } = readConfFrom(`${confWithCpu("6502")}  options:\n    local.prefix: "@"\n    anon.marker: ":"\n`);
+		const { conf, errors } = readConfFrom(`${confWithCpu("6502")}  options:\n    local.prefix: "@"\n    anon.marker: ":"\n    listing.case: lower\n`);
 		expect(errors).toBeUndefined();
-		expect(conf.input.options).toEqual({ "local.prefix": "@", "anon.marker": ":" });
+		expect(conf.input.options).toEqual({ "local.prefix": "@", "anon.marker": ":", "listing.case": "lower" });
 	});
 
 	it("reports an unknown option or a char that can't be a label prefix", () => {
@@ -55,6 +55,11 @@ describe("CLI conf", () => {
 			{ path: "input.options.local_label_char", message: "Unknown property" },
 			{ path: "input.options.anon.marker", message: "Must be one of ':', '@', '!', '?', '_', '~'" },
 		]);
+	});
+
+	it("reports a listing.case that isn't upper, lower or source", () => {
+		const { errors } = readConfFrom(`${confWithCpu("6502")}  options:\n    listing.case: mixed\n`);
+		expect(errors).toEqual([{ path: "input.options.listing.case", message: "Must be one of 'upper', 'lower', 'source'" }]);
 	});
 
 	it("reports a cpu of the wrong type instead of crashing", () => {

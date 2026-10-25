@@ -76,7 +76,8 @@ export class Assembler {
 				enabled: true,
 				cached: false,
 			});
-		this.lister = new Lister(this.logger);
+		this.emitter = new EventEmitter();
+		this.lister = new Lister(this.logger, this.emitter);
 
 		this.linker = new Linker(DEFAULT_PC, this.fileHandler);
 		this.PC = this.linker.PC;
@@ -96,7 +97,6 @@ export class Assembler {
 			isMacroDefined: (name) => this.macroHandler.isDefined(name),
 		});
 
-		this.emitter = new EventEmitter();
 		this.parser = new Parser(this.emitter);
 		this.streamManager = new StreamManager(this.fileHandler, this.parser);
 
@@ -646,7 +646,7 @@ export class Assembler {
 		this.lister.bytes({
 			addr: instructionPC,
 			bytes: Array.from({ length: sizeInfo.bytes }, () => 0),
-			text: `${mnemonicToken.value} ${operandString}`,
+			text: `${this.lister.mnemonic(mnemonicToken)} ${operandString}`,
 		});
 	}
 
@@ -683,7 +683,7 @@ export class Assembler {
 			this.lister.bytes({
 				addr: instructionPC,
 				bytes: encodedBytes,
-				text: `${mnemonicToken.value} ${operandString}`,
+				text: `${this.lister.mnemonic(mnemonicToken)} ${operandString}`,
 			});
 
 			this.linker.writeBytes(this.PC.value, encodedBytes);
