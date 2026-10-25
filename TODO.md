@@ -246,7 +246,7 @@ _In pass 1, an unknown segment gives `null` (not known yet), as the other functi
 - **#6, god objects:** `Assembler` exposes parser, linker and symbol table as public mutable fields and is passed whole to some directives, while others get `DirectiveRuntime`. `Linker` is a segment store, a DSL interpreter and an output image.
 - **#9:** the lexer decides unary minus from `lastToken`. That belongs in the expression parser.
 - ✅ **DONE (#112)** — **`.SEGMENT()` registered twice** (1.25's follow-up), with the same code, by the assembler and by the linker. _The evaluator gets an `EvaluatorHost` (`resolveSysValue`, `findSegment`, optional `findNearestLabel`) instead of positional callbacks; `.SEGMENT()` is a default function on `findSegment`. An evaluator can be tested with a stub host._
-- **`.def()` / `.undef()` re-registered:** they get `isMacroDefined` by registering them again (`registerDefFunctions`, `polyasm.addFunctions()`), so which one wins depends on the call order. Make it an optional `EvaluatorHost.isMacroDefined`, and both go away.
+- ✅ **DONE (#113)** — **`.def()` / `.undef()` re-registered:** they get `isMacroDefined` by registering them again (`registerDefFunctions`, `polyasm.addFunctions()`), so which one wins depends on the call order. Make it an optional `EvaluatorHost.isMacroDefined`, and both go away. _Done: registered once with the default functions, on the host's `isMacroDefined`. In a link script, `.def(m)` still doesn't see the script's macros (the linker passes none): a question for the maintainer._
 - **#10, dead code:**
     - ~15 never-emitted token types;
     - commented-out blocks;
