@@ -1,3 +1,4 @@
+import type { EvaluatorHost } from "../../assembler/expression.types";
 import type { PASymbolTable } from "../../assembler/symbol.class";
 import { AsmError } from "../../utils/error.utils";
 import type { Token } from "../lexer/lexer.class";
@@ -16,6 +17,7 @@ import { lobyteFunction } from "./lobyte.function";
 import { popFunction } from "./pop.function";
 import { pushFunction } from "./push.function";
 import { roundFunction } from "./round.function";
+import { segmentFunction } from "./segment.function";
 import { splitFunction } from "./split.function";
 import { strFunction } from "./str.function";
 import { typeFunction } from "./type.function";
@@ -24,7 +26,7 @@ import type { EvaluationStack, IFunctionDef, SymbolResolver } from "./types";
 export class FunctionDispatcher {
 	private readonly functions = new Map<string, IFunctionDef>();
 
-	constructor() {
+	constructor(private readonly host: EvaluatorHost) {
 		this.registerDefaultFunctions();
 	}
 
@@ -73,6 +75,10 @@ export class FunctionDispatcher {
 		this.register("CEIL", { handler: ceilFunction, minArgs: 1, maxArgs: 1 });
 		this.register("FLOOR", { handler: floorFunction, minArgs: 1, maxArgs: 1 });
 		this.register("ROUND", { handler: roundFunction, minArgs: 1, maxArgs: 1 });
+		this.register(
+			"SEGMENT",
+			segmentFunction((name) => this.host.findSegment(name)),
+		);
 	}
 
 	public dispatch(

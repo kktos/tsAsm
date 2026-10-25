@@ -9,7 +9,7 @@ import { FunctionDispatcher } from "../shared/functions/function.dispatcher";
 import type { FunctionToken, OperatorStackToken, OperatorToken, ScalarToken, Token } from "../shared/lexer/lexer.class";
 import { AsmError } from "../utils/error.utils";
 import { nestingDelta } from "../utils/token.utils";
-import { type EvaluationContext, PRECEDENCE } from "./expression.types";
+import { type EvaluationContext, type EvaluatorHost, PRECEDENCE } from "./expression.types";
 
 const UNARY_TEST_OPERATORS = new Set([")", "]"]);
 
@@ -18,10 +18,9 @@ export class ExpressionEvaluator {
 
 	constructor(
 		private readonly symbolTable: PASymbolTable,
-		private readonly findNearestLabel: (address: number, distance: number) => number | null,
-		private readonly resolveSysValue: (nameToken: Token) => SymbolValue | undefined,
+		private readonly host: EvaluatorHost,
 	) {
-		this.functionDispatcher = new FunctionDispatcher();
+		this.functionDispatcher = new FunctionDispatcher(host);
 	}
 
 	/**
@@ -451,7 +450,7 @@ export class ExpressionEvaluator {
 
 				case "SYSVAR": {
 					// Resolve system variables like .NAMESPACE / .NS and .PC
-					const val = this.resolveSysValue(token) as SymbolValue;
+					const val = this.host.resolveSysValue(token) as SymbolValue;
 					stack.push(val);
 					break;
 				}
@@ -772,7 +771,7 @@ export class ExpressionEvaluator {
 
 			case "ANONYMOUS_LABEL_REF": {
 				const distance = Number.parseInt(token.value, 10);
-				const addr = this.findNearestLabel(context.PC.value, distance);
+				const addr = this.host.findNearestLabel?.(context.PC.value, distance) ?? null;
 
 				if (addr === null && !context.allowForwardRef)
 					throw AsmError.at(`Not enough ${distance < 0 ? "preceding" : "succeeding"} anonymous labels to satisfy '${token.value}'.`, token);

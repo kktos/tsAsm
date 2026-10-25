@@ -11,7 +11,6 @@ import { ErrorLocator } from "../helpers/error-locator.class";
 import { NullLister } from "../helpers/lister.class";
 import type { Logger } from "../helpers/logger.class";
 import { StreamManager } from "../helpers/stream-manager.class";
-import type { FunctionHandler } from "../shared/functions/types";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
 import { pushNumber } from "../utils/array.utils";
 import { AsmError } from "../utils/error.utils";
@@ -74,8 +73,12 @@ export class Linker {
 		this.PC.value = this.startPC;
 	}
 
+	public findSegment(name: string): Segment | undefined {
+		return this.segments.find((s) => s.name === name);
+	}
+
 	public addSegment(name: string, start: number, size: number, padValue = 0, resizable = false) {
-		const seg = this.segments.find((s) => s.name === name);
+		const seg = this.findSegment(name);
 		if (seg) throw new Error(`Segment already defined : ${name}`);
 
 		// If size is zero, create an empty data array. If resizable is true, the segment will grow on writes.
@@ -93,7 +96,7 @@ export class Linker {
 
 	/** What follows is written at `offset` of the output: `.PC` is the offset where the next byte goes. */
 	public addLinkerSection(name: string, offset: number) {
-		const seg = this.segments.find((s) => s.name === name);
+		const seg = this.findSegment(name);
 		if (seg) throw new Error(`Segment already defined : ${name}`);
 		checkOffset(offset);
 
@@ -137,7 +140,7 @@ export class Linker {
 
 	/** Selects a segment by name and makes it the active segment for subsequent writes. */
 	public useSegment(name: string) {
-		const seg = this.segments.find((s) => s.name === name);
+		const seg = this.findSegment(name);
 		if (!seg) throw new Error(`Segment not found: ${name}`);
 
 		if (!this.currentModule) throw new Error(`No Module defined for segment: ${name}`);
@@ -280,7 +283,7 @@ export class Linker {
 	}
 
 	public emitSegment(name: string, offset?: number) {
-		const seg = this.segments.find((s) => s.name === name);
+		const seg = this.findSegment(name);
 		if (!seg) throw new Error(`Segment not found: ${name}`);
 
 		this.write(segmentBytes(seg), offset);
@@ -303,16 +306,10 @@ export class Linker {
 		const parser = new Parser(new EventEmitter());
 		if (this.fileHandler) this.streamManager = new StreamManager(this.fileHandler, parser);
 
-		const evaluator = new ExpressionEvaluator(symbolTable, () => null, this.resolveSysValue.bind(this));
-
-		const segHandler: FunctionHandler = (stack, token, _symbolTable, _argCount) => {
-			const segName = stack.pop();
-			if (typeof segName !== "string") throw AsmError.at("Argument to .SEGMENT() must be a string.", token);
-			const seg = this.segments.find((s) => s.name === segName);
-			if (!seg) throw AsmError.at(`Segment '${segName}' not found.`, token);
-			stack.push(seg);
-		};
-		evaluator.functionDispatcher.register("SEGMENT", { handler: segHandler, minArgs: 1, maxArgs: 1 });
+		const evaluator = new ExpressionEvaluator(symbolTable, {
+			resolveSysValue: (nameToken) => this.resolveSysValue(nameToken),
+			findSegment: (name) => this.findSegment(name),
+		});
 
 		const macroHandler = new MacroHandler(parser, symbolTable, lister);
 		/** The first token of the statement being linked: where its errors are located. */
