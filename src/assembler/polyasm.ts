@@ -767,10 +767,15 @@ export class Assembler {
 	private addFunctions() {
 		this.expressionEvaluator.functionDispatcher.registerDefFunctions((name) => this.macroHandler.isDefined(name));
 
-		const segHandler: FunctionHandler = (stack, token, _symbolTable, _argCount) => {
+		const segHandler: FunctionHandler = (stack, token, _symbolTable, _argCount, _resolver, allowForwardRef) => {
 			const segName = stack.pop();
 			if (typeof segName !== "string") throw AsmError.at("Argument to .SEGMENT() must be a string.", token);
 			const seg = this.linker.segments.find((s) => s.name === segName);
+			// Pass 1: a segment defined further down isn't known yet
+			if (!seg && allowForwardRef) {
+				stack.push(null);
+				return;
+			}
 			if (!seg) throw AsmError.at(`Segment '${segName}' not found.`, token);
 			stack.push(seg);
 		};
