@@ -1,6 +1,7 @@
 import type { DirectiveContext } from "../directives/directive.interface";
 import type { Logger } from "../helpers/logger.class";
 import type { Token } from "../shared/lexer/lexer.class";
+import type { Options } from "./options";
 import type { SymbolValue } from "./symbol.class";
 
 /** Defines the state of an active token stream. */
@@ -10,6 +11,8 @@ export interface StreamState {
 	index: number;
 	macroArgs?: Map<string, Token[]>;
 	cacheName?: string;
+	/** Set on the stream of an included file: its path. */
+	file?: string;
 	/** Set on the stream of a macro expansion: the macro's name. */
 	macroName?: string;
 	/** Set on the stream of a macro expansion: the token calling the macro. */
@@ -42,6 +45,8 @@ export interface PushTokenStreamParams {
 	newTokens: Token[];
 	macroArgs?: Map<string, Token[]>;
 	cacheName?: string;
+	/** An included file's path: its tokens are cached, under the label syntax they are lexed with. */
+	file?: string;
 	macroName?: string;
 	macroCall?: Token;
 	onEndOfStream?: () => void;
@@ -59,4 +64,6 @@ export interface AssemblerOptions {
 	rawDataProcessors?: { default: string; map: Map<string, DataProcessor> };
 	/** Maximum number of nested macro expansions, to stop runaway recursion (default: 32). */
 	maxMacroDepth?: number;
+	/** The `.option` values each pass starts with, instead of their default: `{ "local.prefix": "@" }`. */
+	options?: Options;
 }

@@ -16,6 +16,7 @@ import { getHex } from "../utils/hex.util";
 import { ExpressionEvaluator } from "./expression";
 import type { ValueHolder } from "./expression.types";
 import { NamelessLabels } from "./namelesslabels.class";
+import { type OptionName, withDefaultOptions } from "./options";
 import { Parser, ParserError } from "./parser.class";
 import type { AssemblerOptions, DataProcessor, FileHandler, SegmentDefinition, StreamState } from "./polyasm.types";
 import { PASymbolTable } from "./symbol.class";
@@ -32,6 +33,8 @@ export class Assembler {
 	/** The CPU and segments given to the constructor: each assemble() starts from them. */
 	private readonly initialCpuHandler: CPUHandler;
 	private readonly segmentDefinitions: SegmentDefinition[];
+	/** The `.option` values each pass starts with. */
+	private readonly initialOptions: Record<OptionName, string>;
 	private hasAssembled = false;
 	/** Where pass 1 started: pass 2 starts with the same current segment and PC. */
 	private passStart: { segment: Segment | undefined; PC: number } = { segment: undefined, PC: DEFAULT_PC };
@@ -64,6 +67,7 @@ export class Assembler {
 		this.cpuHandler = handler;
 		this.initialCpuHandler = handler;
 		this.segmentDefinitions = options?.segments ?? [];
+		this.initialOptions = withDefaultOptions(options?.options);
 		this.fileHandler = fileHandler;
 		this.logger =
 			options?.logger ??
@@ -186,10 +190,15 @@ export class Assembler {
 		return this.rawDataProcessors?.get(name ?? this.defaultRawDataProcessor);
 	}
 
-	public setOption(name: string, value: string) {
-		const key = `option:${name}`;
-		this.emitter.emit(key, value);
+	/** Options are broadcast as "option:<name>" events. They take effect from the next statement on. */
+	public setOption(name: OptionName, value: string) {
+		this.emitter.emit(`option:${name}`, value);
 		this.lister.directive("option", `${name} = "${value}"`);
+	}
+
+	/** Each pass starts with the options the assembler was given: the passes read the `.option`s in the same order. */
+	private resetOptions() {
+		for (const [name, value] of Object.entries(this.initialOptions)) this.emitter.emit(`option:${name}`, value);
 	}
 
 	public setCPUHandler(handler: CPUHandler) {
@@ -224,8 +233,6 @@ export class Assembler {
 
 		const isLogEnabled = this.logger.enabled;
 		this.logger.enabled = isLogEnabled && this.wannaLogPass1;
-
-		this.setOption("local_label_char", ":");
 
 		// Initialize or re-initialize the lexer
 		this.streamManager.start(source, this.fileHandler.fullpath, this.fileHandler.filename);
@@ -277,6 +284,7 @@ export class Assembler {
 		this.pass = 1;
 		this.symbolTable.pass = 1;
 		this.statementToken = undefined;
+		this.resetOptions();
 		this.namelessLabels.clear();
 		this.macroHandler.rewind();
 		this.lastGlobalLabel = null;
@@ -427,6 +435,7 @@ export class Assembler {
 		this.pass = 2;
 		this.symbolTable.pass = 2;
 		this.statementToken = undefined;
+		this.resetOptions();
 		this.namelessLabels.rewind();
 		this.macroHandler.rewind();
 		// Start where pass 1 started, not where it ended (the last .segment used) nor at a segment the source defined.

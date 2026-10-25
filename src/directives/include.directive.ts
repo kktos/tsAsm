@@ -33,7 +33,7 @@ export class IncludeDirective implements IDirective {
 			if (!this.assembler.streamManager.startNewStream(filename, true, this.runtime.includeSites(this.assembler.currentStatement ?? directive))) return;
 			this.assembler.parser.pushTokenStream({
 				newTokens: this.assembler.parser.lexer.getBufferedTokens(),
-				cacheName: this.assembler.streamManager.currentFilepath,
+				file: this.assembler.streamManager.currentFilepath,
 				onEndOfStream: () => {
 					// console.log("END", this.assembler.logger.getConfigDepth(), logConfigDepth, this.assembler.fileHandler.fullpath);
 
@@ -57,7 +57,7 @@ export class IncludeDirective implements IDirective {
 		const logConfigDepth = this.assembler.logger.getConfigDepth();
 		if (!this.assembler.streamManager.startNewStream(filename, false, this.runtime.includeSites(this.assembler.currentStatement ?? directive))) return;
 		this.assembler.parser.pushTokenStream({
-			cacheName: this.assembler.streamManager.currentFilepath,
+			file: this.assembler.streamManager.currentFilepath,
 			newTokens: [],
 			onEndOfStream: () => {
 				// cleanup the log config if a .LIST file was included

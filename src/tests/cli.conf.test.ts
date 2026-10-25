@@ -43,6 +43,20 @@ describe("CLI conf", () => {
 		]);
 	});
 
+	it("accepts input.options, the .option values the source starts with", () => {
+		const { conf, errors } = readConfFrom(`${confWithCpu("6502")}  options:\n    local.prefix: "@"\n    anon.marker: ":"\n`);
+		expect(errors).toBeUndefined();
+		expect(conf.input.options).toEqual({ "local.prefix": "@", "anon.marker": ":" });
+	});
+
+	it("reports an unknown option or a char that can't be a label prefix", () => {
+		const { errors } = readConfFrom(`${confWithCpu("6502")}  options:\n    local_label_char: "@"\n    anon.marker: "."\n`);
+		expect(errors).toEqual([
+			{ path: "input.options.local_label_char", message: "Unknown property" },
+			{ path: "input.options.anon.marker", message: "Must be one of ':', '@', '!', '?', '_', '~'" },
+		]);
+	});
+
 	it("reports a cpu of the wrong type instead of crashing", () => {
 		const { errors } = readConfFrom(confWithCpu("true"));
 		expect(errors).toEqual([{ path: "input.cpu", message: "Expected string, got boolean" }]);

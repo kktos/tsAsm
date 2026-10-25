@@ -1,3 +1,4 @@
+import { isOptionName, optionValueError } from "../assembler/options";
 import type { Assembler } from "../assembler/polyasm";
 import type { ScalarToken } from "../shared/lexer/lexer.class";
 import type { DirectiveContext, IDirective } from "./directive.interface";
@@ -8,34 +9,41 @@ export class OptionDirective implements IDirective {
 
 	constructor(private readonly assembler: Assembler) {}
 
-	public handlePassOne(directive: ScalarToken, context: DirectiveContext) {
-		this.setOption(directive, context);
+	public handlePassOne(_directive: ScalarToken, context: DirectiveContext) {
+		this.setOption(context);
 	}
 
-	public handlePassTwo(_directive: ScalarToken, _context: DirectiveContext) {
-		// The option is applied in pass 1; only skip its arguments, so they aren't parsed as a statement.
-		this.assembler.parser.getInstructionTokens();
+	// Each pass starts with the default options and sets them again in the same order: see Assembler.resetOptions.
+	public handlePassTwo(_directive: ScalarToken, context: DirectiveContext) {
+		this.setOption(context);
 	}
 
-	private setOption(_directive: ScalarToken, context: DirectiveContext): void {
+	private setOption(context: DirectiveContext): void {
 		const argTokens = this.assembler.parser.getInstructionTokens();
 
-		if (argTokens.length < 2) throw new Error("Invalid .OPTION syntax. Expected: .OPTION <name> <value>");
-
+		if (argTokens.length === 0) throw new Error("Invalid .OPTION syntax. Expected: .OPTION <name> <value>");
 		if (argTokens[0]?.type !== "IDENTIFIER") throw new Error("Option name must be an identifier.");
 
-		const optionName = argTokens[0].value.toLowerCase();
-		const optionValue = this.assembler.expressionEvaluator.evaluate(argTokens.slice(1), context);
+		// A dotted name, like local.prefix
+		let nameLength = 1;
+		while (argTokens[nameLength]?.type === "DOT" && argTokens[nameLength + 1]?.type === "IDENTIFIER") nameLength += 2;
+		const optionName = argTokens
+			.slice(0, nameLength)
+			.map((token) => token.value)
+			.join("")
+			.toLowerCase();
 
-		switch (optionName) {
-			case "local_label_char":
-				if (typeof optionValue !== "string" || optionValue.length !== 1)
-					throw new Error("Value for 'local_label_char' must be a single character string.");
+		if (argTokens.length === nameLength) throw new Error("Invalid .OPTION syntax. Expected: .OPTION <name> <value>");
 
-				this.assembler.setOption("local_label_char", optionValue);
-				break;
-			default:
-				this.assembler.warn(`Unknown option '${optionName}'.`);
+		if (!isOptionName(optionName)) {
+			if (this.assembler.pass === 1) this.assembler.warn(`Unknown option '${optionName}'.`);
+			return;
 		}
+
+		const optionValue = this.assembler.expressionEvaluator.evaluate(argTokens.slice(nameLength), context);
+		const error = optionValueError(optionName, optionValue);
+		if (error) throw new Error(error);
+
+		this.assembler.setOption(optionName, optionValue as string);
 	}
 }

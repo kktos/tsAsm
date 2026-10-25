@@ -1000,9 +1000,10 @@ m nope`),
 					drawSprite #$54:#$2e:#$10
 			`;
 
+			// An anonymous label stands alone: ':' glued to '#' is no anonymous label
 			expect(() => assembler.assemble(src2)).toThrow(
 				expect.objectContaining({
-					message: "Macro 'DRAWSPRITE' expects 3 arguments, but got 1.",
+					message: "Unexpected character ':' (U+003A).",
 					location: expect.objectContaining({ line: 6 }),
 				}),
 			);

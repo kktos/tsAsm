@@ -150,11 +150,11 @@ fill:
         bne :loop
 ```
 
-The prefix character can be changed with `.option local_label_char "@"`.
+The prefix can be another char: see [`.option local.prefix`](#assembler-settings).
 
 ### Anonymous labels
 
-A lone `:` defines an anonymous label. `:-` refers to the previous one and `:+` to the next one. Repeat the sign or add a number to go further: `:--`, `:++`, `:-3`.
+A lone `:` (followed by a space, a comment or the end of the line) defines an anonymous label. `:-` refers to the previous one and `:+` to the next one. Repeat the sign or add a number to go further: `:--`, `:++`, `:-3`. The marker can be another char: see [`.option anon.marker`](#assembler-settings).
 
 ```as
 :   dex
@@ -460,10 +460,23 @@ A file can be included several times: each `.include` assembles it again. A file
 
 ## Assembler settings
 
-| Directive                                        | Effect                                                           |
-| ------------------------------------------------ | ---------------------------------------------------------------- |
-| `.cpu "65C02"` (aliases `.setcpu`, `.processor`) | Select the CPU                                                   |
-| `.option local_label_char "<char>"`              | Change the prefix of [local labels](#local-labels) (default `:`) |
+| Directive                                        | Effect                                                                                   |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| `.cpu "65C02"` (aliases `.setcpu`, `.processor`) | Select the CPU                                                                           |
+| `.option local.prefix "<char>"`                  | Change the prefix of [local labels](#local-labels) (default `:`)                         |
+| `.option anon.marker "<char>"`                   | Change the char of [anonymous labels](#anonymous-labels), alone or `-`/`+` (default `:`) |
+
+The char is one of `:` `@` `!` `?` `_` `~`, and the two options can have different ones. Elsewhere, the char keeps its meaning: with `anon.marker "!"`, `!x` and `!=` are still operators.
+
+An option takes effect from the next line on, in the rest of the file and in the files it includes. One set in an included file stays set after the `.include`. A macro body keeps the chars of where the macro is defined. In a block (`.if`, `.repeat`, …), an option takes effect after the block: its lines are read before they run.
+
+The project file's `input.options` (or the `options` given to the `Assembler`) sets the values each source starts with. To include a source written for another assembler:
+
+```as
+.option local.prefix "@"    ; ca65's cheap local labels
+.include "foreign.s"
+.option local.prefix ":"
+```
 
 ## System variables
 

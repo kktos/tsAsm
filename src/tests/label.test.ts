@@ -221,7 +221,7 @@ describe("Label References", () => {
 		it("should resolve label with a custom prefix from .OPTION", () => {
 			const { assembler } = setup();
 			const source = `
-				.OPTION local_label_char ":"
+				.OPTION local.prefix ":"
 
 				.ORG $1000
 				start:
@@ -229,7 +229,7 @@ describe("Label References", () => {
 				:loop
 				LDA :loop
 
-				.OPTION local_label_char "!"
+				.OPTION local.prefix "!"
 				secondstart:
 
 				!loop
@@ -243,7 +243,7 @@ describe("Label References", () => {
 		it("should resolve label for PREAD - bug fix", () => {
 			const { assembler } = setup();
 			const source = `
-				.OPTION local_label_char "!"
+				.OPTION anon.marker "!"
 
 				lda  $C070		 		; TRIGGER PADDLES
 				ldy  #$00 				; INIT COUNT

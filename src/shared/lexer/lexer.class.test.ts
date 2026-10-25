@@ -1,14 +1,11 @@
-import { EventEmitter } from "node:events";
 import { beforeEach, describe, expect, it, test } from "vitest";
 import { AssemblyLexer, type Token } from "./lexer.class";
 
 describe("AssemblyLexer", () => {
 	let lexer: AssemblyLexer;
-	let emitter: EventEmitter;
 
 	beforeEach(() => {
-		emitter = new EventEmitter();
-		lexer = new AssemblyLexer(emitter);
+		lexer = new AssemblyLexer();
 	});
 
 	// Helper to strip location info for simpler snapshot comparisons
@@ -144,6 +141,40 @@ describe("AssemblyLexer", () => {
 			{ type: "ANONYMOUS_LABEL_DEF", value: ":", raw: undefined },
 			{ type: "EOF", value: "", raw: undefined },
 		]);
+	});
+
+	test("should tokenize labels with another label syntax", () => {
+		lexer.labelSyntax = { localPrefix: "@", anonMarker: "!" };
+		const source = `
+      @loop
+      ! bne !-
+      .db !0, 1 != 2
+    `;
+		expect(lexer.tokenize(source).map((token) => [token.type, token.value])).toEqual([
+			["LOCAL_LABEL", "LOOP"],
+			["ANONYMOUS_LABEL_DEF", ":"],
+			["IDENTIFIER", "BNE"],
+			["ANONYMOUS_LABEL_REF", "-1"],
+			["DOT", "."],
+			["IDENTIFIER", "DB"],
+			["OPERATOR", "!"],
+			["NUMBER", "0"],
+			["COMMA", ","],
+			["NUMBER", "1"],
+			["OPERATOR", "!="],
+			["NUMBER", "2"],
+			["EOF", ""],
+		]);
+		expect(() => lexer.tokenize(":loop")).toThrow("Unexpected character ':' (U+003A).");
+	});
+
+	test("should lex again the tokens lexed ahead with another label syntax", () => {
+		lexer.startStream("nop\n:loop");
+		expect(lexer.ensureBuffered(1)).toMatchObject({ type: "LOCAL_LABEL", value: "LOOP" });
+
+		lexer.labelSyntax = { localPrefix: "@", anonMarker: ":" };
+		lexer.relexFrom(1);
+		expect(lexer.ensureBuffered(1)).toMatchObject({ type: "INVALID", value: "Unexpected character ':' (U+003A).", line: 2, column: 1 });
 	});
 
 	test("should tokenize complex expressions", () => {

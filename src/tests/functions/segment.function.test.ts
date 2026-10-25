@@ -1,4 +1,3 @@
-import { EventEmitter } from "node:events";
 import { describe, expect, it } from "vitest";
 import { ExpressionEvaluator } from "../../assembler/expression";
 import { Assembler } from "../../assembler/polyasm";
@@ -77,7 +76,7 @@ describe("Function .SEGMENT(), with a stub host", () => {
 			resolveSysValue: () => undefined,
 			findSegment: (name) => (name === DATA.name ? DATA : undefined),
 		});
-		const lexer = new AssemblyLexer(new EventEmitter());
+		const lexer = new AssemblyLexer();
 		const tokenize = (expr: string) => lexer.tokenize(expr).filter((t) => t.type !== "EOF");
 		return { evaluator, tokenize };
 	};

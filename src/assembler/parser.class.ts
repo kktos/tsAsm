@@ -1,7 +1,7 @@
 import type { EventEmitter } from "node:events";
 import type { PushTokenStreamParams, StreamState } from "../assembler/polyasm.types";
 import type { SymbolValue } from "../assembler/symbol.class";
-import { AssemblyLexer, type IdentifierToken, type NumberToken, type StringToken, type Token } from "../shared/lexer/lexer.class";
+import { AssemblyLexer, type IdentifierToken, type LabelSyntax, type NumberToken, type StringToken, type Token } from "../shared/lexer/lexer.class";
 import { AsmError } from "../utils/error.utils";
 import { nestingDelta } from "../utils/token.utils";
 
@@ -27,7 +27,30 @@ export class Parser {
 	public lexer: AssemblyLexer;
 
 	constructor(public emitter: EventEmitter) {
-		this.lexer = new AssemblyLexer(emitter);
+		this.lexer = new AssemblyLexer();
+		emitter.on("option:local.prefix", (localPrefix: string) => this.setLabelSyntax({ ...this.lexer.labelSyntax, localPrefix }));
+		emitter.on("option:anon.marker", (anonMarker: string) => this.setLabelSyntax({ ...this.lexer.labelSyntax, anonMarker }));
+	}
+
+	/** Local and anonymous labels are lexed with `labelSyntax` from the statement being read on. */
+	private setLabelSyntax(labelSyntax: LabelSyntax) {
+		this.lexer.labelSyntax = labelSyntax;
+		this.relexAhead();
+	}
+
+	/**
+	 * Lexes again the tokens of the file being read lexed ahead with another label syntax (the start of the next
+	 * line, to see where a statement ends). A file whose tokens were all read before, cached or in pass 2, keeps them.
+	 */
+	private relexAhead() {
+		const fileStream = this.tokenStreamStack.findLast((stream) => stream.file !== undefined) ?? this.tokenStreamStack[0];
+		if (fileStream?.tokens === this.lexer.getBufferedTokens()) this.lexer.relexFrom(fileStream.index);
+	}
+
+	/** A file's tokens depend on the label syntax: a file is cached for each one it's included with. */
+	private fileCacheName(file: string) {
+		const { localPrefix, anonMarker } = this.lexer.labelSyntax;
+		return `${file}\0${localPrefix}${anonMarker}`;
 	}
 
 	public start(source: string): void {
@@ -83,7 +106,13 @@ export class Parser {
 	/** Set current stream position (internal index). */
 	public setPosition(pos: number): void {
 		if (this.tokenStreamStack.length === 0) return;
-		(this.tokenStreamStack[this.tokenStreamStack.length - 1] as StreamState).index = pos;
+		const stream = this.tokenStreamStack[this.tokenStreamStack.length - 1] as StreamState;
+		// Moving past a token reads it: one the lexer couldn't make sense of is an error then, not when it was lexed ahead.
+		for (let i = stream.index; i < pos; i++) {
+			const token = stream.tokens[i];
+			if (token?.type === "INVALID") throw new ParserError(token.value, token);
+		}
+		stream.index = pos;
 	}
 
 	/** Peek relative to the current token pointer (0 == current). */
@@ -255,9 +284,9 @@ export class Parser {
 		this.setPosition(i);
 	}
 
-	/** True when the tokens of the stream `cacheName` (a file read to its end) are kept: pushing it reuses them. */
-	public hasCachedStream(cacheName: string): boolean {
-		return this.tokenStreamCache.has(cacheName);
+	/** True when the tokens of the file `file`, read to its end with the current label syntax, are kept: pushing it reuses them. */
+	public hasCachedFile(file: string): boolean {
+		return this.tokenStreamCache.has(this.fileCacheName(file));
 	}
 
 	/** Returns the ID that will be used for the next stream. */
@@ -266,7 +295,9 @@ export class Parser {
 	}
 
 	/** Pushes the current stream state and activates a new stream (macro/loop body). */
-	public pushTokenStream({ newTokens, macroArgs, cacheName, macroName, macroCall, onEndOfStream }: PushTokenStreamParams): number {
+	public pushTokenStream({ newTokens, macroArgs, cacheName: name, file, macroName, macroCall, onEndOfStream }: PushTokenStreamParams): number {
+		const cacheName = file === undefined ? name : this.fileCacheName(file);
+
 		// Save current position and arguments
 		if (this.tokenStreamStack.length > 0) (this.tokenStreamStack[this.tokenStreamStack.length - 1] as StreamState).index = this.getPosition();
 
@@ -292,6 +323,7 @@ export class Parser {
 			index: 0,
 			macroArgs,
 			cacheName,
+			file,
 			macroName,
 			macroCall,
 		});
@@ -313,6 +345,8 @@ export class Parser {
 			const previousState = this.tokenStreamStack[this.tokenStreamStack.length - 1] as StreamState;
 			this.activeTokens = previousState.tokens;
 			this.setPosition(previousState.index);
+			// The file left may have changed the label syntax: the file back to was lexed ahead with the previous one.
+			if (poppedStream?.file !== undefined) this.relexAhead();
 		}
 		return poppedStream;
 	}

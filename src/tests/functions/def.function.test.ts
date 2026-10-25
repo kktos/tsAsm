@@ -1,4 +1,3 @@
-import { EventEmitter } from "node:events";
 import { describe, expect, it } from "vitest";
 import { ExpressionEvaluator } from "../../assembler/expression";
 import type { EvaluatorHost } from "../../assembler/expression.types";
@@ -141,7 +140,7 @@ describe("Functions DEF() / UNDEF(), with a stub host", () => {
 			findSegment: () => undefined,
 			isMacroDefined,
 		});
-		const lexer = new AssemblyLexer(new EventEmitter());
+		const lexer = new AssemblyLexer();
 		const evaluate = (expr: string) =>
 			evaluator.evaluate(
 				lexer.tokenize(expr).filter((t) => t.type !== "EOF"),
