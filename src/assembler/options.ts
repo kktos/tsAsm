@@ -4,7 +4,7 @@ export const DEFAULT_OPTIONS = {
 	"local.prefix": ":",
 	/** Alone, defines an anonymous label (`:`); followed by signs, refers to one (`:-`, `:++`, `:+3`). */
 	"anon.marker": ":",
-	/** How the listing writes the mnemonics: `upper` (LDA), `lower` (lda) or `source`, as written. */
+	/** How the listing writes the mnemonics, registers and symbols: `upper` (LDA), `lower` (lda) or `source`, as written. */
 	"listing.case": "upper",
 };
 

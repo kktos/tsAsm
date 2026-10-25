@@ -642,11 +642,10 @@ export class Assembler {
 		);
 		this.PC.value += sizeInfo.bytes;
 
-		const operandString = operandTokens.map((t) => (t.type === "NUMBER" ? `$${getHex(Number(t.value))}` : t.value)).join("");
 		this.lister.bytes({
 			addr: instructionPC,
 			bytes: Array.from({ length: sizeInfo.bytes }, () => 0),
-			text: `${this.lister.mnemonic(mnemonicToken)} ${operandString}`,
+			text: this.lister.instruction(mnemonicToken, operandTokens),
 		});
 	}
 
@@ -679,11 +678,10 @@ export class Assembler {
 			});
 
 			// 3. LOGGING (New location)
-			const operandString = operandTokens.map((t) => (t.type === "NUMBER" ? `$${getHex(Number(t.value))}` : t.value)).join("");
 			this.lister.bytes({
 				addr: instructionPC,
 				bytes: encodedBytes,
-				text: `${this.lister.mnemonic(mnemonicToken)} ${operandString}`,
+				text: this.lister.instruction(mnemonicToken, operandTokens),
 			});
 
 			this.linker.writeBytes(this.PC.value, encodedBytes);

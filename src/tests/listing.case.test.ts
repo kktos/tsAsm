@@ -24,20 +24,31 @@ function listInstructions(source: string, options?: Options): string[] {
 
 describe(".option listing.case", () => {
 	const source = `
-		lda #1
-		Sta $20
-		NOP
+		.namespace utils
+		Print:	rts
+		.end namespace
+		ptr = $20
+		Screen = $400
+		Start:
+		:loop	lda (ptr),Y
+				Sta Screen,x
+				bne :loop
+		:		DEX
+				bne :-
+				jsr utils::Print
+				jmp Start
 	`;
+	const UPPER = ["RTS", "LDA (PTR),Y", "STA SCREEN,X", "BNE :LOOP", "DEX", "BNE :-", "JSR UTILS::PRINT", "JMP START"];
 
-	it("lists the mnemonics in upper case by default", () => {
-		expect(listInstructions(source)).toEqual(["LDA #$01", "STA $20", "NOP"]);
+	it("lists the mnemonics, registers and symbols in upper case by default", () => {
+		expect(listInstructions(source)).toEqual(UPPER);
 	});
 
 	it.each([
-		["upper", ["LDA #$01", "STA $20", "NOP"]],
-		["lower", ["lda #$01", "sta $20", "nop"]],
-		["source", ["lda #$01", "Sta $20", "NOP"]],
-	])("lists the mnemonics with listing.case %s", (listingCase, expected) => {
+		["upper", UPPER],
+		["lower", ["rts", "lda (ptr),y", "sta screen,x", "bne :loop", "dex", "bne :-", "jsr utils::print", "jmp start"]],
+		["source", ["rts", "lda (ptr),Y", "Sta Screen,x", "bne :loop", "DEX", "bne :-", "jsr utils::Print", "jmp Start"]],
+	])("lists them with listing.case %s", (listingCase, expected) => {
 		const withOption = `
 			.option listing.case "${listingCase}"
 			${source}

@@ -472,9 +472,11 @@ For columns that line up, build each line with `.pad()`: a tab moves to the next
 | `.cpu "65C02"` (aliases `.setcpu`, `.processor`) | Select the CPU                                                                           |
 | `.option local.prefix "<char>"`                  | Change the prefix of [local labels](#local-labels) (default `:`)                         |
 | `.option anon.marker "<char>"`                   | Change the char of [anonymous labels](#anonymous-labels), alone or `-`/`+` (default `:`) |
-| `.option listing.case "<case>"`                  | How the listing writes the mnemonics: `upper` (default), `lower` or `source`, as written |
+| `.option listing.case "<case>"`                  | How the listing writes the instructions: `upper` (default), `lower` or `source`          |
 
 The char is one of `:` `@` `!` `?` `_` `~`, and the two options can have different ones. Elsewhere, the char keeps its meaning: with `anon.marker "!"`, `!x` and `!=` are still operators.
+
+`listing.case` applies to the mnemonics, registers and symbols of the listed instructions: `Sta Screen,x` is listed `STA SCREEN,X`, `sta screen,x`, or with `source` as written. Numbers are listed in hex.
 
 An option takes effect from the next line on, in the rest of the file and in the files it includes. One set in an included file stays set after the `.include`. A macro body keeps the chars of where the macro is defined. In a block (`.if`, `.repeat`, …), an option takes effect after the block: its lines are read before they run.
 
