@@ -280,7 +280,7 @@ _A local label token's `raw` has its prefix now (`@loop`), as a number's has its
     - the bin is named `asm6502`;
     - no `files` / `exports` / `types` / `engines`;
     - `.d.ts` files are emitted for the tests.
-- Type errors don't fail the build, and CI doesn't run `check` / `build`.
+- ✅ **DONE (#123)** — Type errors don't fail the build, and CI doesn't run `check` / `build`. _Rollup's typescript plugin now has `noEmitOnError: true`; CI runs `pnpm check` and `pnpm bundle`, a new script with `build`'s rollup part minus the version bump._
 - ✅ **DONE (#91)** — `tsconfig`: `moduleResolution: node` and `esModuleInterop: false` are deprecated in TS 6. Use `"bundler"`. _Now on TypeScript 6.0.3, with `moduleResolution: "bundler"`, no `esModuleInterop` (always on in TS 6) and `types: ["node"]` (TS 6 no longer includes every `@types` package). The build output is byte-identical to TS 5.9's._
 
 ### 2.5 Architecture

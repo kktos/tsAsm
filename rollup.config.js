@@ -19,7 +19,8 @@ const configs = {
 		plugins: [
 			// bundle dependencies (js-yaml) so the CLI is a single file needing only node
 			nodeResolve({ preferBuiltins: true }),
-			typescript(),
+			// abort on type errors instead of warning and emitting anyway
+			typescript({ noEmitOnError: true }),
 			json(),
 			terser({
 				compress: true,
@@ -36,7 +37,7 @@ const configs = {
 			sourcemap: true,
 		},
 		plugins: [
-			typescript(),
+			typescript({ noEmitOnError: true }),
 			json(),
 			terser({
 				compress: true,

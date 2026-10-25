@@ -15,7 +15,8 @@
 	"main": "tsasm.js",
 	"scripts": {
 		"check": "tsc --noEmit",
-		"build": "npm run --silent version:bump && rimraf ./dist && rollup -c rollup.config.js",
+		"build": "npm run --silent version:bump && npm run --silent bundle",
+		"bundle": "rimraf ./dist && rollup -c rollup.config.js",
 		"build:cli": "npm run --silent version:bump && rollup -c rollup.config.js --environment TARGET:cli",
 		"build:lib": "npm run --silent version:bump && rollup -c rollup.config.js --environment TARGET:lib",
 		"version:bump": "npm version patch --no-git-tag-version",

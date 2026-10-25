@@ -24,5 +24,11 @@ jobs:
             - name: Run linter
               run: pnpm lint:ci
 
+            - name: Type check
+              run: pnpm check
+
             - name: Run tests
               run: pnpm test
+
+            - name: Build
+              run: pnpm bundle
