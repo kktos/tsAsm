@@ -43,7 +43,7 @@ export class FunctionDispatcher {
 		// Register functions with their argument constraints
 		this.register("LEN", { handler: lenFunction, minArgs: 1, maxArgs: 1 });
 		this.register("LABEL", { handler: labelFunction, minArgs: 1, maxArgs: 1 });
-		for (const [name, definition] of Object.entries(defFunctions((name) => this.host.isMacroDefined?.(name) ?? false))) this.register(name, definition);
+		for (const [name, definition] of defFunctions((macro) => this.host.isMacroDefined?.(macro) ?? false)) this.register(name, definition);
 		this.register("STR", { handler: strFunction, minArgs: 1, maxArgs: 2 });
 		this.register("HEX", { handler: hexFunction, minArgs: 1, maxArgs: 2 });
 		this.register("SPLIT", { handler: splitFunction, minArgs: 1, maxArgs: 2 });
