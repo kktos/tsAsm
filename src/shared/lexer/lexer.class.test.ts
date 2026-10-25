@@ -65,13 +65,15 @@ describe("AssemblyLexer", () => {
 		]);
 	});
 
-	test("should distinguish unary minus from subtract operator", () => {
+	// Unary or binary is the expression parser's call: the lexer never folds a minus into a number.
+	test("should lex a minus as an operator, unary or binary", () => {
 		const source = "LDA #-10\nSUB #10-1";
 		const tokens = lexer.tokenize(source);
 		expect(stripLocation(tokens)).toEqual([
 			{ type: "IDENTIFIER", value: "LDA", raw: "LDA" },
 			{ type: "OPERATOR", value: "#", raw: undefined },
-			{ type: "NUMBER", value: "-10", raw: "10" },
+			{ type: "OPERATOR", value: "-", raw: undefined },
+			{ type: "NUMBER", value: "10", raw: "10" },
 			{ type: "IDENTIFIER", value: "SUB", raw: "SUB" },
 			{ type: "OPERATOR", value: "#", raw: undefined },
 			{ type: "NUMBER", value: "10", raw: "10" },
