@@ -1,4 +1,4 @@
-import { blockDirectives, rawDirectives } from "../../assembler/parser.class";
+import type { Parser } from "../../assembler/parser.class";
 import { AlignDirective } from "../../directives/align.directive";
 import { DataDirective } from "../../directives/data.directive";
 import type { DirectiveContext, DirectiveRuntime, IDirective } from "../../directives/directive.interface";
@@ -19,9 +19,11 @@ import { WriteDirective } from "./write.directive";
 
 export class Dispatcher {
 	private readonly directiveMap: Map<string, IDirective>;
+	private readonly parser: Parser;
 
 	constructor(runtime: DirectiveRuntime) {
 		this.directiveMap = new Map();
+		this.parser = runtime.parser;
 
 		const loopHandler = new LoopDirective(runtime);
 		this.register("FOR", loopHandler);
@@ -57,8 +59,7 @@ export class Dispatcher {
 	}
 
 	public register(name: string, handler: IDirective): void {
-		if (handler.isBlockDirective) blockDirectives.add(name);
-		if (handler.isRawDirective) rawDirectives.set(name, handler.getRawBlock);
+		this.parser.registerDirective(name, handler);
 
 		this.directiveMap.set(name, handler);
 	}

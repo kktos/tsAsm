@@ -1,14 +1,13 @@
 import type { EventEmitter } from "node:events";
 import type { PushTokenStreamParams, StreamState } from "../assembler/polyasm.types";
 import type { SymbolValue } from "../assembler/symbol.class";
+import type { IDirective } from "../directives/directive.interface";
 import { AssemblyLexer, type IdentifierToken, type LabelSyntax, type NumberToken, type StringToken, type Token } from "../shared/lexer/lexer.class";
 import { AsmError } from "../utils/error.utils";
 import { nestingDelta } from "../utils/token.utils";
 
 /** Called right after a raw directive's name: returns the rest of the directive's tokens, raw text included. */
 type GetRawBlock = (parser: Parser, directive: Token) => Token[];
-export const blockDirectives: Set<string> = new Set();
-export const rawDirectives: Map<string, GetRawBlock | undefined> = new Map();
 
 /** An error at a token: its line and column are where it is reported. */
 export class ParserError extends AsmError {
@@ -25,11 +24,20 @@ export class Parser {
 	private streamIdCounter = 0;
 	private tokenStreamCache: Map<string, StreamState> = new Map();
 	public lexer: AssemblyLexer;
+	/** Per parser: the assembler and the linker don't have the same directives. */
+	private readonly blockDirectives: Set<string> = new Set();
+	private readonly rawDirectives: Map<string, GetRawBlock | undefined> = new Map();
 
 	constructor(public emitter: EventEmitter) {
 		this.lexer = new AssemblyLexer();
 		emitter.on("option:local.prefix", (localPrefix: string) => this.setLabelSyntax({ ...this.lexer.labelSyntax, localPrefix }));
 		emitter.on("option:anon.marker", (anonMarker: string) => this.setLabelSyntax({ ...this.lexer.labelSyntax, anonMarker }));
+	}
+
+	/** Inside a block, a block directive nests until its `.END`, and a raw directive reads its own tokens. */
+	public registerDirective(name: string, directive: Pick<IDirective, "isBlockDirective" | "isRawDirective" | "getRawBlock">) {
+		if (directive.isBlockDirective) this.blockDirectives.add(name);
+		if (directive.isRawDirective) this.rawDirectives.set(name, directive.getRawBlock);
 	}
 
 	/** Local and anonymous labels are lexed with `labelSyntax` from the statement being read on. */
@@ -456,7 +464,7 @@ export class Parser {
 					tokens.push(directive);
 
 					const directiveName = directive.value as string;
-					const getRawBlock = rawDirectives.get(directiveName);
+					const getRawBlock = this.rawDirectives.get(directiveName);
 					if (getRawBlock && !this.opensCall(this.getPosition())) tokens.push(...getRawBlock(this, directive));
 					break;
 				}
@@ -506,7 +514,7 @@ export class Parser {
 				const directive = this.peek(1) as Token;
 				const directiveName = directive.value as string;
 
-				const getRawBlock = rawDirectives.get(directiveName);
+				const getRawBlock = this.rawDirectives.get(directiveName);
 				if (getRawBlock) {
 					tokens.push(current, directive);
 					this.advance(2);
@@ -515,7 +523,7 @@ export class Parser {
 				}
 
 				// Entering a nested block
-				if (blockDirectives.has(directiveName)) {
+				if (this.blockDirectives.has(directiveName)) {
 					nestingDepth++;
 
 					tokens.push(current);
