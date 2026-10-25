@@ -165,6 +165,12 @@ _Decided: an error, as an argument is a value. It's located at the comma: `Macro
 
 _Decided: `m(` glued is the call form, `m (` starts an argument, and substitution is explicit. An argument is a value, an expression evaluated where the macro uses it, in an instruction as in a directive: `lda a*2` with `m 1+2` is `lda 6` (it was pasted, 5). An argument in `< >` is text, pasted as is, in both call forms (`m(<($12,x)>)` failed). `#` or a comma in `( )` outside `< >` is an error that says to use `< >`: `m #5`, `m ($12,x)`. A text parameter forwarded alone stays text; a value is forwarded in `( )`._
 
+### 1.25 `.segment()` with a segment defined further down — ✅ DONE (#111)
+
+✅ **DONE (#111)** — `s = .segment("DATA")` before `.SEGMENT DATA { … }` → `Segment 'DATA' not found.` in pass 1, while any other symbol may be used before its definition.
+
+_In pass 1, an unknown segment gives `null` (not known yet), as the other functions do (1.5b). Pass 2 still reports a segment that is never defined. The dispatcher passes `allowForwardRef` to the handlers. Follow-ups: `.SEGMENT()` is registered twice, in `polyasm.ts` and `linker.class.ts`; `.segment("X").start` reads `.start` as a system variable; `.segment()` isn't in REFERENCE.md._
+
 ## 2. Code review, items left
 
 ### 2.1 CPU back-ends

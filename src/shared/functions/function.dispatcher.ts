@@ -102,6 +102,6 @@ export class FunctionDispatcher {
 			}
 		}
 
-		funcDef.handler(stack, token, symbolTable, argCount, resolver);
+		funcDef.handler(stack, token, symbolTable, argCount, resolver, allowForwardRef);
 	}
 }

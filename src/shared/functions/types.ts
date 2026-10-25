@@ -5,7 +5,15 @@ export type EvaluationStack = (SymbolValue | null)[];
 
 export type SymbolResolver = (name: string) => SymbolValue | null | undefined;
 
-export type FunctionHandler = (stack: EvaluationStack, token: Token, symbolTable: PASymbolTable, argCount?: number, resolver?: SymbolResolver) => void;
+/** `allowForwardRef`: pass 1, where something defined later isn't known yet (`null`) rather than an error. */
+export type FunctionHandler = (
+	stack: EvaluationStack,
+	token: Token,
+	symbolTable: PASymbolTable,
+	argCount?: number,
+	resolver?: SymbolResolver,
+	allowForwardRef?: boolean,
+) => void;
 
 export interface IFunctionDef {
 	handler: FunctionHandler;
