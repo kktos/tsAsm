@@ -83,7 +83,7 @@ export class Assembler {
 			if (!this.rawDataProcessors.has(this.defaultRawDataProcessor)) throw new Error("Default data processor not found.");
 		}
 
-		this.symbolTable = new PASymbolTable(this.lister, () => this.streamManager.includeStack);
+		this.symbolTable = new PASymbolTable(this.lister, (source) => this.errorLocator.definitionSite(source));
 
 		this.expressionEvaluator = new ExpressionEvaluator(this.symbolTable, {
 			resolveSysValue: (nameToken) => this.resolveSysValue(nameToken),
@@ -110,7 +110,7 @@ export class Assembler {
 			linker: this.linker,
 			macroHandler: this.macroHandler,
 			warn: (message, position) => this.warn(message, position),
-			includeStack: () => this.streamManager.includeStack,
+			definitionSite: (position) => this.errorLocator.definitionSite(position),
 			includeSites: (position) => this.errorLocator.includeSites(position),
 		};
 		this.directiveHandler = new DirectiveHandler(this, runtime);

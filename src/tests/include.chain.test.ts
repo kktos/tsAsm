@@ -212,6 +212,62 @@ count:
 		);
 	});
 
+	it("should put the note of a definition in a macro body at its line in the macro's file, then the macro call", () => {
+		const files = {
+			"macros.asm": `	.macro m
+	nop
+count:
+count:
+	.end
+`,
+			"lib/lib.asm": `	nop
+	m
+`,
+		};
+		const source = `	.include "macros.asm"
+	.include "lib/lib.asm"
+`;
+		expect(errorOf(source, files)).toBe(
+			[
+				"macros.asm:4:1: error: Symbol 'COUNT' redefined in macro m.",
+				"    4 | count:",
+				"      | ^",
+				"  in macro m, called at lib/lib.asm:2:2",
+				"  included from main.asm:2:2",
+				"macros.asm:3:1: note: first defined here",
+				"  in macro m, called at lib/lib.asm:2:2",
+				"  included from main.asm:2:2",
+			].join("\n"),
+		);
+	});
+
+	it("should give the macro call of the first definition of a macro defined in a macro body", () => {
+		const source = `	.macro m
+		.macro k
+			nop
+		.end
+	.end
+	m
+	m
+`;
+		expect(errorOf(source, {}).split("\n").slice(3)).toEqual([
+			"  in macro m, called at main.asm:7:2",
+			"main.asm:2:4: note: first defined here",
+			"  in macro m, called at main.asm:6:2",
+		]);
+	});
+
+	it("should keep the line in the macro's file of a global symbol defined in a macro body", () => {
+		const { assembler } = makeAssembler({});
+		assembler.assemble(`	nop
+	.macro m
+		.let g = 1
+	.end
+	m
+`);
+		expect(assembler.symbolTable.getDict()["%%GLOBAL"]?.G).toBe("number = $01 ;main.asm:3:4");
+	});
+
 	it("should give the include chain of a warning", () => {
 		const { assembler, sink } = makeAssembler({ "lib.asm": '\t.warning "careful"\n' });
 		assembler.assemble('\t.include "lib.asm"\n');

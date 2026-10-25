@@ -2,7 +2,7 @@ import type { Parser } from "../assembler/parser.class";
 import type { StreamState } from "../assembler/polyasm.types";
 import type { MacroHandler } from "../directives/macro/handler";
 import type { Token } from "../shared/lexer/lexer.class";
-import { AsmError, type IncludeSite } from "../utils/error.utils";
+import { AsmError, type DefinitionSite, type IncludeSite } from "../utils/error.utils";
 import type { StreamManager } from "./stream-manager.class";
 
 /**
@@ -64,6 +64,15 @@ export class ErrorLocator {
 		const site = typeof position.line === "string" ? this.macroSite(position.line) : undefined;
 		if (!site) return [{ file: this.streamManager?.currentFilepath, line: position.line, column }];
 		return [{ file: site.file, line: site.line, column }, ...site.calls.map(({ name, calledAt }) => ({ ...calledAt, macro: name }))];
+	}
+
+	/**
+	 * Where something defined at `position` is, for a note about it: in a macro body, its line in the file the macro
+	 * is defined in, then the macro calls that led there, before the include chain.
+	 */
+	public definitionSite(position: { line: number | string; column: number }): DefinitionSite {
+		const [location, ...calls] = this.includeSites(position) as [IncludeSite, ...IncludeSite[]];
+		return { location, includeStack: [...calls, ...(this.streamManager?.includeStack ?? [])] };
 	}
 
 	/** In a macro body, the error is located in the file the macro is defined in, and the macro calls go in its macro stack. */
