@@ -179,9 +179,11 @@ _In pass 1, an unknown segment gives `null` (not known yet), as the other functi
 
 _Decided: a link script's macros count, as in a source. `link()` passes `isMacroDefined` in its `EvaluatorHost`: a macro is defined once its `.macro` is reached._
 
-### 1.27 `.macro` without a name on its line
+### 1.27 `.macro` without a name on its line — ✅ DONE (#116)
 
-`.macro` / `foo` / `nop` / `.end` assembles silently: `parser.identifier()` reads past the line and takes `foo` as the macro's name. Same bug as `.define`'s (1.14).
+✅ **DONE (#116)** — `.macro` / `foo` / `nop` / `.end` assembles silently: `parser.identifier()` reads past the line and takes `foo` as the macro's name. Same bug as `.define`'s (1.14).
+
+_The name must be an identifier on the directive's line, in both passes: else `A macro needs a name.`, at the directive or at the wrong token (`.macro 12`, `.macro {` said `Syntax error - Expecting IDENTIFIER`)._
 
 ## 2. Code review, items left
 
