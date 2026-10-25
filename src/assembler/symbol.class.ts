@@ -28,12 +28,12 @@ interface PASymbol {
 }
 
 /** A symbol's name for messages: in its namespace, unless it's the global one. */
-function qualifiedName(namespace: string, name: string): string {
+export function qualifiedName(namespace: string, name: string): string {
 	return namespace === INTERNAL_GLOBAL ? name : `${namespace}::${name}`;
 }
 
 /** An error about a symbol already defined, with a note pointing at its definition. */
-function definitionError(message: string, symbol: PASymbol, note: string): AsmError {
+export function definitionError(message: string, symbol: PASymbol, note: string): AsmError {
 	const error = new AsmError(message);
 	error.notes.push({
 		message: note,

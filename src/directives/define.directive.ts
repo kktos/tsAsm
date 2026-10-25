@@ -1,9 +1,8 @@
 import { type Parser, ParserError } from "../assembler/parser.class";
 import type { Assembler } from "../assembler/polyasm";
-import type { SymbolValue } from "../assembler/symbol.class";
+import { definitionError, qualifiedName, type SymbolValue } from "../assembler/symbol.class";
 import type { ILister } from "../helpers/lister.class";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
-import { describeLocation } from "../utils/error.utils";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class DefineDirective implements IDirective {
@@ -51,8 +50,12 @@ export class DefineDirective implements IDirective {
 	}
 
 	public handle(directive: ScalarToken, context: DirectiveContext, pass: 1 | 2 = 1) {
-		const symbolNameToken = this.assembler.parser.identifier();
-		if (!symbolNameToken) throw new ParserError(".DEFINE requires a symbol name.", directive);
+		// The name is on the directive's line: a word on the next line is the block's.
+		const symbolNameToken = this.assembler.parser.peekTokenUnbuffered();
+		if (!symbolNameToken || symbolNameToken.type === "EOF" || symbolNameToken.line !== directive.line)
+			throw new ParserError(".DEFINE needs a symbol name.", directive);
+		if (symbolNameToken.type !== "IDENTIFIER") throw new ParserError(".DEFINE needs a symbol name.", symbolNameToken);
+		this.assembler.parser.next();
 
 		let processorName: string | undefined;
 		let fromFile: SymbolValue | undefined;
@@ -87,8 +90,7 @@ export class DefineDirective implements IDirective {
 
 		if (pass === 1 && this.assembler.symbolTable.hasSymbolInScope(symbolNameToken.value)) {
 			const existing = this.assembler.symbolTable.findSymbol(symbolNameToken.value)?.symbol;
-			const where = existing ? ` (first defined at ${describeLocation({ file: existing.source, line: existing.line, column: existing.column })})` : "";
-			throw new ParserError(`Cannot redefine symbol '${symbolNameToken.value}'${where}.`, directive);
+			if (existing) throw definitionError(`Symbol '${qualifiedName(existing.namespace, existing.name)}' redefined.`, existing, "first defined here");
 		}
 
 		// this.assembler.symbolTable.assignVariable(symbolNameToken.value, 0);
