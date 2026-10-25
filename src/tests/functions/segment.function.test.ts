@@ -1,6 +1,12 @@
+import { EventEmitter } from "node:events";
 import { describe, expect, it } from "vitest";
+import { ExpressionEvaluator } from "../../assembler/expression";
 import { Assembler } from "../../assembler/polyasm";
+import { PASymbolTable } from "../../assembler/symbol.class";
 import { Cpu6502Handler } from "../../cpu/cpu6502.class";
+import { NullLister } from "../../helpers/lister.class";
+import type { Segment } from "../../linker/linker.class";
+import { AssemblyLexer } from "../../shared/lexer/lexer.class";
 import { MockFileHandler } from "../mockfilehandler.class";
 
 describe("Function .SEGMENT()", () => {
@@ -60,5 +66,34 @@ describe("Function .SEGMENT()", () => {
 			s = .segment(1)
 		`;
 		expect(() => assemble(source)).toThrow("Argument to .SEGMENT() must be a string.");
+	});
+});
+
+describe("Function .SEGMENT(), with a stub host", () => {
+	const DATA: Segment = { name: "DATA", start: 0x9000, size: 0x10, data: [] };
+
+	const setup = () => {
+		const evaluator = new ExpressionEvaluator(new PASymbolTable(new NullLister()), {
+			resolveSysValue: () => undefined,
+			findSegment: (name) => (name === DATA.name ? DATA : undefined),
+		});
+		const lexer = new AssemblyLexer(new EventEmitter());
+		const tokenize = (expr: string) => lexer.tokenize(expr).filter((t) => t.type !== "EOF");
+		return { evaluator, tokenize };
+	};
+
+	it("should return the segment the host finds", () => {
+		const { evaluator, tokenize } = setup();
+		expect(evaluator.evaluate(tokenize('.segment("DATA")'), { PC: { value: 0 } })).toBe(DATA);
+	});
+
+	it("should give null in pass 1 for a segment the host doesn't know yet", () => {
+		const { evaluator, tokenize } = setup();
+		expect(evaluator.evaluate(tokenize('.segment("NOPE")'), { PC: { value: 0 }, allowForwardRef: true })).toBeNull();
+	});
+
+	it("should throw in pass 2 for a segment the host doesn't know", () => {
+		const { evaluator, tokenize } = setup();
+		expect(() => evaluator.evaluate(tokenize('.segment("NOPE")'), { PC: { value: 0 } })).toThrow("Segment 'NOPE' not found.");
 	});
 });

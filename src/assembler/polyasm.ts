@@ -10,7 +10,6 @@ import { Lister } from "../helpers/lister.class";
 import { Logger } from "../helpers/logger.class";
 import { StreamManager } from "../helpers/stream-manager.class";
 import { Linker, type Segment } from "../linker/linker.class";
-import type { FunctionHandler } from "../shared/functions/types";
 import type { OperatorStackToken, ScalarToken, Token } from "../shared/lexer/lexer.class";
 import { AsmError } from "../utils/error.utils";
 import { getHex } from "../utils/hex.util";
@@ -86,8 +85,11 @@ export class Assembler {
 
 		this.symbolTable = new PASymbolTable(this.lister, () => this.streamManager.includeStack);
 
-		const resolveSysValue = (nameToken: Token) => this.resolveSysValue(nameToken);
-		this.expressionEvaluator = new ExpressionEvaluator(this.symbolTable, this.namelessLabels.findNearest.bind(this.namelessLabels), resolveSysValue);
+		this.expressionEvaluator = new ExpressionEvaluator(this.symbolTable, {
+			resolveSysValue: (nameToken) => this.resolveSysValue(nameToken),
+			findSegment: (name) => this.linker.findSegment(name),
+			findNearestLabel: (address, distance) => this.namelessLabels.findNearest(address, distance),
+		});
 
 		this.addFunctions();
 
@@ -766,23 +768,5 @@ export class Assembler {
 
 	private addFunctions() {
 		this.expressionEvaluator.functionDispatcher.registerDefFunctions((name) => this.macroHandler.isDefined(name));
-
-		const segHandler: FunctionHandler = (stack, token, _symbolTable, _argCount, _resolver, allowForwardRef) => {
-			const segName = stack.pop();
-			if (typeof segName !== "string") throw AsmError.at("Argument to .SEGMENT() must be a string.", token);
-			const seg = this.linker.segments.find((s) => s.name === segName);
-			// Pass 1: a segment defined further down isn't known yet
-			if (!seg && allowForwardRef) {
-				stack.push(null);
-				return;
-			}
-			if (!seg) throw AsmError.at(`Segment '${segName}' not found.`, token);
-			stack.push(seg);
-		};
-		this.expressionEvaluator.functionDispatcher.register("SEGMENT", {
-			handler: segHandler,
-			minArgs: 1,
-			maxArgs: 1,
-		});
 	}
 }

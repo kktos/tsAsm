@@ -1,4 +1,6 @@
+import type { Segment } from "../linker/linker.class";
 import type { Token } from "../shared/lexer/lexer.class";
+import type { SymbolValue } from "./symbol.class";
 
 export const PRECEDENCE: Record<string, number> = {
 	// Property access has the highest precedence
@@ -58,4 +60,14 @@ export interface EvaluationContext {
 	allowForwardRef?: boolean;
 	currentLabel?: string | null;
 	numberMax?: number;
+}
+
+/** What the evaluator asks of the assembler or the linker it evaluates for. */
+export interface EvaluatorHost {
+	/** A system variable: `.PC`, `.SEGMENT`… */
+	resolveSysValue(nameToken: Token): SymbolValue | undefined;
+	/** A segment by name, for `.segment(name)`. */
+	findSegment(name: string): Segment | undefined;
+	/** The anonymous label `distance` labels away from `address`. Without it, there are none. */
+	findNearestLabel?(address: number, distance: number): number | null;
 }
