@@ -341,3 +341,7 @@ _Decided: an omitted argument is as if its default had been written at the call.
 - At the definition, only the form is checked: defaults come after the parameters without one, and the rest parameter has none. Nothing is evaluated there.
 - A default that changes between calls follows: with `count = 1`, `.macro m x = count`, `count = 2`, `m` gives 2. `x = *` is the address where `x` is used, so `.dw x, x` gives two addresses, as an explicit `m *` already does.
 - To note in REFERENCE.md: a default's symbols are resolved inside the macro, so a local of the body with the same name takes the place of the outer symbol. Explicit arguments already behave this way.
+
+### 4.2 Padding
+
+- ✅ **DONE (#122)** — `.pad(value, width [, fill])` to line up the columns of `.log` tables: on the left for a positive width, on the right for a negative one, as printf's `%-12s`. _`fill` is one character, space by default; a longer value is kept whole. `.log` separates its values with tabs, now said in REFERENCE.md._

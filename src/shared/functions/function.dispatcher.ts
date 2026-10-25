@@ -14,6 +14,7 @@ import { jsonFunction } from "./json.function";
 import { labelFunction } from "./label.function";
 import { lenFunction } from "./len.function";
 import { lobyteFunction } from "./lobyte.function";
+import { padFunction } from "./pad.function";
 import { popFunction } from "./pop.function";
 import { pushFunction } from "./push.function";
 import { roundFunction } from "./round.function";
@@ -46,6 +47,7 @@ export class FunctionDispatcher {
 		for (const [name, definition] of defFunctions((macro) => this.host.isMacroDefined?.(macro) ?? false)) this.register(name, definition);
 		this.register("STR", { handler: strFunction, minArgs: 1, maxArgs: 2 });
 		this.register("HEX", { handler: hexFunction, minArgs: 1, maxArgs: 2 });
+		this.register("PAD", { handler: padFunction, minArgs: 2, maxArgs: 3 });
 		this.register("SPLIT", { handler: splitFunction, minArgs: 1, maxArgs: 2 });
 		this.register("ARRAY", {
 			handler: arrayFunction,

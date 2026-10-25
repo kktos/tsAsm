@@ -758,7 +758,8 @@ export class ExpressionEvaluator {
 			}
 
 			case "LOCAL_LABEL": {
-				if (!context.currentLabel) throw AsmError.at(`Local label reference '${token.raw ?? token.value}' used without a preceding global label.`, token);
+				if (!context.currentLabel)
+					throw AsmError.at(`Local label reference '${token.raw ?? token.value}' used without a preceding global label.`, token);
 
 				const qualifiedName = `${context.currentLabel}.${token.value}`;
 				const value = this.symbolTable.lookupSymbol(qualifiedName);

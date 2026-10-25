@@ -448,7 +448,7 @@ A file can be included several times: each `.include` assembles it again. A file
 
 | Directive                                         | Effect                                                                       |
 | ------------------------------------------------- | ---------------------------------------------------------------------------- |
-| `.log` / `.echo` / `.out` `<value> [, <value> …]` | Print the values                                                             |
+| `.log` / `.echo` / `.out` `<value> [, <value> …]` | Print the values, separated by tabs                                          |
 | `.warning` / `.warn` `<value> [, <value> …]`      | Print a warning                                                              |
 | `.error` / `.err` `<value> [, <value> …]`         | Stop the assembly with this error                                            |
 | `.list on` / `.list off`                          | Turn the listing on or off (when the listing is enabled in the project file) |
@@ -456,6 +456,13 @@ A file can be included several times: each `.include` assembles it again. A file
 
 ```as
 .log "count = ", count
+```
+
+For columns that line up, build each line with `.pad()`: a tab moves to the next multiple of 8, so values of different lengths drift.
+
+```as
+.log .pad("#", -4) + .pad("Size", -7) + "Name"
+.log .pad(.hex(id), -4) + .pad(.hex(size, 4), -7) + name   ; $02 $0200  WELCOME
 ```
 
 ## Assembler settings
@@ -500,6 +507,7 @@ Read-only values, prefixed with a dot.
 | `.type(<value>)`                           | `"number"`, `"string"`, `"array"` or `"object"`                                                                                                                                                                                                                                                                                                                |
 | `.hex(<value> [, <digits>])`               | The value as a hexadecimal string: `.hex(10, 4)` is `"$000A"`. A negative value gives its two's complement: `.hex(-1)` is `"$FF"`                                                                                                                                                                                                                              |
 | `.str(<value>)`                            | The value as a string                                                                                                                                                                                                                                                                                                                                          |
+| `.pad(<value>, <width> [, <fill>])`        | The value (string or number) padded with `fill` (space by default) to `width` characters: on the left for a positive width, `.pad(25, 4)` is `"  25"`, on the right for a negative one, `.pad("AB", -4)` is `"AB  "`. A longer value is kept whole                                                                                                             |
 | `.json(<value>)`                           | The value as a JSON string                                                                                                                                                                                                                                                                                                                                     |
 | `.lobyte(<value>)`, `.hibyte(<value>)`     | Low byte, high byte                                                                                                                                                                                                                                                                                                                                            |
 | `.floor(<n>)`, `.ceil(<n>)`, `.round(<n>)` | `n` rounded down, up, or to the nearest integer                                                                                                                                                                                                                                                                                                                |
