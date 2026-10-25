@@ -74,7 +74,7 @@ describe(".DEFINE Directive", () => {
 			.DEFINE MY_SYMBOL
 			.END
 		`;
-			expect(() => assembler.assemble(source)).toThrow(/Cannot redefine symbol 'MY_SYMBOL'/);
+			expect(() => assembler.assemble(source)).toThrow(/Symbol 'MY_SYMBOL' redefined\./);
 		});
 
 		it("should throw an error for an already defined variable", () => {
@@ -88,7 +88,7 @@ describe(".DEFINE Directive", () => {
 			.DEFINE MY_SYMBOL
 			.END
 		`;
-			expect(() => assembler.assemble(source)).toThrow(/Cannot redefine symbol 'MY_SYMBOL'/);
+			expect(() => assembler.assemble(source)).toThrow(/Symbol 'MY_SYMBOL' redefined\./);
 		});
 
 		it("should throw an error for an already defined constant", () => {
@@ -102,7 +102,51 @@ describe(".DEFINE Directive", () => {
 			.DEFINE MY_SYMBOL
 			.END
 		`;
-			expect(() => assembler.assemble(source)).toThrow(/Cannot redefine symbol 'MY_SYMBOL'/);
+			expect(() => assembler.assemble(source)).toThrow(/Symbol 'MY_SYMBOL' redefined\./);
+		});
+
+		it("should point at the first definition of a redefined symbol", () => {
+			const handlers = { default: "text", map: new Map([["text", (blockContent: string) => blockContent]]) };
+			const { assembler } = createAssembler(handlers);
+			const source = `
+			.DEFINE MY_SYMBOL
+			.END
+			.DEFINE MY_SYMBOL
+			.END
+		`;
+			expect(() => assembler.assemble(source)).toThrow(
+				expect.objectContaining({
+					message: "Symbol 'MY_SYMBOL' redefined.",
+					notes: [expect.objectContaining({ message: "first defined here", location: { file: "", line: 2, column: 5 } })],
+				}),
+			);
+		});
+
+		it("should ask for a symbol name", () => {
+			const handlers = { default: "text", map: new Map([["text", (blockContent: string) => blockContent]]) };
+			const { assembler } = createAssembler(handlers);
+			// The first word of the block isn't the name.
+			const source = `
+			.DEFINE
+			MY_SYMBOL
+			.END
+		`;
+			expect(() => assembler.assemble(source)).toThrow(
+				expect.objectContaining({ message: ".DEFINE needs a symbol name.", location: { file: "", line: 2, column: 5 } }),
+			);
+		});
+
+		it("should ask for a symbol name, not a number", () => {
+			const handlers = { default: "text", map: new Map([["text", (blockContent: string) => blockContent]]) };
+			const { assembler } = createAssembler(handlers);
+			const source = `
+			.DEFINE 12
+			abc
+			.END
+		`;
+			expect(() => assembler.assemble(source)).toThrow(
+				expect.objectContaining({ message: ".DEFINE needs a symbol name.", location: { file: "", line: 2, column: 12 } }),
+			);
 		});
 
 		it("should throw an error for an unknown handler", () => {

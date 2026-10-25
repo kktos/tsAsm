@@ -99,13 +99,15 @@ _`.once`, decided: the file says it holds definitions, like C's `#pragma once`, 
 
 An `.include` inside a macro body gets an `included from file:4.2:…` line (the macro's "call.body" line number).
 
-### 1.13 `.define` redefinition message
+### 1.13 `.define` redefinition message — ✅ DONE (#115)
 
-Missed by #75: `.define` has its own redefinition check, `Cannot redefine symbol 'X' (first defined at …)` (`define.directive.ts`): still the old message, without the `first defined here` note and its include chain.
+✅ **DONE (#115)** — Missed by #75: `.define` has its own redefinition check, `Cannot redefine symbol 'X' (first defined at …)` (`define.directive.ts`): still the old message, without the `first defined here` note and its include chain.
 
-### 1.14 `.define` without a name
+### 1.14 `.define` without a name — ✅ DONE (#115)
 
-`.define` without a name → `Syntax error - Expecting IDENTIFIER ` (trailing space, and it should say a symbol name is needed).
+✅ **DONE (#115)** — `.define` without a name → `Syntax error - Expecting IDENTIFIER ` (trailing space, and it should say a symbol name is needed).
+
+_`.define` now throws the symbol table's `Symbol 'X' redefined.`, with its `first defined here` note and include chain (1.13). The name must be an identifier on the directive's line: `.define` alone took the block's first word as the name and assembled silently. Both say `.DEFINE needs a symbol name.` `Parser.consume`'s message lost its trailing space. Follow-up: 1.27._
 
 ### 1.15 Macro call arguments split at a comma inside `[ ]` — ✅ DONE (#104)
 
@@ -176,6 +178,10 @@ _In pass 1, an unknown segment gives `null` (not known yet), as the other functi
 ✅ **DONE (#114)** — In a link script, `.def(m)` is `0` after `.macro m`, and `.undef(m)` is `1`: `link()` has its own `MacroHandler` but doesn't give it to the evaluator (#113's question).
 
 _Decided: a link script's macros count, as in a source. `link()` passes `isMacroDefined` in its `EvaluatorHost`: a macro is defined once its `.macro` is reached._
+
+### 1.27 `.macro` without a name on its line
+
+`.macro` / `foo` / `nop` / `.end` assembles silently: `parser.identifier()` reads past the line and takes `foo` as the macro's name. Same bug as `.define`'s (1.14).
 
 ## 2. Code review, items left
 

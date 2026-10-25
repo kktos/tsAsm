@@ -130,7 +130,7 @@ export class Parser {
 
 		if (isMatchingType && isMatchingValue) return token;
 
-		throw new ParserError(`Syntax error - Expecting ${expectedType} ${expectedValue ? `with value ${expectedValue}` : ""}`, token);
+		throw new ParserError(`Syntax error - Expecting ${expectedType}${expectedValue ? ` with value ${expectedValue}` : ""}`, token);
 	}
 
 	public isIdentifier(expectedValue?: SymbolValue | SymbolValue[], offset = 0) {

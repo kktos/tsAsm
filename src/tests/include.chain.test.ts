@@ -29,6 +29,7 @@ describe("Include chains in errors", () => {
 		const assembler = new Assembler(new Cpu6502Handler(), fileHandler, {
 			logger: new Logger({ sink, enabled: true }),
 			segments: [{ name: "CODE", start: 0x1000, size: 0, resizable: true }],
+			rawDataProcessors: { default: "text", map: new Map([["text", (blockContent: string) => blockContent]]) },
 		});
 		return { assembler, sink };
 	};
@@ -73,6 +74,30 @@ describe("Include chains in errors", () => {
 				"  included from lib/lib.asm:1:2",
 				"  included from main.asm:2:2",
 				"main.asm:1:1: note: first defined here",
+			].join("\n"),
+		);
+	});
+
+	it("should say how both definitions of a .define symbol were included", () => {
+		const files = {
+			"defs.asm": `	.define x
+	abc
+	.end
+`,
+			"lib/lib.asm": '\t.include "../defs.asm"\n',
+		};
+		const source = `	.include "defs.asm"
+	.include "lib/lib.asm"
+`;
+		expect(errorOf(source, files)).toBe(
+			[
+				"defs.asm:1:2: error: Symbol 'X' redefined.",
+				"    1 | \t.define x",
+				"      | \t^",
+				"  included from lib/lib.asm:1:2",
+				"  included from main.asm:2:2",
+				"defs.asm:1:3: note: first defined here",
+				"  included from main.asm:1:2",
 			].join("\n"),
 		);
 	});
