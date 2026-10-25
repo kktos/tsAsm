@@ -1,6 +1,6 @@
 import type { ILister } from "../helpers/lister.class";
 import type { Token } from "../shared/lexer/lexer.class";
-import { AsmError, type IncludeStack } from "../utils/error.utils";
+import { AsmError, type DefinitionSite, type IncludeStack } from "../utils/error.utils";
 import { getHex } from "../utils/hex.util";
 
 // Internal unique key for the global namespace to avoid collisions with user namespaces
@@ -51,8 +51,11 @@ export class PASymbolTable {
 
 	constructor(
 		private readonly lister: ILister,
-		/** The `.include` directives the file being assembled was reached through: kept with each symbol defined. */
-		private readonly includeStack: () => IncludeStack = () => [],
+		/** Where a symbol defined at `source` is, kept with it: in a macro body, its line in the macro's file. */
+		private readonly definitionSite: (source: SymbolSource) => DefinitionSite = ({ filename, line, column }) => ({
+			location: { file: filename, line, column },
+			includeStack: [],
+		}),
 	) {
 		this.reset();
 	}
@@ -103,6 +106,12 @@ export class PASymbolTable {
 		const label = this.scopeLabels.get(symbol.namespace);
 		if (label) return { name: symbol.name, scope: ` in ${label}` };
 		return { name: symbol.namespace === INTERNAL_GLOBAL ? symbol.name : `${symbol.namespace}::${symbol.name}`, scope: "" };
+	}
+
+	/** The place a symbol keeps: where it's written, in a macro body too, and the macro calls and includes that led there. */
+	private symbolSite(source: SymbolSource): Pick<PASymbol, "source" | "line" | "column" | "includeStack"> {
+		const { location, includeStack } = this.definitionSite(source);
+		return { source: location.file ?? source.filename, line: location.line ?? source.line, column: location.column ?? source.column, includeStack };
 	}
 
 	/**
@@ -264,10 +273,7 @@ export class PASymbolTable {
 			value,
 			isConstant: true,
 			namespace: ns,
-			source: source.filename,
-			line: source.line,
-			column: source.column,
-			includeStack: this.includeStack(),
+			...this.symbolSite(source),
 			definedInPass: this.pass,
 		});
 	}
@@ -301,10 +307,7 @@ export class PASymbolTable {
 			value,
 			isConstant: false,
 			namespace: ns,
-			source: source.filename,
-			line: source.line,
-			column: source.column,
-			includeStack: this.includeStack(),
+			...this.symbolSite(source),
 			definedInPass: this.pass,
 		});
 	}

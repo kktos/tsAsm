@@ -23,11 +23,15 @@ export interface IncludeSite extends SourceLocation {
 /** The `.include` directives a file was reached through, and the macro calls they are in, innermost first. */
 export type IncludeStack = readonly IncludeSite[];
 
-/** Another place the error is about, such as the first definition of what is redefined. */
-export interface AsmNote {
-	message: string;
+/** Where something is defined: its place, and the macro calls and `.include` directives that led there. */
+export interface DefinitionSite {
 	location: SourceLocation;
 	includeStack: IncludeStack;
+}
+
+/** Another place the error is about, such as the first definition of what is redefined. */
+export interface AsmNote extends DefinitionSite {
+	message: string;
 }
 
 /** `file:line:column: `, with the parts that are known. */

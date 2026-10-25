@@ -13,7 +13,7 @@ import type { Logger } from "../helpers/logger.class";
 import { StreamManager } from "../helpers/stream-manager.class";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
 import { pushNumber } from "../utils/array.utils";
-import { AsmError } from "../utils/error.utils";
+import { AsmError, type DefinitionSite } from "../utils/error.utils";
 import { getHex } from "../utils/hex.util";
 import { stringToBytes } from "../utils/string.utils";
 import { Dispatcher } from "./directives/dispatcher.class";
@@ -302,7 +302,7 @@ export class Linker {
 
 	public link(script: string, outputPath: string | undefined, logger: Logger) {
 		const lister = new NullLister();
-		const symbolTable = new PASymbolTable(lister, () => this.streamManager?.includeStack ?? []);
+		const symbolTable = new PASymbolTable(lister, (source): DefinitionSite => errorLocator.definitionSite(source));
 		const parser = new Parser(new EventEmitter());
 		if (this.fileHandler) this.streamManager = new StreamManager(this.fileHandler, parser);
 
@@ -325,7 +325,7 @@ export class Linker {
 			linker: this,
 			macroHandler,
 			warn: (message, position) => logger.warn(errorLocator.warning(message, position)),
-			includeStack: () => this.streamManager?.includeStack ?? [],
+			definitionSite: (position) => errorLocator.definitionSite(position),
 			includeSites: (position) => errorLocator.includeSites(position),
 		};
 		const dispatcher = new Dispatcher(runtime);

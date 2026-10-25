@@ -197,9 +197,11 @@ _The name must be an identifier on the directive's line, in both passes: else `A
 
 _Not only from an included file: any symbol redefined in a macro body or a function was named by its scope's id (`@@function_NS::F::COUNT`, `Can't redefine constant '@@macro_M_5#0__::K'.`). Decided: `Symbol 'COUNT' redefined in macro m.`, `… in function f.` (a function's labels can't be named from outside: `f::count` is undefined). Namespaces keep `NS::COUNT`. The symbol table keeps a label for each scope a macro call or a function pushes. Follow-ups: 1.30, 1.31._
 
-### 1.30 A note at a definition in a macro body has its "call.body" line
+### 1.30 A note at a definition in a macro body has its "call.body" line — ✅ DONE (#119)
 
-`.macro m` / `count:` / `count:` / `.end` / `m` → the error is right, but its note is `5.2:1: note: first defined here`: the line a symbol keeps is the macro's "call.body" line, with no file, as the include chain was before #117. The note needs the body line in the macro's file and its own macro calls.
+✅ **DONE (#119)** — `.macro m` / `count:` / `count:` / `.end` / `m` → the error is right, but its note is `5.2:1: note: first defined here`: the line a symbol keeps is the macro's "call.body" line, with no file, as the include chain was before #117. The note needs the body line in the macro's file and its own macro calls.
+
+_Where a symbol or a macro is defined is now resolved when it's defined, as an `.include`'s place (#117): the body line in the macro's file, the macro calls first in its include chain (`ErrorLocator.definitionSite`). The note shows them under it. The CLI's symbol index had the "call.body" line too (`;main.asm:4.2:3`)._
 
 ### 1.31 A `{ }` block in a macro body closed by `.end`
 

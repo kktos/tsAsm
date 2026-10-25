@@ -50,10 +50,7 @@ export class MacroDirective implements IDirective {
 			restParameter,
 			body: bodyTokens,
 			endPosition,
-			file: context.filename,
-			line: directive.line,
-			column: directive.column,
-			includeStack: this.runtime.includeStack(),
+			...this.definitionSite(directive, context),
 		});
 		this.runtime.macroHandler.markReached(macroName);
 
@@ -70,6 +67,12 @@ export class MacroDirective implements IDirective {
 		if (token.type !== "IDENTIFIER") throw AsmError.at("A macro needs a name.", token);
 		this.runtime.parser.advance();
 		return token as IdentifierToken;
+	}
+
+	/** Where the macro is defined: in a macro body, the line in that macro's file, which its body lines are lines of. */
+	private definitionSite(directive: ScalarToken, context: DirectiveContext) {
+		const { location, includeStack } = this.runtime.definitionSite(directive);
+		return { file: location.file ?? context.filename, line: location.line ?? directive.line, column: location.column ?? directive.column, includeStack };
 	}
 
 	private handleMacroParametersDefinition(directive: ScalarToken) {
