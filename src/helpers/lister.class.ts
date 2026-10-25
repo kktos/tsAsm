@@ -1,5 +1,7 @@
+import type { EventEmitter } from "node:events";
+import type { ListingCase } from "../assembler/options";
 import type { SymbolValue } from "../assembler/symbol.class";
-import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
+import type { ScalarToken, Token, TokenType } from "../shared/lexer/lexer.class";
 import { getHex } from "../utils/hex.util";
 import type { Logger } from "./logger.class";
 
@@ -9,6 +11,8 @@ const CHARS_PAD = BYTES_PER_LINE + 1;
 const LABEL_START_COL = BYTES_PAD + 1 + CHARS_PAD + 1 + 4 + 2;
 const TEXT_PAD = LABEL_START_COL + 8;
 const LABEL_PAD = 16;
+/** The operand tokens `.option listing.case` applies to: registers and symbols. */
+const NAME_TOKENS = new Set<TokenType>(["IDENTIFIER", "LABEL", "LOCAL_LABEL"]);
 
 type BytesArgs = { addr: number; bytes: number[]; text: string; hasText?: boolean };
 type DirectiveBytesArgs = Omit<BytesArgs, "text"> & { pragma: ScalarToken | string; params: SymbolValue[][] };
@@ -23,7 +27,40 @@ export interface ILister {
 }
 
 export class Lister implements ILister {
-	constructor(private logger: Logger) {}
+	private listingCase: ListingCase = "upper";
+
+	constructor(
+		private logger: Logger,
+		emitter: EventEmitter,
+	) {
+		emitter.on("option:listing.case", (listingCase: ListingCase) => {
+			this.listingCase = listingCase;
+		});
+	}
+
+	/** An instruction's text: its mnemonic, registers and symbols in the case `.option listing.case` asks for, its numbers in hex. */
+	public instruction(mnemonic: ScalarToken, operands: ScalarToken[]): string {
+		return `${this.cased(mnemonic)} ${operands.map((token) => this.operand(token)).join("")}`;
+	}
+
+	private operand(token: ScalarToken): string {
+		if (token.type === "NUMBER") return `$${getHex(Number(token.value))}`;
+		if (token.type === "ANONYMOUS_LABEL_REF") return token.raw ?? token.value;
+		if (NAME_TOKENS.has(token.type)) return this.cased(token);
+		return token.value;
+	}
+
+	private cased(token: ScalarToken): string {
+		const text = token.raw ?? token.value;
+		switch (this.listingCase) {
+			case "lower":
+				return text.toLowerCase();
+			case "source":
+				return text;
+			default:
+				return text.toUpperCase();
+		}
+	}
 
 	// The methods below already match the ILister interface,
 	// so no changes are needed here.

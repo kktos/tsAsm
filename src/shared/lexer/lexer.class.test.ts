@@ -132,14 +132,14 @@ describe("AssemblyLexer", () => {
 		expect(stripLocation(tokens)).toEqual([
 			{ type: "ANONYMOUS_LABEL_DEF", value: ":", raw: undefined },
 			{ type: "IDENTIFIER", value: "BNE", raw: "BNE" },
-			{ type: "ANONYMOUS_LABEL_REF", value: "-1", raw: undefined },
+			{ type: "ANONYMOUS_LABEL_REF", value: "-1", raw: ":-" },
 			{ type: "LOCAL_LABEL", value: "LOOP", raw: ":loop" },
 			{ type: "IDENTIFIER", value: "INC", raw: "INC" },
 			{ type: "IDENTIFIER", value: "A", raw: "A" },
 			{ type: "IDENTIFIER", value: "JMP", raw: "JMP" },
 			{ type: "LOCAL_LABEL", value: "LOOP", raw: ":loop" },
 			{ type: "IDENTIFIER", value: "BEQ", raw: "BEQ" },
-			{ type: "ANONYMOUS_LABEL_REF", value: "+1", raw: undefined },
+			{ type: "ANONYMOUS_LABEL_REF", value: "+1", raw: ":+" },
 			{ type: "ANONYMOUS_LABEL_DEF", value: ":", raw: undefined },
 			{ type: "EOF", value: "", raw: undefined },
 		]);
@@ -206,7 +206,7 @@ describe("AssemblyLexer", () => {
 			{
 				type: "IDENTIFIER",
 				value: "MYLIB::ROUTINE",
-				raw: "ROUTINE",
+				raw: "MYLIB::ROUTINE",
 			},
 		]);
 	});

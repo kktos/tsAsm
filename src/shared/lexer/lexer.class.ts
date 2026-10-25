@@ -654,6 +654,7 @@ export class AssemblyLexer {
 
 	/** A reference to an anonymous label like ':-' or ':++' or ':+3'. */
 	private scanAnonymousLabelRef(line: number, column: number): Token {
+		const start = this.currentStream.pos;
 		this.advance(); // consume the marker
 		const sign = this.peek();
 		let count = 0;
@@ -672,7 +673,7 @@ export class AssemblyLexer {
 		}
 
 		const value = `${sign}${count}`; // e.g., "-1", "+2", "-3"
-		return this.makeToken("ANONYMOUS_LABEL_REF", value, line, column);
+		return this.makeToken("ANONYMOUS_LABEL_REF", value, line, column, this.currentStream.source.slice(start, this.currentStream.pos));
 	}
 
 	/** True when the char at `pos` ends a token: a space, a comment, or the end of the line or of the source. */
@@ -812,7 +813,7 @@ export class AssemblyLexer {
 				if (this.isIdentifierStart(ch)) while (this.isIdentifierPart(this.peek())) this.advance();
 				const symbolName = this.currentStream.source.slice(start, this.currentStream.pos);
 
-				return this.makeToken("IDENTIFIER", `${value.toUpperCase()}::${symbolName.toUpperCase()}`, line, column, symbolName);
+				return this.makeToken("IDENTIFIER", `${value.toUpperCase()}::${symbolName.toUpperCase()}`, line, column, `${value}::${symbolName}`);
 			}
 
 			return this.makeToken("LABEL", value.toUpperCase(), line, column, value);
