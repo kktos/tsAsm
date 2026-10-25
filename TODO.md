@@ -209,9 +209,11 @@ _Where a symbol or a macro is defined is now resolved when it's defined, as an `
 
 `.macro m` / `.repeat 2 {` / `nop` / `}` / `.end` / `m` → `Missing .END for the .MACRO block.` Same with `.function f {`. It works in a `.macro m { … }` body, and with the `.end` form of the inner block.
 
-### 1.32 Local label messages say `:`
+### 1.32 Local label messages say `:` — ✅ DONE (#121)
 
-`Local label ':LOOP' defined without a preceding global label.`, `Local label reference ':LOOP' used without…`, `Undefined local label ':LOOP' in scope…`: the `:` is written in the message, whatever `local.prefix` is (`@loop` gives `':LOOP'`). The token doesn't keep its prefix (its `raw` is `loop`, which the listing prints).
+✅ **DONE (#121)** — `Local label ':LOOP' defined without a preceding global label.`, `Local label reference ':LOOP' used without…`, `Undefined local label ':LOOP' in scope…`: the `:` is written in the message, whatever `local.prefix` is (`@loop` gives `':LOOP'`). The token doesn't keep its prefix (its `raw` is `loop`, which the listing prints).
+
+_A local label token's `raw` has its prefix now (`@loop`), as a number's has its `$`, and the messages print it, as written. The phase error and the macro "addressing mode" message (`(ptr,x)` for `(:ptr,x)`) read `raw` too. The listing doesn't print local labels._
 
 ## 2. Code review, items left
 
