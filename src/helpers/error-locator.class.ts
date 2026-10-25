@@ -124,7 +124,7 @@ export class ErrorLocator {
 	private expansions(): StreamState[] {
 		const streams = this.parser.tokenStreamStack;
 		const file = this.streamManager?.currentFilepath;
-		const fileStream = file ? streams.findLastIndex((stream) => stream.cacheName === file) : -1;
+		const fileStream = file ? streams.findLastIndex((stream) => stream.file === file) : -1;
 		return streams.slice(fileStream + 1).filter((stream) => stream.macroName);
 	}
 }

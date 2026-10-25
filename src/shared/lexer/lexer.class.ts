@@ -1,4 +1,3 @@
-import type * as EventEmitter from "node:events";
 import type { SymbolValue } from "../../assembler/symbol.class";
 import { AsmError } from "../../utils/error.utils";
 
@@ -38,6 +37,7 @@ export type TokenType =
 	| "RBRACE"
 
 	// Special
+	| "INVALID" // a char the lexer doesn't know: an error once the parser reads it, not when it's lexed ahead
 	| "COMMENT"
 	| "NEWLINE"
 	| "EOF";
@@ -71,6 +71,12 @@ export type ArrayValueToken = BaseToken & {
 
 export type Token = ScalarToken | ArrayValueToken;
 
+/** The chars starting local labels (`:loop`) and anonymous labels (`:`, `:-`, `:+2`): the `local.prefix` and `anon.marker` options. */
+export type LabelSyntax = { localPrefix: string; anonMarker: string };
+
+/** Where a token was lexed from, and with which label syntax: to lex it again with another one. */
+type TokenStart = { pos: number; line: number; column: number; labelSyntax: LabelSyntax };
+
 type Stream = {
 	source: string;
 	pos: number;
@@ -79,24 +85,27 @@ type Stream = {
 	length: number;
 	lastToken: Token | null;
 	tokenBuffer: Token[];
+	/** The start of each token of `tokenBuffer`. */
+	tokenStarts: TokenStart[];
 };
 export class AssemblyLexer {
 	private endMarker: string | undefined;
 	private rawInline = false;
 	private rawBlockName: string | undefined;
-	private localLabelChar = ":";
+	/** Set by the parser, which knows how far tokens were lexed ahead: see `relexFrom`. */
+	public labelSyntax: LabelSyntax = { localPrefix: ":", anonMarker: ":" };
 
 	private streamStack: Stream[] = [];
 	private currentStream: Stream;
 
 	public commentChar = ";";
 
-	constructor(private emitter: EventEmitter) {
-		this.currentStream = { source: "", pos: 0, line: 1, column: 1, length: 0, lastToken: null, tokenBuffer: [] };
+	constructor() {
+		this.currentStream = this.newStream("");
+	}
 
-		this.emitter.on("option:local_label_char", (value: string) => {
-			this.localLabelChar = value;
-		});
+	private newStream(source: string): Stream {
+		return { source, pos: 0, line: 1, column: 1, length: source.length, lastToken: null, tokenBuffer: [], tokenStarts: [] };
 	}
 
 	/** Tokenizes a whole source on its own stream: the stream being lexed, if any, is left as it was. */
@@ -106,11 +115,12 @@ export class AssemblyLexer {
 
 		try {
 			while (this.currentStream.pos < this.currentStream.length) {
+				const start = this.tokenStart();
 				const token = this.nextToken();
 				if (!token) continue; // skip null tokens (e.g., newlines)
 
-				this.currentStream.lastToken = token;
-				this.currentStream.tokenBuffer.push(token);
+				if (token.type === "INVALID") throw AsmError.at(token.value, token);
+				this.bufferToken(token, start);
 				if (token.type === "EOF") break;
 			}
 
@@ -123,21 +133,14 @@ export class AssemblyLexer {
 
 	public reset() {
 		this.streamStack = [];
-		this.currentStream = { source: "", pos: 0, line: 1, column: 1, length: 0, lastToken: null, tokenBuffer: [] };
+		this.currentStream = this.newStream("");
 	}
 
 	/** Initializes the lexer for incremental/token-stream consumption. */
 	public startStream(source: string) {
-		this.currentStream = {
-			source,
-			// A byte order mark is an encoding marker, not source: skip it at the start of a source only.
-			pos: source.startsWith("﻿") ? 1 : 0,
-			line: 1,
-			column: 1,
-			length: source.length,
-			lastToken: null,
-			tokenBuffer: [],
-		};
+		this.currentStream = this.newStream(source);
+		// A byte order mark is an encoding marker, not source: skip it at the start of a source only.
+		if (source.startsWith("﻿")) this.currentStream.pos = 1;
 		this.streamStack.push(this.currentStream);
 	}
 
@@ -191,15 +194,15 @@ export class AssemblyLexer {
 				// If EOF not yet buffered, push it
 				if (this.currentStream.tokenBuffer.length === 0 || this.currentStream.tokenBuffer[this.currentStream.tokenBuffer.length - 1]?.type !== "EOF") {
 					const eof = this.makeToken("EOF", "", this.currentStream.line, this.currentStream.column);
-					this.currentStream.tokenBuffer.push(eof);
+					this.bufferToken(eof, this.tokenStart());
 				}
 				break;
 			}
 
+			const start = this.tokenStart();
 			const t = this.nextToken();
 			if (!t) continue; // skip null tokens (e.g., newlines)
-			this.currentStream.lastToken = t;
-			this.currentStream.tokenBuffer.push(t);
+			this.bufferToken(t, start);
 			if (t.type === "EOF") break;
 		}
 
@@ -230,10 +233,41 @@ export class AssemblyLexer {
 		const isAlreadyOn = pos.line === stream.line && pos.column === stream.column && pos.pos === stream.pos;
 		if (isAlreadyOn) return;
 		stream.tokenBuffer.length -= offset;
+		stream.tokenStarts.length = stream.tokenBuffer.length;
 		stream.line = pos.line;
 		stream.column = pos.column;
 		stream.pos = pos.pos;
 		stream.lastToken = stream.tokenBuffer[stream.tokenBuffer.length - 1] as Token;
+	}
+
+	/**
+	 * The tokens of the current stream buffered from `index` on were lexed ahead: if it was with another label
+	 * syntax than the current one, they are dropped, to be lexed again from where they started.
+	 */
+	public relexFrom(index: number) {
+		const stream = this.currentStream;
+		const start = stream.tokenStarts[index];
+		if (!start) return;
+		const { localPrefix, anonMarker } = start.labelSyntax;
+		if (localPrefix === this.labelSyntax.localPrefix && anonMarker === this.labelSyntax.anonMarker) return;
+
+		stream.tokenBuffer.length = index;
+		stream.tokenStarts.length = index;
+		stream.pos = start.pos;
+		stream.line = start.line;
+		stream.column = start.column;
+		stream.lastToken = stream.tokenBuffer[index - 1] ?? null;
+	}
+
+	private tokenStart(): TokenStart {
+		const { pos, line, column } = this.currentStream;
+		return { pos, line, column, labelSyntax: this.labelSyntax };
+	}
+
+	private bufferToken(token: Token, start: TokenStart) {
+		this.currentStream.lastToken = token;
+		this.currentStream.tokenBuffer.push(token);
+		this.currentStream.tokenStarts.push(start);
 	}
 
 	// Single-pass token extraction with minimal backtracking
@@ -257,8 +291,16 @@ export class AssemblyLexer {
 		// Comment - fast path for semicolon
 		if (ch === this.commentChar) return this.scanComment(startLine, startColumn);
 
-		// Named or Nameless Local Labels
-		if (ch === this.localLabelChar) return this.scanLocalLabel(startLine, startColumn, ch);
+		// Local labels (':loop') and anonymous labels (':', ':-', ':++', ':+3'): elsewhere, their chars are lexed as usual ('!=')
+		if (ch === this.labelSyntax.localPrefix && this.isAlpha(this.peek(1))) return this.scanLocalLabel(startLine, startColumn);
+		if (ch === this.labelSyntax.anonMarker) {
+			const next = this.peek(1);
+			if (next === "+" || next === "-") return this.scanAnonymousLabelRef(startLine, startColumn);
+			if (this.isTokenEnd(this.currentStream.pos + 1)) {
+				this.advance();
+				return this.makeToken("ANONYMOUS_LABEL_DEF", ":", startLine, startColumn);
+			}
+		}
 
 		// Check for // or /* comments
 		if (ch === "/") {
@@ -449,13 +491,13 @@ export class AssemblyLexer {
 			return this.scanIdentifier(startLine, startColumn);
 		}
 
-		// Unknown character: always an error, never skipped silently
+		// Unknown character: always an error, never skipped silently. It's reported once read: lexed ahead, it may be
+		// lexed again as a label char (see relexFrom)
 		const codePoint = this.currentStream.source.codePointAt(this.currentStream.pos) as number;
 		const code = `U+${codePoint.toString(16).toUpperCase().padStart(4, "0")}`;
-		throw new AsmError(`Unexpected character '${String.fromCodePoint(codePoint)}' (${code}).`, {
-			line: startLine,
-			column: startColumn,
-		});
+		const char = String.fromCodePoint(codePoint);
+		for (let i = 0; i < char.length; i++) this.advance();
+		return this.makeToken("INVALID", `Unexpected character '${char}' (${code}).`, startLine, startColumn);
 	}
 
 	private scanComment(_line: number, _column: number) {
@@ -617,45 +659,43 @@ export class AssemblyLexer {
 		);
 	}
 
-	private scanLocalLabel(line: number, column: number, _char: string): Token {
-		this.advance(); // consume local label char
-		const nextChar = this.peek();
+	/** A local label like ':loop'. */
+	private scanLocalLabel(line: number, column: number): Token {
+		this.advance(); // consume the prefix
+		const start = this.currentStream.pos;
+		while (this.isIdentifierPart(this.peek())) this.advance();
 
-		if (this.isAlpha(nextChar)) {
-			// Named local label like ':loop'
-			const start = this.currentStream.pos;
-			while (this.isIdentifierPart(this.peek())) this.advance();
+		const value = this.currentStream.source.slice(start, this.currentStream.pos);
+		return this.makeToken("LOCAL_LABEL", value.toUpperCase(), line, column, value);
+	}
 
-			const value = this.currentStream.source.slice(start, this.currentStream.pos);
-			return this.makeToken("LOCAL_LABEL", value.toUpperCase(), line, column, value);
+	/** A reference to an anonymous label like ':-' or ':++' or ':+3'. */
+	private scanAnonymousLabelRef(line: number, column: number): Token {
+		this.advance(); // consume the marker
+		const sign = this.peek();
+		let count = 0;
+		while (this.peek() === sign) {
+			this.advance();
+			count++;
 		}
-		if (nextChar === "+" || nextChar === "-") {
-			// Nameless reference like ':-' or ':++' or ':+3'
-			const _start = this.currentStream.pos;
-			const sign = nextChar;
-			let count = 0;
-			while (this.peek() === sign) {
-				this.advance();
-				count++;
-			}
 
-			// Check for an optional numeric count like ':-3'
-			if (this.isDigit(this.peek())) {
-				const numStart = this.currentStream.pos;
-				while (this.isDigit(this.peek())) this.advance();
+		// Check for an optional numeric count like ':-3'
+		if (this.isDigit(this.peek())) {
+			const numStart = this.currentStream.pos;
+			while (this.isDigit(this.peek())) this.advance();
 
-				const numStr = this.currentStream.source.slice(numStart, this.currentStream.pos);
-				count = Number.parseInt(numStr, 10);
-			}
-
-			const value = `${sign}${count}`; // e.g., "-1", "+2", "-3"
-			return this.makeToken("ANONYMOUS_LABEL_REF", value, line, column);
+			const numStr = this.currentStream.source.slice(numStart, this.currentStream.pos);
+			count = Number.parseInt(numStr, 10);
 		}
-		// It's a standalone nameless label definition ':'
-		// The colon has already been consumed.
-		// We need to check if it's followed by a colon, which would make it a '::' operator for namespacing.
-		// For now, we assume it's a definition and use the standard ":" value for the token.
-		return this.makeToken("ANONYMOUS_LABEL_DEF", ":", line, column);
+
+		const value = `${sign}${count}`; // e.g., "-1", "+2", "-3"
+		return this.makeToken("ANONYMOUS_LABEL_REF", value, line, column);
+	}
+
+	/** True when the char at `pos` ends a token: a space, a comment, or the end of the line or of the source. */
+	private isTokenEnd(pos: number): boolean {
+		const ch = this.currentStream.source[pos] ?? "";
+		return ch === "" || ch === " " || ch === "\t" || ch === "\r" || ch === "\n" || this.isCommentStart(pos);
 	}
 
 	private scanRawTextBlock({ line, column, hasToGoNextline }: { line: number; column: number; hasToGoNextline: boolean }): Token | null {

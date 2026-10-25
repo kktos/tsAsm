@@ -89,6 +89,7 @@ const options: AssemblerOptions = {
 	},
 };
 if (segments) options.segments = segments;
+if (conf.input.options) options.options = conf.input.options;
 
 try {
 	const cpuName = (conf.input.cpu || "6502").toUpperCase();

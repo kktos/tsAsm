@@ -1,4 +1,5 @@
 import { YAMLException } from "js-yaml";
+import { isLabelChar, LABEL_CHARS_TEXT } from "../assembler/options";
 import type { FileHandler } from "../assembler/polyasm.types";
 import handlers from "../cpu";
 import { AsmError } from "../utils/error.utils";
@@ -6,6 +7,13 @@ import { yamlparse } from "./asm-yaml";
 import { type InferObject, validate } from "./schema";
 
 const availableCpus = Object.keys(handlers);
+
+const labelChar = {
+	type: "string",
+	optional: true,
+	validate: isLabelChar,
+	errorMessage: `Must be one of ${LABEL_CHARS_TEXT}`,
+} as const;
 
 const confSchema = {
 	input: {
@@ -30,6 +38,15 @@ const confSchema = {
 						padValue: { type: "number", optional: true },
 						resizable: { type: "boolean", optional: true },
 					},
+				},
+			},
+			// The `.option` values the source starts with
+			options: {
+				type: "object",
+				optional: true,
+				schema: {
+					"local.prefix": labelChar,
+					"anon.marker": labelChar,
 				},
 			},
 		},

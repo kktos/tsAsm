@@ -22,7 +22,7 @@ export class LinkerIncludeDirective implements IDirective {
 		streamManager.startNewStream(filename, true, this.runtime.includeSites(directive));
 
 		this.runtime.parser.pushTokenStream({
-			cacheName: streamManager.currentFilepath,
+			file: streamManager.currentFilepath,
 			newTokens: this.runtime.parser.lexer.getBufferedTokens(), // linker runs in one pass, so we need tokens
 			onEndOfStream: () => {
 				streamManager.endCurrentStream();

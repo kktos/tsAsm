@@ -72,7 +72,7 @@ export class StreamManager {
 		this.currentFilepath = this.fileHandler.fullpath;
 		this.currentFilename = this.fileHandler.filename;
 		// A file already read to its end is pushed from its cached tokens: a lexer stream on it would never be read.
-		if (tokenize && !this.parser.hasCachedStream(this.currentFilepath)) this.parser.lexer.startStream(rawContent);
+		if (tokenize && !this.parser.hasCachedFile(this.currentFilepath)) this.parser.lexer.startStream(rawContent);
 		return true;
 	}
 
