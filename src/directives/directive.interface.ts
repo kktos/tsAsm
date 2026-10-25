@@ -47,4 +47,6 @@ export interface DirectiveRuntime {
 	warn: (message: string, position?: { line: number | string; column: number }) => void;
 	/** The `.include` directives the file being assembled was reached through, innermost first. */
 	includeStack: () => IncludeStack;
+	/** Where an `.include` at `position` is, for the include chain of the file it reads: see `StreamManager.startNewStream`. */
+	includeSites: (position: { line: number | string; column: number }) => IncludeStack;
 }

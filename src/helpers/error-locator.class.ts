@@ -2,7 +2,7 @@ import type { Parser } from "../assembler/parser.class";
 import type { StreamState } from "../assembler/polyasm.types";
 import type { MacroHandler } from "../directives/macro/handler";
 import type { Token } from "../shared/lexer/lexer.class";
-import { AsmError } from "../utils/error.utils";
+import { AsmError, type IncludeSite } from "../utils/error.utils";
 import type { StreamManager } from "./stream-manager.class";
 
 /**
@@ -56,11 +56,31 @@ export class ErrorLocator {
 	}
 
 	/**
-	 * A macro body line is numbered "<call line>.<body line>" ("4.2", "4.3.2" for a nested call): the error is
-	 * located at the body line, in the file the macro is defined in, and the macro calls go in its macro stack.
+	 * Where an `.include` at `position` is, for the chain of the file it reads: in a macro body, its line in the file
+	 * the macro is defined in, then the macro calls that led there.
 	 */
+	public includeSites(position: { line: number | string; column: number }): IncludeSite[] {
+		const { column } = position;
+		const site = typeof position.line === "string" ? this.macroSite(position.line) : undefined;
+		if (!site) return [{ file: this.streamManager?.currentFilepath, line: position.line, column }];
+		return [{ file: site.file, line: site.line, column }, ...site.calls.map(({ name, calledAt }) => ({ ...calledAt, macro: name }))];
+	}
+
+	/** In a macro body, the error is located in the file the macro is defined in, and the macro calls go in its macro stack. */
 	private locateInMacro(error: AsmError) {
-		const expansions = this.parser.tokenStreamStack.filter((stream) => stream.macroName);
+		const site = this.macroSite(error.location.line as string);
+		if (!site) return;
+		error.location.file = site.file;
+		error.location.line = site.line;
+		error.macroStack.push(...site.calls);
+	}
+
+	/**
+	 * A macro body line is numbered "<call line>.<body line>" ("4.2", "4.3.2" for a nested call): its body line, in
+	 * the file the macro is defined in, and the macro calls that led there, innermost first.
+	 */
+	private macroSite(line: string): { file: string; line: number; calls: AsmError["macroStack"] } | undefined {
+		const expansions = this.expansions();
 		const definitionFile = (index: number) => {
 			const name = expansions[index]?.macroName;
 			return name !== undefined ? this.macroHandler.macroDefinitions.get(name)?.file : undefined;
@@ -69,15 +89,14 @@ export class ErrorLocator {
 
 		const innermost = expansions.length - 1;
 		const file = definitionFile(innermost);
-		if (file === undefined) return;
-		error.location.file = file;
-		error.location.line = bodyLine(error.location.line as string);
+		if (file === undefined) return undefined;
 
-		// Innermost first: each macro is called from the body of the one before it, or from the source itself.
+		// Innermost first: each macro is called from the body of the one before it, or from the current file itself.
+		const calls: AsmError["macroStack"] = [];
 		for (let index = innermost; index >= 0; index--) {
 			const { macroName, macroCall } = expansions[index] as StreamState;
 			if (!macroName || !macroCall) continue;
-			error.macroStack.push({
+			calls.push({
 				name: macroCall.raw ?? macroName,
 				calledAt: {
 					file: definitionFile(index - 1) ?? this.streamManager?.currentFilepath,
@@ -86,5 +105,17 @@ export class ErrorLocator {
 				},
 			});
 		}
+		return { file, line: bodyLine(line), calls };
+	}
+
+	/**
+	 * The macro expansions being read, outermost first: those of the current file, pushed after its own stream. A
+	 * file included from a macro body is read above that macro's expansion, which belongs to the file including it.
+	 */
+	private expansions(): StreamState[] {
+		const streams = this.parser.tokenStreamStack;
+		const file = this.streamManager?.currentFilepath;
+		const fileStream = file ? streams.findLastIndex((stream) => stream.cacheName === file) : -1;
+		return streams.slice(fileStream + 1).filter((stream) => stream.macroName);
 	}
 }

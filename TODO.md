@@ -95,9 +95,11 @@ _`getInstructionTokens` stopped at a `{`, except when it was the line's first to
 
 _`.once`, decided: the file says it holds definitions, like C's `#pragma once`, and an `.include` of it after its `.once` was reached does nothing. Files are known by their resolved path. An automatic once-only include would forbid a resource included in two places; `.include once` must be remembered by every includer; a guard written with `.if .undef(…)` breaks with two passes (1.22). Both passes skip the same includes: the files seen are forgotten before pass 2._
 
-### 1.12 `.include` in a macro body: include chain line
+### 1.12 `.include` in a macro body: include chain line — ✅ DONE (#117)
 
-An `.include` inside a macro body gets an `included from file:4.2:…` line (the macro's "call.body" line number).
+✅ **DONE (#117)** — An `.include` inside a macro body gets an `included from file:4.2:…` line (the macro's "call.body" line number).
+
+_Decided: the chain gives the `.include`'s place in the macro's file, then the macro calls that led there (`included from macros.asm:4:2` / `in macro m, called at main.asm:3:2`), as an error in a macro body shows them. An include chain entry can be a macro call (`IncludeSite.macro`). The error locator only walks the macro expansions of the current file: for a macro called in a file included from a macro body, the calls' files were swapped. Follow-ups: 1.28, 1.29._
 
 ### 1.13 `.define` redefinition message — ✅ DONE (#115)
 
@@ -184,6 +186,14 @@ _Decided: a link script's macros count, as in a source. `link()` passes `isMacro
 ✅ **DONE (#116)** — `.macro` / `foo` / `nop` / `.end` assembles silently: `parser.identifier()` reads past the line and takes `foo` as the macro's name. Same bug as `.define`'s (1.14).
 
 _The name must be an identifier on the directive's line, in both passes: else `A macro needs a name.`, at the directive or at the wrong token (`.macro 12`, `.macro {` said `Syntax error - Expecting IDENTIFIER`)._
+
+### 1.28 `.include` path in a macro body resolved from the caller's file
+
+`.include "inc/bad.asm"` in a macro defined in `macros.asm`, called from `lib/lib.asm`, reads `lib/inc/bad.asm`: the path is resolved from the file being assembled, not from the macro's. Since #117 the chain says `included from macros.asm:2:2` for it. Decision needed: relative to the macro's file (as C's `#include` in a header), or to the caller's (a macro is text expansion)?
+
+### 1.29 Redefinition in a file included from a macro names the macro's scope
+
+`.macro m` / `.include "c.asm"` / `.end` / `m`, with `count:` twice in `c.asm` → `Symbol '@@macro_M_4#0__::COUNT' redefined.`: the internal scope name of the expansion.
 
 ## 2. Code review, items left
 

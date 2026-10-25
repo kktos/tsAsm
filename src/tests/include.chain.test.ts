@@ -123,6 +123,69 @@ describe("Include chains in errors", () => {
 		]);
 	});
 
+	it("should give the place of an .include in a macro body, then the macro call", () => {
+		const files = {
+			"macros.asm": `	nop
+	.macro m
+		nop
+		.include "bad.asm"
+	.end
+`,
+			"bad.asm": "\tlda @\n",
+		};
+		const source = `	.include "macros.asm"
+	nop
+	m
+`;
+		expect(errorOf(source, files)).toBe(
+			[
+				"bad.asm:1:6: error: Unexpected character '@' (U+0040).",
+				"    1 | \tlda @",
+				"      | \t    ^",
+				"  included from macros.asm:4:3",
+				"  in macro m, called at main.asm:3:2",
+			].join("\n"),
+		);
+	});
+
+	it("should give the macro calls of an .include in a nested macro body, in pass 2 too", () => {
+		const files = { "bad.asm": "\tlda nowhere\n" };
+		const source = `	.macro inner
+		.include "bad.asm"
+	.end
+	.macro outer
+		inner
+	.end
+	outer
+`;
+		expect(errorOf(source, files).split("\n").slice(3)).toEqual([
+			"  included from main.asm:2:3",
+			"  in macro inner, called at main.asm:5:3",
+			"  in macro outer, called at main.asm:7:2",
+		]);
+	});
+
+	it("should give the macro calls of each file, for a macro called in a file included from a macro body", () => {
+		const files = {
+			"b.asm": `	nop
+	k
+`,
+		};
+		const source = `	.macro k
+		.error "boom"
+	.end
+	.macro m
+		.include "b.asm"
+	.end
+	m
+`;
+		expect(errorOf(source, files).split("\n").slice(3)).toEqual([
+			"  in macro k, called at b.asm:2:2",
+			"  included from main.asm:5:3",
+			"  in macro m, called at main.asm:7:2",
+		]);
+	});
+
 	it("should give the include chain of a warning", () => {
 		const { assembler, sink } = makeAssembler({ "lib.asm": '\t.warning "careful"\n' });
 		assembler.assemble('\t.include "lib.asm"\n');

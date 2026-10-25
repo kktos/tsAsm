@@ -58,7 +58,7 @@ export class DirectiveHandler {
 		this.register("LET", new LetDirective(assembler, runtime.lister));
 
 		this.register("OPTION", new OptionDirective(assembler));
-		this.register("INCLUDE", new IncludeDirective(assembler, runtime.lister));
+		this.register("INCLUDE", new IncludeDirective(assembler, runtime));
 		this.register("ONCE", new OnceDirective(assembler));
 		this.register("INCBIN", new IncbinDirective(assembler, runtime.logger));
 
