@@ -18,10 +18,6 @@ What is done is in `CHANGELOG.md`. How we work (PR rules, design rules, commands
 
 `.fill 2,` → `00 00`, `.align 4,` → `00 00 00`: an empty filler is 0, as when there's no filler at all.
 
-### 1.36 An empty function argument
-
-`.array(1,,2)` → `Internal error: stack underflow for .ARRAY().`: an empty argument isn't `Missing expression.`, as an empty array element is (1.34).
-
 ## 2. Code review, items left
 
 ### 2.1 CPU back-ends

@@ -61,6 +61,31 @@ describe("An empty expression", () => {
 		expect(assemble(new Cpu6502Handler(), source).message).toBe("Missing expression.");
 	});
 
+	// So is a function argument: `.array(1,,2)` isn't an internal error, `.len("ab",)` isn't 2 arguments.
+	it.each([
+		["list = .array(1,,2)", 17],
+		["list = .array(1,)", 17],
+		["list = .array(,1)", 15],
+		["list = .array(,)", 15],
+		[`.db .len("ab",)`, 15],
+		[".db (1,)", 8],
+	])("should be an error as a function argument in %j", (source, column) => {
+		const error = assemble(new Cpu6502Handler(), source);
+		expect(error.message).toBe("Missing expression.");
+		expect(error.location).toMatchObject({ line: 1, column });
+	});
+
+	it("should still allow a call without arguments", () => {
+		const assembler = new Assembler(new Cpu6502Handler(), new MockFileHandler(), {
+			segments: [{ name: "CODE", start: 0x1000, size: 0, resizable: true }],
+		});
+		assembler.assemble(`
+			list = .array()
+			.db .len(list)
+		`);
+		expect(assembler.link()).toEqual([0]);
+	});
+
 	it("should still allow an empty array", () => {
 		const assembler = new Assembler(new Cpu6502Handler(), new MockFileHandler(), {
 			segments: [{ name: "CODE", start: 0x1000, size: 0, resizable: true }],
