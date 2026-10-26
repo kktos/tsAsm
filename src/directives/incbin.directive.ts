@@ -55,7 +55,8 @@ export class IncbinDirective implements IDirective {
 
 	private readFile(filename: string): number[] {
 		try {
-			return this.assembler.fileHandler.readBinaryFile(filename);
+			// Relative to the file being assembled, as an .include: in a macro body, the file the macro is called from.
+			return this.assembler.fileHandler.readBinaryFile(filename, this.assembler.streamManager.currentFilepath);
 		} catch (e) {
 			throw new Error(`Can't include binary file '${filename}': ${e instanceof Error ? e.message : e}`);
 		}
