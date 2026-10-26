@@ -6,6 +6,12 @@ The problem is described as it was before the fix, then the fix in _italics_.
 
 ## Assembler
 
+### #144 — Macro text in `{ }`, `<` and `>` back to low and high byte (TODO 3.1)
+
+`setp <addr, >addr` → `Unexpected 'ADDR' after '>': a macro argument in < > ends at its '>'.`: an argument starting with `<` was text up to a `>`, so the most common 6502 macro call needed `.lobyte(addr)` or `(<addr)`.
+
+_Decided: text is written in `{ }`, as in ca65 (`copy {table,x}, $2000`, empty text `{}`), and `<` / `>` are low and high byte in any argument. Breaking: `< >` text is gone. A block's body is cut out before it runs, counting its braces, so a `{ }` argument works in any block, inline or not. `Unmatched '{' in macro arguments.` when the `}` isn't on the call's line._
+
 ### #143 — `.proc` without a name on its line (TODO 1.43)
 
 `.proc` / `rts` / `.end` assembles nothing, silently: the name is read past the line, so `RTS` becomes the procedure's name. Same bug as `.macro`'s (1.27, #116).

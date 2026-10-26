@@ -212,7 +212,7 @@ lbl: .dw lbl`);
 					LDA arg2
 					STA $2001
 				.END
-				MY_MACRO <#$10>, $300
+				MY_MACRO {#$10}, $300
 			`);
 
 			const machineCode6502 = assembler.link();
@@ -236,7 +236,7 @@ lbl: .dw lbl`);
 				.END
 
 				.org $1000
-				save <data,x>, <#10> ; Call macro with '<data,x>' and '<#10>'
+				save {data,x}, {#10} ; Call macro with '{data,x}' and '{#10}'
 
 				data: .db 0,1,2,3,4,5,6,7,8,9
 			`);
@@ -334,7 +334,7 @@ lbl: .dw lbl`);
 						load p[0]
 					.end
 					table: .db 0
-					pick <table,x>, 5
+					pick {table,x}, 5
 				`),
 			).toEqual([0x00, 0x05, 0xbd, 0x00, 0x10]);
 		});
@@ -405,7 +405,7 @@ m .iif(1,2,3), [3,4][0], 5`),
 .db a
 lda b
 .end
-m 1, <($12,x)>`),
+m 1, {($12,x)}`),
 			).toEqual([0x01, 0xa1, 0x12]);
 		});
 
@@ -458,8 +458,8 @@ m 1+2`),
 		});
 
 		it.each([
-			["without ( )", "m <($12,x)>"],
-			["with ( )", "m(<($12,x)>)"],
+			["without ( )", "m {($12,x)}"],
+			["with ( )", "m({($12,x)})"],
 		])("should paste a text argument %s", (_, call) => {
 			expect(
 				assemble(`.macro m a
@@ -470,11 +470,11 @@ ${call}`),
 		});
 
 		it.each([
-			["an immediate", "m #5", "'#5' is an addressing mode, not an expression. Pass it as text, in < >: <#5>."],
+			["an immediate", "m #5", "'#5' is an addressing mode, not an expression. Pass it as text, in { }: {#5}."],
 			["an indirect mode", "m ($12,x)", "'($12,x)' is an addressing mode"],
 			["an indirect mode, with ( )", "m(($12,x))", "'($12,x)' is an addressing mode"],
 			["an indirect mode on a local label", "m (:ptr,x)", "'(:ptr,x)' is an addressing mode"],
-		])("should reject %s outside < >", (_, call, message) => {
+		])("should reject %s outside { }", (_, call, message) => {
 			expect(() =>
 				assemble(`.macro m a
 lda a
@@ -496,17 +496,17 @@ ${call}`),
 				assemble(`${definition}
 .end
 ${call}`),
-			).toThrow(`Macro 'M': ${message}. An argument is a value; pass empty text as <>.`);
+			).toThrow(`Macro 'M': ${message}. An argument is a value; pass empty text as {}.`);
 		});
 
-		it("should accept empty text in < >", () => {
+		it("should accept empty text in { }", () => {
 			expect(
 				assemble(`.macro m x, y, z
 .db x
 y
 .db z
 .end
-m 1,<>,2`),
+m 1,{},2`),
 			).toEqual([0x01, 0x02]);
 		});
 
@@ -520,13 +520,13 @@ m()`),
 			).toEqual([0x01, 0x01]);
 		});
 
-		it("should end a text argument at its '>'", () => {
+		it("should end a text argument at its '}'", () => {
 			expect(() =>
 				assemble(`.macro m a
 .db a
 .end
-m <1>+1`),
-			).toThrow("Unexpected '+' after '>': a macro argument in < > ends at its '>'.");
+m {1}+1`),
+			).toThrow("Unexpected '+' after '}': a macro argument in { } ends at its '}'.");
 		});
 
 		it("should forward a text argument as text", () => {
@@ -537,7 +537,7 @@ lda v
 .macro outer t
 inner t
 .end
-outer <#5>`),
+outer {#5}`),
 			).toEqual([0xa9, 0x05]);
 		});
 
@@ -551,6 +551,69 @@ inner b*2
 .end
 outer 1+2`),
 			).toEqual([0x06]);
+		});
+
+		it.each([
+			["without ( )", "setp <addr, >addr"],
+			["with ( )", "setp(<addr, >addr)"],
+		])("should read '<' and '>' as low and high byte %s", (_, call) => {
+			expect(
+				assemble(`.macro setp lo, hi
+.db lo, hi
+.end
+addr = $1234
+${call}`),
+			).toEqual([0x34, 0x12]);
+		});
+
+		it("should reject a text argument not closed on its line", () => {
+			expect(() =>
+				assemble(`.macro m a
+lda a
+.end
+m {table,x
+nop`),
+			).toThrow("Unmatched '{' in macro arguments.");
+		});
+
+		it.each([
+			["an inline .if", ".if 1 { copy {table,x}, $2000 }"],
+			["an inline .if / .else", ".if 0 { nop } .else { copy {table,x}, $2000 }"],
+			[
+				"a .if … .end",
+				`.if 1
+copy {table,x}, $2000
+.end`,
+			],
+			[
+				"a .repeat { }",
+				`.repeat 1 {
+copy {table,x}, $2000
+}`,
+			],
+			["an inline .for", ".for t of [table] { copy {t,x}, $2000 }"],
+			[
+				"a .proc { }",
+				`.proc p {
+copy {table,x}, $2000
+}`,
+			],
+			[
+				"a .macro { } body",
+				`.macro outer a {
+copy {a,x}, $2000
+}
+outer table`,
+			],
+		])("should keep a text argument in %s", (_, block) => {
+			expect(
+				assemble(`.macro copy src, dst
+lda src
+sta dst
+.end
+table = $10
+${block}`),
+			).toEqual([0xb5, 0x10, 0x8d, 0x00, 0x20]);
 		});
 	});
 
@@ -976,7 +1039,7 @@ m nope`),
 				}
 
 				start:
-					ifx $300, "<", <#10>, end
+					ifx $300, "<", {#10}, end
 
 					nop
 
