@@ -21,7 +21,6 @@ describe("Directive: .if/.else", () => {
 		const asm = createAssembler();
 		asm.assemble(source);
 
-		// expect(asm.currentPC).toBe(0x2001);
 		const segments = asm.linker.segments;
 		expect(segments[0]).toBeDefined();
 		if (segments[0]) {
@@ -42,7 +41,6 @@ describe("Directive: .if/.else", () => {
 		const asm = createAssembler();
 		asm.assemble(source);
 
-		// expect(asm.currentPC).toBe(0x2002);
 		const segments = asm.linker.segments;
 		expect(segments[0]).toBeDefined();
 		if (segments[0]) {
@@ -65,7 +63,6 @@ describe("Directive: .if/.else", () => {
 		const asm = createAssembler();
 		asm.assemble(source);
 
-		// expect(asm.currentPC).toBe(0x2001);
 		const segments = asm.linker.segments;
 		expect(segments[0]).toBeDefined();
 		if (segments[0]) {
@@ -88,7 +85,6 @@ describe("Directive: .if/.else", () => {
 		const asm = createAssembler();
 		asm.assemble(source);
 
-		// expect(asm.currentPC).toBe(0x2001);
 		const segments = asm.linker.segments;
 		expect(segments[0]).toBeDefined();
 		if (segments[0]) {
@@ -114,7 +110,6 @@ describe("Directive: .if/.else", () => {
 		const asm = createAssembler();
 		asm.assemble(source);
 
-		// expect(asm.currentPC).toBe(0x2002);
 		const segments = asm.linker.segments;
 		expect(segments[0]).toBeDefined();
 		if (segments[0]) {
@@ -142,7 +137,6 @@ describe("Directive: .if/.else", () => {
 		const asm = createAssembler();
 		asm.assemble(source);
 
-		// expect(asm.currentPC).toBe(0x2002);
 		const segments = asm.linker.segments;
 		expect(segments[0]).toBeDefined();
 		if (segments[0]) {
@@ -169,7 +163,6 @@ describe("Directive: .if/.else", () => {
 		const asm = createAssembler();
 		asm.assemble(source);
 
-		// expect(asm.currentPC).toBe(0x2001);
 		const segments = asm.linker.segments;
 		expect(segments[0]).toBeDefined();
 		if (segments[0]) {

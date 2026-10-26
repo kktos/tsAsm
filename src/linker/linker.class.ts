@@ -145,7 +145,6 @@ export class Linker {
 
 		if (!this.currentModule) throw new Error(`No Module defined for segment: ${name}`);
 
-		// if (this.currentModule.find((s) => s.name === name)) throw new Error(`Segment already used in module: ${name}`);
 		if (!this.currentModule.find((s) => s.name === name)) this.currentModule.push(seg);
 
 		// Leaving a segment: remember where its code continues. Selecting it again resumes there, as other assemblers do.

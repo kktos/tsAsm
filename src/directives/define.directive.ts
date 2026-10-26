@@ -93,8 +93,6 @@ export class DefineDirective implements IDirective {
 			if (existing) throw this.assembler.symbolTable.redefinitionError(existing);
 		}
 
-		// this.assembler.symbolTable.assignVariable(symbolNameToken.value, 0);
-
 		let blockContent: string;
 
 		if (fromFile) {
@@ -102,7 +100,6 @@ export class DefineDirective implements IDirective {
 		} else {
 			let blockToken: Token | null;
 			// Extract the raw block content from lexer or from token if included file
-			// const token = this.assembler.parser.peek();
 			const token = this.assembler.parser.peekTokenUnbuffered();
 			if (token?.type === "RAW_TEXT") {
 				this.assembler.parser.advance();

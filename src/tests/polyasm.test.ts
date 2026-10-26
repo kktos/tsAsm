@@ -129,8 +129,6 @@ describe("PolyAsm", () => {
 		assembler6502.assemble(source6502);
 		const machineCode6502 = assembler6502.link();
 
-		// console.log(`\n6502 Machine Code Bytes (Hex):\n${hexDump(0, machineCode6502)}`);
-
 		expect(machineCode6502).toBeDefined();
 	});
 });

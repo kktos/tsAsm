@@ -85,7 +85,6 @@ describe("Directive: .ORG / *", () => {
 			const asm = createAssembler();
 			const segments = asm.assemble(source);
 			expect(segments[0]).toBeDefined();
-			// expect(segments[0]).toBe("");
 			if (segments[0]) {
 				const offset1 = 0x2000 - segments[0].start;
 				expect(segments[0].data[offset1]).toBe(0xea); // NOP

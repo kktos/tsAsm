@@ -54,12 +54,6 @@ describe("CpuDirective", () => {
 			STZ $44      ; This should fail because the default CPU is 6502
 		`;
 
-		// const segments = assembler.assemble(source);
-		// expect(segments).toEqual([]);
-
-		// const codeSegment = segments.find((s) => s.name === "CODE");
-		// expect(codeSegment?.data).toEqual([0x64, 0x44]);
-
 		expect(() => assembler.assemble(source)).toThrow(
 			expect.objectContaining({
 				message: "Syntax error : NUMBER 68",

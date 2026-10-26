@@ -658,14 +658,6 @@ export class AssemblyLexer {
 		const missingEndMarker = () => new AsmError(`Missing ${endMarkerName} for ${this.rawBlockLabel()}.`, { line, column });
 		const scanStart = this.currentStream.pos;
 
-		// console.log(
-		// 	"scanRawTextBlock",
-		// 	hasToGoNextline?"nextline":"",
-		// 	this.currentStream.pos,
-		// 	"\n",
-		// 	this.currentStream.source.slice(this.currentStream.pos - 1, this.currentStream.pos + 20),
-		// );
-
 		let rawDataStart: number;
 		if (hasToGoNextline) {
 			// The raw data starts after the current line.

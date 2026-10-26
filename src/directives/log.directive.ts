@@ -63,14 +63,9 @@ export class LogDirective implements IDirective {
 		const outputs: string[] = [];
 
 		for (const exprTokens of exprs) {
-			// try {
 			const value = this.runtime.evaluator.evaluate(exprTokens, context);
 
 			outputs.push(this.formatValue(value));
-			// } catch (e) {
-			// 	assembler.logger.error(`[LOG] ERROR on line ${directive.line}: ${e}`);
-			// 	outputs.push("<ERROR>");
-			// }
 		}
 
 		this.emitLog(outputs.join("\t"));

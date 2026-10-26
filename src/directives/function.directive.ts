@@ -25,7 +25,6 @@ export class FunctionDirective implements IDirective {
 			});
 		else this.assembler.symbolTable.updateSymbol(nameToken.value, context.PC.value);
 
-		// this.logger.log(`Defined function label '${nameToken.value}' @ $${context.pc.toString(16)}`);
 		this.lister.directive(directive, nameToken.raw as string);
 
 		const scopeId = `@@function_${this.assembler.symbolTable.getSymbolFullPath(nameToken.value)}`;

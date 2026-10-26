@@ -493,19 +493,6 @@ export class Cpu65C02Handler implements CPUHandler {
 			if (numTokens === 0) throw new Error(`Invalid addressing mode for instruction ${mnemonic}`);
 		}
 
-		// Accumulator
-		// if (numTokens === 1 && operandTokens[0]?.value.toUpperCase() === "A") {
-		// 	const op = instructionModes.get(this.M65C02_MODES.ACCUMULATOR);
-		// 	if (!op) throw new Error(`Invalid addressing mode 'A' for ${mnemonic}`);
-		// 	const [opcode, bytes] = op;
-		// 	return {
-		// 		mode: this.M65C02_MODES.ACCUMULATOR,
-		// 		opcode,
-		// 		bytes,
-		// 		resolvedAddress: 0,
-		// 	};
-		// }
-
 		// 2. Immediate Mode (e.g., LDA #$42)
 		if (operandTokens[0]?.value === "#") {
 			rejectSuffix();

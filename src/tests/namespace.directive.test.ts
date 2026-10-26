@@ -30,16 +30,6 @@ describe(".NAMESPACE Directive", () => {
 		expect(assembler.symbolTable.getCurrentNamespace()).toBe("MYNS");
 	});
 
-	// it("should log an error when missing the namespace argument", () => {
-	// 	const { assembler, logger } = createAssembler();
-	// 	const spy = vi.spyOn(logger, "error").mockImplementation(() => {});
-
-	// 	assembler.assemble(".NAMESPACE");
-
-	// 	expect(spy).toHaveBeenCalledWith(expect.stringContaining(".NAMESPACE directive requires an argument"));
-	// 	spy.mockRestore();
-	// });
-
 	it("should update namespace on successive directives", () => {
 		const { assembler } = createAssembler();
 		const source = ".NAMESPACE one\n.NAMESPACE two\n";
@@ -68,8 +58,6 @@ describe(".NAMESPACE Directive", () => {
 		`;
 
 		assembler.assemble(source);
-
-		// expect(sink.logs).toEqual("");
 
 		expect(sink.logs.filter((l) => l.startsWith("1NS>> "))).toEqual([
 			"1NS>> global:	global",

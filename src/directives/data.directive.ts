@@ -19,7 +19,6 @@ export class DataDirective implements IDirective {
 	) {}
 
 	public handlePassOne(directive: ScalarToken, context: DirectiveContext) {
-		// const byteCount = this.calculateDirectiveSize();
 		const byteCount = this.calculateDirectiveSize(directive, context);
 		context.PC.value += byteCount;
 		this.runtime.lister.directive(directive, `<${byteCount} bytes>`);
