@@ -191,10 +191,11 @@ export class LoopDirective implements IDirective {
 	private defineIterator(loopId: string, iterator: IdentifierToken, directive: ScalarToken, context: DirectiveContext) {
 		const state = this.loopStates.get(loopId) as LoopState;
 		state.restoreSymbols.push(this.runtime.symbolTable.stashSymbol(iterator.value));
+		const statement = this.runtime.currentStatement() ?? directive;
 		this.runtime.symbolTable.defineVariable(iterator.value, 0, {
 			filename: context.filename,
-			line: directive.line,
-			column: directive.column,
+			line: statement.line,
+			column: statement.column,
 		});
 	}
 }

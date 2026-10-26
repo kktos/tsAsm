@@ -133,13 +133,89 @@ describe("Error locations", () => {
 		expect(String(new AsmError("boom", location))).toBe(text);
 	});
 
-	it.each([
-		["lbl: nop\n  nop\nlbl: nop", "Symbol 'LBL' redefined.", "main.asm:1:1: note: first defined here"],
-		[".macro m\n.end\n  nop\n.macro m\n.end", "Macro 'm' redefined: a macro can only be defined once.", "main.asm:1:2: note: first defined here"],
-	])("should say where a redefined name is first defined: %j", (source, message, note) => {
+	/** A redefinition's message, where it is, and where its note says the name is first defined. */
+	const redefinition = (source: string) => {
 		const error = assemble(source) as AsmError;
-		expect(error.message).toBe(message);
-		expect(error.format().split("\n").at(-1)).toBe(note);
+		return { message: error.message, at: error.location, note: error.notes[0]?.location };
+	};
+
+	it("should say where a redefined label is first defined", () => {
+		const source = `
+			lbl: nop
+			nop
+			lbl: nop
+		`;
+		expect(redefinition(source)).toMatchObject({
+			message: "Symbol 'LBL' redefined.",
+			at: { file: "main.asm", line: 4, column: 4 },
+			note: { file: "main.asm", line: 2, column: 4 },
+		});
+	});
+
+	// A definition is located at its statement's start, as the errors are: the `.`, not the directive's name.
+	it("should say where a redefined macro is first defined", () => {
+		const source = `
+			.macro m
+			.end
+			nop
+			.macro m
+			.end
+		`;
+		expect(redefinition(source)).toMatchObject({
+			message: "Macro 'm' redefined: a macro can only be defined once.",
+			at: { file: "main.asm", line: 5, column: 4 },
+			note: { file: "main.asm", line: 2, column: 4 },
+		});
+	});
+
+	it("should say where a redefined .equ is first defined", () => {
+		const source = `
+			X .equ 1
+			X .equ 2
+		`;
+		expect(redefinition(source)).toMatchObject({
+			message: "Symbol 'X' redefined.",
+			at: { file: "main.asm", line: 3, column: 6 },
+			note: { file: "main.asm", line: 2, column: 6 },
+		});
+	});
+
+	it("should say where a .let variable redefined as a constant is first defined", () => {
+		const source = `
+			.let X = 1
+			X .equ 2
+		`;
+		expect(redefinition(source)).toMatchObject({
+			message: "Symbol 'X' redefined.",
+			at: { file: "main.asm", line: 3, column: 6 },
+			note: { file: "main.asm", line: 2, column: 4 },
+		});
+	});
+
+	it("should say where a constant given to .let is defined", () => {
+		const source = `
+			X .equ 1
+			.let X = 2
+		`;
+		expect(redefinition(source)).toMatchObject({
+			message: "Can't redefine constant 'X'.",
+			at: { file: "main.asm", line: 3, column: 4 },
+			note: { file: "main.asm", line: 2, column: 6 },
+		});
+	});
+
+	it("should say where a redefined function is first defined", () => {
+		const source = `
+			.function f
+			.end
+			.function f
+			.end
+		`;
+		expect(redefinition(source)).toMatchObject({
+			message: "Symbol 'F' redefined.",
+			at: { file: "main.asm", line: 4, column: 4 },
+			note: { file: "main.asm", line: 2, column: 4 },
+		});
 	});
 
 	it("should locate and format a warning like an error", () => {

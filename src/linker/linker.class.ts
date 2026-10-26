@@ -324,6 +324,7 @@ export class Linker {
 			linker: this,
 			macroHandler,
 			warn: (message, position) => logger.warn(errorLocator.warning(message, position)),
+			currentStatement: () => statementToken,
 			definitionSite: (position) => errorLocator.definitionSite(position),
 			includeSites: (position) => errorLocator.includeSites(position),
 		};

@@ -57,7 +57,7 @@ describe("Include chains in errors", () => {
 				"      | \t^",
 				"  included from levels/level1/level1.asm:2:2",
 				"  included from main.asm:2:2",
-				"includes/defsprite.macro.asm:1:3: note: first defined here",
+				"includes/defsprite.macro.asm:1:2: note: first defined here",
 				"  included from modules/spritelib/spritelib.asm:1:2",
 				"  included from main.asm:1:2",
 			].join("\n"),
@@ -96,7 +96,7 @@ describe("Include chains in errors", () => {
 				"      | \t^",
 				"  included from lib/lib.asm:1:2",
 				"  included from main.asm:2:2",
-				"defs.asm:1:3: note: first defined here",
+				"defs.asm:1:2: note: first defined here",
 				"  included from main.asm:1:2",
 			].join("\n"),
 		);
@@ -252,7 +252,7 @@ count:
 `;
 		expect(errorOf(source, {}).split("\n").slice(3)).toEqual([
 			"  in macro m, called at main.asm:7:2",
-			"main.asm:2:4: note: first defined here",
+			"main.asm:2:3: note: first defined here",
 			"  in macro m, called at main.asm:6:2",
 		]);
 	});
@@ -265,7 +265,7 @@ count:
 	.end
 	m
 `);
-		expect(assembler.symbolTable.getDict()["%%GLOBAL"]?.G).toBe("number = $01 ;main.asm:3:4");
+		expect(assembler.symbolTable.getDict()["%%GLOBAL"]?.G).toBe("number = $01 ;main.asm:3:3");
 	});
 
 	it("should give the include chain of a warning", () => {

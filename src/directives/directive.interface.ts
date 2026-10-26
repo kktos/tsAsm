@@ -45,6 +45,8 @@ export interface DirectiveRuntime {
 	macroHandler: MacroHandler;
 	/** Reports a warning, located like an error: at `position`, else at the current statement. */
 	warn: (message: string, position?: { line: number | string; column: number }) => void;
+	/** The first token of the statement being assembled: where its errors are located, and where what it defines is. */
+	currentStatement: () => Token | undefined;
 	/** Where something defined at `position` is, for a note about it: see `ErrorLocator.definitionSite`. */
 	definitionSite: (position: { line: number | string; column: number }) => DefinitionSite;
 	/** Where an `.include` at `position` is, for the include chain of the file it reads: see `StreamManager.startNewStream`. */
