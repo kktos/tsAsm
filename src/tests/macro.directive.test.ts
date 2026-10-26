@@ -520,6 +520,38 @@ m()`),
 			).toEqual([0x01, 0x01]);
 		});
 
+		it.each([
+			["without arguments", ".macro m", ".db 1", "{ m }", [0x01]],
+			["with arguments", ".macro m a, b", ".db a, b", "{ m 2, 3 }", [0x02, 0x03]],
+			["with a text argument", ".macro m a, b", ".db a, b", "{ m {2}, 3 }", [0x02, 0x03]],
+			["with ( )", ".macro m a, b", ".db a, b", "{ m(2, 3) }", [0x02, 0x03]],
+			["nested", ".macro m a, b", ".db a, b", "{ { m 2, 3 } }", [0x02, 0x03]],
+		])("should end a call %s at the '}' of a block on its line", (_, definition, body, call, bytes) => {
+			expect(
+				assemble(`${definition}
+${body}
+.end
+${call}`),
+			).toEqual(bytes);
+		});
+
+		it("should reject a '}' that closes no block after a call", () => {
+			expect(() =>
+				assemble(`.macro m a
+.db a
+.end
+m 1 }`),
+			).toThrow("Syntax error : Unbalanced braces. Depth: -1");
+		});
+
+		it("should reject an empty argument before a '}'", () => {
+			expect(() =>
+				assemble(`.macro m a, b
+.end
+{ m 1, }`),
+			).toThrow("Macro 'M': argument 2 is empty.");
+		});
+
 		it("should end a text argument at its '}'", () => {
 			expect(() =>
 				assemble(`.macro m a

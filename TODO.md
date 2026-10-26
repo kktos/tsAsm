@@ -42,9 +42,9 @@ REFERENCE says `lda #"A"` loads `$41`. It does on the 65C02, but on the 6502 `ld
 
 `.dw "A", 1` → `41 01 00`, `.dl "A", 1` → `41 01 00 00 00`: the table is misaligned. One word per char, or an error: decision needed.
 
-### 1.44 A macro call swallows the `}` of a block on its line
+### 1.45 An instruction without operand takes a `}` as its operand
 
-`{ copy 1, 2 }` → `Syntax error : Unbalanced braces. Depth: 1`, `{ nop0 }` → `Macro 'NOP0' expects 0 arguments, but got 1.`: the call reads the `}` as an argument. An instruction stops there (`{ nop }` works), and a call inside a directive's block is fine, the block being cut out first.
+`{ nop }` and `nop }` → `Invalid addressing mode for instruction NOP`: `getInstructionTokens` checks the line's first token for a `{`, not a `}`. `{ lda 1 }` works, and `.if 1 { nop }` too, the block being cut out first.
 
 ## 2. Code review, items left
 

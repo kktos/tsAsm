@@ -148,8 +148,9 @@ export class MacroHandler {
 			firstPeek.line === macroToken.line &&
 			firstPeek.column === macroToken.column + macroToken.value.length;
 
-		// Without parentheses, the arguments end with the call's line.
-		const isEnd = (token: Token | null): token is null => !token || token.type === "EOF" || (!hasParens && token.line !== macroToken.line);
+		// Without parentheses, the arguments end with the call's line, or at the '}' of a block on it, as an instruction's operand: `{ m 1, 2 }`.
+		const isEnd = (token: Token | null): token is null =>
+			!token || token.type === "EOF" || (!hasParens && (token.line !== macroToken.line || token.type === "RBRACE"));
 
 		// The commas separating the arguments are at this depth: inside the call's ( ), or outside any.
 		const argDepth = hasParens ? 1 : 0;

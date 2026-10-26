@@ -6,6 +6,12 @@ The problem is described as it was before the fix, then the fix in _italics_.
 
 ## Assembler
 
+### #145 — A macro call swallows the `}` of a block on its line (TODO 1.44)
+
+`{ copy 1, 2 }` → `Syntax error : Unbalanced braces. Depth: 1`, `{ nop0 }` → `Macro 'NOP0' expects 0 arguments, but got 1.`, and `m 1 }`, a `}` closing no block, assembled `01` silently: the call read the `}` as an argument. A call inside a directive's block was fine, the block being cut out first.
+
+_Without parentheses, a call's arguments end at a `}` on its line, as an instruction's operand: `{ m 1, 2 }` works, and a stray `}` is `Unbalanced braces. Depth: -1`. `{ m 1, }` is `argument 2 is empty`._
+
 ### #144 — Macro text in `{ }`, `<` and `>` back to low and high byte (TODO 3.1)
 
 `setp <addr, >addr` → `Unexpected 'ADDR' after '>': a macro argument in < > ends at its '>'.`: an argument starting with `<` was text up to a `>`, so the most common 6502 macro call needed `.lobyte(addr)` or `(<addr)`.
