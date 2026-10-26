@@ -364,6 +364,9 @@ export class ExpressionEvaluator {
 					if (isUnary) {
 						// Check for function call, e.g., IDENTIFIER followed by '('.
 						if (tokens[index + 2]?.value === "(") {
+							// Known before its arguments are read: `.min(1,,2)` is an unknown function, not an empty argument.
+							if (!this.functionDispatcher.has(nextToken.value as string))
+								throw AsmError.at(`Unknown function '${(nextToken.value as string).toUpperCase()}'.`, nextToken);
 							const funcToken: FunctionToken = {
 								...nextToken,
 								type: "FUNCTION",

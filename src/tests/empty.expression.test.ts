@@ -75,6 +75,13 @@ describe("An empty expression", () => {
 		expect(error.location).toMatchObject({ line: 1, column });
 	});
 
+	// The function is checked first: an unknown one says so, whatever its arguments.
+	it.each([".db .min(1,,2)", ".db .min(1,2,)"])("should not hide an unknown function in %j", (source) => {
+		const error = assemble(new Cpu6502Handler(), source);
+		expect(error.message).toBe("Unknown function 'MIN'.");
+		expect(error.location).toMatchObject({ line: 1, column: 6 });
+	});
+
 	it("should still allow a call without arguments", () => {
 		const assembler = new Assembler(new Cpu6502Handler(), new MockFileHandler(), {
 			segments: [{ name: "CODE", start: 0x1000, size: 0, resizable: true }],
