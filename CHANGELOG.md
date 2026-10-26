@@ -6,6 +6,12 @@ The problem is described as it was before the fix, then the fix in _italics_.
 
 ## Assembler
 
+### #134 — `.incbin` path resolved from the project directory (TODO 1.33)
+
+`.incbin "data.bin"` in `lib/lib.asm` reads `./data.bin`, while `.include "inc.asm"` in the same file reads `lib/inc.asm`: `IncbinDirective` calls `readBinaryFile(filename)` without the including file. The CLI then opens `<basedir>//data.bin`.
+
+_Decided: as `.include`. The path is relative to the file the `.incbin` is in; in a macro body, the file the macro is called from (#133). The CLI's binary path has a single `/`._
+
 ### #133 — `.include` path in a macro body resolved from the caller's file (TODO 1.28)
 
 `.include "inc.asm"` in a macro defined in `macros/macros.asm`, called from `lib/lib.asm`, reads `lib/inc.asm`, while the include chain says `included from macros/macros.asm`. Undocumented: which file should it be relative to?

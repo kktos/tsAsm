@@ -18,7 +18,7 @@ export class NodeFileHandler implements FileHandler {
 		this.fullpath = filename;
 		this.filename = basename(filename);
 		if (from) this.fullpath = join(dirname(from), filename);
-		const buffer = readFileSync(`${this.basedir}/${this.fullpath}`);
+		const buffer = readFileSync(`${this.basedir}${this.fullpath}`);
 		return Array.from(buffer);
 	}
 }

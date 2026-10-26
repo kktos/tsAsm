@@ -434,7 +434,7 @@ Symbols defined inside `.namespace <name>` … `.end namespace` belong to that n
 .incbin "data/logo.bin"     ; insert a binary file
 ```
 
-An `.include` path is relative to the file that includes it. In a macro body, it's the file the macro is called from, not the one it's defined in: a macro is text, expanded where it's called (for a macro called in another macro's body, where the outermost one is called).
+An `.include` or `.incbin` path is relative to the file it is in. In a macro body, it's the file the macro is called from, not the one it's defined in: a macro is text, expanded where it's called (for a macro called in another macro's body, where the outermost one is called).
 
 A file can be included several times: each `.include` assembles it again. A file of definitions (macros, constants) starts with `.once`: an `.include` of it after its `.once` was reached does nothing.
 
