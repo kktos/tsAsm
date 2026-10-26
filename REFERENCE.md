@@ -123,7 +123,7 @@ addr = $1232
     lda #>addr  ; $12
 ```
 
-An expression can't be empty: `lda #`, `lda ,x`, `x =`, `.org` or `.db 1,` with nothing where the value goes is an error, `Missing expression.`, not `0`.
+An expression can't be empty: `lda #`, `lda ,x`, `x =`, `.org`, `.db 1,` or `[1,,2]` with nothing where the value goes is an error, `Missing expression.`, not `0`.
 
 ## Symbols and labels
 

@@ -14,13 +14,13 @@ What is done is in `CHANGELOG.md`. How we work (PR rules, design rules, commands
 
 `.macro m` / `.repeat 2 {` / `nop` / `}` / `.end` / `m` → `Missing .END for the .MACRO block.` Same with `.function f {`. It works in a `.macro m { … }` body, and with the `.end` form of the inner block.
 
-### 1.34 Empty elements in an array literal
-
-`[1,,2]` is `[1, 2]`, `[1,]` is `[1]` and `[,]` is `[]`: `evaluateArray` skips an empty element, while `.db 1,,2` is `Unexpected comma.` and `.db 1,` is `Missing expression.` (1.10).
-
 ### 1.35 A trailing comma in `.fill` / `.align`
 
 `.fill 2,` → `00 00`, `.align 4,` → `00 00 00`: an empty filler is 0, as when there's no filler at all.
+
+### 1.36 An empty function argument
+
+`.array(1,,2)` → `Internal error: stack underflow for .ARRAY().`: an empty argument isn't `Missing expression.`, as an empty array element is (1.34).
 
 ## 2. Code review, items left
 
