@@ -55,4 +55,35 @@ describe("= - variable assignment", () => {
 			`;
 		expect(() => asm.assemble(src)).toThrow("Missing symbol name before =.");
 	});
+
+	// Pass 2 gets back the symbols pass 1 defined in a macro call or a function. Here pass 1 didn't run the assignment,
+	// so pass 2 defines the variable instead of assigning it.
+	it("should define a variable in a macro called in pass 2 only", () => {
+		const src = `
+				.macro m
+					v = 5
+					.byte v
+				.end
+				.if FWD == 1
+					m
+				.end
+				FWD = 1
+			`;
+		const segments = asm.assemble(src);
+		expect(segments[0]?.data).toEqual([5]);
+	});
+
+	it("should define a variable in a function, in a block run in pass 2 only", () => {
+		const src = `
+				.function f
+					.if FWD == 1
+						v = 5
+						.byte v
+					.end
+				.end
+				FWD = 1
+			`;
+		const segments = asm.assemble(src);
+		expect(segments[0]?.data).toEqual([5]);
+	});
 });

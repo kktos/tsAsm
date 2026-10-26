@@ -62,7 +62,8 @@ export class AssignDirective implements IDirective {
 			return;
 		}
 
-		// In functions & Macros, the scope is lost between the passes
+		// In a macro call or a function, pass 2 gets back what pass 1 defined there. A variable pass 1 didn't define
+		// (its block wasn't run) is defined now.
 		if (this.assembler.symbolTable.isVolatileScope() && this.assembler.symbolTable.findSymbol(label) === undefined)
 			this.assembler.symbolTable.defineVariable(label, value, {
 				filename: context.filename,

@@ -41,7 +41,6 @@ function definitionError(message: string, symbol: PASymbol, note: string): AsmEr
 export class PASymbolTable {
 	private symbols: Map<string, Map<string, PASymbol>> = new Map();
 	private scopeStack: string[] = [];
-	private scopeCounter = 0;
 	private savedSymbols: Map<string, Map<string, PASymbol>> = new Map();
 	private namespaceMetadata: Map<string, Record<string, SymbolValue>> = new Map();
 	/** What messages call the scopes the user can't name (a macro call's, a function's): `macro m`, `function f`. */
@@ -64,17 +63,9 @@ export class PASymbolTable {
 	reset(): void {
 		this.symbols = new Map([[INTERNAL_GLOBAL, new Map()]]);
 		this.scopeStack = [INTERNAL_GLOBAL];
-		this.scopeCounter = 0;
 		this.savedSymbols = new Map();
 		this.namespaceMetadata = new Map();
 		this.scopeLabels = new Map();
-	}
-
-	/** Pushes a new scope onto the stack, making it the current scope. */
-	pushScope(name?: string) {
-		const newScopeName = name || `@@LOCAL_${this.scopeCounter++}__`;
-		this.scopeStack.push(newScopeName);
-		if (!this.symbols.has(newScopeName)) this.symbols.set(newScopeName, new Map());
 	}
 
 	/** `label` is what messages call the scope, when the user can't name it: `macro m`, `function f`. */
