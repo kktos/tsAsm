@@ -119,7 +119,7 @@ Symbols ignore case, properties don't: with `{ Id: 5 }`, `d[0].Id` works but `d[
 
 ### 3.7 Names
 
-- `.function` (`.proc`) is a label scope, not a function usable in expressions, as the system functions are.
+- `.function` (`.proc`) is a label scope, not a function usable in expressions, as the system functions are. _Decided: the routine scope keeps `.proc` / `.procedure`, and `.function` / `.fn` become user functions (4.8)._
 - `.define` is a text macro in ca65 and C; here it loads data.
 - `.str` and `.hex` are directives and functions, `.segment` and `.namespace` directives and variables: `.str("A")` at the start of a line emits `41`.
 
@@ -166,6 +166,39 @@ As ca65's `.org` in a relocatable segment, ACME's `!pseudopc` or 64tass's `.logi
 - leaving a macro early;
 - `.for` over a numeric range;
 - a `\0` escape.
+
+### 4.8 User functions
+
+Nothing computes a reusable value today: a macro is a statement and emits lines, and it can't set a variable for its caller (its variables are local to the call). So a formula is written again at each use (`sta $0400 + 5*40 + 10`). Uses: address formulas (screen, tiles, banks), packed values (colours, sprite pointers), generated tables (`.db reverse(i)` in a `.repeat`), checks (`.if !samePage(a, b)`), a char mapping (4.6). KickAssembler and 64tass have them; ca65 users fake them with `.define`.
+
+Two forms, parentheses always written:
+
+```as
+; one line: one expression
+.function screen(col, row) = $0400 + row*40 + col
+
+; block: assignments, .if, .repeat / .for, .error, and .return
+.function reverse(b) {
+    r = 0
+    .repeat 8 AS i {
+        r = (r << 1) | ((b >> (i - 1)) & 1)
+    }
+    .return r
+}
+
+    sta screen(10, 5)
+```
+
+- **Arguments are values, evaluated at the call** (unlike a macro's, evaluated where the macro uses them).
+- **A scope per call**, as for macros: the parameters and the body's variables are local to it.
+- **Pure:** emitting, a label, `.org`, `.segment` or assigning an outer variable in the body is an error. Outer symbols and `*` can be read. It then gives the same result in both passes: no new phase errors.
+- **Errors:** a block ending without `.return`; a recursion deeper than a limit.
+- **Call:** `name(…)` in an expression, `ns::name(…)` from another namespace. System functions keep their dot, so they don't collide. Functions and symbols share their names: defining both is an error.
+- **Migration** (3.7): the routine scope is `.proc` / `.procedure`. An old `.function clearScreen` (no parentheses) is an error that says to write `.proc clearScreen`, rather than silently changing meaning.
+
+Order: the rename to `.proc` with that error; the one-line form (store the expression's tokens, evaluate them with the parameters in scope); the block form with `.return`. Helpful with it: `.min`, `.max`, `.abs`, `.sin`, `.cos`, `.chr`, `.ord`.
+
+Decisions left: the bare `name(…)` call, an error or a warning for the old `.function` form, the recursion limit.
 
 ## 5. Documentation (REFERENCE.md)
 
