@@ -117,7 +117,7 @@ describe(".DEFINE Directive", () => {
 			expect(() => assembler.assemble(source)).toThrow(
 				expect.objectContaining({
 					message: "Symbol 'MY_SYMBOL' redefined.",
-					notes: [expect.objectContaining({ message: "first defined here", location: { file: "", line: 2, column: 5 } })],
+					notes: [expect.objectContaining({ message: "first defined here", location: { file: "", line: 2, column: 4 } })],
 				}),
 			);
 		});

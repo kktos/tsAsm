@@ -6,6 +6,12 @@ The problem is described as it was before the fix, then the fix in _italics_.
 
 ## Assembler
 
+### #135 — Definition columns (TODO 1.8)
+
+What a directive defines (`.macro`, `.equ`, `=`, `.let`, `.define`, `.function`, loop iterators) records the directive name's column, after the `.`, while errors point at the statement's start. A redefinition shows `1:2` for the error and `1:3` for its `first defined here` note.
+
+_Decided: the statement's start, as the errors. A definition records `currentStatement` (now in `DirectiveRuntime` too, for the macro and loop directives, and the linker's `=`), so its note has the error's column. The CLI's symbol index has it too (`;main.asm:3:3`)._
+
 ### #134 — `.incbin` path resolved from the project directory (TODO 1.33)
 
 `.incbin "data.bin"` in `lib/lib.asm` reads `./data.bin`, while `.include "inc.asm"` in the same file reads `lib/inc.asm`: `IncbinDirective` calls `readBinaryFile(filename)` without the including file. The CLI then opens `<basedir>//data.bin`.

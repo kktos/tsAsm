@@ -114,6 +114,7 @@ export class Assembler {
 			linker: this.linker,
 			macroHandler: this.macroHandler,
 			warn: (message, position) => this.warn(message, position),
+			currentStatement: () => this.statementToken,
 			definitionSite: (position) => this.errorLocator.definitionSite(position),
 			includeSites: (position) => this.errorLocator.includeSites(position),
 		};

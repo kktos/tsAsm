@@ -28,10 +28,11 @@ export class EquDirective implements IDirective {
 
 		this.lister.symbol(label, value);
 
+		const statement = this.assembler.currentStatement ?? directive;
 		this.assembler.symbolTable.defineConstant(label, value, {
 			filename: context.filename,
-			line: directive.line,
-			column: directive.column,
+			line: statement.line,
+			column: statement.column,
 		});
 	}
 

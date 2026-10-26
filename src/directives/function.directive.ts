@@ -17,11 +17,12 @@ export class FunctionDirective implements IDirective {
 		if (nameToken?.type !== "IDENTIFIER") throw new Error("Expected a function name after .FUNCTION.");
 
 		// Define the function name as a label in the current scope.
+		const statement = this.assembler.currentStatement ?? directive;
 		if (this.assembler.pass === 1)
 			this.assembler.symbolTable.defineConstant(nameToken.value, context.PC.value, {
 				filename: context.filename,
-				line: directive.line,
-				column: directive.column,
+				line: statement.line,
+				column: statement.column,
 			});
 		else this.assembler.symbolTable.updateSymbol(nameToken.value, context.PC.value);
 

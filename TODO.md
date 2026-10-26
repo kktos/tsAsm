@@ -10,10 +10,6 @@ What is done is in `CHANGELOG.md`. How we work (PR rules, design rules, commands
 
 `lda $12345` → `ad 45 23`, `lda #$1FF` → `a9 ff`, `lda ($1234),y` → `b1 34`. The 65C02 rejects these with `checkAddress` / `assertFitsInBytes`. Bring the same checks to the 6502, or do 2.1 first and get them for free.
 
-### 1.8 Definition columns
-
-What a directive defines (`.macro`, `.equ`, `=`, `.let`, `.define`, `.function`, loop iterators) records the directive name's column, after the `.`, while errors point at the statement's start. A redefinition shows `1:2` for the error and `1:3` for its `first defined here` note. Record the statement's position (`Assembler.currentStatement`, added in #75).
-
 ### 1.10 `lda #` without an operand
 
 `lda #` (no operand) is accepted silently.

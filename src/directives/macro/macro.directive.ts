@@ -69,10 +69,14 @@ export class MacroDirective implements IDirective {
 		return token as IdentifierToken;
 	}
 
-	/** Where the macro is defined: in a macro body, the line in that macro's file, which its body lines are lines of. */
+	/**
+	 * Where the macro is defined: its statement's start, and in a macro body, the line in that macro's file, which its
+	 * body lines are lines of.
+	 */
 	private definitionSite(directive: ScalarToken, context: DirectiveContext) {
-		const { location, includeStack } = this.runtime.definitionSite(directive);
-		return { file: location.file ?? context.filename, line: location.line ?? directive.line, column: location.column ?? directive.column, includeStack };
+		const statement = this.runtime.currentStatement() ?? directive;
+		const { location, includeStack } = this.runtime.definitionSite(statement);
+		return { file: location.file ?? context.filename, line: location.line ?? statement.line, column: location.column ?? statement.column, includeStack };
 	}
 
 	private handleMacroParametersDefinition(directive: ScalarToken) {
