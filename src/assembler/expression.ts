@@ -89,7 +89,7 @@ export class ExpressionEvaluator {
 	}
 
 	/** Handles comma tokens, used as separators in function arguments. */
-	private handleComma(token: Token, outputQueue: Token[], operatorStack: Token[]): void {
+	private handleComma(token: Token, outputQueue: Token[], operatorStack: Token[], lastToken: Token | undefined): void {
 		// A comma separates arguments, so we evaluate the expression for the current argument.
 		while (operatorStack.length > 0 && operatorStack[operatorStack.length - 1]?.value !== "(") outputQueue.push(operatorStack.pop() as Token);
 
@@ -108,6 +108,9 @@ export class ExpressionEvaluator {
 			}
 		}
 		if (!foundParen) throw AsmError.at("Unexpected comma.", token);
+
+		// An argument can't be empty: `.f(,1)`, `.f(1,,2)`.
+		if (lastToken?.type === "COMMA" || (lastToken?.type === "OPERATOR" && lastToken.value === "(")) throw AsmError.at("Missing expression.", token);
 	}
 
 	/** Handles all operator tokens, including parentheses and unary operators. Returns a potentially modified token. */
@@ -203,6 +206,9 @@ export class ExpressionEvaluator {
 				break;
 
 			case ")": {
+				// Nor the last one: `.f(1,)`.
+				if (lastToken?.type === "COMMA") throw AsmError.at("Missing expression.", token);
+
 				let foundMatch = false;
 				while (operatorStack.length > 0) {
 					const topOp = operatorStack.pop() as Token;
@@ -346,7 +352,7 @@ export class ExpressionEvaluator {
 					break;
 
 				case "COMMA":
-					this.handleComma(processedToken, outputQueue, operatorStack);
+					this.handleComma(processedToken, outputQueue, operatorStack, lastToken);
 					break;
 
 				case "DOT": {

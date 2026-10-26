@@ -6,6 +6,12 @@ The problem is described as it was before the fix, then the fix in _italics_.
 
 ## Assembler
 
+### #138 — An empty function argument (TODO 1.36)
+
+`.array(1,,2)` → `Internal error: stack underflow for .ARRAY().`, `.len("ab",)` → `Function 'LEN' expects between 1 and 1 arguments, but got 2.`, and `.db (1,)` assembles `01`: an empty argument isn't `Missing expression.`, as an empty array element is (1.34).
+
+_An empty argument, first, middle or last, is `Missing expression.`, located at the comma or `)` after it. `.array()` is still a call without arguments._
+
 ### #137 — Empty elements in an array literal (TODO 1.34)
 
 `[1,,2]` is `[1, 2]`, `[1,]` is `[1]` and `[,]` is `[]`: `evaluateArray` skips an empty element, while `.db 1,,2` is `Unexpected comma.` and `.db 1,` is `Missing expression.` (1.10).
