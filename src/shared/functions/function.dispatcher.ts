@@ -35,6 +35,10 @@ export class FunctionDispatcher {
 		this.functions.set(name.toUpperCase(), definition);
 	}
 
+	public has(name: string): boolean {
+		return this.functions.has(name.toUpperCase());
+	}
+
 	/** Whether the argument at `index` of the function, when a lone identifier, is the symbol's name: see `IFunctionDef.nameArgs`. */
 	public isNameArgument(name: string, index: number): boolean {
 		return index < (this.functions.get(name.toUpperCase())?.nameArgs ?? 0);

@@ -10,7 +10,7 @@ The problem is described as it was before the fix, then the fix in _italics_.
 
 `.array(1,,2)` → `Internal error: stack underflow for .ARRAY().`, `.len("ab",)` → `Function 'LEN' expects between 1 and 1 arguments, but got 2.`, and `.db (1,)` assembles `01`: an empty argument isn't `Missing expression.`, as an empty array element is (1.34).
 
-_An empty argument, first, middle or last, is `Missing expression.`, located at the comma or `)` after it. `.array()` is still a call without arguments._
+_An empty argument, first, middle or last, is `Missing expression.`, located at the comma or `)` after it. `.array()` is still a call without arguments. An unknown function is reported first, when the parser meets its name: `.min(1,,2)` is `Unknown function 'MIN'.`, not an empty argument._
 
 ### #137 — Empty elements in an array literal (TODO 1.34)
 
