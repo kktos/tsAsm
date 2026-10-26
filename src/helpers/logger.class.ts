@@ -24,13 +24,12 @@ export class Logger<C = unknown> {
 		this.sink.log(message);
 	}
 
+	// Warnings and errors are shown even when the logger is disabled.
 	warn(message: unknown): void {
-		// if (!this.enabled) return;
 		this.sink.warn(message);
 	}
 
 	error(message: unknown): void {
-		// if (!this.enabled) return;
 		this.sink.error(message);
 	}
 

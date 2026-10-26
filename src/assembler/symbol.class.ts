@@ -339,13 +339,6 @@ export class PASymbolTable {
 		if (!symbol) throw new Error(`assignVariable: Unknown symbol "${ns === INTERNAL_GLOBAL ? "global" : ns}::${name}".`);
 
 		scope.set(name, { ...symbol, value, definedInPass: this.pass });
-
-		// scope.set(name, {
-		// 	name,
-		// 	value,
-		// 	isConstant: false,
-		// 	namespace: namespaceKey,
-		// });
 	}
 
 	updateSymbol(symbolName: string, value: SymbolValue, nonVolatile = false) {
@@ -361,7 +354,6 @@ export class PASymbolTable {
 				// Find the first non-volatile scope (bottom-up search)
 				for (let i = this.scopeStack.length - 1; i >= 0; i--) {
 					const key = this.scopeStack[i] as string;
-					// const isVolatile = key.startsWith("@@") && !key.startsWith("@@function") && !key.startsWith("@@macro");
 					const isVolatile = key.startsWith("@@") && !key.startsWith("@@function");
 					if (!isVolatile) {
 						ns = key;
@@ -445,7 +437,6 @@ export class PASymbolTable {
 			const scopeName = this.scopeStack[i] as string;
 			const scope = this.symbols.get(scopeName);
 			if (scope?.has(name)) return scope.get(name);
-			// if (!scopeName.startsWith("@@")) break;
 		}
 
 		return undefined;
@@ -511,8 +502,6 @@ export class PASymbolTable {
 	}
 
 	public getDict() {
-		//return this.symbols;
-
 		const dict: Record<string, Record<string | symbol, SymbolValue>> = {};
 
 		for (const [namespace, symbolDict] of this.symbols.entries()) {

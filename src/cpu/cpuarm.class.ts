@@ -121,19 +121,15 @@ export class CpuArmRiscHandler implements CPUHandler {
 	 */
 	encodeInstruction(_tokens: OperatorStackToken[], modeInfo: ResolvedModeInfo): number[] {
 		// We switch on the ARM specific mode strings
-		// const mnemonic = tokens[0]?.value.toUpperCase();
-
 		if (modeInfo.mode === this.ARM_MODES.BRANCH) {
 			const targetAddress = modeInfo.resolvedAddress;
 			const pc = modeInfo.pc;
 			const offset = (targetAddress - (pc + 8)) >> 2;
 			const opcode = (this.instructionBases.get("B") as number) | (offset & 0x00ffffff);
 
-			// this.logger.log(`[PASS 2 - ARM] Encoded ${mnemonic} (Offset: ${offset})`);
 			return this.u32ToBytes(opcode);
 		}
 		if (modeInfo.mode === this.ARM_MODES.DATA_PROC) {
-			// console.log(`[PASS 2 - ARM] Encoded ${mnemonic}`);
 			return this.u32ToBytes(modeInfo.opcode);
 		}
 

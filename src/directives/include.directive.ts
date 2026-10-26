@@ -12,31 +12,21 @@ export class IncludeDirective implements IDirective {
 	) {}
 
 	public handlePassOne(directive: ScalarToken, context: DirectiveContext) {
-		// Find expression tokens on the header line after 'OF', optionally followed by 'AS'
 		const expressionTokens = this.assembler.parser.getInstructionTokens();
-		// let asIndex = exprHeader.findIndex((t) => t.type === "IDENTIFIER" && t.value === "AS");
-		// if (asIndex === -1) asIndex = exprHeader.length;
-		// const expressionTokens = exprHeader.slice(0, asIndex);
-		// const indexIteratorToken = asIndex < exprHeader.length ? (exprHeader[asIndex + 1] as IdentifierToken) : undefined;
 
 		if (expressionTokens.length === 0) throw new Error(".INCLUDE requires a string argument.");
 
-		// 2. Resolve the array from the symbol table
 		const filename = this.assembler.expressionEvaluator.evaluate(expressionTokens, context);
 		if (typeof filename !== "string") throw new Error(".INCLUDE requires a string argument.");
 
 		try {
 			const logConfigDepth = this.assembler.logger.getConfigDepth();
 
-			// console.log("INCLUDE", logConfigDepth, filename);
-
 			if (!this.assembler.streamManager.startNewStream(filename, true, this.runtime.includeSites(this.assembler.currentStatement ?? directive))) return;
 			this.assembler.parser.pushTokenStream({
 				newTokens: this.assembler.parser.lexer.getBufferedTokens(),
 				file: this.assembler.streamManager.currentFilepath,
 				onEndOfStream: () => {
-					// console.log("END", this.assembler.logger.getConfigDepth(), logConfigDepth, this.assembler.fileHandler.fullpath);
-
 					// cleanup the log config if a .LIST file was included
 					if (logConfigDepth < this.assembler.logger.getConfigDepth()) this.assembler.logger.popConfig();
 					this.assembler.streamManager.endCurrentStream();

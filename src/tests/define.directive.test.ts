@@ -300,7 +300,6 @@ describe(".DEFINE Directive", () => {
 - { id: $1e, x: $40, y: $9b, name: "img extra sword"}`;
 
 			expect(blockContent).toBe(expectedContent);
-			// expect(assembler.symbolTable.lookupSymbol("spriteList")).toBe(expectedContent);
 		});
 	});
 

@@ -72,7 +72,6 @@ export class LoopDirective implements IDirective {
 			throw new Error(
 				`.FOR: ${undefinedSymbolName(expressionTokens, context, this.runtime.symbolTable)} must be defined before it is used here (the array is needed to place what follows).`,
 			);
-		// if (!Array.isArray(arrayValue))
 		if (typeof arrayValue !== "object" || typeof arrayValue[Symbol.iterator] !== "function")
 			throw new Error(
 				`The .FOR expression must give an array, not ${typeof arrayValue === "string" ? "a string" : `${typeof arrayValue} ${String(arrayValue)}`}.`,

@@ -129,8 +129,6 @@ export class DirectiveHandler {
 
 	public handlePassOneDirective(directive: ScalarToken, context: DirectiveContext) {
 		const handler = this.directiveMap.get(directive.value);
-		// if (directive.value === "CPU" && context.macroArgs)
-		// 	throw new Error(`ERROR on line ${directive.line}: The .CPU directive cannot be used inside a macro. Please set the CPU outside of macro definitions.`);
 		if (!handler) return false;
 		handler.handlePassOne(directive, context);
 		return true;

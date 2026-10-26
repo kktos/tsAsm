@@ -44,8 +44,6 @@ describe("Logging directives", () => {
 			const src = `.LOG "var=" + .hex(12,4)`;
 			asm.assemble(src);
 
-			// expect(logger.lines).toBe("");
-
 			const found = sink.logs.find((l) => l === "var=$000C");
 			expect(found).toBeDefined();
 		});
@@ -73,8 +71,6 @@ describe("Logging directives", () => {
 			const { asm, sink } = makeAssembler();
 			const src = `.WARN "Boom Bada Boom"`;
 			asm.assemble(src);
-
-			// expect(sink.warnings).toBe("");
 
 			// located like an error: the statement, then its source line
 			const found = sink.warnings.find((l) => l.startsWith("1:1: warning: Boom Bada Boom\n"));

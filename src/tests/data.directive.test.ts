@@ -129,8 +129,6 @@ describe("Data Directives", () => {
 		`;
 		assembler.assemble(source);
 
-		// expect(sink.logs).toEqual(2);
-
 		const machineCode = assembler.link();
 		expect(machineCode).toEqual([0x80, 0x02, 0x04, 0x10, 0x60]);
 	});

@@ -419,7 +419,6 @@ export class ExpressionEvaluator {
 		for (const token of rpnTokens) {
 			switch (token.type) {
 				case "NUMBER": {
-					// const num = Number.parseInt(token.value, 10);
 					const num = Number.parseFloat(token.value);
 					stack.push(num);
 					break;
@@ -502,8 +501,7 @@ export class ExpressionEvaluator {
 						stack.push(null);
 						break;
 					}
-					// To allow the SEGMENTS in Linker to be an array and a Map....
-					// if (typeof obj !== "object" || obj === null || Array.isArray(obj)) throw new Error("Invalid property access on a non-object value.");
+					// Arrays too: the linker's SEGMENTS is meant to be both an array and a map (its skipped test, "Hybrid SEGMENTS Variable").
 					if (typeof obj !== "object" || obj === null) throw new Error("Invalid property access on a non-object value.");
 
 					const property = token.value;
@@ -689,7 +687,7 @@ export class ExpressionEvaluator {
 				break;
 			case "/":
 				if (right === 0) throw AsmError.at("Division by zero.", token);
-				// stack.push(Math.floor(left / right)); // Integer division
+				// Not an integer division: 7 / 2 is 3.5 (see .floor, .ceil, .round).
 				stack.push(left / right);
 				break;
 			// Bitwise results are 32-bit. With non-negative operands they're unsigned ($80000000 >> 4 is $08000000);
