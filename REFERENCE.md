@@ -12,7 +12,7 @@ The complete syntax of the tsAsm assembler. For installation and command-line us
 - [Conditional assembly](#conditional-assembly)
 - [Loops](#loops)
 - [Macros](#macros)
-- [Functions](#functions)
+- [Procedures](#procedures)
 - [Namespaces](#namespaces)
 - [Files](#files)
 - [Messages and listing](#messages-and-listing)
@@ -33,7 +33,7 @@ start:  lda #$00    ; load 0
 - Directives start with a dot: `.db`, `.macro`, … Their names are case-insensitive.
 - Symbol names are case-insensitive: `Loop` and `LOOP` are the same symbol.
 - Outside comments and strings, a character the assembler doesn't recognise is an error, even in code that isn't assembled (a false `.if`). A byte order mark at the start of a file is ignored.
-- Blocks (`.if`, `.repeat`, `.for`, `.macro`, `.function`, `.define`, …) end with `.end`, or can be written with braces:
+- Blocks (`.if`, `.repeat`, `.for`, `.macro`, `.proc`, `.define`, …) end with `.end`, or can be written with braces:
 
 ```as
 .repeat 2 {
@@ -400,12 +400,12 @@ A last parameter written `...name` collects the remaining arguments into an arra
     struct $CAFE, $1234, $5678
 ```
 
-## Functions
+## Procedures
 
-`.function <name>` … `.end` defines a routine whose labels stay local to it. Aliases: `.fn`, `.proc`, `.procedure`.
+`.proc <name>` … `.end` defines a routine whose labels stay local to it. Alias: `.procedure`.
 
 ```as
-.function clearScreen
+.proc clearScreen
     ldx #0
 loop:               ; not visible outside clearScreen
     sta $0400, x
@@ -416,6 +416,8 @@ loop:               ; not visible outside clearScreen
 
     jsr clearScreen
 ```
+
+`.function` and `.fn` were aliases: they are now an error that says to write `.proc`, as they are kept for functions usable in expressions.
 
 ## Namespaces
 

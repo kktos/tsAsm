@@ -2,7 +2,7 @@
 
 A multi-cpu assembler written in TypeScript, usable as a command-line tool or as a library.
 
-Features include macros, conditional assembly, loops, namespaces, functions, segments, YAML/JSON data blocks, and a linker scripting language.
+Features include macros, conditional assembly, loops, namespaces, procedures, segments, YAML/JSON data blocks, and a linker scripting language.
 
 The complete syntax is documented in **[REFERENCE.md](REFERENCE.md)**.
 

@@ -6,6 +6,12 @@ The problem is described as it was before the fix, then the fix in _italics_.
 
 ## Assembler
 
+### #142 — `.function` renamed `.proc` (TODO 3.7)
+
+`.function`, with its aliases `.fn`, `.proc` and `.procedure`, defined a routine whose labels stay local to it: a label scope, not a function usable in expressions, as the system functions are. That name is wanted for user functions (4.8).
+
+_Decided: the routine is `.proc` / `.procedure`. `.function` and `.fn` are an error until user functions exist: `.FUNCTION is no longer a routine scope: write .proc clearScreen.`, at the directive. They are still block directives, so their `.end` closes them in a block that isn't assembled. A label redefined in the body says `in proc f`._
+
 ### #139 — An empty argument hides an unknown function (TODO 1.36)
 
 `.min(1,,2)` → `Missing expression.` since #138: the function name was only looked up when the call was evaluated, after its arguments were parsed.

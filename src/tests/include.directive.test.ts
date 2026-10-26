@@ -80,10 +80,10 @@ describe("File Directive .INCLUDE", () => {
 		);
 	});
 
-	it("should .INCLUDE file with a .FUNCTION holding a .DEFINE - bug fix", () => {
+	it("should .INCLUDE file with a .PROC holding a .DEFINE - bug fix", () => {
 		const { assembler, mockFileHandler } = createAssembler();
 		const includedCode = `
-			.function displayHelpObj {
+			.proc displayHelpObj {
 				.define spriteList
 				- { id: $55, x: $0d, y: $30, name:"text key"}
 				- { id: $27, x: 15, y: 60, name:"img key"}

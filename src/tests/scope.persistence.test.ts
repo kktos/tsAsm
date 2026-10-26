@@ -40,10 +40,10 @@ describe("Scope Persistence", () => {
 		expect(assembler.symbolTable.lookupSymbol("myVar")).toBe(42);
 	});
 
-	it("should NOT persist variable defined with .LET in a function to the global scope", () => {
+	it("should NOT persist variable defined with .LET in a procedure to the global scope", () => {
 		const assembler = new Assembler(fakeCPU, new MockFileHandler());
 		const source = `
-            .function myFunc {
+            .proc myFunc {
                 .let internal = 10
             }
         `;
@@ -51,14 +51,14 @@ describe("Scope Persistence", () => {
 		expect(assembler.symbolTable.lookupSymbol("internal")).toBeUndefined();
 	});
 
-	it("should persist variable defined with .LET in a loop INSIDE a function to the function scope", () => {
+	it("should persist variable defined with .LET in a loop INSIDE a procedure to the procedure scope", () => {
 		const assembler = new Assembler(fakeCPU, new MockFileHandler());
 		const source = `
-            .function myFunc {
+            .proc myFunc {
                 .for i of [1] {
                     .let funcVar = 99
                 }
-                .db funcVar ; usage to ensure it exists in function scope
+                .db funcVar ; usage to ensure it exists in procedure scope
             }
         `;
 		assembler.assemble(source);

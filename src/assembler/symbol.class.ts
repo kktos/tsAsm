@@ -276,7 +276,7 @@ export class PASymbolTable {
 			// Find the first non-volatile scope (bottom-up search)
 			for (let i = this.scopeStack.length - 1; i >= 0; i--) {
 				const key = this.scopeStack[i] as string;
-				const isVolatile = key.startsWith("@@") && !key.startsWith("@@function");
+				const isVolatile = key.startsWith("@@") && !key.startsWith("@@proc");
 				if (!isVolatile) {
 					ns = key;
 					break;
@@ -345,7 +345,7 @@ export class PASymbolTable {
 				// Find the first non-volatile scope (bottom-up search)
 				for (let i = this.scopeStack.length - 1; i >= 0; i--) {
 					const key = this.scopeStack[i] as string;
-					const isVolatile = key.startsWith("@@") && !key.startsWith("@@function");
+					const isVolatile = key.startsWith("@@") && !key.startsWith("@@proc");
 					if (!isVolatile) {
 						ns = key;
 						break;
