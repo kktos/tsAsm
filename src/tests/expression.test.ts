@@ -48,11 +48,11 @@ describe("ExpressionEvaluator", () => {
 			expect(result).toBe(72);
 		});
 
-		it("should handle integer division", () => {
+		it("should not do an integer division", () => {
 			const { evaluator, tokenize } = setup();
 			const tokens = tokenize("13 / 4");
 			const result = evaluator.evaluateAsNumber(tokens, { PC: { value: 0 } });
-			expect(result).toBe(13 / 4);
+			expect(result).toBe(3.25);
 		});
 
 		it("should handle unary minus", () => {
