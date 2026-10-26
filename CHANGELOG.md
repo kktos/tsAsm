@@ -6,6 +6,12 @@ The problem is described as it was before the fix, then the fix in _italics_.
 
 ## Assembler
 
+### #133 — `.include` path in a macro body resolved from the caller's file (TODO 1.28)
+
+`.include "inc.asm"` in a macro defined in `macros/macros.asm`, called from `lib/lib.asm`, reads `lib/inc.asm`, while the include chain says `included from macros/macros.asm`. Undocumented: which file should it be relative to?
+
+_Decided: the caller's, as it was: a macro is text expanded where it's called (for nested macros, where the outermost one is called). Documented in `REFERENCE.md`, and pinned by tests. The chain still gives the `.include`'s place in the macro's file. Follow-up: 1.33 (`.incbin` paths)._
+
 ### #121 — Local label messages say `:` (TODO 1.32)
 
 `Local label ':LOOP' defined without a preceding global label.`, `Local label reference ':LOOP' used without…`, `Undefined local label ':LOOP' in scope…`: the `:` is written in the message, whatever `local.prefix` is (`@loop` gives `':LOOP'`). The token doesn't keep its prefix (its `raw` is `loop`, which the listing prints).

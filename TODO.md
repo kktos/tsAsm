@@ -18,13 +18,13 @@ What a directive defines (`.macro`, `.equ`, `=`, `.let`, `.define`, `.function`,
 
 `lda #` (no operand) is accepted silently.
 
-### 1.28 `.include` path in a macro body resolved from the caller's file
-
-`.include "inc/bad.asm"` in a macro defined in `macros.asm`, called from `lib/lib.asm`, reads `lib/inc/bad.asm`: the path is resolved from the file being assembled, not from the macro's. Since #117 the chain says `included from macros.asm:2:2` for it. Decision needed: relative to the macro's file (as C's `#include` in a header), or to the caller's (a macro is text expansion)?
-
 ### 1.31 A `{ }` block in a macro body closed by `.end`
 
 `.macro m` / `.repeat 2 {` / `nop` / `}` / `.end` / `m` → `Missing .END for the .MACRO block.` Same with `.function f {`. It works in a `.macro m { … }` body, and with the `.end` form of the inner block.
+
+### 1.33 `.incbin` path resolved from the project directory
+
+`.incbin "data.bin"` in `lib/lib.asm` reads `./data.bin`, while `.include "inc.asm"` in the same file reads `lib/inc.asm`: `IncbinDirective` calls `readBinaryFile(filename)` without the including file (the CLI then opens `<basedir>//data.bin`). Decision needed: relative to the including file, as `.include` (#133, TODO 1.28)?
 
 ## 2. Code review, items left
 

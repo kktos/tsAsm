@@ -252,22 +252,58 @@ describe("File Directive .INCLUDE", () => {
 		});
 	});
 
-	describe(".once", () => {
-		// Paths are resolved from the including file, as the CLI does.
-		const withFiles = (files: Record<string, string>) => {
-			const { assembler, mockFileHandler } = createAssembler();
-			vi.spyOn(mockFileHandler, "readSourceFile").mockImplementation(function (this: MockFileHandler, filename: string, from?: string) {
-				this.fullpath = from ? posix.join(posix.dirname(from), filename) : filename;
-				this.filename = posix.basename(filename);
-				const source = files[this.fullpath];
-				if (source === undefined) throw new Error(`no file ${this.fullpath}`);
-				return source;
-			});
-			return assembler;
+	// Paths are resolved from the including file, as the CLI does.
+	const withFilesAt = (files: Record<string, string>) => {
+		const { assembler, mockFileHandler } = createAssembler();
+		vi.spyOn(mockFileHandler, "readSourceFile").mockImplementation(function (this: MockFileHandler, filename: string, from?: string) {
+			this.fullpath = from ? posix.join(posix.dirname(from), filename) : filename;
+			this.filename = posix.basename(filename);
+			const source = files[this.fullpath];
+			if (source === undefined) throw new Error(`no file ${this.fullpath}`);
+			return source;
+		});
+		return assembler;
+	};
+
+	describe("paths in a macro body", () => {
+		// A macro is expanded where it is called: its .include reads from there, not from the macro's file.
+		const files = {
+			"macros/macros.asm": `
+				.macro m
+					.include "inc.asm"
+				.end
+				.macro outer
+					m
+				.end
+			`,
+			"macros/inc.asm": ".db 1",
+			"lib/inc.asm": ".db 2",
+			"lib/lib.asm": "m",
+			"lib/outer.asm": "outer",
 		};
 
+		it("should resolve an .include from the file the macro is called in", () => {
+			const assembler = withFilesAt(files);
+			assembler.assemble(`
+				.include "macros/macros.asm"
+				.include "lib/lib.asm"
+			`);
+			expect(assembler.link()).toEqual([2]);
+		});
+
+		it("should resolve an .include from the file the outermost macro is called in", () => {
+			const assembler = withFilesAt(files);
+			assembler.assemble(`
+				.include "macros/macros.asm"
+				.include "lib/outer.asm"
+			`);
+			expect(assembler.link()).toEqual([2]);
+		});
+	});
+
+	describe(".once", () => {
 		it("should define the macros of a file included twice only once", () => {
-			const assembler = withFiles({
+			const assembler = withFilesAt({
 				"macros.asm": `
 					.once
 					.macro twice v
@@ -291,7 +327,7 @@ describe("File Directive .INCLUDE", () => {
 		});
 
 		it("should assemble the code and labels of a file included twice only once, in both passes", () => {
-			const assembler = withFiles({
+			const assembler = withFilesAt({
 				"data.asm": `
 					.once
 					table:
@@ -307,7 +343,7 @@ describe("File Directive .INCLUDE", () => {
 		});
 
 		it("should know a file by its path, whatever the path it is included with", () => {
-			const assembler = withFiles({
+			const assembler = withFilesAt({
 				"includes/macros.asm": `
 					.once
 					.macro one
@@ -327,7 +363,7 @@ describe("File Directive .INCLUDE", () => {
 		});
 
 		it("should keep the content of a file guarded by .if .undef(X), included twice", () => {
-			const assembler = withFiles({
+			const assembler = withFilesAt({
 				"res.asm": `
 					.if .undef(R_INC) {
 						R_INC = 1
@@ -344,7 +380,7 @@ describe("File Directive .INCLUDE", () => {
 		});
 
 		it("should still include twice a file without .once", () => {
-			const assembler = withFiles({
+			const assembler = withFilesAt({
 				"once.asm": `
 					.once
 					.include "res.asm"
@@ -360,7 +396,7 @@ describe("File Directive .INCLUDE", () => {
 		});
 
 		it("should include a .once file again in a new assembly", () => {
-			const assembler = withFiles({
+			const assembler = withFilesAt({
 				"data.asm": `
 					.once
 					.db 3
@@ -373,7 +409,7 @@ describe("File Directive .INCLUDE", () => {
 		});
 
 		it("should throw when .once is given an argument", () => {
-			expect(() => withFiles({}).assemble(".once 1")).toThrow(".ONCE takes no argument.");
+			expect(() => withFilesAt({}).assemble(".once 1")).toThrow(".ONCE takes no argument.");
 		});
 	});
 });
