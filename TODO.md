@@ -42,6 +42,10 @@ REFERENCE says `lda #"A"` loads `$41`. It does on the 65C02, but on the 6502 `ld
 
 `.dw "A", 1` → `41 01 00`, `.dl "A", 1` → `41 01 00 00 00`: the table is misaligned. One word per char, or an error: decision needed.
 
+### 1.44 A macro call swallows the `}` of a block on its line
+
+`{ copy 1, 2 }` → `Syntax error : Unbalanced braces. Depth: 1`, `{ nop0 }` → `Macro 'NOP0' expects 0 arguments, but got 1.`: the call reads the `}` as an argument. An instruction stops there (`{ nop }` works), and a call inside a directive's block is fine, the block being cut out first.
+
 ## 2. Code review, items left
 
 ### 2.1 CPU back-ends
@@ -92,10 +96,6 @@ REFERENCE says `lda #"A"` loads `$41`. It does on the 65C02, but on the 6502 `ld
 ## 3. Syntax: design questions
 
 Found on 2026-10-26 by reviewing README and REFERENCE against the code. Each needs a decision before a fix.
-
-### 3.1 `< >` macro text vs low / high byte
-
-`setp <addr, >addr` → `Unexpected 'ADDR' after '>': a macro argument in < > ends at its '>'.` It's the most common 6502 macro call. Workarounds: `.lobyte(addr)`, `(<addr)`. Options: keep `< >` and document the workaround, or a text delimiter that isn't an operator, backquotes for example (breaking). A heuristic doesn't work: `<table,x>` holds a comma too. Recommended: another delimiter.
 
 ### 3.2 `.repeat` counts from 1, `.for` from 0
 

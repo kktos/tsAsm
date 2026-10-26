@@ -131,9 +131,9 @@ export class MacroHandler {
 
 	/**
 	 * Parses the call's arguments into a list of token arrays, one for each argument.
-	 * An empty argument is an error (`m 1,,3`, `m 1,`): empty text is written `<>`.
+	 * An empty argument is an error (`m 1,,3`, `m 1,`): empty text is written `{}`.
 	 * A comma inside `( )` or `[ ]` belongs to the argument: `m .iif(c, 1, 2), [3, 4][0]` has two.
-	 * An argument in `< >` is text, pasted as is: `m <($12,x)>`. The others are expressions.
+	 * An argument in `{ }` is text, pasted as is: `m {($12,x)}`. The others are expressions: `m <addr, >addr`.
 	 * The `m(1, 2)` form needs its `(` glued to the name: `m (1+2)*3` has one argument.
 	 */
 	private parseMacroArguments(macroToken: ScalarToken): Token[][] {
@@ -161,7 +161,7 @@ export class MacroHandler {
 		const pushArgument = () => {
 			if (lastComma && currentArgTokens.length === 0 && !isTextArg(currentArgTokens))
 				throw AsmError.at(
-					`Macro '${macroToken.value}': argument ${argsArray.length + 1} is empty. An argument is a value; pass empty text as <>.`,
+					`Macro '${macroToken.value}': argument ${argsArray.length + 1} is empty. An argument is a value; pass empty text as {}.`,
 					lastComma,
 				);
 			argsArray.push(currentArgTokens);
@@ -179,12 +179,12 @@ export class MacroHandler {
 				continue;
 			}
 
-			// '<' starts a text argument only as its first token. Elsewhere it's an operator: `.iif(a < b, 1, 2)`.
-			if (depth === argDepth && currentArgTokens.length === 0 && token.type === "OPERATOR" && token.value === "<") {
+			// '{' starts a text argument as its first token: '<' and '>' are low and high byte, as in any expression.
+			if (depth === argDepth && currentArgTokens.length === 0 && token.type === "LBRACE") {
 				currentArgTokens = markAsText(this.readTextArgument(hasParens ? undefined : macroToken.line));
 				const next = this.parser.peek();
 				const endsHere = isEnd(next) || next.type === "COMMA" || (hasParens && next.type === "OPERATOR" && next.value === ")");
-				if (!endsHere) throw AsmError.at(`Unexpected '${next.value}' after '>': a macro argument in < > ends at its '>'.`, next);
+				if (!endsHere) throw AsmError.at(`Unexpected '${next.value}' after '}': a macro argument in { } ends at its '}'.`, next);
 				continue;
 			}
 
@@ -201,25 +201,23 @@ export class MacroHandler {
 		return this.withoutEmptyCall(argsArray);
 	}
 
-	/** The tokens up to the `>` matching an already consumed `<`. Without parentheses, they must be on the call's `line`. */
+	/** The tokens up to the `}` matching an already consumed `{`. Without parentheses, they must be on the call's `line`. */
 	private readTextArgument(line?: string | number): Token[] {
 		const tokens: Token[] = [];
-		let bracketDepth = 1;
+		let braceDepth = 1;
 		while (true) {
 			const token = this.parser.peek();
-			if (!token || token.type === "EOF" || (line !== undefined && token.line !== line)) throw new Error("Unmatched '<' in macro arguments.");
+			if (!token || token.type === "EOF" || (line !== undefined && token.line !== line)) throw new Error("Unmatched '{' in macro arguments.");
 			this.parser.advance(1);
-			if (token.type === "OPERATOR") {
-				if (token.value === "<") bracketDepth++;
-				if (token.value === ">" && --bracketDepth === 0) return tokens;
-			}
+			if (token.type === "LBRACE") braceDepth++;
+			if (token.type === "RBRACE" && --braceDepth === 0) return tokens;
 			tokens.push(token);
 		}
 	}
 
 	/**
-	 * An argument not in < > is a value: an expression. An addressing mode isn't one, it's passed as text:
-	 * `#` isn't an operator, and a comma in ( ) only separates a function's arguments: `m ($12,x)` needs `m <($12,x)>`.
+	 * An argument not in { } is a value: an expression. An addressing mode isn't one, it's passed as text:
+	 * `#` isn't an operator, and a comma in ( ) only separates a function's arguments: `m ($12,x)` needs `m {($12,x)}`.
 	 */
 	private checkValueArgument(macroName: string, argTokens: Token[]) {
 		if (isTextArg(argTokens)) return;
@@ -239,14 +237,14 @@ export class MacroHandler {
 
 		const text = argTokens.map((token) => token.raw ?? token.value).join("");
 		throw AsmError.at(
-			`Macro '${macroName}': '${text}' is an addressing mode, not an expression. Pass it as text, in < >: <${text}>.`,
+			`Macro '${macroName}': '${text}' is an addressing mode, not an expression. Pass it as text, in { }: {${text}}.`,
 			argTokens[0] as Token,
 		);
 	}
 
 	private withoutEmptyCall(argsArray: Token[][]): Token[][] {
 		// If the original tokens were empty, or if the only argument found is empty,
-		// it means there were no actual arguments. An empty `<>` is one.
+		// it means there were no actual arguments. An empty `{}` is one.
 		const [first] = argsArray;
 		if (argsArray.length === 1 && first?.length === 0 && !isTextArg(first)) return [];
 
