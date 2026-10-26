@@ -6,6 +6,12 @@ The problem is described as it was before the fix, then the fix in _italics_.
 
 ## Assembler
 
+### #146 — An instruction without operand takes a `}` as its operand (TODO 1.45)
+
+`{ nop }` and `nop }` → `Invalid expression format.` on the 6502, `Invalid addressing mode for instruction NOP` on the 65C02: `getInstructionTokens` checked the line's first token for a `{`, not a `}`. `{ lda 1 }` worked, the `}` ending the operand. A directive had the same bug: `{ .org }` → `Unbalanced braces. Depth: 1`, `{ .once }` → `.ONCE takes no argument.`
+
+_A `}` is never part of a line, first token included: `{ nop }` works, `nop }` is `Unbalanced braces. Depth: -1`, `{ .org }` is `Missing expression.`, and `{ .once }` works._
+
 ### #145 — A macro call swallows the `}` of a block on its line (TODO 1.44)
 
 `{ copy 1, 2 }` → `Syntax error : Unbalanced braces. Depth: 1`, `{ nop0 }` → `Macro 'NOP0' expects 0 arguments, but got 1.`, and `m 1 }`, a `}` closing no block, assembled `01` silently: the call read the `}` as an argument. A call inside a directive's block was fine, the block being cut out first.
