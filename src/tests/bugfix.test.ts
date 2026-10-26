@@ -27,10 +27,10 @@ describe("Bug Fixes", () => {
 		});
 	});
 
-	it("should access forward references correctly in function - clearScreen bug", () => {
+	it("should access forward references correctly in a procedure - clearScreen bug", () => {
 		const includedCode = `
 			.namespace utils
-			.function clearScreen {
+			.proc clearScreen {
 					stz yPos
 			:		jsr $2000
 					inc yPos

@@ -763,18 +763,18 @@ m nope`),
 			expect(() => assembler.assemble(source)).toThrow(expect.objectContaining({ message: "Can't redefine constant 'K' in macro m." }));
 		});
 
-		it("should name the function of a label redefined in a function of a macro body", () => {
+		it("should name the procedure of a label redefined in a procedure of a macro body", () => {
 			const { assembler } = setup();
 			const source = `
 				.macro m
-				.function f
+				.proc f
 				count:
 				count:
 				.end
 				.end
 				m
 			`;
-			expect(() => assembler.assemble(source)).toThrow(expect.objectContaining({ message: "Symbol 'COUNT' redefined in function f." }));
+			expect(() => assembler.assemble(source)).toThrow(expect.objectContaining({ message: "Symbol 'COUNT' redefined in proc f." }));
 		});
 	});
 

@@ -32,6 +32,7 @@ import { NamespaceDirective } from "./namespace.directive";
 import { OnceDirective } from "./once.directive";
 import { OptionDirective } from "./option.directive";
 import { OrgDirective } from "./org.directive";
+import { ProcDirective } from "./proc.directive";
 import { SegmentDirective } from "./segment.directive";
 import { StringDirective } from "./string.directive";
 
@@ -48,11 +49,12 @@ export class DirectiveHandler {
 
 		this.register("NAMESPACE", new NamespaceDirective(assembler));
 
-		const functionDirective = new FunctionDirective(assembler, runtime.lister);
+		const procDirective = new ProcDirective(assembler, runtime.lister);
+		this.register("PROC", procDirective);
+		this.register("PROCEDURE", procDirective);
+		const functionDirective = new FunctionDirective(runtime.parser);
 		this.register("FUNCTION", functionDirective);
 		this.register("FN", functionDirective);
-		this.register("PROC", functionDirective);
-		this.register("PROCEDURE", functionDirective);
 
 		this.register("DEFINE", new DefineDirective(assembler, runtime.lister));
 		this.register("EQU", new EquDirective(assembler, runtime.lister));

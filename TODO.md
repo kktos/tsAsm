@@ -12,7 +12,7 @@ What is done is in `CHANGELOG.md`. How we work (PR rules, design rules, commands
 
 ### 1.31 A `{ }` block in a macro body closed by `.end`
 
-`.macro m` / `.repeat 2 {` / `nop` / `}` / `.end` / `m` → `Missing .END for the .MACRO block.` Same with `.function f {`. It works in a `.macro m { … }` body, and with the `.end` form of the inner block.
+`.macro m` / `.repeat 2 {` / `nop` / `}` / `.end` / `m` → `Missing .END for the .MACRO block.` Same with `.proc f {`. It works in a `.macro m { … }` body, and with the `.end` form of the inner block.
 
 ### 1.35 A trailing comma in `.fill` / `.align`
 
@@ -36,11 +36,15 @@ REFERENCE says `lda #"A"` loads `$41`. It does on the 65C02, but on the 6502 `ld
 
 ### 1.41 A macro's or a function's labels end the caller's local label scope
 
-`start:` / `:l nop` / `m` / `jmp :l`, with `.macro m` / `lbl: nop` / `.end` → `Undefined local label ':l' in scope 'LBL'`, though `LBL` is local to the macro call. Same with a label in a `.function` body: a `:l` before `.function f` / `x: rts` / `.end` isn't found after it (that one may be wanted: decide).
+`start:` / `:l nop` / `m` / `jmp :l`, with `.macro m` / `lbl: nop` / `.end` → `Undefined local label ':l' in scope 'LBL'`, though `LBL` is local to the macro call. Same with a label in a `.proc` body: a `:l` before `.proc f` / `x: rts` / `.end` isn't found after it (that one may be wanted: decide).
 
 ### 1.42 A string in `.dw` / `.dl` emits bytes
 
 `.dw "A", 1` → `41 01 00`, `.dl "A", 1` → `41 01 00 00 00`: the table is misaligned. One word per char, or an error: decision needed.
+
+### 1.43 `.proc` without a name on its line
+
+`.proc` / `rts` / `.end` assembles nothing, silently: the name is read past the line, so `RTS` becomes the procedure's name. Same bug as `.macro`'s (1.27, #116): the name must be an identifier on the directive's line.
 
 ## 2. Code review, items left
 
@@ -87,7 +91,7 @@ REFERENCE says `lda #"A"` loads `$41`. It does on the 65C02, but on the 6502 `ld
     - an "assemble twice, compare pass sizes" harness would catch the whole phase-error class;
     - CLI exit codes;
     - multi-pass stability.
-- 7 tests are skipped: review them (`.UNDEF()`, `.FUNCTION` scoping, hybrid segments…).
+- 7 tests are skipped: review them (`.UNDEF()`, `.PROC` scoping, hybrid segments…).
 
 ## 3. Syntax: design questions
 
@@ -119,11 +123,12 @@ Symbols ignore case, properties don't: with `{ Id: 5 }`, `d[0].Id` works but `d[
 
 ### 3.7 Names
 
-- `.function` (`.proc`) is a label scope, not a function usable in expressions, as the system functions are. _Decided: the routine scope keeps `.proc` / `.procedure`, and `.function` / `.fn` become user functions (4.8)._
 - `.define` is a text macro in ca65 and C; here it loads data.
 - `.str` and `.hex` are directives and functions, `.segment` and `.namespace` directives and variables: `.str("A")` at the start of a line emits `41`.
 
 Rename (keeping aliases), or document.
+
+`.function` was a label scope, not a function usable in expressions: done in #142, it's `.proc` (see `CHANGELOG.md`).
 
 ### 3.8 Quoting of names
 
@@ -194,17 +199,17 @@ Two forms, parentheses always written:
 - **Pure:** emitting, a label, `.org`, `.segment` or assigning an outer variable in the body is an error. Outer symbols and `*` can be read. It then gives the same result in both passes: no new phase errors.
 - **Errors:** a block ending without `.return`; a recursion deeper than a limit.
 - **Call:** `name(…)` in an expression, `ns::name(…)` from another namespace. System functions keep their dot, so they don't collide. Functions and symbols share their names: defining both is an error.
-- **Migration** (3.7): the routine scope is `.proc` / `.procedure`. An old `.function clearScreen` (no parentheses) is an error that says to write `.proc clearScreen`, rather than silently changing meaning.
+- **Migration** (3.7, done in #142): the routine scope is `.proc` / `.procedure`, and until user functions exist, `.function` / `.fn` are an error that says to write `.proc clearScreen`. With them, only the old form (no parentheses) will be.
 
-Order: the rename to `.proc` with that error; the one-line form (store the expression's tokens, evaluate them with the parameters in scope); the block form with `.return`. Helpful with it: `.min`, `.max`, `.abs`, `.sin`, `.cos`, `.chr`, `.ord`.
+Order: the one-line form (store the expression's tokens, evaluate them with the parameters in scope); the block form with `.return`. Helpful with it: `.min`, `.max`, `.abs`, `.sin`, `.cos`, `.chr`, `.ord`.
 
-Decisions left: the bare `name(…)` call, an error or a warning for the old `.function` form, the recursion limit.
+Decisions left: the bare `name(…)` call, the recursion limit.
 
 ## 5. Documentation (REFERENCE.md)
 
 - **Macro scope:** labels and variables in a macro body are local to the call. CLAUDE.md says it, REFERENCE doesn't.
 - **`_` separator:** it works in hex and decimal too (`$FF_FF`, `1_000`); only binary is shown.
 - **`<` / `>` on a value over 16 bits:** they give bits 0–7 and 8–15 (`>$12345` is `$23`).
-- **`.function` labels** can't be reached from outside (`f::loop` → `Undefined symbol`): say it, or add a way.
+- **`.proc` labels** can't be reached from outside (`f::loop` → `Undefined symbol`): say it, or add a way.
 - **CPUs:** only the 65C02 is documented. The `.cpu` names and the 6809 and RV32I syntax aren't, and README's `input.cpu` lists `65C02` only.
 - **Segment pad value:** `padValue` in the project file, `pad` in `.segment`. Document both, or unify.

@@ -1,50 +1,29 @@
-import type { Assembler } from "../assembler/polyasm";
-import type { ILister } from "../helpers/lister.class";
+import type { Parser } from "../assembler/parser.class";
 import type { ScalarToken } from "../shared/lexer/lexer.class";
+import { AsmError } from "../utils/error.utils";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
+/**
+ * `.function` / `.fn` were a routine scope, now `.proc`: they are an error until they define user functions (TODO 4.8).
+ * Still a block directive, so that its `.end` closes it in a block that isn't assembled.
+ */
 export class FunctionDirective implements IDirective {
 	public isBlockDirective = true;
 	public isRawDirective = false;
 
-	constructor(
-		private readonly assembler: Assembler,
-		private readonly lister: ILister,
-	) {}
+	constructor(private readonly parser: Parser) {}
 
-	private defineAndScope(directive: ScalarToken, context: DirectiveContext) {
-		const nameToken = this.assembler.parser.next() as ScalarToken;
-		if (nameToken?.type !== "IDENTIFIER") throw new Error("Expected a function name after .FUNCTION.");
-
-		// Define the function name as a label in the current scope.
-		const statement = this.assembler.currentStatement ?? directive;
-		if (this.assembler.pass === 1)
-			this.assembler.symbolTable.defineConstant(nameToken.value, context.PC.value, {
-				filename: context.filename,
-				line: statement.line,
-				column: statement.column,
-			});
-		else this.assembler.symbolTable.updateSymbol(nameToken.value, context.PC.value);
-
-		this.lister.directive(directive, nameToken.raw as string);
-
-		const scopeId = `@@function_${this.assembler.symbolTable.getSymbolFullPath(nameToken.value)}`;
-		this.assembler.symbolTable.restoreAndPushScope(scopeId, `function ${nameToken.raw ?? nameToken.value}`);
-
-		const body = this.assembler.parser.getDirectiveBlockTokens(directive.value);
-		this.assembler.parser.pushTokenStream({
-			cacheName: scopeId,
-			newTokens: this.assembler.pass === 1 ? body : [],
-			onEndOfStream: () => this.assembler.symbolTable.popScope({ wannaSave: this.assembler.pass === 1 }),
-			macroArgs: context.macroArgs,
-		});
+	private reject(directive: ScalarToken): never {
+		const token = this.parser.peek();
+		const name = token?.type === "IDENTIFIER" && token.line === directive.line ? ` ${token.raw ?? token.value}` : "";
+		throw AsmError.at(`.${directive.value} is no longer a routine scope: write .proc${name}.`, directive);
 	}
 
-	public handlePassOne(directive: ScalarToken, context: DirectiveContext): void {
-		this.defineAndScope(directive, context);
+	public handlePassOne(directive: ScalarToken, _context: DirectiveContext): void {
+		this.reject(directive);
 	}
 
-	public handlePassTwo(directive: ScalarToken, context: DirectiveContext): void {
-		this.defineAndScope(directive, context);
+	public handlePassTwo(directive: ScalarToken, _context: DirectiveContext): void {
+		this.reject(directive);
 	}
 }

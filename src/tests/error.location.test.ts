@@ -204,11 +204,11 @@ describe("Error locations", () => {
 		});
 	});
 
-	it("should say where a redefined function is first defined", () => {
+	it("should say where a redefined procedure is first defined", () => {
 		const source = `
-			.function f
+			.proc f
 			.end
-			.function f
+			.proc f
 			.end
 		`;
 		expect(redefinition(source)).toMatchObject({
