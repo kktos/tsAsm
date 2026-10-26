@@ -10,13 +10,17 @@ What is done is in `CHANGELOG.md`. How we work (PR rules, design rules, commands
 
 `lda $12345` → `ad 45 23`, `lda #$1FF` → `a9 ff`, `lda ($1234),y` → `b1 34`. The 65C02 rejects these with `checkAddress` / `assertFitsInBytes`. Bring the same checks to the 6502, or do 2.1 first and get them for free.
 
-### 1.10 `lda #` without an operand
-
-`lda #` (no operand) is accepted silently.
-
 ### 1.31 A `{ }` block in a macro body closed by `.end`
 
 `.macro m` / `.repeat 2 {` / `nop` / `}` / `.end` / `m` → `Missing .END for the .MACRO block.` Same with `.function f {`. It works in a `.macro m { … }` body, and with the `.end` form of the inner block.
+
+### 1.34 Empty elements in an array literal
+
+`[1,,2]` is `[1, 2]`, `[1,]` is `[1]` and `[,]` is `[]`: `evaluateArray` skips an empty element, while `.db 1,,2` is `Unexpected comma.` and `.db 1,` is `Missing expression.` (1.10).
+
+### 1.35 A trailing comma in `.fill` / `.align`
+
+`.fill 2,` → `00 00`, `.align 4,` → `00 00 00`: an empty filler is 0, as when there's no filler at all.
 
 ## 2. Code review, items left
 

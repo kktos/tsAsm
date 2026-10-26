@@ -28,7 +28,7 @@ export class ExpressionEvaluator {
 	 * Shunting-Yard algorithm for precedence and RPN evaluation.
 	 */
 	public evaluate(tokens: Token[], context: EvaluationContext): SymbolValue {
-		if (tokens.length === 0) return 0;
+		if (tokens.length === 0) throw new Error("Missing expression.");
 
 		const rpnTokens = this.infixToRPN(tokens, context);
 		return this.evaluateRPN(rpnTokens, context);

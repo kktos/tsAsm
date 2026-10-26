@@ -6,6 +6,12 @@ The problem is described as it was before the fix, then the fix in _italics_.
 
 ## Assembler
 
+### #136 — An empty expression is 0 (TODO 1.10)
+
+`lda #` assembles `a9 00`: the expression evaluator returns 0 for an empty expression. So do `lda ,x`, `lda (),y`, `jmp ()`, 6809 `ldd #`, ARM `mov r0, #`, RV32I `addi x1, x2,`, and `x =`, `x .equ`, `.let x =`, `.if`, `.db 1,`, `.dw`, `.fill`, `.res`, `.org` with nothing after them.
+
+_Decided: an error, `Missing expression.`, in the evaluator: every CPU and directive gets it, located at the statement. Follow-ups: 1.34 (array literals), 1.35 (`.fill` / `.align` filler)._
+
 ### #135 — Definition columns (TODO 1.8)
 
 What a directive defines (`.macro`, `.equ`, `=`, `.let`, `.define`, `.function`, loop iterators) records the directive name's column, after the `.`, while errors point at the statement's start. A redefinition shows `1:2` for the error and `1:3` for its `first defined here` note.
