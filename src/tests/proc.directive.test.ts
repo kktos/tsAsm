@@ -112,6 +112,70 @@ describe("ProcDirective Scoping", () => {
 	});
 });
 
+describe("Procedure name", () => {
+	let assembler: Assembler;
+
+	beforeEach(() => {
+		assembler = new Assembler(new Cpu6502Handler(), new MockFileHandler(), {
+			segments: [{ name: "CODE", start: 0x8000, size: 0, resizable: true }],
+		});
+	});
+
+	it.each([
+		[
+			"not the first word of the body",
+			`
+	nop
+	.proc
+		rts
+	.end
+`,
+			3,
+		],
+		[
+			"not the first word of the body, with .PROCEDURE",
+			`
+	nop
+	.procedure
+		rts
+	.end
+`,
+			3,
+		],
+		[
+			"at the end of the file",
+			`
+	nop
+	.proc`,
+			3,
+		],
+		[
+			"not a number",
+			`
+	nop
+	.proc 12
+		rts
+	.end
+`,
+			8,
+		],
+		[
+			"before a { } body",
+			`
+	nop
+	.proc {
+		rts
+	}
+`,
+			8,
+		],
+	])("should ask for a name, %s", (_, source, column) => {
+		expect(() => assembler.assemble(source)).toThrow(
+			expect.objectContaining({ message: "A procedure needs a name.", location: expect.objectContaining({ line: 3, column }) }),
+		);
+	});
+});
+
 // `.function` / `.fn` were a routine scope: they are kept for user functions (TODO 4.8), and say to write `.proc`.
 describe(".FUNCTION and .FN", () => {
 	let assembler: Assembler;

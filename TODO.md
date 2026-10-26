@@ -42,10 +42,6 @@ REFERENCE says `lda #"A"` loads `$41`. It does on the 65C02, but on the 6502 `ld
 
 `.dw "A", 1` → `41 01 00`, `.dl "A", 1` → `41 01 00 00 00`: the table is misaligned. One word per char, or an error: decision needed.
 
-### 1.43 `.proc` without a name on its line
-
-`.proc` / `rts` / `.end` assembles nothing, silently: the name is read past the line, so `RTS` becomes the procedure's name. Same bug as `.macro`'s (1.27, #116): the name must be an identifier on the directive's line.
-
 ## 2. Code review, items left
 
 ### 2.1 CPU back-ends

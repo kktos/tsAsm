@@ -1,6 +1,7 @@
 import type { Assembler } from "../assembler/polyasm";
 import type { ILister } from "../helpers/lister.class";
 import type { ScalarToken } from "../shared/lexer/lexer.class";
+import { AsmError } from "../utils/error.utils";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
 /** `.proc` / `.procedure`: a routine whose labels stay local to it. */
@@ -14,8 +15,7 @@ export class ProcDirective implements IDirective {
 	) {}
 
 	private defineAndScope(directive: ScalarToken, context: DirectiveContext) {
-		const nameToken = this.assembler.parser.next() as ScalarToken;
-		if (nameToken?.type !== "IDENTIFIER") throw new Error(`Expected a name after .${directive.value}.`);
+		const nameToken = this.procName(directive);
 
 		// Define the procedure name as a label in the current scope.
 		const statement = this.assembler.currentStatement ?? directive;
@@ -39,6 +39,15 @@ export class ProcDirective implements IDirective {
 			onEndOfStream: () => this.assembler.symbolTable.popScope({ wannaSave: this.assembler.pass === 1 }),
 			macroArgs: context.macroArgs,
 		});
+	}
+
+	/** The procedure's name, on the directive's line: a word on the next line is the body's. */
+	private procName(directive: ScalarToken): ScalarToken {
+		const token = this.assembler.parser.peek();
+		if (!token || token.type === "EOF" || token.line !== directive.line) throw AsmError.at("A procedure needs a name.", directive);
+		if (token.type !== "IDENTIFIER") throw AsmError.at("A procedure needs a name.", token);
+		this.assembler.parser.advance();
+		return token as ScalarToken;
 	}
 
 	public handlePassOne(directive: ScalarToken, context: DirectiveContext): void {

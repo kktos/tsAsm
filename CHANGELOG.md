@@ -6,6 +6,12 @@ The problem is described as it was before the fix, then the fix in _italics_.
 
 ## Assembler
 
+### #143 — `.proc` without a name on its line (TODO 1.43)
+
+`.proc` / `rts` / `.end` assembles nothing, silently: the name is read past the line, so `RTS` becomes the procedure's name. Same bug as `.macro`'s (1.27, #116).
+
+_The name must be an identifier on the directive's line: else `A procedure needs a name.`, at the directive or at the wrong token (`.proc 12`, `.proc {` said `Expected a name after .PROC.`, at the directive)._
+
 ### #142 — `.function` renamed `.proc` (TODO 3.7)
 
 `.function`, with its aliases `.fn`, `.proc` and `.procedure`, defined a routine whose labels stay local to it: a label scope, not a function usable in expressions, as the system functions are. That name is wanted for user functions (4.8).
