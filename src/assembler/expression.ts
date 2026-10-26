@@ -63,14 +63,13 @@ export class ExpressionEvaluator {
 	 */
 	private evaluateArray(tokens: Token[], context: EvaluationContext): SymbolValue[] {
 		const elements: SymbolValue[] = [];
+		if (tokens.length === 0) return elements;
 		let currentExpression: Token[] = [];
 
+		// An empty element (`[1,,2]`, `[1,]`) is evaluated too: `Missing expression.`, as `.db 1,`.
 		const evaluateAndPush = () => {
-			if (currentExpression.length > 0) {
-				const result = this.evaluate(currentExpression, context);
-				elements.push(result);
-				currentExpression = [];
-			}
+			elements.push(this.evaluate(currentExpression, context));
+			currentExpression = [];
 		};
 
 		// Only commas at the top level separate elements: not those of a nested array or of a function call.

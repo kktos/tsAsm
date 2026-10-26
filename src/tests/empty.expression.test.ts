@@ -55,4 +55,20 @@ describe("An empty expression", () => {
 	])("should be an error in %j", (source) => {
 		expect(assemble(new Cpu6502Handler(), source).message).toBe("Missing expression.");
 	});
+
+	// An array element is an expression too: `[1,,2]` isn't `[1, 2]`.
+	it.each(["list = [1,,2]", "list = [1,]", "list = [,]", "list = [,1]", "list = [[1,],2]"])("should be an error as an array element in %j", (source) => {
+		expect(assemble(new Cpu6502Handler(), source).message).toBe("Missing expression.");
+	});
+
+	it("should still allow an empty array", () => {
+		const assembler = new Assembler(new Cpu6502Handler(), new MockFileHandler(), {
+			segments: [{ name: "CODE", start: 0x1000, size: 0, resizable: true }],
+		});
+		assembler.assemble(`
+			list = []
+			.db .len(list)
+		`);
+		expect(assembler.link()).toEqual([0]);
+	});
 });

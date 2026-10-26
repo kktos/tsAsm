@@ -6,6 +6,12 @@ The problem is described as it was before the fix, then the fix in _italics_.
 
 ## Assembler
 
+### #137 — Empty elements in an array literal (TODO 1.34)
+
+`[1,,2]` is `[1, 2]`, `[1,]` is `[1]` and `[,]` is `[]`: `evaluateArray` skips an empty element, while `.db 1,,2` is `Unexpected comma.` and `.db 1,` is `Missing expression.` (1.10).
+
+_Decided: an error, `Missing expression.`, as `.db 1,`: an empty element is evaluated as any other, also a trailing one. `[]` is still the empty array. Follow-up: 1.36 (an empty function argument)._
+
 ### #136 — An empty expression is 0 (TODO 1.10)
 
 `lda #` assembles `a9 00`: the expression evaluator returns 0 for an empty expression. So do `lda ,x`, `lda (),y`, `jmp ()`, 6809 `ldd #`, ARM `mov r0, #`, RV32I `addi x1, x2,`, and `x =`, `x .equ`, `.let x =`, `.if`, `.db 1,`, `.dw`, `.fill`, `.res`, `.org` with nothing after them.
