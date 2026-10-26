@@ -6,6 +6,12 @@ The problem is described as it was before the fix, then the fix in _italics_.
 
 ## Assembler
 
+### #139 — An empty argument hides an unknown function (TODO 1.36)
+
+`.min(1,,2)` → `Missing expression.` since #138: the function name was only looked up when the call was evaluated, after its arguments were parsed.
+
+_The parser checks the name when it meets `.name(`: `Unknown function 'MIN'.`, at the name, whatever the arguments._
+
 ### #138 — An empty function argument (TODO 1.36)
 
 `.array(1,,2)` → `Internal error: stack underflow for .ARRAY().`, `.len("ab",)` → `Function 'LEN' expects between 1 and 1 arguments, but got 2.`, and `.db (1,)` assembles `01`: an empty argument isn't `Missing expression.`, as an empty array element is (1.34).
