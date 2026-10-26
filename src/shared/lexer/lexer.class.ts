@@ -21,16 +21,9 @@ export type TokenType =
 	| "PROPERTY_ACCESS"
 	| "REST_OPERATOR"
 
-	// Operators
+	// Punctuation
 	| "DOT"
 	| "COMMA"
-	| "HASH"
-	| "LPAREN"
-	| "RPAREN"
-	| "PLUS"
-	| "MINUS"
-	| "MULTIPLY"
-	| "DIVIDE"
 
 	// Block
 	| "LBRACE"
@@ -38,8 +31,6 @@ export type TokenType =
 
 	// Special
 	| "INVALID" // a char the lexer doesn't know: an error once the parser reads it, not when it's lexed ahead
-	| "COMMENT"
-	| "NEWLINE"
 	| "EOF";
 
 type BaseToken = {
@@ -306,7 +297,6 @@ export class AssemblyLexer {
 
 			// Otherwise it's division operator
 			this.advance();
-			// return this.makeToken("DIVIDE", "/", startLine, startColumn);
 			return this.makeToken("OPERATOR", "/", startLine, startColumn);
 		}
 
@@ -362,24 +352,6 @@ export class AssemblyLexer {
 
 		// Single-char tokens - monomorphic check pattern for V8
 		switch (ch) {
-			// case ",":
-			// 	this.advance();
-			// 	return this.makeToken("COMMA", ",", startLine, startColumn);
-			// case "#":
-			// 	this.advance();
-			// 	return this.makeToken("HASH", "#", startLine, startColumn);
-			// case "(":
-			// 	this.advance();
-			// 	return this.makeToken("LPAREN", "(", startLine, startColumn);
-			// case ")":
-			// 	this.advance();
-			// 	return this.makeToken("RPAREN", ")", startLine, startColumn);
-			// case "+":
-			// 	this.advance();
-			// 	return this.makeToken("PLUS", "+", startLine, startColumn);
-			// case "*":
-			// 	this.advance();
-			// 	return this.makeToken("MULTIPLY", "*", startLine, startColumn);
 			case ",":
 				this.advance();
 				return this.makeToken("COMMA", ",", startLine, startColumn);
@@ -435,7 +407,6 @@ export class AssemblyLexer {
 				this.advance();
 				this.currentStream.line++;
 				this.currentStream.column = 1;
-				// return this.makeToken("NEWLINE", "\n", startLine, startColumn);
 				return null;
 		}
 
@@ -495,16 +466,13 @@ export class AssemblyLexer {
 		let end = this.currentStream.source.indexOf("\n", this.currentStream.pos);
 		if (end === -1) end = this.currentStream.length;
 
-		// const value = this.source.slice(start, end);
 		this.currentStream.pos = end;
 		this.currentStream.column += end - start;
 
-		return null; // this.makeToken("COMMENT", value, line, column);
+		return null;
 	}
 
 	private scanMultiLineComment(line: number, column: number) {
-		// const start = this.pos;
-
 		this.advance(); // skip '/'
 		this.advance(); // skip '*'
 
@@ -513,8 +481,7 @@ export class AssemblyLexer {
 			if (this.peek() === "*" && this.peek(1) === "/") {
 				this.advance(); // skip '*'
 				this.advance(); // skip '/'
-				// const value = this.source.slice(start, this.pos);
-				return null; // this.makeToken("COMMENT", value, line, column);
+				return null;
 			}
 
 			// Track line numbers within the comment
