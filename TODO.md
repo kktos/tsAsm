@@ -18,6 +18,30 @@ What is done is in `CHANGELOG.md`. How we work (PR rules, design rules, commands
 
 `.fill 2,` → `00 00`, `.align 4,` → `00 00 00`: an empty filler is 0, as when there's no filler at all.
 
+### 1.37 Fractions truncated silently
+
+`/` gives fractions (`7 / 2` is `3.5`), and where a whole number is needed they are truncated without a word: `lda #7/2` → `a9 03`, `.dw 1000/3` → `4d 01`, `.org $1000 + 1/2` is accepted, `.if 1/2` is true. `.repeat 5/2` already says `isn't a whole number`, and `l[3/2]` gives `Unexpected value type undefined.` Error or warning, and what `.if` does with a fraction: decision needed (recommended: an error, as `.repeat` does). See 3.6.
+
+### 1.38 Unknown escape sequences
+
+`"\0"` → `30`, `"\q"` → `71`: an unknown escape gives the char after the backslash. It should be an error. `\0` is an idea in 4.7.
+
+### 1.39 `.elseif` skipped in a false `.if`
+
+There's no `.elseif`. In a true branch, it's an error (`Syntax error - Unexpected directive 'ELSEIF'`), but in a false one it's skipped with the branch: `.if 0` / `nop` / `.elseif 1` / `rts` / `.else` / `brk` / `.end` → `00`. A false branch doesn't check its directives at all: `.if 0` / `.foobar 1` / `.end` assembles. Adding `.elseif` is 4.3.
+
+### 1.40 A one-char string as a number
+
+REFERENCE says `lda #"A"` loads `$41`. It does on the 65C02, but on the 6502 `lda #"A"`, `ldx #"A"`, `cmp #"A"` → `Expression did not evaluate to a number as expected.` (one more 2.1 duplication). On every CPU, `.db "A"+1` → `Binary operator '+' requires two strings.`, so `"H" | $80` can't be written either. `"A" + 1` is concatenation or `$42`: decision needed.
+
+### 1.41 A macro's or a function's labels end the caller's local label scope
+
+`start:` / `:l nop` / `m` / `jmp :l`, with `.macro m` / `lbl: nop` / `.end` → `Undefined local label ':l' in scope 'LBL'`, though `LBL` is local to the macro call. Same with a label in a `.function` body: a `:l` before `.function f` / `x: rts` / `.end` isn't found after it (that one may be wanted: decide).
+
+### 1.42 A string in `.dw` / `.dl` emits bytes
+
+`.dw "A", 1` → `41 01 00`, `.dl "A", 1` → `41 01 00 00 00`: the table is misaligned. One word per char, or an error: decision needed.
+
 ## 2. Code review, items left
 
 ### 2.1 CPU back-ends
@@ -65,6 +89,46 @@ What is done is in `CHANGELOG.md`. How we work (PR rules, design rules, commands
     - multi-pass stability.
 - 7 tests are skipped: review them (`.UNDEF()`, `.FUNCTION` scoping, hybrid segments…).
 
+## 3. Syntax: design questions
+
+Found on 2026-10-26 by reviewing README and REFERENCE against the code. Each needs a decision before a fix.
+
+### 3.1 `< >` macro text vs low / high byte
+
+`setp <addr, >addr` → `Unexpected 'ADDR' after '>': a macro argument in < > ends at its '>'.` It's the most common 6502 macro call. Workarounds: `.lobyte(addr)`, `(<addr)`. Options: keep `< >` and document the workaround, or a text delimiter that isn't an operator, backquotes for example (breaking). A heuristic doesn't work: `<table,x>` holds a comma too. Recommended: another delimiter.
+
+### 3.2 `.repeat` counts from 1, `.for` from 0
+
+`.repeat 3 AS i` gives 1, 2, 3, `.for … AS idx` gives 0, 1, 2. `.dw base + i*8` is off by one, and ca65's `.repeat` counts from 0. Options: count from 0 (breaking), keep 1 and say why, or a start value. Recommended: 0.
+
+### 3.3 `=` vs `.equ`
+
+REFERENCE says they are the same, but `=` can be reassigned and `.equ` can't (`Symbol 'X' redefined.`). A forward reference to a reassigned variable takes its last value in pass 1: `.db v` / `v = 1` / `v = 2` → `02`. Options: document it, and warn (or error) on a forward reference to a variable assigned more than once.
+
+### 3.4 `.namespace` isn't a block
+
+`.end` alone → `there's no block to end`, `.namespace n {` → `Unexpected token after the .NAMESPACE name.`, and `.namespace a` then `.namespace b` just switches. Either a real block (`.end`, braces, nesting) or a switch, documented as one (`.end namespace` going back to `global`).
+
+### 3.5 Case of `.define` properties
+
+Symbols ignore case, properties don't: with `{ Id: 5 }`, `d[0].Id` works but `d[0].id` and `d[0].ID` → `Property … does not exist on object.` Ignore case, or document it.
+
+### 3.6 Fractions without literals
+
+`/` gives fractions, but `1.5` → `Invalid syntax: '.' must be followed by an identifier.` Options: an integer `/`, as ca65; or keep fractions in expressions and reject them where they land (1.37). Recommended: the second.
+
+### 3.7 Names
+
+- `.function` (`.proc`) is a label scope, not a function usable in expressions, as the system functions are.
+- `.define` is a text macro in ca65 and C; here it loads data.
+- `.str` and `.hex` are directives and functions, `.segment` and `.namespace` directives and variables: `.str("A")` at the start of a line emits `41`.
+
+Rename (keeping aliases), or document.
+
+### 3.8 Quoting of names
+
+`.cpu "65C02"` needs quotes, `.segment BOOT` and `.module GAME` don't, and `.cpu 65C02` → `Invalid number '65C02'.` Accept a bare name, or at least a clearer message.
+
 ## 4. Features (ideas)
 
 ### 4.1 Default values for macro parameters
@@ -78,3 +142,36 @@ _Decided: an omitted argument is as if its default had been written at the call.
 - At the definition, only the form is checked: defaults come after the parameters without one, and the rest parameter has none. Nothing is evaluated there.
 - A default that changes between calls follows: with `count = 1`, `.macro m x = count`, `count = 2`, `m` gives 2. `x = *` is the address where `x` is used, so `.dw x, x` gives two addresses, as an explicit `m *` already does.
 - To note in REFERENCE.md: a default's symbols are resolved inside the macro, so a local of the body with the same name takes the place of the outer symbol. Explicit arguments already behave this way.
+
+### 4.3 `.elseif`
+
+`.if a` / … / `.elseif b` / … / `.else` / … / `.end`, and with braces. Fixes 1.39 on the way.
+
+### 4.4 Bitwise NOT `~`
+
+`!5` is `0`, and `~` is an unexpected character: `mask ^ $FF` is the only way. `~` is also one of the chars `.option local.prefix` and `anon.marker` accept: as an operator, it would keep its meaning elsewhere, as `!` does.
+
+### 4.5 A run address different from the load address
+
+As ca65's `.org` in a relocatable segment, ACME's `!pseudopc` or 64tass's `.logical`: code assembled for one address, written at another (a zero page routine, a relocated loader). Today `.org` in a segment pads: `nop` / `.org $2000` in a segment at `$1000` writes 4K of zeros.
+
+### 4.6 Character mapping
+
+`.charmap` / `.encoding`, or at least a high-bit string directive. Apple II `COUT` expects high-bit chars: the README's `.cstr "HELLO"` doesn't print `HELLO`. 1.40 also blocks `"H" | $80`.
+
+### 4.7 Smaller ones
+
+- `.assert <condition>, <message>`;
+- `.struct` / `.enum`, for field offsets;
+- leaving a macro early;
+- `.for` over a numeric range;
+- a `\0` escape.
+
+## 5. Documentation (REFERENCE.md)
+
+- **Macro scope:** labels and variables in a macro body are local to the call. CLAUDE.md says it, REFERENCE doesn't.
+- **`_` separator:** it works in hex and decimal too (`$FF_FF`, `1_000`); only binary is shown.
+- **`<` / `>` on a value over 16 bits:** they give bits 0–7 and 8–15 (`>$12345` is `$23`).
+- **`.function` labels** can't be reached from outside (`f::loop` → `Undefined symbol`): say it, or add a way.
+- **CPUs:** only the 65C02 is documented. The `.cpu` names and the 6809 and RV32I syntax aren't, and README's `input.cpu` lists `65C02` only.
+- **Segment pad value:** `padValue` in the project file, `pad` in `.segment`. Document both, or unify.

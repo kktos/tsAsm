@@ -6,7 +6,7 @@ Multi-CPU assembler in TypeScript (6502, 65C02, 6809, RV32I, ARM stub), usable a
 
 - `README.md`: install, CLI, project file, library API.
 - `REFERENCE.md`: the assembler language. Update it when a behaviour changes.
-- `TODO.md`: what's left to do, numbered (1.x bugs, 2.x code review, 4.x features).
+- `TODO.md`: what's left to do, numbered (1.x bugs, 2.x code review, 3.x syntax design questions, 4.x features, 5.x documentation).
 - `CHANGELOG.md`: what's done, by PR, with its TODO number.
 - `src/assembler` (parser, expressions, symbols, `polyasm.ts`), `src/directives`, `src/cpu`, `src/linker`, `src/cli`, tests in `src/tests`.
 
