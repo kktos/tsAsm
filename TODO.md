@@ -2,26 +2,7 @@
 
 Gathered on 2026-10-22/23 while fixing the code review (`tsAsm-code-review.md`, PRs #30–#68).
 Every repro below was re-checked on the code of #68.
-What is done is in `CHANGELOG.md`.
-
-## How we work
-
-- **One small PR per fix.** Keep unrelated findings out of it: list them as follow-ups.
-- **Behaviour and design choices are the maintainer's** (error vs warning, accepted ranges, semantics): ask, with options and a recommendation, before deciding.
-- For each fix:
-    - reproduce on `main` first;
-    - show a `main` vs PR table in the PR;
-    - check that the new tests fail on `main`;
-    - keep `tsc` at 0 errors and lint unchanged (18 warnings).
-- **Explicit, always:** something the assembler doesn't understand is an error, never silently ignored or truncated.
-- **Loops (`.repeat`, `.for`) are line generators, like the C preprocessor, not scopes:** what the body defines stays where the loop is, and only the iterators are local. Macros do have a scope per call.
-- **Errors:**
-    - throw `AsmError.at(message, token)` when a token is at hand, else a plain `Error` (the assembler locates it at the statement);
-    - messages say _what_ is wrong, never "on line N";
-    - warnings go through `assembler.warn()` / `runtime.warn()`.
-- **Checking the CLI:** build it with `pnpm exec rollup -c rollup.config.js --environment TARGET:cli` (`pnpm build:cli` bumps the version since #70), then run `node dist/tsasm proj.yaml` on a small project.
-- **`pnpm-workspace.yaml` is committed** since #71: it holds the pnpm 12 `allowBuilds` settings.
-- **Done items move to `CHANGELOG.md`:** under their area, newest PR first, headed by the PR and their TODO number (other items refer to them by it), the fix in _italics_ after the problem. Items keep their numbers here: a done one leaves a gap.
+What is done is in `CHANGELOG.md`. How we work (PR rules, design rules, commands) is in `CLAUDE.md`.
 
 ## 1. Bugs
 
