@@ -68,7 +68,6 @@ What a directive defines (`.macro`, `.equ`, `=`, `.let`, `.define`, `.function`,
 - **#1, two hand-copied passes:** `passOne` / `passTwo` and most directives' `handlePassOne` / `handlePassTwo` re-implement parsing separately. Suggested: one pass loop parametrised by the pass, each directive and instruction exposing `size()` and `emit()` from the same evaluation, and iterating until stable (max N passes) instead of reporting a phase error when a forward reference changes a size. Big: plan it first.
 - **#6, god objects:** `Assembler` exposes parser, linker and symbol table as public mutable fields and is passed whole to some directives, while others get `DirectiveRuntime`. `Linker` is a segment store, a DSL interpreter and an output image.
 - **#10, dead code:**
-    - `isVolatileScope` / `restoreAndPushScope` (check);
     - tests asserting buggy behaviour (e.g. "integer division" expecting `13/4` as a fraction).
 - **#11, test gaps:**
     - an "assemble twice, compare pass sizes" harness would catch the whole phase-error class;
