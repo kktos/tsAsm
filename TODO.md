@@ -42,10 +42,6 @@ REFERENCE says `lda #"A"` loads `$41`. It does on the 65C02, but on the 6502 `ld
 
 `.dw "A", 1` → `41 01 00`, `.dl "A", 1` → `41 01 00 00 00`: the table is misaligned. One word per char, or an error: decision needed.
 
-### 1.45 An instruction without operand takes a `}` as its operand
-
-`{ nop }` and `nop }` → `Invalid addressing mode for instruction NOP`: `getInstructionTokens` checks the line's first token for a `{`, not a `}`. `{ lda 1 }` works, and `.if 1 { nop }` too, the block being cut out first.
-
 ## 2. Code review, items left
 
 ### 2.1 CPU back-ends

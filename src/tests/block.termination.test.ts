@@ -26,4 +26,26 @@ describe("Block termination", () => {
 	it("should still assemble terminated and nested blocks", () => {
 		expect(assemble(".if 1\n.repeat 2\n nop\n.end\n.end\n.if 0\n nop\n.else\n rts\n.end")).toEqual([0xea, 0xea, 0x60]);
 	});
+
+	it.each([
+		["without operand", "{ nop }", [0xea]],
+		["in nested blocks", "{ { nop } }", [0xea]],
+		["followed by a block", "{ nop } { rts }", [0xea, 0x60]],
+		["on the accumulator", "{ asl a }", [0x0a]],
+		["with an operand", "{ lda 1 }", [0xa5, 0x01]],
+	])("should end an instruction %s at the '}' of a block on its line", (_, source, bytes) => {
+		expect(assemble(source)).toEqual(bytes);
+	});
+
+	it.each([
+		["without argument", "{ .once }", []],
+		["missing its argument", "{ .org }", "Missing expression."],
+	])("should end a directive %s at the '}' of a block on its line", (_, source, expected) => {
+		if (typeof expected === "string") expect(() => assemble(source)).toThrow(expected);
+		else expect(assemble(source)).toEqual(expected);
+	});
+
+	it("should reject a '}' that closes no block after an instruction", () => {
+		expect(() => assemble("nop }")).toThrow("Syntax error : Unbalanced braces. Depth: -1");
+	});
 });
