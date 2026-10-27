@@ -34,6 +34,14 @@ What is done is in `CHANGELOG.md`. How we work (PR rules, design rules, commands
 
 Since #150, a branch of `.if` not taken rejects an unknown directive starting a statement. Other blocks that aren't assembled still don't: `.repeat 0` / `.foobar` / `.end` and a macro never called with `.foobar` in its body assemble. In a branch not taken, a label without a colon before the directive isn't seen as a statement start (`lbl .foobar` passes, `lbl: .foobar` doesn't): telling it from an instruction's operand (`jmp .pc`) needs the CPU's mnemonics and the macros.
 
+### 1.50 `.list on` lists pass 1 when only pass 2 is asked
+
+With `output.listing: { enabled: true, passes: { pass2: true } }`, the statements after a `.list on` are also listed in pass 1, before the pass 2 header, with pass 1 values (`.db "<1 bytes>"`, `.fill "<4 bytes>"`, `1006: 00  NOP`). `.list on` should only turn back on the passes the project file lists.
+
+### 1.51 `listing: { enabled: true }` alone writes an empty listing
+
+Without a linker script, `output.listing: { enabled: true }` writes a `.lst` holding only `--- Assembly Complete ---`. It needs `passes: { pass2: true }` to list anything. Pass 2 should be listed by default, as README's example (`listing: enabled: true`) implies. With a linker script and `linker: true` (the conan game) pass 2 is listed.
+
 ## 2. Code review, items left
 
 ### 2.1 CPU back-ends
@@ -180,6 +188,14 @@ Two forms, parentheses always written:
 Order: the one-line form (store the expression's tokens, evaluate them with the parameters in scope); the block form with `.return`. Helpful with it: `.min`, `.max`, `.abs`, `.sin`, `.cos`, `.chr`, `.ord`.
 
 Decisions left: the bare `name(…)` call, the recursion limit.
+
+### 4.9 Fold a `.repeat` in the listing
+
+A generated table is listed one line per iteration: `.repeat 128 AS idx FROM 0` / `.db (idx % 16) * 16` gives 128 `.db` lines, where a `.hex` block of the same bytes is listed as a dump. An option to list a loop once, its header and then its bytes 16 per line: `.option listing.repeat "fold"` (or `"expand"`, today's behaviour), or `.list repeat fold`. Found in the conan game (`spritelib/tables.asm`, `spriteLo` / `spriteHi`). The workaround today, building a 16-value row in an array (between `.list off` / `.list on`, or every `row = .push(…)` is listed) then `.repeat 8` / `.db ...row`, is clumsier than the one-line loop it replaces.
+
+### 4.10 Building an array without a loop
+
+Building an array takes a loop of assignments (`row = .push(row, col * 16)`), each one listed. A built-in or an expression form would give it in one: `.range(start, count [, step])` with a `.map(array, function)` once user functions exist (4.8), or a comprehension, `[col * 16 for col in 0..15]`. Then `.db ...` emits it directly. Bigger than 4.9; decide the syntax with 4.8.
 
 ## 5. Documentation (REFERENCE.md)
 

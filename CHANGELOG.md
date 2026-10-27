@@ -6,6 +6,12 @@ The problem is described as it was before the fix, then the fix in _italics_.
 
 ## Assembler
 
+### #152 — `.fill` listed at its end address (TODO 1.49)
+
+`.org $1000` / `nop` / `.db 1` / `.fill 4, 2` / `nop` listed `1006: 02 02 02 02  .fill $04, $02`: the address where the fill ends, not where it starts (`$1002`). The bytes were written at the right place; only the listing was wrong. Same in a loop: `.repeat 4 AS r FROM 0` / `.fill 16, $E9 + r` at `$1080` listed its first line at `$1090`.
+
+_`.fill` takes the address before emitting its bytes, as `.align` does: `1002: 02 02 02 02`, and the loop's first line at `$1080`._
+
 ### #151 — `.repeat` counts from 1, `.for` from 0; text after a loop's iterator ignored (TODO 3.2, 1.48)
 
 `.repeat 3 AS i` gave 1, 2, 3, `.for … AS idx` 0, 1, 2, with no way to choose: `.dw base + i*8` is off by one, and ca65's `.repeat` counts from 0. Anything after `AS <iterator>` was ignored: `.repeat 3 AS i junk` and `.repeat 3 AS i FROM 0` gave `01 02 03`, `.repeat 3 AS` and `.repeat 3 AS 5` assembled.
