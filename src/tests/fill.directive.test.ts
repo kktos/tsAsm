@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { Assembler } from "../assembler/polyasm";
 import { Cpu6502Handler } from "../cpu/cpu6502.class";
+import { Logger } from "../helpers/logger.class";
+import { MemorySink } from "../helpers/memorysink.class";
 import type { Segment } from "../linker/linker.class";
 import { MockFileHandler } from "./mockfilehandler.class";
 
@@ -107,5 +109,43 @@ describe("Directive: .fill", () => {
 				location: expect.objectContaining({ line: 2 }),
 			}),
 		);
+	});
+
+	describe("listing", () => {
+		/** The pass 2 listing lines that have bytes, each from its address up to the directive. */
+		function listBytes(source: string): string[] {
+			const sink = new MemorySink();
+			const lister = new Assembler(new Cpu6502Handler(), new MockFileHandler(), {
+				logger: new Logger({ sink, enabled: true }),
+				log: { pass2Enabled: true },
+			});
+			lister.assemble(source);
+			return sink.logs.filter((line) => /^[0-9A-F]{4}: [0-9A-F]{2} /.test(line)).map((line) => line.replace(/\s+/g, " ").trim());
+		}
+
+		it("lists a .fill at the address it starts at", () => {
+			const listing = listBytes(`
+				.org $1000
+				nop
+				.db 1
+				.fill 4, 2
+				nop
+			`);
+			expect(listing.map((line) => line.slice(0, 5))).toEqual(["1000:", "1001:", "1002:", "1006:"]);
+			expect(listing[2]).toMatch(/^1002: 02 02 02 02 \.FILL \$04, \$02/i);
+		});
+
+		it("lists each .fill of a loop at the address it starts at", () => {
+			const listing = listBytes(`
+				.org $1080
+				.repeat 4 AS r FROM 0
+				.fill 16, $E9 + r
+				.end
+			`);
+			// The listing writes 8 bytes per line.
+			expect(listing.map((line) => line.slice(0, 5))).toEqual(["1080:", "1088:", "1090:", "1098:", "10A0:", "10A8:", "10B0:", "10B8:"]);
+			expect(listing[0]).toMatch(/^1080: (E9 ){8}\.FILL \$10, \$E9/i);
+			expect(listing[6]).toMatch(/^10B0: (EC ){8}\.FILL \$10, \$EC/i);
+		});
 	});
 });

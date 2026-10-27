@@ -46,10 +46,12 @@ export class FillDirective implements IDirective {
 			// Ensure filler value is a single byte
 			const byteValue = fillerValue & 0xff;
 			const bytes = Array.from({ length: count }, () => byteValue);
+			// Emitting moves the PC past the bytes: list them where they start.
+			const addr = context.PC.value;
 			context.emitbytes(bytes);
 
 			this.runtime.lister.directiveWithBytes({
-				addr: context.PC.value,
+				addr,
 				bytes,
 				pragma: directive,
 				params: [count as SymbolValue, fillerValue as SymbolValue] as SymbolValue[][],
