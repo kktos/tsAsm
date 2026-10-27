@@ -161,6 +161,17 @@ describe("Assembler - 6809 Opcodes", () => {
 		expect(code.slice(0, expectedBytes.length)).toEqual(expectedBytes);
 	});
 
+	it("should accept a one-char string as a value", () => {
+		const assembler = new Assembler(new Cpu6809Handler(), new MockFileHandler());
+		const source = `
+            .org $1000
+            LDA #"A"
+            LDB #"A"+1
+        `;
+		const code = assembler.link(assembler.assemble(source));
+		expect(code.slice(0, 4)).toEqual([0x86, 0x41, 0xc6, 0x42]);
+	});
+
 	// In pass 1, an operand using a symbol defined later has no value yet: its size is the worst case.
 	describe("operands defined later", () => {
 		const assemble = (source: string) => {

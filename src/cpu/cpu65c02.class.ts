@@ -497,7 +497,7 @@ export class Cpu65C02Handler implements CPUHandler {
 		if (operandTokens[0]?.value === "#") {
 			rejectSuffix();
 			const expressionTokens = operandTokens.slice(1);
-			const resolvedAddress = resolveValue(expressionTokens, 256);
+			const resolvedAddress = resolveValue(expressionTokens);
 			if (resolvedAddress !== null) assertFitsInBytes(resolvedAddress, 1, "Immediate value");
 			const [opcode, bytes] = getOpcode(this.M65C02_MODES.IMMEDIATE);
 			return {

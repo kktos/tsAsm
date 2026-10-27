@@ -468,7 +468,9 @@ describe("ExpressionEvaluator", () => {
 		it("should throw when a number is expected but a string is found", () => {
 			const { evaluator, tokenize } = setup();
 			const tokens = tokenize('"this is not a number"');
-			expect(() => evaluator.evaluateAsNumber(tokens, { PC: { value: 0 } })).toThrow("Expression did not evaluate to a number as expected.");
+			expect(() => evaluator.evaluateAsNumber(tokens, { PC: { value: 0 } })).toThrow(
+				'Only a one-character string can be used as a number: "this is not a number".',
+			);
 		});
 
 		it("should throw on invalid expression format", () => {
@@ -558,6 +560,67 @@ describe("ExpressionEvaluator", () => {
 			const { evaluator, tokenize } = setup();
 			const result = evaluator.evaluate(tokenize(expr), { PC: { value: 0 }, allowForwardRef: true });
 			expect(result).toBe(null);
+		});
+	});
+
+	describe("A one-char string as a number", () => {
+		it.each([
+			[`"A"+1`, 0x42],
+			[`1+"A"`, 0x42],
+			[`"A"-1`, 0x40],
+			[`"A"*2`, 0x82],
+			[`"H"|$80`, 0xc8],
+			[`$80|"H"`, 0xc8],
+			[`"a"&$DF`, 0x41],
+			[`"9"-"0"`, 9],
+			[`"A"<"B"`, 1],
+			[`"A"==65`, 1],
+			[`-"A"`, -0x41],
+			[`<"A"`, 0x41],
+			[`>"A"`, 0],
+			[`!"A"`, 0],
+		])("should use its character code: %s", (expr, expected) => {
+			const { evaluator, tokenize } = setup();
+			expect(evaluator.evaluate(tokenize(expr), { PC: { value: 0 } })).toBe(expected);
+		});
+
+		it.each([
+			[`"A"+"B"`, "AB"],
+			[`"A"=="A"`, 1],
+			[`"A"!="B"`, 1],
+		])("should keep the text between two strings: %s", (expr, expected) => {
+			const { evaluator, tokenize } = setup();
+			expect(evaluator.evaluate(tokenize(expr), { PC: { value: 0 } })).toBe(expected);
+		});
+
+		it("should give its character code where a number is expected", () => {
+			const { evaluator, tokenize } = setup();
+			expect(evaluator.evaluateAsNumber(tokenize(`"A"`), { PC: { value: 0 } })).toBe(0x41);
+		});
+
+		it.each([
+			[`"AB"+1`, `Only a one-character string can be used as a number: "AB".`],
+			[`1+"AB"`, `Only a one-character string can be used as a number: "AB".`],
+			[`"AB"|$80`, `Only a one-character string can be used as a number: "AB".`],
+			[`-"AB"`, `Only a one-character string can be used as a number: "AB".`],
+			[`<"AB"`, `Only a one-character string can be used as a number: "AB".`],
+			[`""+1`, `Only a one-character string can be used as a number: "".`],
+			[`"AB"-"C"`, "Operator '-' cannot be applied to strings."],
+		])("should throw on a longer string: %s", (expr, message) => {
+			const { evaluator, tokenize } = setup();
+			expect(() => evaluator.evaluate(tokenize(expr), { PC: { value: 0 } })).toThrow(message);
+		});
+
+		it.each([`"AB"`, `""`])("should throw where a number is expected: %s", (expr) => {
+			const { evaluator, tokenize } = setup();
+			expect(() => evaluator.evaluateAsNumber(tokenize(expr), { PC: { value: 0 } })).toThrow(
+				`Only a one-character string can be used as a number: ${expr}.`,
+			);
+		});
+
+		it("should pass a forward reference through", () => {
+			const { evaluator, tokenize } = setup();
+			expect(evaluator.evaluate(tokenize(`"A"+Later`), { PC: { value: 0 }, allowForwardRef: true })).toBe(null);
 		});
 	});
 

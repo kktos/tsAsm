@@ -12,6 +12,13 @@ import { nestingDelta } from "../utils/token.utils";
 import { type EvaluationContext, type EvaluatorHost, PRECEDENCE } from "./expression.types";
 
 const UNARY_TEST_OPERATORS = new Set([")", "]"]);
+// What two strings do as text: `+` joins them, the others compare them.
+const STRING_OPERATORS = new Set(["+", "=", "==", "!="]);
+
+/** A one-character string used as a number is its character code: `"A"+1` is $42. Anything else is returned as is. */
+const charCode = <T>(value: T): T | number => (typeof value === "string" && value.length === 1 ? value.charCodeAt(0) : value);
+const notACharMessage = (value: string) => `Only a one-character string can be used as a number: ${JSON.stringify(value)}.`;
+const UNARY_OPERATORS = new Set(["UNARY_MINUS", "!", "UNARY_LSB", "UNARY_MSB"]);
 
 export class ExpressionEvaluator {
 	public readonly functionDispatcher: FunctionDispatcher;
@@ -37,21 +44,12 @@ export class ExpressionEvaluator {
 	/**
 	 * A wrapper for evaluate that ensures the result is a number.
 	 * Throws an error if the expression evaluates to a string or array.
+	 * A one-character string is its character code: `lda #"A"`.
 	 */
 	public evaluateAsNumber(tokens: Token[], context: EvaluationContext) {
-		let result = this.evaluate(tokens, context);
-		if (context.numberMax && typeof result === "string") {
-			const maxLen = context.numberMax / 256;
-			if (result.length <= maxLen) {
-				let num = 0;
-				for (let idx = result.length - 1; idx >= 0; idx--) {
-					const charCode = result.charCodeAt(idx);
-					num = (num << 8) + charCode;
-				}
-				result = num;
-			}
-		}
+		const result = charCode(this.evaluate(tokens, context));
 
+		if (typeof result === "string") throw new Error(notACharMessage(result));
 		if (result !== null && typeof result !== "number") throw new Error("Expression did not evaluate to a number as expected.");
 
 		return result;
@@ -542,7 +540,9 @@ export class ExpressionEvaluator {
 		return stack[0] as SymbolValue;
 	}
 
-	private handleUnaryOperator(token: OperatorToken, right: SymbolValue | undefined | null, stack: (SymbolValue | null)[]): boolean {
+	private handleUnaryOperator(token: OperatorToken, operand: SymbolValue | undefined | null, stack: (SymbolValue | null)[]): boolean {
+		const right = charCode(operand);
+		if (typeof right === "string" && UNARY_OPERATORS.has(token.value)) throw AsmError.at(notACharMessage(right), token);
 		switch (token.value) {
 			case "UNARY_MINUS":
 				if (right === null) {
@@ -615,24 +615,22 @@ export class ExpressionEvaluator {
 		return false;
 	}
 
-	private handleBinaryOperator(token: OperatorToken, right: SymbolValue | undefined | null, stack: (SymbolValue | null)[]): void {
-		const left = stack.pop();
+	private handleBinaryOperator(token: OperatorToken, rightOperand: SymbolValue | undefined | null, stack: (SymbolValue | null)[]): void {
+		let left = stack.pop();
+		let right = rightOperand;
 		if (left === undefined || right === undefined) throw AsmError.at(`Binary operator '${token.value}' requires two operands.`, token);
+
+		// Two strings keep their text for + = == !=. Otherwise a one-char string is a number: "A"+1, $80|"H", "9"-"0".
+		if (typeof left !== "string" || typeof right !== "string" || (!STRING_OPERATORS.has(token.value) && left.length === 1 && right.length === 1)) {
+			left = charCode(left);
+			right = charCode(right);
+		}
+		// A longer string next to a number: "AB"+1, 1+"AB"
+		if (typeof left === "string" && typeof right === "number") throw AsmError.at(notACharMessage(left), token);
+		if (typeof right === "string" && typeof left === "number") throw AsmError.at(notACharMessage(right), token);
 
 		// Handle string operations first
 		if (typeof left === "string") {
-			// eg: "A" | $80
-			if (left.length === 1 && (typeof right === "number" || right === null)) {
-				switch (token.value) {
-					case "&":
-						stack.push(right === null ? null : left.charCodeAt(0) & right);
-						return;
-					case "|":
-						stack.push(right === null ? null : left.charCodeAt(0) | right);
-						return;
-				}
-			}
-
 			// when pass 1 and forward ref: not known yet, as with a number
 			if (right === null) {
 				stack.push(null);

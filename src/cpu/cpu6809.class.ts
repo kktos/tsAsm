@@ -284,7 +284,7 @@ export class Cpu6809Handler implements CPUHandler<Cpu6809ModeInfo> {
 
 	private parseIndexedMode(
 		operandTokens: OperatorStackToken[],
-		resolveValue: (tokens: OperatorStackToken[], numberMax?: number) => number | null,
+		resolveValue: (tokens: OperatorStackToken[]) => number | null,
 	): { postByte: number; extraBytes: number; resolvedAddress: number | null } {
 		const operandString = operandTokens
 			.map((t) => t.value)
@@ -389,7 +389,7 @@ export class Cpu6809Handler implements CPUHandler<Cpu6809ModeInfo> {
 	resolveAddressingMode(
 		mnemonic: string,
 		operandTokens: OperatorStackToken[],
-		resolveValue: (tokens: OperatorStackToken[], numberMax?: number) => number | null,
+		resolveValue: (tokens: OperatorStackToken[]) => number | null,
 	): Cpu6809ModeInfo {
 		const upperMnemonic = mnemonic.toUpperCase();
 		const numTokens = operandTokens.length;
