@@ -265,7 +265,7 @@ count:
 	.end
 	m
 `);
-		expect(assembler.symbolTable.getDict()["%%GLOBAL"]?.G).toBe("number = $01 ;main.asm:3:3");
+		expect(assembler.symbolTable.getDict().global?.G).toBe("number = $01 ;main.asm:3:3");
 	});
 
 	it("should give the include chain of a warning", () => {
