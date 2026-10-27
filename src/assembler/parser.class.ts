@@ -25,6 +25,7 @@ export class Parser {
 	private tokenStreamCache: Map<string, StreamState> = new Map();
 	public lexer: AssemblyLexer;
 	/** Per parser: the assembler and the linker don't have the same directives. */
+	private readonly directives: Set<string> = new Set();
 	private readonly blockDirectives: Set<string> = new Set();
 	private readonly rawDirectives: Map<string, GetRawBlock | undefined> = new Map();
 
@@ -36,8 +37,13 @@ export class Parser {
 
 	/** Inside a block, a block directive nests until its `.END`, and a raw directive reads its own tokens. */
 	public registerDirective(name: string, directive: Pick<IDirective, "isBlockDirective" | "isRawDirective" | "getRawBlock">) {
+		this.directives.add(name);
 		if (directive.isBlockDirective) this.blockDirectives.add(name);
 		if (directive.isRawDirective) this.rawDirectives.set(name, directive.getRawBlock);
+	}
+
+	public isKnownDirective(name: string): boolean {
+		return this.directives.has(name);
 	}
 
 	/** Local and anonymous labels are lexed with `labelSyntax` from the statement being read on. */

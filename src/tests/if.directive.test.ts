@@ -185,4 +185,271 @@ describe("Directive: .if/.else", () => {
 			}),
 		);
 	});
+
+	describe(".elseif", () => {
+		const assemble = (source: string) => {
+			const asm = createAssembler();
+			asm.assemble(source);
+			return asm.link();
+		};
+
+		it.each([
+			[1, [0xea]],
+			[2, [0x18]],
+			[3, [0x38]],
+			[4, [0x60]],
+		])("should assemble the first true branch, with a = %d", (a, bytes) => {
+			const source = `
+				a = ${a}
+				.if a == 1
+				nop
+				.elseif a == 2
+				clc
+				.elseif a >= 3 && a < 4
+				sec
+				.else
+				rts
+				.end
+			`;
+			expect(assemble(source)).toEqual(bytes);
+		});
+
+		it.each([
+			[1, [0xea]],
+			[2, [0x18]],
+			[3, [0x60]],
+		])("should assemble the first true branch with braces, with a = %d", (a, bytes) => {
+			const source = `
+				a = ${a}
+				.if a == 1 {
+				nop
+				} .elseif a == 2 {
+				clc
+				} .else {
+				rts
+				}
+			`;
+			expect(assemble(source)).toEqual(bytes);
+		});
+
+		it("should assemble nothing when no branch is true and there's no .else", () => {
+			const source = `
+				.if 0
+				nop
+				.elseif 0
+				clc
+				.end
+				rts
+			`;
+			expect(assemble(source)).toEqual([0x60]);
+		});
+
+		// TODO 1.39: it was skipped with the false branch, and the .else taken.
+		it("should not be skipped with a false .if branch", () => {
+			const source = `
+				.if 0
+				nop
+				.elseif 1
+				rts
+				.else
+				brk
+				.end
+			`;
+			expect(assemble(source)).toEqual([0x60]);
+		});
+
+		it("should not evaluate a condition after a branch taken", () => {
+			const source = `
+				.if 1
+				nop
+				.elseif .undefinedFunction(1) == 2
+				rts
+				.end
+			`;
+			expect(assemble(source)).toEqual([0xea]);
+		});
+
+		it("should handle nested .if blocks in its branches", () => {
+			const source = `
+				.if 0
+				nop
+				.elseif 1
+				.if 0
+				clc
+				.elseif 1
+				sec
+				.end
+				rts
+				.else
+				brk
+				.end
+			`;
+			expect(assemble(source)).toEqual([0x38, 0x60]);
+		});
+
+		it.each([
+			[
+				"without a condition",
+				`
+				.if 1
+				nop
+				.elseif
+				rts
+				.end
+			`,
+				"Missing expression.",
+				4,
+			],
+			[
+				"after the .else",
+				`
+				.if 1
+				nop
+				.else
+				rts
+				.elseif 1
+				brk
+				.end
+			`,
+				"Unexpected .ELSEIF: the .ELSE branch must be the last one.",
+				6,
+			],
+			[
+				"after the .else, with braces",
+				`
+				.if 1 {
+				nop
+				} .else {
+				rts
+				} .elseif 1 {
+				brk
+				}
+			`,
+				"Unexpected .ELSEIF: the .ELSE branch must be the last one.",
+				6,
+			],
+			[
+				"as a second .else",
+				`
+				.if 0
+				nop
+				.else
+				rts
+				.else
+				brk
+				.end
+			`,
+				"Unexpected .ELSE: the .ELSE branch must be the last one.",
+				6,
+			],
+			["missing its .end", ".if 0\nnop\n.elseif 1\nrts", "Missing .END for the .ELSEIF block.", 3],
+		])("should be an error %s", (_, source, message, line) => {
+			expect(() => assemble(source)).toThrow(expect.objectContaining({ message, location: expect.objectContaining({ line }) }));
+		});
+	});
+
+	describe("a branch not taken", () => {
+		const assemble = (source: string) => {
+			const asm = createAssembler();
+			asm.assemble(source);
+			return asm.link();
+		};
+
+		it.each([
+			[
+				"a false .if",
+				`
+				.if 0
+				.foobar 1
+				.end
+			`,
+				3,
+			],
+			[
+				"a false .elseif",
+				`
+				.if 0
+				.elseif 0
+				.foobar 1
+				.end
+			`,
+				4,
+			],
+			[
+				"an .elseif after a branch taken",
+				`
+				.if 1
+				.elseif 1
+				.foobar 1
+				.end
+			`,
+				4,
+			],
+			[
+				"an .else after a branch taken",
+				`
+				.if 1
+				.else
+				.foobar 1
+				.end
+			`,
+				4,
+			],
+			[
+				"a false .if, after a label",
+				`
+				.if 0
+				lbl: .foobar 1
+				.end
+			`,
+				3,
+			],
+			[
+				"a false .if, with braces",
+				`
+				.if 0 {
+				.foobar 1
+				}
+			`,
+				3,
+			],
+			[
+				"a block in a false .if",
+				`
+				.if 0
+				.repeat 2
+				.foobar 1
+				.end
+				.end
+			`,
+				4,
+			],
+		])("should reject an unknown directive in %s", (_, source, line) => {
+			expect(() => assemble(source)).toThrow(
+				expect.objectContaining({ message: "Syntax error - Unexpected directive 'FOOBAR'", location: expect.objectContaining({ line }) }),
+			);
+		});
+
+		it("should accept the directives, system variables and functions it holds", () => {
+			const source = `
+				.if 0
+				lbl: .db .pc, .len("ab")
+				.repeat 2
+				.dw .pc
+				.end
+				.if 1
+				.elseif 0
+				.else
+				.end
+				.macro m
+				.end
+				.hex
+				01 02
+				.end
+				.end
+				rts
+			`;
+			expect(assemble(source)).toEqual([0x60]);
+		});
+	});
 });
