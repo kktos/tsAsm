@@ -177,6 +177,21 @@ describe("CpuDirective", () => {
 			expect(create([new Cpu6502Handler(), new CpuRV32IHandler()], "rv32i").getCPUHandler().cpuType).toBe("RV32I");
 		});
 
+		it("start each pass with the first one, or the one the cpu option names", () => {
+			const source = `
+				stz $44
+				.cpu 6502
+				nop
+			`;
+			assembler = create([new Cpu65C02Handler(), new Cpu6502Handler()]);
+			assembler.assemble(source);
+			expect(assembler.link()).toEqual([0x64, 0x44, 0xea]);
+
+			assembler = create([new Cpu6502Handler(), new Cpu65C02Handler()], "65C02");
+			assembler.assemble(source);
+			expect(assembler.link()).toEqual([0x64, 0x44, 0xea]);
+		});
+
 		it("must hold the one the cpu option names", () => {
 			expect(() => create([new Cpu6502Handler(), new Cpu65C02Handler()], "6809")).toThrow("Unknown CPU name '6809': the CPUs are 6502, 65C02.");
 		});
