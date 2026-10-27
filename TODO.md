@@ -30,10 +30,6 @@ What is done is in `CHANGELOG.md`. How we work (PR rules, design rules, commands
 
 There's no `.elseif`. In a true branch, it's an error (`Syntax error - Unexpected directive 'ELSEIF'`), but in a false one it's skipped with the branch: `.if 0` / `nop` / `.elseif 1` / `rts` / `.else` / `brk` / `.end` → `00`. A false branch doesn't check its directives at all: `.if 0` / `.foobar 1` / `.end` assembles. Adding `.elseif` is 4.3.
 
-### 1.40 A one-char string as a number
-
-REFERENCE says `lda #"A"` loads `$41`. It does on the 65C02, but on the 6502 `lda #"A"`, `ldx #"A"`, `cmp #"A"` → `Expression did not evaluate to a number as expected.` (one more 2.1 duplication). On every CPU, `.db "A"+1` → `Binary operator '+' requires two strings.`, so `"H" | $80` can't be written either. `"A" + 1` is concatenation or `$42`: decision needed.
-
 ### 1.41 A macro's or a function's labels end the caller's local label scope
 
 `start:` / `:l nop` / `m` / `jmp :l`, with `.macro m` / `lbl: nop` / `.end` → `Undefined local label ':l' in scope 'LBL'`, though `LBL` is local to the macro call. Same with a label in a `.proc` body: a `:l` before `.proc f` / `x: rts` / `.end` isn't found after it (that one may be wanted: decide).
@@ -150,7 +146,7 @@ As ca65's `.org` in a relocatable segment, ACME's `!pseudopc` or 64tass's `.logi
 
 ### 4.6 Character mapping
 
-`.charmap` / `.encoding`, or at least a high-bit string directive. Apple II `COUT` expects high-bit chars: the README's `.cstr "HELLO"` doesn't print `HELLO`. 1.40 also blocks `"H" | $80`.
+`.charmap` / `.encoding`, or at least a high-bit string directive. Apple II `COUT` expects high-bit chars: the README's `.cstr "HELLO"` doesn't print `HELLO`. One char at a time works since 1.40: `.db "H"|$80`.
 
 ### 4.7 Smaller ones
 

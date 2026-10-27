@@ -561,6 +561,63 @@ describe("ExpressionEvaluator", () => {
 		});
 	});
 
+	describe("A one-char string as a number", () => {
+		it.each([
+			[`"A"+1`, 0x42],
+			[`1+"A"`, 0x42],
+			[`"A"-1`, 0x40],
+			[`"A"*2`, 0x82],
+			[`"H"|$80`, 0xc8],
+			[`$80|"H"`, 0xc8],
+			[`"a"&$DF`, 0x41],
+			[`"9"-"0"`, 9],
+			[`"A"<"B"`, 1],
+			[`"A"==65`, 1],
+			[`-"A"`, -0x41],
+			[`<"A"`, 0x41],
+			[`>"A"`, 0],
+			[`!"A"`, 0],
+		])("should use its character code: %s", (expr, expected) => {
+			const { evaluator, tokenize } = setup();
+			expect(evaluator.evaluate(tokenize(expr), { PC: { value: 0 } })).toBe(expected);
+		});
+
+		it.each([
+			[`"A"+"B"`, "AB"],
+			[`"A"=="A"`, 1],
+			[`"A"!="B"`, 1],
+		])("should keep the text between two strings: %s", (expr, expected) => {
+			const { evaluator, tokenize } = setup();
+			expect(evaluator.evaluate(tokenize(expr), { PC: { value: 0 } })).toBe(expected);
+		});
+
+		it("should give its character code where a number is expected", () => {
+			const { evaluator, tokenize } = setup();
+			expect(evaluator.evaluateAsNumber(tokenize(`"A"`), { PC: { value: 0 } })).toBe(0x41);
+		});
+
+		it.each([
+			[`"AB"+1`, "Binary operator '+' requires two strings."],
+			[`1+"AB"`, "Binary operator '+' requires two numbers."],
+			[`"AB"-"C"`, "Operator '-' cannot be applied to strings."],
+			[`-"AB"`, "Unary operator requires a numeric operand."],
+			[`""+1`, "Binary operator '+' requires two strings."],
+		])("should throw on a longer string: %s", (expr, message) => {
+			const { evaluator, tokenize } = setup();
+			expect(() => evaluator.evaluate(tokenize(expr), { PC: { value: 0 } })).toThrow(message);
+		});
+
+		it.each([`"AB"`, `""`])("should throw where a number is expected: %s", (expr) => {
+			const { evaluator, tokenize } = setup();
+			expect(() => evaluator.evaluateAsNumber(tokenize(expr), { PC: { value: 0 } })).toThrow("Expression did not evaluate to a number as expected.");
+		});
+
+		it("should pass a forward reference through", () => {
+			const { evaluator, tokenize } = setup();
+			expect(evaluator.evaluate(tokenize(`"A"+Later`), { PC: { value: 0 }, allowForwardRef: true })).toBe(null);
+		});
+	});
+
 	describe("Defined later (pass 1)", () => {
 		it.each(["Later[1]", "[1, 2][Later]", "Later[0][1]", "Later.name", "Later.towns[1].name", ".LEN(Later[0])"])(
 			"should give null (not known yet): %s",

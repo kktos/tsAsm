@@ -59,7 +59,6 @@ export interface EvaluationContext {
 	macroArgs?: Map<string, Token[]>;
 	allowForwardRef?: boolean;
 	currentLabel?: string | null;
-	numberMax?: number;
 }
 
 /** What the evaluator asks of the assembler or the linker it evaluates for. */

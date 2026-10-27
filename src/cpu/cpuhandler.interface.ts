@@ -43,11 +43,7 @@ export interface CPUHandler<TModeInfo extends ModeInfo = ModeInfo> {
 	 * based on the mnemonic and the structure of the operand tokens.
 	 * @param resolveValue A function provided by the Assembler to evaluate expressions.
 	 */
-	resolveAddressingMode(
-		mnemonic: string,
-		operandTokens: OperatorStackToken[],
-		resolveValue: (tokens: OperatorStackToken[], numberMax?: number) => number | null,
-	): TModeInfo;
+	resolveAddressingMode(mnemonic: string, operandTokens: OperatorStackToken[], resolveValue: (tokens: OperatorStackToken[]) => number | null): TModeInfo;
 
 	/** Checks if a given mnemonic corresponds to a known instruction for this CPU. */
 	isInstruction(mnemonic: string): boolean;

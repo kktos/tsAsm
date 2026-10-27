@@ -101,6 +101,16 @@ describe("Data Directives", () => {
 		expect(assembler.link()).toEqual(expected);
 	});
 
+	it.each([
+		['.DB "A"+1, $80|"H", "9"-"0"', [0x42, 0xc8, 0x09]],
+		['.DB "A"+"B"', [0x41, 0x42]],
+		['.DW "A"+1', [0x42, 0x00]],
+	])("should use a one-char string's code in an expression: %s", (source, expected) => {
+		const assembler = createAssembler();
+		assembler.assemble(source);
+		expect(assembler.link()).toEqual(expected);
+	});
+
 	it("should count one element per character in pass one", () => {
 		const assembler = createAssembler();
 		assembler.assemble(`.DW "AB"

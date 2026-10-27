@@ -632,13 +632,12 @@ export class Assembler {
 		const instructionPC = this.PC.value;
 
 		// It's an instruction. Resolve its size and advance the PC.
-		const sizeInfo = this.cpuHandler.resolveAddressingMode(mnemonicToken.value, operandTokens, (exprTokens, numberMax = 0) =>
+		const sizeInfo = this.cpuHandler.resolveAddressingMode(mnemonicToken.value, operandTokens, (exprTokens) =>
 			this.expressionEvaluator.evaluateAsNumber(exprTokens, {
 				PC: this.PC,
 				allowForwardRef: true,
 				currentLabel: this.lastGlobalLabel,
 				macroArgs: currentStream.macroArgs,
-				numberMax,
 			}),
 		);
 		this.PC.value += sizeInfo.bytes;
@@ -660,12 +659,11 @@ export class Assembler {
 			if (currentStream.macroArgs) operandTokens = this.substituteTokens(operandTokens, currentStream.macroArgs) as OperatorStackToken[];
 
 			// 1. Resolve Mode & Address
-			const modeInfo = this.cpuHandler.resolveAddressingMode(mnemonicToken.value, operandTokens, (exprTokens, numberMax = 0) =>
+			const modeInfo = this.cpuHandler.resolveAddressingMode(mnemonicToken.value, operandTokens, (exprTokens) =>
 				this.expressionEvaluator.evaluateAsNumber(exprTokens, {
 					PC: this.PC,
 					currentLabel: this.lastGlobalLabel,
 					macroArgs: currentStream.macroArgs,
-					numberMax,
 				}),
 			);
 

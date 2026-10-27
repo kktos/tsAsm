@@ -267,6 +267,16 @@ describe("6502 Opcodes", () => {
 		]);
 	});
 
+	it("should accept a one-char string as an 8-bit value", () => {
+		const source = `
+			lda #"A"
+			ldx #'A'
+			cmp #"A"+1
+			ldy #$80|"H"
+        `;
+		expect(assembleAndGetCode(source)).toEqual([0xa9, 0x41, 0xa2, 0x41, 0xc9, 0x42, 0xa0, 0xc8]);
+	});
+
 	// In pass 1, an operand using a symbol defined later has no value yet: its size is the worst case.
 	describe("operands defined later", () => {
 		it.each([
