@@ -88,6 +88,12 @@ describe("CpuDirective", () => {
 					.cpu (CPU)
 				`),
 			).toBe("65C02");
+			expect(
+				cpuAfter(`
+					C02 = 1
+					.cpu .iif(C02, "65C02", "6502")
+				`),
+			).toBe("65C02");
 		});
 
 		it("is read as a word in a skipped .if, a .repeat and a macro", () => {
