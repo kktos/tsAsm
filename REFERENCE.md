@@ -574,7 +574,12 @@ TARGET = "65C02"
 .cpu TARGET         ; error: Unknown CPU name 'TARGET'.
 ```
 
-To choose the CPU depending on a condition, use `.if`.
+To choose the CPU depending on a condition, use `.iif()` (or `.if`). The CPU is needed from pass 1 on, so the symbols must be defined before the `.cpu`.
+
+```as
+C02 = 1
+.cpu .iif(C02, "65C02", "6502")
+```
 
 ## System variables
 

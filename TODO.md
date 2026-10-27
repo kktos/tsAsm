@@ -42,6 +42,10 @@ With `output.listing: { enabled: true, passes: { pass2: true } }`, the statement
 
 Without a linker script, `output.listing: { enabled: true }` writes a `.lst` holding only `--- Assembly Complete ---`. It needs `passes: { pass2: true }` to list anything. Pass 2 should be listed by default, as README's example (`listing: enabled: true`) implies. With a linker script and `linker: true` (the conan game) pass 2 is listed.
 
+### 1.56 `.cpu` with a symbol defined after it
+
+`.cpu .iif(C02, "65C02", "6502")` / `C02 = 1` → `.CPU name must evaluate to a string.`: in pass 1, `C02` isn't defined yet. The CPU is needed from pass 1 on (it sizes the instructions), so it's an error, but the message should say why: the symbol is undefined, and it must be defined before the `.cpu`.
+
 ## 2. Code review, items left
 
 ### 2.1 CPU back-ends
@@ -188,6 +192,10 @@ A generated table is listed one line per iteration: `.repeat 128 AS idx FROM 0` 
 ### 4.10 Building an array without a loop
 
 Building an array takes a loop of assignments (`row = .push(row, col * 16)`), each one listed. A built-in or an expression form would give it in one: `.range(start, count [, step])` with a `.map(array, function)` once user functions exist (4.8), or a comprehension, `[col * 16 for col in 0..15]`. Then `.db ...` emits it directly. Bigger than 4.9; decide the syntax with 4.8.
+
+### 4.12 The CPUs an assembler can switch to
+
+The `Assembler` is given one `CPUHandler`, and `.cpu` creates any CPU from the full list in `src/cpu/index.ts` (so a library build bundles them all). It should be given one or more, and `.cpu` only switch to those, with the list in the error: `Unknown CPU name '6809'.` → which ones it has. To decide: the constructor's shape (one or an array, which one the source starts with), and how the project file's `input.cpu` gives the list to the CLI.
 
 ## 5. Documentation (REFERENCE.md)
 
