@@ -1,3 +1,4 @@
+import type { LocalOptions } from "../../assembler/options";
 import type { Parser } from "../../assembler/parser.class";
 import type { PASymbolTable } from "../../assembler/symbol.class";
 import type { ILister } from "../../helpers/lister.class";
@@ -24,6 +25,8 @@ export class MacroHandler {
 		private readonly maxDepth = DEFAULT_MAX_MACRO_DEPTH,
 		/** Replaces macro parameters in tokens by their arguments. Needed to forward parameters to a nested macro call. */
 		private readonly substituteArgs?: (tokens: Token[], macroArgs: Map<string, Token[]>) => Token[],
+		/** Sets the local options for a macro body, until the function it returns. None in a link script, without `.option`. */
+		private readonly useLocalOptions?: (options: LocalOptions) => () => void,
 	) {}
 
 	/** At the start of a pass: the expansions are numbered from 0 again, so pass 2 finds pass 1's scopes. */
@@ -120,12 +123,18 @@ export class MacroHandler {
 
 		this.lister.macro(macroToken.raw as string, passedArgsArray);
 
+		// The body runs as written, wherever it's called: with the local options where the macro is defined.
+		const restoreOptions = this.useLocalOptions?.(definition.options);
+
 		this.parser.pushTokenStream({
 			newTokens,
 			macroArgs,
 			macroName,
 			macroCall: macroToken,
-			onEndOfStream: () => this.symbolTable.popScope({ wannaSave: true }),
+			onEndOfStream: () => {
+				this.symbolTable.popScope({ wannaSave: true });
+				restoreOptions?.();
+			},
 		});
 	}
 

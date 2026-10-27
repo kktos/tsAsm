@@ -333,22 +333,30 @@ A branch not taken isn't assembled, but it's checked: an unknown character is an
 
 ## Loops
 
-`.repeat <count> [AS <iterator>]` repeats a block. The iterator counts from `1`. `count` is a whole number: `0` skips the block.
+`.repeat <count> [AS <iterator> [FROM <start>]]` repeats a block. `count` is a whole number: `0` skips the block. The iterator counts from `1`, or from `start`.
 
 ```as
 .repeat 3 AS i
     .db i       ; 01 02 03
 .end
+.repeat 3 AS i FROM 0
+    .db i       ; 00 01 02
+.end
 ```
 
-`.for <item> of <array> [AS <index>]` repeats a block for each element of an array. The index counts from `0`.
+`.for <item> of <array> [AS <index> [FROM <start>]]` repeats a block for each element of an array. The index counts from `0`, or from `start`: the items always start at the array's first.
 
 ```as
 colours = ["red", "green", "blue"]
 .for colour of colours AS idx
-    .log idx, colour
+    .log idx, colour    ; idx: 0, 1, 2
+.end
+.for colour of colours AS idx FROM 1
+    .log idx, colour    ; idx: 1, 2, 3
 .end
 ```
+
+`start` is a whole number, negative too, from an expression whose symbols are defined before the loop. Without `FROM`, the iterator starts at the value of the [local option](#global-and-local-options) `repeat.start` or `for.start`: `1` and `0` unless changed. `FROM` needs `AS`, and nothing else can end the header: `.repeat 3 AS i, j` and `.repeat 3 FROM 0` are errors.
 
 A loop only generates lines, as if the block were written out once per iteration: it has no scope of its own.
 
@@ -490,20 +498,56 @@ For columns that line up, build each line with `.pad()`: a tab moves to the next
 | `.option local.prefix "<char>"`                  | Change the prefix of [local labels](#local-labels) (default `:`)                         |
 | `.option anon.marker "<char>"`                   | Change the char of [anonymous labels](#anonymous-labels), alone or `-`/`+` (default `:`) |
 | `.option listing.case "<case>"`                  | How the listing writes the instructions: `upper` (default), `lower` or `source`          |
+| `.option repeat.start <n>`                       | Where a [`.repeat`](#loops) iterator without `FROM` starts: `0` or `1` (default `1`)     |
+| `.option for.start <n>`                          | Where a [`.for`](#loops) index without `FROM` starts: `0` or `1` (default `0`)           |
 
 The char is one of `:` `@` `!` `?` `_` `~`, and the two options can have different ones. Elsewhere, the char keeps its meaning: with `anon.marker "!"`, `!x` and `!=` are still operators.
 
 `listing.case` applies to the mnemonics, registers and symbols of the listed instructions: `Sta Screen,x` is listed `STA SCREEN,X`, `sta screen,x`, or with `source` as written. Numbers are listed in hex.
 
-An option takes effect from the next line on, in the rest of the file and in the files it includes. One set in an included file stays set after the `.include`. A macro body keeps the chars of where the macro is defined. In a block (`.if`, `.repeat`, …), an option takes effect after the block: its lines are read before they run.
+### Global and local options
 
-The project file's `input.options` (or the `options` given to the `Assembler`) sets the values each source starts with. To include a source written for another assembler:
+The project file's `input.options` (or the `options` given to the `Assembler`) sets the values the source starts with. Then `.option` changes a value, and how far the change reaches depends on the kind of option.
+
+**Global options**: `local.prefix`, `anon.marker` and `listing.case`. They are about how the source is read, so they follow the reading order:
+
+- An option takes effect from the next line on, in the rest of the file and in the files it includes. One set in an included file stays set after the `.include`.
+- A macro body keeps the chars of where the macro is defined.
+- In a block (`.if`, `.repeat`, …), an option takes effect after the block: its lines are read before they run.
+
+To include a source written for another assembler:
 
 ```as
 .option local.prefix "@"    ; ca65's cheap local labels
 .include "foreign.s"
 .option local.prefix ":"
 ```
+
+**Local options**: `repeat.start` and `for.start`. They are about what the code means, so each file decides for itself, and its loops count the same wherever it's included:
+
+- Each file starts with the values the assembler was given, not with its includer's.
+- An option takes effect from the next statement on, until the end of its file: after an `.include`, the includer's values are back.
+- A macro body runs with the values of where the macro is defined, not of where it's called. An `.option` in the body lasts until the end of the call.
+- In a block, an option takes effect from the next statement, as the block runs: a `.repeat` after it, in the block, uses it.
+
+```as
+; lib.s
+.macro table n
+    .repeat n AS i
+        .db i
+    .end
+.end
+
+; main.s
+.option repeat.start 0
+.include "lib.s"        ; lib.s starts with repeat.start 1
+    table 3             ; 01 02 03: the start of where table is defined
+.repeat 3 AS i          ; back in main.s, repeat.start 0
+    .db i               ; 00 01 02
+.end
+```
+
+To set a local option for the whole project, give it in the project file.
 
 ## System variables
 

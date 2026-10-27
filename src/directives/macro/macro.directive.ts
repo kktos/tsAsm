@@ -1,6 +1,8 @@
+import { LOCAL_OPTIONS } from "../../assembler/options";
 import type { IdentifierToken, ScalarToken } from "../../shared/lexer/lexer.class";
 import { AsmError } from "../../utils/error.utils";
 import type { DirectiveContext, DirectiveRuntime, IDirective } from "../directive.interface";
+import type { MacroDefinition } from "./macro.interface";
 
 export class MacroDirective implements IDirective {
 	public isBlockDirective = true;
@@ -51,6 +53,7 @@ export class MacroDirective implements IDirective {
 			body: bodyTokens,
 			endPosition,
 			...this.definitionSite(directive, context),
+			options: Object.fromEntries(LOCAL_OPTIONS.map((name) => [name, this.runtime.option(name)])) as MacroDefinition["options"],
 		});
 		this.runtime.macroHandler.markReached(macroName);
 

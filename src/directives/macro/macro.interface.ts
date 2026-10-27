@@ -1,3 +1,4 @@
+import type { LocalOptions } from "../../assembler/options";
 import type { Token } from "../../shared/lexer/lexer.class";
 import type { IncludeStack } from "../../utils/error.utils";
 
@@ -15,4 +16,6 @@ export interface MacroDefinition {
 	column: number;
 	/** The `.include` directives its file was reached through. */
 	includeStack: IncludeStack;
+	/** The local options where it's defined: its body runs with them. */
+	options: LocalOptions;
 }

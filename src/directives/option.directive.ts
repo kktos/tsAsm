@@ -1,4 +1,4 @@
-import { isOptionName, optionValueError } from "../assembler/options";
+import { isOptionName, type OptionValue, optionValueError } from "../assembler/options";
 import type { Assembler } from "../assembler/polyasm";
 import type { ScalarToken } from "../shared/lexer/lexer.class";
 import type { DirectiveContext, IDirective } from "./directive.interface";
@@ -44,6 +44,6 @@ export class OptionDirective implements IDirective {
 		const error = optionValueError(optionName, optionValue);
 		if (error) throw new Error(error);
 
-		this.assembler.setOption(optionName, optionValue as string);
+		this.assembler.setOption(optionName, optionValue as OptionValue);
 	}
 }

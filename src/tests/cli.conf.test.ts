@@ -62,6 +62,20 @@ describe("CLI conf", () => {
 		expect(errors).toEqual([{ path: "input.options.listing.case", message: "Must be one of 'upper', 'lower', 'source'" }]);
 	});
 
+	it("accepts repeat.start and for.start of 0 or 1", () => {
+		const { conf, errors } = readConfFrom(`${confWithCpu("6502")}  options:\n    repeat.start: 0\n    for.start: 1\n`);
+		expect(errors).toBeUndefined();
+		expect(conf.input.options).toEqual({ "repeat.start": 0, "for.start": 1 });
+	});
+
+	it("reports a repeat.start or a for.start that isn't 0 or 1", () => {
+		const { errors } = readConfFrom(`${confWithCpu("6502")}  options:\n    repeat.start: 2\n    for.start: "0"\n`);
+		expect(errors).toEqual([
+			{ path: "input.options.repeat.start", message: "Must be one of 0, 1" },
+			{ path: "input.options.for.start", message: "Expected number" },
+		]);
+	});
+
 	it("reports a cpu of the wrong type instead of crashing", () => {
 		const { errors } = readConfFrom(confWithCpu("true"));
 		expect(errors).toEqual([{ path: "input.cpu", message: "Expected string, got boolean" }]);
