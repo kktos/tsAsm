@@ -234,6 +234,11 @@ export class Assembler {
 		};
 	}
 
+	/** Each pass starts with the CPU the assembler was given: pass 2 doesn't start with the one pass 1 ended with. */
+	private resetCPU() {
+		this.cpuHandler = this.initialCpuHandler;
+	}
+
 	/** Each pass starts with the options the assembler was given: the passes read the `.option`s in the same order. */
 	private resetOptions() {
 		for (const [name, value] of Object.entries(this.initialOptions)) this.applyOption(name as OptionName, value);
@@ -260,13 +265,12 @@ export class Assembler {
 		if (this.segmentDefinitions[0]) this.linker.useSegment(this.segmentDefinitions[0].name);
 	}
 
-	/** Back to the state after construction: no symbols, macros or emitted code, the initial CPU and segments. */
+	/** Back to the state after construction: no symbols, macros or emitted code, the initial segments. */
 	private reset() {
 		this.symbolTable.reset();
 		this.macroHandler.macroDefinitions.clear();
 		this.linker.reset();
 		this.addConfiguredSegments();
-		this.cpuHandler = this.initialCpuHandler;
 	}
 
 	public assemble(source: string): Segment[] {
@@ -330,6 +334,7 @@ export class Assembler {
 		this.pass = 1;
 		this.symbolTable.pass = 1;
 		this.statementToken = undefined;
+		this.resetCPU();
 		this.resetOptions();
 		this.namelessLabels.clear();
 		this.macroHandler.rewind();
@@ -482,6 +487,7 @@ export class Assembler {
 		this.pass = 2;
 		this.symbolTable.pass = 2;
 		this.statementToken = undefined;
+		this.resetCPU();
 		this.resetOptions();
 		this.namelessLabels.rewind();
 		this.macroHandler.rewind();

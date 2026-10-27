@@ -46,10 +46,6 @@ Without a linker script, `output.listing: { enabled: true }` writes a `.lst` hol
 
 `.cpu .iif(C02, "65C02", "6502")` / `C02 = 1` → `.CPU name must evaluate to a string.`: in pass 1, `C02` isn't defined yet. The CPU is needed from pass 1 on (it sizes the instructions), so it's an error, but the message should say why: the symbol is undefined, and it must be defined before the `.cpu`.
 
-### 1.57 Pass 2 starts with the CPU pass 1 ended with
-
-`input.cpu: 65C02` (or `new Assembler(new Cpu65C02Handler(), …)`) and `stz $44` / `.cpu 6502` / `nop` → `EA`: the `STZ` is lost, silently. Pass 2 starts with the 6502, where pass 1 ended, so `stz` is read as a label and the `$44` after it is dropped. Each pass should start with the initial CPU, as `assemble()` does.
-
 ## 2. Code review, items left
 
 ### 2.1 CPU back-ends

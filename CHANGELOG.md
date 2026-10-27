@@ -6,6 +6,12 @@ The problem is described as it was before the fix, then the fix in _italics_.
 
 ## Assembler
 
+### #162 — Pass 2 started with the CPU pass 1 ended with (TODO 1.57)
+
+`input.cpu: 65C02` (or `new Assembler(new Cpu65C02Handler(), …)`) and `stz $44` / `.cpu 6502` / `nop` → `EA`: the `STZ` was lost, silently. Pass 2 started with the 6502, where pass 1 ended, so `stz` was read as a label and the `$44` after it dropped. Only `assemble()` went back to the initial CPU, between two calls.
+
+_Each pass starts with the initial CPU, as it does with the options: `64 44 EA`._
+
 ### #159 — `.cpu` needs quotes (TODO 3.8)
 
 `.cpu "65C02"` needed quotes, `.segment BOOT` and `.module GAME` didn't. `.cpu 65C02` → `Invalid number '65C02'.`, from the lexer, even in a `.if 0`; `.cpu 6502` and `.cpu rv32i` → `.CPU name must evaluate to a string.` The name was an expression, for a CPU chosen by a symbol.
