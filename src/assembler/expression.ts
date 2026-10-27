@@ -475,7 +475,7 @@ export class ExpressionEvaluator {
 						}
 
 						// 2. Symbol Table (Identifier)
-						let val = this.symbolTable.lookupSymbol(name);
+						let val = this.lookupVariable(name, token);
 						if (Array.isArray(val) && val[0]?.type) return this.evaluate(val as Token[], context);
 						if (val !== undefined) return val;
 
@@ -728,6 +728,13 @@ export class ExpressionEvaluator {
 		}
 	}
 
+	/** A symbol's value: an error for a variable used before it's assigned, when it's assigned more than once. */
+	private lookupVariable(name: string, position: { line: number | string; column: number }): SymbolValue | undefined {
+		if (this.symbolTable.isAmbiguousForwardReference(name))
+			throw AsmError.at(`Variable '${name}' is used before it's assigned, and it's assigned more than once: its value here is ambiguous.`, position);
+		return this.symbolTable.lookupSymbol(name);
+	}
+
 	private resolveValue(token: Token, context: EvaluationContext): SymbolValue | null {
 		switch (token.type) {
 			case "NUMBER":
@@ -747,7 +754,7 @@ export class ExpressionEvaluator {
 					// must not see the macro's own parameters: `m b, 2` with parameters `a, b` gives a = global b.
 					return this.evaluate(macroArgTokens, { ...context, macroArgs: undefined });
 
-				const value = this.symbolTable.lookupSymbol(token.value);
+				const value = this.lookupVariable(token.value, token);
 
 				// If the symbol's value is an array of tokens, it's a macro parameter.
 				// We need to evaluate it recursively. This handles .EQU with token arrays.

@@ -6,6 +6,12 @@ The problem is described as it was before the fix, then the fix in _italics_.
 
 ## Assembler
 
+### #153 — `=` and `.equ` documented as the same; a variable used before it's assigned (TODO 3.3)
+
+REFERENCE said `=` and `.equ` are the same, but `=` can be reassigned and `.equ` can't (`Symbol 'X' redefined.`). A variable used before it's assigned took its last value in pass 1: `.db v` / `v = 1` / `v = 2` → `02`, and `.db v` / `v = 0` / `.repeat 3 {` / `v = v + 1` / `}` → `03`.
+
+_Decided: `=` and `.let` assign a variable, `.equ` and labels define a constant, as before; REFERENCE says so. A variable used before it's assigned, when it's assigned more than once, is an error at the use: `Variable 'V' is used before it's assigned, and it's assigned more than once: its value here is ambiguous.` A variable assigned once, or a constant, can still be used before it's defined._
+
 ### #152 — `.fill` listed at its end address (TODO 1.49)
 
 `.org $1000` / `nop` / `.db 1` / `.fill 4, 2` / `nop` listed `1006: 02 02 02 02  .fill $04, $02`: the address where the fill ends, not where it starts (`$1002`). The bytes were written at the right place; only the listing was wrong. Same in a loop: `.repeat 4 AS r FROM 0` / `.fill 16, $E9 + r` at `$1080` listed its first line at `$1090`.

@@ -169,12 +169,25 @@ A lone `:` (followed by a space, a comment or the end of the line) defines an an
 ### Constants and variables
 
 ```as
-WIDTH = 40              ; assignment
-HEIGHT .equ 25          ; same, with .equ
+HEIGHT .equ 25          ; a constant
+WIDTH = 40              ; a variable
 SIZE = WIDTH * HEIGHT
 
-.let "pos" + "X" = 10   ; .let accepts a name computed from a string expression: defines POSX
+.let "pos" + "X" = 10   ; a variable too, its name computed from a string expression: defines POSX
 ```
+
+`.equ` defines a constant, and so does a label: it can't be defined again (`Symbol 'HEIGHT' redefined.`), and `=` can't change it (`Can't redefine constant 'HEIGHT'.`).
+
+`=` and `.let` assign a variable: it can be assigned again, and a use has the value of the last assignment before it.
+
+```as
+count = 1
+    .db count           ; 01
+count = count + 1
+    .db count           ; 02
+```
+
+A constant, or a variable assigned once, can be used before it's defined. A variable assigned more than once can't: its value there is ambiguous, so `.db v` / `v = 1` / `v = 2` is an error (`Variable 'V' is used before it's assigned, and it's assigned more than once: its value here is ambiguous.`). Assign it before using it.
 
 ## Program counter and segments
 
