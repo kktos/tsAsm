@@ -6,6 +6,12 @@ The problem is described as it was before the fix, then the fix in _italics_.
 
 ## Assembler
 
+### #150 — `.elseif` skipped in a false `.if` (TODO 1.39)
+
+There was no `.elseif`. In a true branch, it was an error (`Syntax error - Unexpected directive 'ELSEIF'`), but in a false one it was skipped with the branch: `.if 0` / `nop` / `.elseif 1` / `rts` / `.else` / `brk` / `.end` → `00`. A branch not taken didn't check its directives at all: `.if 0` / `.foobar 1` / `.end` assembled.
+
+_`.elseif` exists (4.3): that source gives `60`. A branch not taken, `.if`, `.elseif` or `.else`, rejects an unknown directive that starts a statement (at the start of a line, after a label or a brace) with the error it gives when assembled: `Syntax error - Unexpected directive 'FOOBAR'`. System variables and functions (`.db .pc`, `.len("ab")`) aren't directives and still pass. A test that put the linker's `.SECTION` in a false `.IF` of a source, or the assembler's `.DEFINE` in one of a link script, now expects that error._
+
 ### #149 — A one-char string as a number (TODO 1.40)
 
 REFERENCE said `lda #"A"` loads `$41`: only on the 65C02. On the 6502 and the 6809, `lda #"A"` → `Expression did not evaluate to a number as expected.` On every CPU, `.db "A"+1` → `Binary operator '+' requires two strings.`, and `$80|"H"` → `requires two numbers.`: only `"H"|$80` and `"H"&n` worked, special-cased.
@@ -322,6 +328,7 @@ _Now `.REPEAT: 'N' must be defined before it is used here (the count is needed t
 
 ## Features (TODO 4)
 
+- **#150** — `.elseif <condition>`, between `.if` and `.else`, in both forms (`.end` and braces), in sources and link scripts (TODO 4.3). _A condition is evaluated only while no branch before it was taken: `.if 1` / … / `.elseif .nope()` doesn't read the second one. An `.elseif` without a condition is `Missing expression.`, even when not evaluated. `.else` is the last branch: `.elseif` or `.else` after it → `Unexpected .ELSEIF: the .ELSE branch must be the last one.` Fixes 1.39._
 - **#126** — `.option listing.case "<case>"`: how the listing writes the mnemonics, registers and symbols of the instructions: `upper` (default), `lower` or `source` (as written, suffix included). `Sta Screen,x` is listed `STA SCREEN,X`, `sta screen,x` or as written. Also in the project file's `input.options`. _Each option now has its own allowed values. A local label is listed with its prefix (`:LOOP`, was `LOOP`), an anonymous label reference as written (`:-`, was `-1`). An `ns::name` token's raw is now the whole name as written, not only `name`._
 - **#122** — `.pad(value, width [, fill])` to line up the columns of `.log` tables: on the left for a positive width, on the right for a negative one, as printf's `%-12s` (TODO 4.2). _`fill` is one character, space by default; a longer value is kept whole. `.log` separates its values with tabs, now said in REFERENCE.md._
 

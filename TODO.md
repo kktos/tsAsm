@@ -10,9 +10,9 @@ What is done is in `CHANGELOG.md`. How we work (PR rules, design rules, commands
 
 `lda $12345` → `ad 45 23`, `lda #$1FF` → `a9 ff`, `lda ($1234),y` → `b1 34`. The 65C02 rejects these with `checkAddress` / `assertFitsInBytes`. Bring the same checks to the 6502, or do 2.1 first and get them for free.
 
-### 1.31 A `{ }` block in a macro body closed by `.end`
+### 1.31 A `{ }` block in a block closed by `.end`
 
-`.macro m` / `.repeat 2 {` / `nop` / `}` / `.end` / `m` → `Missing .END for the .MACRO block.` Same with `.proc f {`. It works in a `.macro m { … }` body, and with the `.end` form of the inner block.
+`.macro m` / `.repeat 2 {` / `nop` / `}` / `.end` / `m` → `Missing .END for the .MACRO block.` Same with `.proc f {`, and in an `.if` / `.elseif` / `.else` branch: `.if 0` / `.repeat 2 {` / `nop` / `}` / `.end` → `Missing .END for the .IF block.` It works in a `.macro m { … }` body, and with the `.end` form of the inner block.
 
 ### 1.35 A trailing comma in `.fill` / `.align`
 
@@ -26,13 +26,13 @@ What is done is in `CHANGELOG.md`. How we work (PR rules, design rules, commands
 
 `"\0"` → `30`, `"\q"` → `71`: an unknown escape gives the char after the backslash. It should be an error. `\0` is an idea in 4.7.
 
-### 1.39 `.elseif` skipped in a false `.if`
-
-There's no `.elseif`. In a true branch, it's an error (`Syntax error - Unexpected directive 'ELSEIF'`), but in a false one it's skipped with the branch: `.if 0` / `nop` / `.elseif 1` / `rts` / `.else` / `brk` / `.end` → `00`. A false branch doesn't check its directives at all: `.if 0` / `.foobar 1` / `.end` assembles. Adding `.elseif` is 4.3.
-
 ### 1.41 A macro's or a function's labels end the caller's local label scope
 
 `start:` / `:l nop` / `m` / `jmp :l`, with `.macro m` / `lbl: nop` / `.end` → `Undefined local label ':l' in scope 'LBL'`, though `LBL` is local to the macro call. Same with a label in a `.proc` body: a `:l` before `.proc f` / `x: rts` / `.end` isn't found after it (that one may be wanted: decide).
+
+### 1.47 Unknown directives in other blocks not assembled
+
+Since #150, a branch of `.if` not taken rejects an unknown directive starting a statement. Other blocks that aren't assembled still don't: `.repeat 0` / `.foobar` / `.end` and a macro never called with `.foobar` in its body assemble. In a branch not taken, a label without a colon before the directive isn't seen as a statement start (`lbl .foobar` passes, `lbl: .foobar` doesn't): telling it from an instruction's operand (`jmp .pc`) needs the CPU's mnemonics and the macros.
 
 ## 2. Code review, items left
 
@@ -131,10 +131,6 @@ _Decided: an omitted argument is as if its default had been written at the call.
 - At the definition, only the form is checked: defaults come after the parameters without one, and the rest parameter has none. Nothing is evaluated there.
 - A default that changes between calls follows: with `count = 1`, `.macro m x = count`, `count = 2`, `m` gives 2. `x = *` is the address where `x` is used, so `.dw x, x` gives two addresses, as an explicit `m *` already does.
 - To note in REFERENCE.md: a default's symbols are resolved inside the macro, so a local of the body with the same name takes the place of the outer symbol. Explicit arguments already behave this way.
-
-### 4.3 `.elseif`
-
-`.if a` / … / `.elseif b` / … / `.else` / … / `.end`, and with braces. Fixes 1.39 on the way.
 
 ### 4.4 Bitwise NOT `~`
 

@@ -309,19 +309,27 @@ Inside a YAML or JSON block, numbers follow that format's syntax: write `0xAA`, 
 
 ## Conditional assembly
 
+`.if <condition>`, then any number of `.elseif <condition>`, then an optional `.else`. The first branch whose condition is true is assembled, or the `.else` branch when none is. A condition is evaluated only while no branch before it was taken: after a true one, the next conditions aren't read.
+
 ```as
 .if VERSION == 1
     lda #1
-.else
+.elseif VERSION == 2
     lda #2
+.else
+    lda #3
 .end
 
 .if (.len(name) > 10) {
     .warning "name is too long"
+} .elseif (.len(name) == 0) {
+    .error "name is empty"
 } .else {
     .log "name is valid"
 }
 ```
+
+A branch not taken isn't assembled, but it's checked: an unknown character is an error (see [Source format](#source-format)), and so is an unknown directive starting a statement, at the start of a line, after a label or after a brace (`.if 0` / `.foobar` / `.end`). `.else` is the last branch: an `.elseif` or a second `.else` after it is an error. Link scripts have the same `.if`.
 
 ## Loops
 

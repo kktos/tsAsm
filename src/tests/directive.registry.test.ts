@@ -26,7 +26,8 @@ describe("Directives registered per parser", () => {
 			.END
 			nop
 		`;
-		expect(assemble(source)).toEqual([0xea]);
+		// Read as a block, .SECTION would take the .END: the .IF would miss its own.
+		expect(() => assemble(source)).toThrow("Syntax error - Unexpected directive 'SECTION'");
 	});
 
 	it("should not read the assembler's .DEFINE as raw in a link script", () => {
@@ -38,7 +39,8 @@ describe("Directives registered per parser", () => {
 			.END
 			.BYTE 6
 		`;
-		expect(link(script)).toEqual([6]);
+		// Read as raw, .DEFINE would take the .END: the .IF would miss its own.
+		expect(() => link(script)).toThrow("Syntax error - Unexpected directive 'DEFINE'");
 	});
 
 	it("should not read .SECTION as a block in a link script", () => {
