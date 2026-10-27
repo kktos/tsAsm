@@ -154,6 +154,19 @@ export class AssemblyLexer {
 		return ch === "\n" ? "" : ch;
 	}
 
+	/** The text left on the current line, as `rawInline` would read it: up to the end of the line, a '}' or a comment. Never lexes. */
+	public restOfLine(): string {
+		const start = this.currentStream.pos;
+		return this.currentStream.source.slice(start, this.rawInlineEnd(start)).trim();
+	}
+
+	private rawInlineEnd(start: number): number {
+		const source = this.currentStream.source;
+		let pos = start;
+		while (pos < this.currentStream.length && source[pos] !== "\n" && source[pos] !== "}" && !this.isCommentStart(pos)) pos++;
+		return pos;
+	}
+
 	/** True when only spaces or a comment are left on the current line. Never lexes. */
 	public isRestOfLineBlank(): boolean {
 		const pos = this.skipSpacesFrom(this.currentStream.pos);
@@ -715,7 +728,7 @@ export class AssemblyLexer {
 		let pos = start;
 
 		if (source[pos] !== "{") {
-			while (pos < this.currentStream.length && source[pos] !== "\n" && source[pos] !== "}" && !this.isCommentStart(pos)) pos++;
+			pos = this.rawInlineEnd(start);
 			this.moveLineAndColumnTo(start, pos);
 			this.currentStream.pos = pos;
 			return this.makeToken("RAW_TEXT", source.slice(start, pos).trimEnd(), line, column);

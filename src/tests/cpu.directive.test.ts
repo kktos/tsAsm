@@ -61,4 +61,67 @@ describe("CpuDirective", () => {
 			}),
 		);
 	});
+
+	describe("the CPU's name", () => {
+		const cpuAfter = (source: string) => {
+			assembler.assemble(source);
+			return assembler.getCPUHandler().cpuType;
+		};
+
+		it("is a word alone, starting with a digit or not, in any case", () => {
+			expect(cpuAfter(".cpu 65C02")).toBe("65C02");
+			expect(cpuAfter(".cpu 65c02 ; comment")).toBe("65C02");
+			expect(cpuAfter(".setcpu 6809")).toBe("6809");
+			expect(cpuAfter(".processor rv32i")).toBe("RV32I");
+		});
+
+		it("is 6502, a bare number, too", () => {
+			assembler = new Assembler(new Cpu65C02Handler(), fileHandler, { segments: DEFAULT_SEGMENTS });
+			expect(cpuAfter(".cpu 6502")).toBe("6502");
+		});
+
+		it("can be a string expression", () => {
+			expect(cpuAfter('.cpu "65C02"')).toBe("65C02");
+			expect(
+				cpuAfter(`
+					CPU = "65" + "C02"
+					.cpu (CPU)
+				`),
+			).toBe("65C02");
+		});
+
+		it("is read as a word in a skipped .if, a .repeat and a macro", () => {
+			expect(
+				cpuAfter(`
+					.if 0
+						.cpu 6809
+					.end
+					.repeat 2
+						.cpu 65C02
+					.end
+				`),
+			).toBe("65C02");
+			expect(
+				cpuAfter(`
+					.macro to6809
+						.cpu 6809
+					.end
+					to6809
+				`),
+			).toBe("6809");
+		});
+
+		it("is the word, even a symbol's name: a symbol's value needs parentheses", () => {
+			const source = `
+				CPU = "65C02"
+				.cpu CPU
+			`;
+			expect(() => assembler.assemble(source)).toThrow("Unknown CPU name 'CPU'.");
+		});
+
+		it("is an error when it's no CPU's name", () => {
+			expect(() => assembler.assemble(".cpu 65816")).toThrow("Unknown CPU name '65816'.");
+			expect(() => assembler.assemble(".cpu 6502x")).toThrow("Unknown CPU name '6502x'.");
+		});
+	});
 });

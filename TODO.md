@@ -114,10 +114,6 @@ Rename (keeping aliases), or document.
 
 `.function` was a label scope, not a function usable in expressions: done in #142, it's `.proc` (see `CHANGELOG.md`).
 
-### 3.8 Quoting of names
-
-`.cpu "65C02"` needs quotes, `.segment BOOT` and `.module GAME` don't, and `.cpu 65C02` → `Invalid number '65C02'.` Accept a bare name, or at least a clearer message.
-
 ## 4. Features (ideas)
 
 ### 4.1 Default values for macro parameters
