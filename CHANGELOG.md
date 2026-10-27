@@ -6,6 +6,12 @@ The problem is described as it was before the fix, then the fix in _italics_.
 
 ## Assembler
 
+### #159 — `.cpu` needs quotes (TODO 3.8)
+
+`.cpu "65C02"` needed quotes, `.segment BOOT` and `.module GAME` didn't. `.cpu 65C02` → `Invalid number '65C02'.`, from the lexer, even in a `.if 0`; `.cpu 6502` and `.cpu rv32i` → `.CPU name must evaluate to a string.` The name was an expression, for a CPU chosen by a symbol.
+
+_Decided: as `.segment`, a word alone is the CPU's name, in any case: `.cpu 65C02`, `.cpu 6502`, `.cpu rv32i`. A word starting with a digit is read as raw text, as `.hex` does, so it isn't lexed as a number. Anything else is a string expression: `.cpu "65C02"`, `.cpu (TARGET)`. Breaking: `.cpu TARGET`, with `TARGET = "65C02"`, is now `Unknown CPU name 'TARGET'.`; write `.cpu (TARGET)`, or use `.if`._
+
 ### #158 — A symbol located at its directive, not at its name (TODO 1.55)
 
 `SCREEN .equ $0400` was located at the `.equ` (`:1:8`), `counter = 1` at the `=` (`:1:9`), `.let total = 0`, `.define sprites` and `.proc clear` at their directive, a loop's iterator at its loop: in the `.sym` file and in the notes of `Symbol 'X' redefined.` / `Can't redefine constant 'X'.`. A label was located at its name. The name before `.equ` and `=` is a statement of its own, so the directive starts the next one.

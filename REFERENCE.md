@@ -505,14 +505,14 @@ For columns that line up, build each line with `.pad()`: a tab moves to the next
 
 ## Assembler settings
 
-| Directive                                        | Effect                                                                                   |
-| ------------------------------------------------ | ---------------------------------------------------------------------------------------- |
-| `.cpu "65C02"` (aliases `.setcpu`, `.processor`) | Select the CPU                                                                           |
-| `.option local.prefix "<char>"`                  | Change the prefix of [local labels](#local-labels) (default `:`)                         |
-| `.option anon.marker "<char>"`                   | Change the char of [anonymous labels](#anonymous-labels), alone or `-`/`+` (default `:`) |
-| `.option listing.case "<case>"`                  | How the listing writes the instructions: `upper` (default), `lower` or `source`          |
-| `.option repeat.start <n>`                       | Where a [`.repeat`](#loops) iterator without `FROM` starts: `0` or `1` (default `1`)     |
-| `.option for.start <n>`                          | Where a [`.for`](#loops) index without `FROM` starts: `0` or `1` (default `0`)           |
+| Directive                                      | Effect                                                                                   |
+| ---------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `.cpu 65C02` (aliases `.setcpu`, `.processor`) | Select the [CPU](#selecting-the-cpu)                                                     |
+| `.option local.prefix "<char>"`                | Change the prefix of [local labels](#local-labels) (default `:`)                         |
+| `.option anon.marker "<char>"`                 | Change the char of [anonymous labels](#anonymous-labels), alone or `-`/`+` (default `:`) |
+| `.option listing.case "<case>"`                | How the listing writes the instructions: `upper` (default), `lower` or `source`          |
+| `.option repeat.start <n>`                     | Where a [`.repeat`](#loops) iterator without `FROM` starts: `0` or `1` (default `1`)     |
+| `.option for.start <n>`                        | Where a [`.for`](#loops) index without `FROM` starts: `0` or `1` (default `0`)           |
 
 The char is one of `:` `@` `!` `?` `_` `~`, and the two options can have different ones. Elsewhere, the char keeps its meaning: with `anon.marker "!"`, `!x` and `!=` are still operators.
 
@@ -561,6 +561,20 @@ To include a source written for another assembler:
 ```
 
 To set a local option for the whole project, give it in the project file.
+
+### Selecting the CPU
+
+The CPUs are `6502`, `65C02`, `6809` and `RV32I`, in any case. The project file's `input.cpu` selects the one the source starts with (`6502` by default), and `.cpu` changes it for the lines after it.
+
+A word alone after `.cpu` is the CPU's name: `.cpu 65C02`, `.cpu rv32i`. Anything else is a string expression giving it: `.cpu "65C02"`, or a symbol in parentheses.
+
+```as
+TARGET = "65C02"
+.cpu (TARGET)       ; the CPU named by TARGET
+.cpu TARGET         ; error: Unknown CPU name 'TARGET'.
+```
+
+To choose the CPU depending on a condition, use `.if`.
 
 ## System variables
 
