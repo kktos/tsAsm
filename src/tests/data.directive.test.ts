@@ -90,6 +90,25 @@ describe("Data Directives", () => {
 		expect(machineCode).toEqual(expected);
 	});
 
+	it.each([
+		['.DW "A"', [0x41, 0x00]],
+		['.DW "AB", 1', [0x41, 0x00, 0x42, 0x00, 0x01, 0x00]],
+		['.DL "AB"', [0x41, 0x00, 0x00, 0x00, 0x42, 0x00, 0x00, 0x00]],
+		['.DW ""', []],
+	])("should emit one element per character of a string: %s", (source, expected) => {
+		const assembler = createAssembler();
+		assembler.assemble(source);
+		expect(assembler.link()).toEqual(expected);
+	});
+
+	it("should count one element per character in pass one", () => {
+		const assembler = createAssembler();
+		assembler.assemble(`.DW "AB"
+here: .DB 0
+.DW here`);
+		expect(assembler.link()).toEqual([0x41, 0x00, 0x42, 0x00, 0x00, 0x04, 0x10]);
+	});
+
 	it("should handle expressions as values", () => {
 		const assembler = createAssembler();
 		const source = `
@@ -317,6 +336,10 @@ describe("Data Directives", () => {
 			expect(assembleWith(new Cpu6809Handler(), '.DW $1234, -2\n.DL $12345678\n.PSTRL "ab"')).toEqual([
 				0x12, 0x34, 0xff, 0xfe, 0x12, 0x34, 0x56, 0x78, 0x00, 0x02, 0x61, 0x62,
 			]);
+		});
+
+		it("should write each character of a .DW string big-endian on the 6809", () => {
+			expect(assembleWith(new Cpu6809Handler(), '.DW "AB"')).toEqual([0x00, 0x41, 0x00, 0x42]);
 		});
 
 		it("should write them little-endian on the 65C02", () => {

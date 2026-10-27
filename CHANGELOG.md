@@ -6,6 +6,12 @@ The problem is described as it was before the fix, then the fix in _italics_.
 
 ## Assembler
 
+### #148 — A string in `.dw` / `.dl` emits bytes (TODO 1.42)
+
+`.dw "A", 1` → `41 01 00`, `.dl "A", 1` → `41 01 00 00 00`: a string was emitted one byte per character, misaligning the table, though `.dw 1` gives `01 00`.
+
+_A string is its characters, one element each, as in `.db`: `.dw "AB"` is `.dw "A", "B"`, `41 00 42 00` (`00 41 00 42` on the 6809), and `.dl "A"` is `41 00 00 00`. A character above 255 is still an error._
+
 ### #147 — The "pass it as text" hint keeps the old `< >` delimiters (TODO 1.46)
 
 An argument still written in the old text form, `m <#$4f>`, gave `'<#$4f>' is an addressing mode, not an expression. Pass it as text, in { }: {<#$4f>}.`: `{<#$4f>}` passes `<#$4f>`, not `#$4f`. Found migrating the conan game (`drawSprite <#$4f>,<#25>,<#16>`).

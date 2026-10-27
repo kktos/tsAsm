@@ -45,7 +45,7 @@ export class DataDirective implements IDirective {
 						break;
 					}
 					case "string": {
-						totalSize += stringToBytes(value, `.${directive.value} value:`).length;
+						totalSize += stringToBytes(value, `.${directive.value} value:`).length * this.bytesPerElement;
 						break;
 					}
 					case "number": {
@@ -77,15 +77,15 @@ export class DataDirective implements IDirective {
 			for (const value of values) {
 				switch (typeof value) {
 					case "string": {
-						outputBytes.push(...stringToBytes(value, `.${directive.value} value:`));
+						// One element per character: .dw "AB" is .dw "A", "B".
+						for (const code of stringToBytes(value, `.${directive.value} value:`)) outputBytes.push(...this.elementBytes(code));
 						params.push(value);
 						hasText = true;
 						break;
 					}
 					case "number": {
 						assertFitsInBytes(value, this.bytesPerElement, `.${directive.value} value:`);
-						const bytes = Array.from({ length: this.bytesPerElement }, (_, i) => (value >> (i * 8)) & 0xff);
-						outputBytes.push(...(this.getEndianness() === "big" ? bytes.reverse() : bytes));
+						outputBytes.push(...this.elementBytes(value));
 						params.push(value);
 						break;
 					}
@@ -110,6 +110,12 @@ export class DataDirective implements IDirective {
 		});
 
 		return outputBytes;
+	}
+
+	/** The bytes of one element, in the CPU's byte order. */
+	private elementBytes(value: number): number[] {
+		const bytes = Array.from({ length: this.bytesPerElement }, (_, i) => (value >> (i * 8)) & 0xff);
+		return this.getEndianness() === "big" ? bytes.reverse() : bytes;
 	}
 
 	/** Only numbers and strings are data: an array or an object, emitted whole, would hide a missing index or field. */

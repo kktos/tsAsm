@@ -38,10 +38,6 @@ REFERENCE says `lda #"A"` loads `$41`. It does on the 65C02, but on the 6502 `ld
 
 `start:` / `:l nop` / `m` / `jmp :l`, with `.macro m` / `lbl: nop` / `.end` → `Undefined local label ':l' in scope 'LBL'`, though `LBL` is local to the macro call. Same with a label in a `.proc` body: a `:l` before `.proc f` / `x: rts` / `.end` isn't found after it (that one may be wanted: decide).
 
-### 1.42 A string in `.dw` / `.dl` emits bytes
-
-`.dw "A", 1` → `41 01 00`, `.dl "A", 1` → `41 01 00 00 00`: the table is misaligned. One word per char, or an error: decision needed.
-
 ## 2. Code review, items left
 
 ### 2.1 CPU back-ends
