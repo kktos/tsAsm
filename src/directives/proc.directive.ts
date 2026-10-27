@@ -29,7 +29,7 @@ export class ProcDirective implements IDirective {
 
 		this.lister.directive(directive, nameToken.raw as string);
 
-		const scopeId = `@@proc_${this.assembler.symbolTable.getSymbolFullPath(nameToken.value)}`;
+		const scopeId = this.assembler.symbolTable.procScopeId(nameToken.value);
 		this.assembler.symbolTable.restoreAndPushScope(scopeId, `proc ${nameToken.raw ?? nameToken.value}`);
 
 		const body = this.assembler.parser.getDirectiveBlockTokens(directive.value);
