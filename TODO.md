@@ -42,10 +42,6 @@ With `output.listing: { enabled: true, passes: { pass2: true } }`, the statement
 
 Without a linker script, `output.listing: { enabled: true }` writes a `.lst` holding only `--- Assembly Complete ---`. It needs `passes: { pass2: true }` to list anything. Pass 2 should be listed by default, as README's example (`listing: enabled: true`) implies. With a linker script and `linker: true` (the conan game) pass 2 is listed.
 
-### 1.52 "first defined here" points at a variable's last assignment
-
-`v = 1` / `v = 2` / `v .equ 3` → `Symbol 'V' redefined.`, with the note `first defined here` at `v = 2`: each assignment in pass 1 moves where the variable is defined. The note should point at `v = 1`, or say `last assigned here`.
-
 ## 2. Code review, items left
 
 ### 2.1 CPU back-ends
