@@ -2,6 +2,7 @@ import type { Parser } from "../assembler/parser.class";
 import type { Assembler } from "../assembler/polyasm";
 import type { ILister } from "../helpers/lister.class";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
+import { undefinedSymbolName } from "../utils/symbol.utils";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
 /**
@@ -42,6 +43,10 @@ export class CpuDirective implements IDirective {
 		if (tokens.length === 1 && tokens[0]?.type === "IDENTIFIER") return String(tokens[0].value);
 
 		const cpuName = this.assembler.expressionEvaluator.evaluate(tokens, context);
+		if (cpuName === null)
+			throw new Error(
+				`.${directive.value}: ${undefinedSymbolName(tokens, context, this.assembler.symbolTable)} must be defined before it is used here (the CPU is needed to read what follows).`,
+			);
 		if (typeof cpuName !== "string") throw new Error(`.${directive.value} name must evaluate to a string.`);
 		return cpuName;
 	}
