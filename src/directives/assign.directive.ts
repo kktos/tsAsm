@@ -12,8 +12,13 @@ export class AssignDirective implements IDirective {
 		private readonly lister: ILister,
 	) {}
 
+	/** The symbol's name, before the `=`. */
+	private labelToken() {
+		return this.assembler.parser.ensureToken(this.assembler.parser.getPosition() - 2);
+	}
+
 	public handlePassOne(directive: ScalarToken, context: DirectiveContext): void {
-		const labelToken = this.assembler.parser.ensureToken(this.assembler.parser.getPosition() - 2);
+		const labelToken = this.labelToken();
 
 		const isOnSameLine = labelToken?.line === directive.line;
 		const isValidType = labelToken?.type === "IDENTIFIER" || (labelToken?.type === "OPERATOR" && labelToken.value === "*");
@@ -36,15 +41,15 @@ export class AssignDirective implements IDirective {
 			return;
 		}
 
-		const statement = this.assembler.currentStatement ?? directive;
 		this.assembler.symbolTable.defineVariable(label, value, {
 			filename: context.filename,
-			line: statement.line,
-			column: statement.column,
+			line: labelToken.line,
+			column: labelToken.column,
 		});
 	}
 
 	public handlePassTwo(directive: ScalarToken, context: DirectiveContext): void {
+		const labelToken = this.labelToken() ?? directive;
 		const label = this.assembler.lastGlobalLabel;
 		if (!label) throw new Error("Missing label name.");
 
@@ -65,12 +70,11 @@ export class AssignDirective implements IDirective {
 
 		// In a macro call or a function, pass 2 gets back what pass 1 defined there. A variable pass 1 didn't define
 		// (its block wasn't run) is defined now.
-		const statement = this.assembler.currentStatement ?? directive;
 		if (this.assembler.symbolTable.isVolatileScope() && this.assembler.symbolTable.findSymbol(label) === undefined)
 			this.assembler.symbolTable.defineVariable(label, value, {
 				filename: context.filename,
-				line: statement.line,
-				column: statement.column,
+				line: labelToken.line,
+				column: labelToken.column,
 			});
 		else this.assembler.symbolTable.assignVariable(label, value);
 	}

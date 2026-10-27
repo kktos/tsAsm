@@ -42,10 +42,6 @@ With `output.listing: { enabled: true, passes: { pass2: true } }`, the statement
 
 Without a linker script, `output.listing: { enabled: true }` writes a `.lst` holding only `--- Assembly Complete ---`. It needs `passes: { pass2: true }` to list anything. Pass 2 should be listed by default, as README's example (`listing: enabled: true`) implies. With a linker script and `linker: true` (the conan game) pass 2 is listed.
 
-### 1.55 A symbol is located at its directive, not at its name
-
-`SCREEN .equ $0400` is located at `:1:8` (the `.equ`), `counter = 1` at `:1:9` (the `=`), in the `.sym` file and in the notes of `Symbol 'X' redefined.`; a label is located at its name. Locate every symbol at its name.
-
 ## 2. Code review, items left
 
 ### 2.1 CPU back-ends
