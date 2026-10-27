@@ -152,7 +152,7 @@ describe("Error locations", () => {
 		});
 	});
 
-	// A definition is located at its statement's start, as the errors are: the `.`, not the directive's name.
+	// A macro is located at its statement's start, as the errors are: the `.`, not the directive's name. A symbol is located at its name.
 	it("should say where a redefined macro is first defined", () => {
 		const source = `
 			.macro m
@@ -176,7 +176,7 @@ describe("Error locations", () => {
 		expect(redefinition(source)).toMatchObject({
 			message: "Symbol 'X' redefined.",
 			at: { file: "main.asm", line: 3, column: 6 },
-			note: { file: "main.asm", line: 2, column: 6 },
+			note: { file: "main.asm", line: 2, column: 4 },
 		});
 	});
 
@@ -188,7 +188,7 @@ describe("Error locations", () => {
 		expect(redefinition(source)).toMatchObject({
 			message: "Symbol 'X' redefined.",
 			at: { file: "main.asm", line: 3, column: 6 },
-			note: { file: "main.asm", line: 2, column: 4 },
+			note: { file: "main.asm", line: 2, column: 9 },
 		});
 	});
 
@@ -200,7 +200,7 @@ describe("Error locations", () => {
 		expect(redefinition(source)).toMatchObject({
 			message: "Can't redefine constant 'X'.",
 			at: { file: "main.asm", line: 3, column: 4 },
-			note: { file: "main.asm", line: 2, column: 6 },
+			note: { file: "main.asm", line: 2, column: 4 },
 		});
 	});
 
@@ -214,7 +214,20 @@ describe("Error locations", () => {
 		expect(redefinition(source)).toMatchObject({
 			message: "Symbol 'F' redefined.",
 			at: { file: "main.asm", line: 4, column: 4 },
-			note: { file: "main.asm", line: 2, column: 4 },
+			note: { file: "main.asm", line: 2, column: 10 },
+		});
+	});
+
+	it("should say where a loop's iterator is defined", () => {
+		const source = `
+			.repeat 2 AS i
+			i .equ 1
+			.end
+		`;
+		expect(redefinition(source)).toMatchObject({
+			message: "Symbol 'I' redefined.",
+			at: { file: "main.asm", line: 3, column: 6 },
+			note: { file: "main.asm", line: 2, column: 17 },
 		});
 	});
 

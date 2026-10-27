@@ -104,15 +104,15 @@ Paths are relative to the project file. Missing output directories are created.
 
 ### Symbol file
 
-The symbols by namespace: `global` for the default one, a namespace's metadata after its name. A symbol's line gives its kind (`var` for `=`, `.let` and `.define`, `const` for `.equ`, `label`), its type (`number`, `string`, `array` or `object`; a label is a `number`), its value and where it's defined:
+The symbols by namespace: `global` for the default one, a namespace's metadata after its name. A symbol's line gives its kind (`var` for `=`, `.let` and `.define`, `const` for `.equ`, `label`), its type (`number`, `string`, `array` or `object`; a label is a `number`), its value and where it's defined, at its name:
 
 ```yaml
 GFX [BASE=8192]:
-    W: const number = $28 ;hello.asm:15:3
+    W: const number = $28 ;hello.asm:15:1
 global:
-    COUNTER: var number = $02 ;hello.asm:3:9
-    SCREEN: const number = $0400 ;hello.asm:1:8
-    SPRITES: var object = {"x":1} ;hello.asm:4:1
+    COUNTER: var number = $02 ;hello.asm:3:1
+    SCREEN: const number = $0400 ;hello.asm:1:1
+    SPRITES: var object = {"x":1} ;hello.asm:4:9
     START: label number = $0800 ;hello.asm:7:1
     START.LOOP: label number = $0800 ;hello.asm:8:1
 ```

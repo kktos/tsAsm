@@ -6,6 +6,12 @@ The problem is described as it was before the fix, then the fix in _italics_.
 
 ## Assembler
 
+### #158 — A symbol located at its directive, not at its name (TODO 1.55)
+
+`SCREEN .equ $0400` was located at the `.equ` (`:1:8`), `counter = 1` at the `=` (`:1:9`), `.let total = 0`, `.define sprites` and `.proc clear` at their directive, a loop's iterator at its loop: in the `.sym` file and in the notes of `Symbol 'X' redefined.` / `Can't redefine constant 'X'.`. A label was located at its name. The name before `.equ` and `=` is a statement of its own, so the directive starts the next one.
+
+_Every symbol is located at its name: `SCREEN: const number = $0400 ;t.asm:1:1`, `.let X = 1` noted at the `X`, `.proc f` at the `f`, `.repeat 2 AS i` at the `i`. The errors stay at their statement, and a macro at its `.macro`. The linker's `=` is unchanged: it only has the name as text, and its symbols aren't in the `.sym` file._
+
 ### #154 — a variable's redefinition pointed at its last assignment as its first definition (TODO 1.52)
 
 `v = 1` / `v = 2` / `v .equ 3` → `Symbol 'V' redefined.`, with the note `first defined here` at `v = 2`: each assignment moves where the variable is defined.

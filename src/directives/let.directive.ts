@@ -45,9 +45,9 @@ export class LetDirective implements IDirective {
 
 		this.lister.symbol(name, value);
 
-		const statement = this.assembler.currentStatement ?? directive;
+		const nameToken = nameTokens[0] ?? directive;
 		if (this.assembler.pass === 1)
-			this.assembler.symbolTable.defineVariable(name, value, { filename: context.filename, line: statement.line, column: statement.column }, true);
+			this.assembler.symbolTable.defineVariable(name, value, { filename: context.filename, line: nameToken.line, column: nameToken.column }, true);
 		else this.assembler.symbolTable.updateSymbol(name, value, true);
 	}
 }

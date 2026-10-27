@@ -100,8 +100,8 @@ export class LoopDirective implements IDirective {
 		});
 
 		// Define the index and item iterator variables
-		if (indexIteratorToken) this.defineIterator(loopId, indexIteratorToken, directive, context);
-		this.defineIterator(loopId, itemIteratorToken, directive, context);
+		if (indexIteratorToken) this.defineIterator(loopId, indexIteratorToken, context);
+		this.defineIterator(loopId, itemIteratorToken, context);
 
 		// Kick off the first iteration.
 		this.runNextLoopIteration(loopId, context);
@@ -140,7 +140,7 @@ export class LoopDirective implements IDirective {
 		});
 
 		// Define the main iterator variable
-		if (iteratorToken) this.defineIterator(loopId, iteratorToken, directive, context);
+		if (iteratorToken) this.defineIterator(loopId, iteratorToken, context);
 
 		// kick off iteration
 		this.runNextLoopIteration(loopId, context);
@@ -234,14 +234,13 @@ export class LoopDirective implements IDirective {
 	 * loop is. Only its iterators are local, like macro parameters: defined in the current scope for the loop (over
 	 * any symbol of the same name), then the scope is put back as it was.
 	 */
-	private defineIterator(loopId: string, iterator: IdentifierToken, directive: ScalarToken, context: DirectiveContext) {
+	private defineIterator(loopId: string, iterator: IdentifierToken, context: DirectiveContext) {
 		const state = this.loopStates.get(loopId) as LoopState;
 		state.restoreSymbols.push(this.runtime.symbolTable.stashSymbol(iterator.value));
-		const statement = this.runtime.currentStatement() ?? directive;
 		this.runtime.symbolTable.defineVariable(iterator.value, 0, {
 			filename: context.filename,
-			line: statement.line,
-			column: statement.column,
+			line: iterator.line,
+			column: iterator.column,
 		});
 	}
 }

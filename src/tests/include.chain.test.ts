@@ -96,7 +96,7 @@ describe("Include chains in errors", () => {
 				"      | \t^",
 				"  included from lib/lib.asm:1:2",
 				"  included from main.asm:2:2",
-				"defs.asm:1:2: note: first defined here",
+				"defs.asm:1:10: note: first defined here",
 				"  included from main.asm:1:2",
 			].join("\n"),
 		);
@@ -265,7 +265,7 @@ count:
 	.end
 	m
 `);
-		expect(assembler.symbolTable.getDict().global?.G).toBe("var number = $01 ;main.asm:3:3");
+		expect(assembler.symbolTable.getDict().global?.G).toBe("var number = $01 ;main.asm:3:8");
 	});
 
 	it("should give the include chain of a warning", () => {
