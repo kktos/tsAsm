@@ -88,4 +88,52 @@ SCREEN .equ $0400
 `);
 		expect(Object.keys(dict)).toEqual(["global [KIND=main]"]);
 	});
+
+	it("should list a .proc's symbols after its name", () => {
+		const dict = symbolsOf(`
+.proc clear
+count = 8
+loop:
+	dex
+:next
+	bne loop
+	rts
+.end
+`);
+		expect(dict.global).toEqual({
+			CLEAR: "label number = $1000 ;:2:1",
+			"CLEAR.COUNT": "var number = $08 ;:3:7",
+			"CLEAR.LOOP": "label number = $1000 ;:4:1",
+			"CLEAR.LOOP.NEXT": "label number = $1001 ;:6:1",
+		});
+	});
+
+	it("should list a nested .proc's symbols after both names", () => {
+		const dict = symbolsOf(`
+.proc outer
+	nop
+.proc inner
+loop:
+	rts
+.end
+.end
+`);
+		expect(Object.keys(dict.global ?? {})).toEqual(["OUTER", "OUTER.INNER", "OUTER.INNER.LOOP"]);
+		expect(dict.global?.["OUTER.INNER.LOOP"]).toBe("label number = $1001 ;:5:1");
+	});
+
+	it("should list a .proc's symbols in its namespace", () => {
+		const dict = symbolsOf(`
+.namespace io
+.proc reset
+loop:
+	rts
+.end
+.end namespace
+`);
+		expect(dict.IO).toEqual({
+			RESET: "label number = $1000 ;:3:1",
+			"RESET.LOOP": "label number = $1000 ;:4:1",
+		});
+	});
 });

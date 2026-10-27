@@ -5,6 +5,8 @@ import { getHex } from "../utils/hex.util";
 
 // Internal unique key for the global namespace to avoid collisions with user namespaces
 const INTERNAL_GLOBAL = "%%GLOBAL";
+/** A `.proc`'s scope is this prefix and the proc's full path: `@@proc_global::CLEAR`. */
+const PROC_SCOPE_PREFIX = "@@proc_";
 
 export type SymbolValue = number | string | object | Token[] | SymbolValue[];
 
@@ -477,17 +479,22 @@ export class PASymbolTable {
 			if (scope?.has(name)) {
 				// Found the symbol. The namespace is part of the symbol definition.
 				const symbol = scope.get(name);
-				if (symbol) {
-					const namespace = symbol.namespace === INTERNAL_GLOBAL ? "global" : symbol.namespace;
-
-					// It's an ephemeral/local symbol, just return its name.
-					if (namespace.startsWith("__")) return symbol.name;
-
-					return `${namespace}::${symbol.name}`;
-				}
+				if (symbol) return this.fullPath(symbol);
 			}
 		}
 		return "";
+	}
+
+	/** A symbol's name in its namespace, `global::X`, or only its name for an ephemeral/local symbol. */
+	private fullPath(symbol: PASymbol): string {
+		const namespace = symbol.namespace === INTERNAL_GLOBAL ? "global" : symbol.namespace;
+		if (namespace.startsWith("__")) return symbol.name;
+		return `${namespace}::${symbol.name}`;
+	}
+
+	/** The scope of the `.proc` named `procName`, defined in the current scope. */
+	public procScopeId(procName: string): string {
+		return `${PROC_SCOPE_PREFIX}${this.getSymbolFullPath(procName)}`;
 	}
 
 	/**
@@ -524,6 +531,7 @@ export class PASymbolTable {
 	 * The symbols by namespace, for the symbol file: keyed by its name (`global` for the default one),
 	 * followed by its metadata if it has some (`GFX [BASE=8192, KIND=screen]`). Each symbol is
 	 * `<kind> <type> = <value> ;<file>:<line>:<column>`, its kind `var`, `const` or `label`.
+	 * A `.proc`'s symbols follow its name, as local labels do: `CLEAR.LOOP`.
 	 */
 	public getDict() {
 		const dict: Record<string, Record<string | symbol, SymbolValue>> = {};
@@ -539,31 +547,40 @@ export class PASymbolTable {
 			}
 
 			const nsDict: Record<string | symbol, SymbolValue> = {};
-			for (const symbol of symbolDict.values()) {
-				if (symbol.name === "*") continue;
-				let value = "";
-				switch (typeof symbol.value) {
-					case "number":
-						value = `number = $${getHex(symbol.value)}`;
-						break;
-					case "string":
-						value = `string = ${JSON.stringify(symbol.value)}`;
-						break;
-					case "object":
-						if (Array.isArray(symbol.value)) value = `array = ${JSON.stringify(symbol.value)}`;
-						else value = `object = ${JSON.stringify(symbol.value)}`;
-						break;
-					case "undefined":
-						value = "undefined";
-						break;
-				}
-				const kind = symbol.isLabel ? "label" : symbol.isConstant ? "const" : "var";
-				nsDict[symbol.name] = `${kind} ${value} ;${symbol.source}:${symbol.line}:${symbol.column}`;
-			}
+			this.addToDict(nsDict, symbolDict, "");
 			dict[displayName] = nsDict;
 		}
 
 		return dict;
+	}
+
+	/** Writes the symbols of `scope` into `nsDict`, each name after `prefix`, and those of the `.proc`s among them after theirs. */
+	private addToDict(nsDict: Record<string | symbol, SymbolValue>, scope: Map<string, PASymbol>, prefix: string) {
+		for (const symbol of scope.values()) {
+			if (symbol.name === "*") continue;
+			let value = "";
+			switch (typeof symbol.value) {
+				case "number":
+					value = `number = $${getHex(symbol.value)}`;
+					break;
+				case "string":
+					value = `string = ${JSON.stringify(symbol.value)}`;
+					break;
+				case "object":
+					if (Array.isArray(symbol.value)) value = `array = ${JSON.stringify(symbol.value)}`;
+					else value = `object = ${JSON.stringify(symbol.value)}`;
+					break;
+				case "undefined":
+					value = "undefined";
+					break;
+			}
+			const kind = symbol.isLabel ? "label" : symbol.isConstant ? "const" : "var";
+			nsDict[prefix + symbol.name] = `${kind} ${value} ;${symbol.source}:${symbol.line}:${symbol.column}`;
+
+			// A closed `.proc`'s scope is kept aside for the next pass, which fills it again.
+			const procScope = symbol.isLabel ? this.savedSymbols.get(PROC_SCOPE_PREFIX + this.fullPath(symbol)) : undefined;
+			if (procScope) this.addToDict(nsDict, procScope, `${prefix}${symbol.name}.`);
+		}
 	}
 }
 

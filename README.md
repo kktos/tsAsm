@@ -117,7 +117,7 @@ global:
     START.LOOP: label number = $0800 ;hello.asm:8:1
 ```
 
-A variable has its last value, and the place it was last assigned.
+A variable has its last value, and the place it was last assigned. A `.proc`'s symbols follow its name, as local labels do: `CLEAR.LOOP`. The symbols of a macro call are left out.
 
 ## Library
 
