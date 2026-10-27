@@ -97,10 +97,27 @@ This writes `hello.bin` (the machine code), `hello.asm.lst` (the listing) and `h
 | `output.object.path`   | Output file for the assembled code.                                                                                                                                                                                                                                                                                                                                                                 |
 | `output.linker.script` | Linker script to use instead of writing the segments directly (see [linker_script.md](src/linker/linker_script.md)).                                                                                                                                                                                                                                                                                |
 | `output.listing`       | `enabled`, `path`, `passes: { pass1, pass2 }` to list each pass, and `linker` to list the linking: the linker script's report and `.log`s, or without a script each segment's place in the output.                                                                                                                                                                                                  |
-| `output.symbols`       | `enabled` and `path` of the symbol file (YAML): the symbols by namespace, `global` for the default one, its metadata after its name (`GFX [BASE=8192]`).                                                                                                                                                                                                                                            |
+| `output.symbols`       | `enabled` and `path` of the symbol file (YAML): see [symbol file](#symbol-file).                                                                                                                                                                                                                                                                                                                    |
 | `output.segments`      | `enabled` and `path` of the segment map file (YAML).                                                                                                                                                                                                                                                                                                                                                |
 
 Paths are relative to the project file. Missing output directories are created.
+
+### Symbol file
+
+The symbols by namespace: `global` for the default one, a namespace's metadata after its name. A symbol's line gives its kind (`var` for `=`, `.let` and `.define`, `const` for `.equ`, `label`), its type (`number`, `string`, `array` or `object`; a label is a `number`), its value and where it's defined:
+
+```yaml
+GFX [BASE=8192]:
+    W: const number = $28 ;hello.asm:15:3
+global:
+    COUNTER: var number = $02 ;hello.asm:3:9
+    SCREEN: const number = $0400 ;hello.asm:1:8
+    SPRITES: var object = {"x":1} ;hello.asm:4:1
+    START: label number = $0800 ;hello.asm:7:1
+    START.LOOP: label number = $0800 ;hello.asm:8:1
+```
+
+A variable has its last value, and the place it was last assigned.
 
 ## Library
 

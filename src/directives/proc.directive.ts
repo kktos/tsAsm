@@ -20,7 +20,7 @@ export class ProcDirective implements IDirective {
 		// Define the procedure name as a label in the current scope.
 		const statement = this.assembler.currentStatement ?? directive;
 		if (this.assembler.pass === 1)
-			this.assembler.symbolTable.defineConstant(nameToken.value, context.PC.value, {
+			this.assembler.symbolTable.defineLabel(nameToken.value, context.PC.value, {
 				filename: context.filename,
 				line: statement.line,
 				column: statement.column,

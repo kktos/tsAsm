@@ -201,10 +201,6 @@ A generated table is listed one line per iteration: `.repeat 128 AS idx FROM 0` 
 
 Building an array takes a loop of assignments (`row = .push(row, col * 16)`), each one listed. A built-in or an expression form would give it in one: `.range(start, count [, step])` with a `.map(array, function)` once user functions exist (4.8), or a comprehension, `[col * 16 for col in 0..15]`. Then `.db ...` emits it directly. Bigger than 4.9; decide the syntax with 4.8.
 
-### 4.11 Kinds in the symbol file
-
-The `.sym` file doesn't say what a symbol is: `COUNTER: number = $02`, whether it's a variable (`=`, `.let`), a constant (`.equ`) or a label. Decided: a marker in front, `var`, `const` or `label`, in today's one-line format: `COUNTER: var number = $02 ;t.asm:5:1`. The symbol table must then record a label as such.
-
 ## 5. Documentation (REFERENCE.md)
 
 - **Macro scope:** labels and variables in a macro body are local to the call. CLAUDE.md says it, REFERENCE doesn't.
