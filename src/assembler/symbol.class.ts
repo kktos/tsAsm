@@ -511,11 +511,23 @@ export class PASymbolTable {
 		return suggestions.map((s) => s.name);
 	}
 
-	/** The symbols by namespace, keyed by its name (`global` for the default one), for the symbol file. */
+	/**
+	 * The symbols by namespace, for the symbol file: keyed by its name (`global` for the default one),
+	 * followed by its metadata if it has some (`GFX [BASE=8192, KIND=screen]`).
+	 */
 	public getDict() {
 		const dict: Record<string, Record<string | symbol, SymbolValue>> = {};
 
 		for (const [namespace, symbolDict] of this.symbols.entries()) {
+			let displayName = namespace === INTERNAL_GLOBAL ? "global" : namespace;
+			const metadata = this.namespaceMetadata.get(namespace);
+			if (metadata) {
+				const metaStr = Object.entries(metadata)
+					.map(([k, v]) => `${k}=${v}`)
+					.join(", ");
+				if (metaStr) displayName = `${displayName} [${metaStr}]`;
+			}
+
 			const nsDict: Record<string | symbol, SymbolValue> = {};
 			for (const symbol of symbolDict.values()) {
 				if (symbol.name === "*") continue;
@@ -537,7 +549,7 @@ export class PASymbolTable {
 				}
 				nsDict[symbol.name] = `${value} ;${symbol.source}:${symbol.line}:${symbol.column}`;
 			}
-			dict[namespace === INTERNAL_GLOBAL ? "global" : namespace] = nsDict;
+			dict[displayName] = nsDict;
 		}
 
 		return dict;

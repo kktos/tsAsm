@@ -328,7 +328,7 @@ _Now `.REPEAT: 'N' must be defined before it is used here (the count is needed t
 
 ## CLI (TODO 2.3)
 
-- **#155** (TODO 1.53) — The `.sym` file keys the default namespace `'%%GLOBAL'`, the table's internal name; a namespace with metadata `GFX [BASE=8192, KIND=screen]`, so its key isn't its name; a string isn't escaped: `msg = "he said \"hi\""` gives `string = "he said "hi""`. _The default namespace is `global`, as REFERENCE calls it; a namespace is keyed by its name, its metadata left out (a library user still has `getNamespaceMetadata`); a string is written as JSON: `string = "he said \"hi\""`._
+- **#155** (TODO 1.53) — The `.sym` file keys the default namespace `'%%GLOBAL'`, the table's internal name; a string isn't escaped: `msg = "he said \"hi\""` gives `string = "he said "hi""`. _The default namespace is `global`, as REFERENCE calls it, followed by its metadata as other namespaces are (`global [KIND=main]`, `GFX [BASE=8192, KIND=screen]`: a debugger reads it); a string is written as JSON: `string = "he said \"hi\""`._
 - **#108** — Relative config path applied twice (`chdir` + `dirname`), so `tsasm proj/conf.yaml` fails. _The project directory is made absolute once and every path of the project file is resolved against it, without `chdir`: the linker script and its includes were the ones read from `proj/proj/`._
 - **#75** — Included file paths come out as `./././nope.asm`. _Now normalized (`includes/x.asm`), and every error in an included file says through which includes it was reached._
 - **#72** — An empty `.lst` is always created in the current directory. _The listing is only written when enabled, relative to the project file, its directory created; a write failure is a clean error, not a node crash._

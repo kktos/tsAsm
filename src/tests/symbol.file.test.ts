@@ -31,13 +31,21 @@ msg = "he said \\"hi\\"\\n"
 		expect(dict.global?.MSG).toBe('string = "he said \\"hi\\"\\n" ;:2:5');
 	});
 
-	it("should key a namespace by its name only, without its metadata", () => {
+	it("should key a namespace by its name followed by its metadata", () => {
 		const dict = symbolsOf(`
 .namespace gfx base=$2000, kind="screen"
 w .equ 40
 .end namespace
 `);
-		expect(Object.keys(dict)).toEqual(["global", "GFX"]);
-		expect(dict.GFX?.W).toBe("number = $28 ;:3:3");
+		expect(Object.keys(dict)).toEqual(["global", "GFX [BASE=8192, KIND=screen]"]);
+		expect(dict["GFX [BASE=8192, KIND=screen]"]?.W).toBe("number = $28 ;:3:3");
+	});
+
+	it("should name the default namespace global with its metadata", () => {
+		const dict = symbolsOf(`
+.namespace global kind="main"
+SCREEN .equ $0400
+`);
+		expect(Object.keys(dict)).toEqual(["global [KIND=main]"]);
 	});
 });
