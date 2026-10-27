@@ -6,10 +6,23 @@ export const DEFAULT_OPTIONS = {
 	"anon.marker": ":",
 	/** How the listing writes the mnemonics, registers and symbols: `upper` (LDA), `lower` (lda) or `source`, as written. */
 	"listing.case": "upper",
+	/** The first value of a `.repeat` iterator: 0 or 1. */
+	"repeat.start": 1,
+	/** The first value of a `.for` index: 0 or 1. */
+	"for.start": 0,
 };
 
 export type OptionName = keyof typeof DEFAULT_OPTIONS;
-export type Options = Partial<Record<OptionName, string>>;
+export type OptionValue = string | number;
+export type Options = Partial<Record<OptionName, OptionValue>>;
+
+/**
+ * The options local to a file: each file starts with the values the assembler was given, and a macro body runs with
+ * the values where the macro is defined. The others are global: they carry into the files a source includes, and an
+ * included file's stay after it.
+ */
+export const LOCAL_OPTIONS = ["repeat.start", "for.start"] as const satisfies OptionName[];
+export type LocalOptions = Record<(typeof LOCAL_OPTIONS)[number], OptionValue>;
 
 /** The chars a local label prefix or an anonymous label marker can be. */
 const LABEL_CHARS = [":", "@", "!", "?", "_", "~"];
@@ -28,11 +41,21 @@ export function isListingCase(value: unknown): value is ListingCase {
 	return typeof value === "string" && (LISTING_CASES as readonly string[]).includes(value);
 }
 
+/** The values of `repeat.start` and `for.start`. */
+const LOOP_STARTS = [0, 1];
+export const LOOP_STARTS_TEXT = LOOP_STARTS.join(", ");
+
+export function isLoopStart(value: unknown): value is number {
+	return typeof value === "number" && LOOP_STARTS.includes(value);
+}
+
 /** What each option's value can be, and the values the error message lists. */
 const OPTION_VALUES: Record<OptionName, { isValid: (value: unknown) => boolean; text: string }> = {
 	"local.prefix": { isValid: isLabelChar, text: LABEL_CHARS_TEXT },
 	"anon.marker": { isValid: isLabelChar, text: LABEL_CHARS_TEXT },
 	"listing.case": { isValid: isListingCase, text: LISTING_CASES_TEXT },
+	"repeat.start": { isValid: isLoopStart, text: LOOP_STARTS_TEXT },
+	"for.start": { isValid: isLoopStart, text: LOOP_STARTS_TEXT },
 };
 
 export function isOptionName(name: string): name is OptionName {
@@ -47,7 +70,7 @@ export function optionValueError(name: OptionName, value: unknown): string | und
 }
 
 /** The options given to the assembler, with the defaults for the others. An unknown option or a wrong value throws. */
-export function withDefaultOptions(options: Record<string, unknown> = {}): Record<OptionName, string> {
+export function withDefaultOptions(options: Record<string, unknown> = {}): Record<OptionName, OptionValue> {
 	for (const [name, value] of Object.entries(options)) {
 		if (!isOptionName(name)) throw new Error(`Unknown option '${name}'.`);
 		const error = optionValueError(name, value);

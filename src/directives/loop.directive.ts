@@ -1,10 +1,14 @@
+import type { OptionName } from "../assembler/options";
 import type { SymbolValue } from "../assembler/symbol.class";
 import type { IdentifierToken, ScalarToken, Token } from "../shared/lexer/lexer.class";
+import { AsmError } from "../utils/error.utils";
 import { undefinedSymbolName } from "../utils/symbol.utils";
 import type { DirectiveContext, DirectiveRuntime, IDirective } from "./directive.interface";
 
 interface LoopState {
 	iterator?: IdentifierToken;
+	/** The iterator's first value */
+	start: number;
 	body: Token[];
 	// For .FOR loops
 	itemIterator?: IdentifierToken;
@@ -58,12 +62,9 @@ export class LoopDirective implements IDirective {
 
 		if (!itemIteratorToken || !ofToken) throw new Error("Invalid .FOR loop syntax. Expected: .for <iterator> of <array>");
 
-		// Find expression tokens on the header line after 'OF', optionally followed by 'AS'
+		// The array expression, then AS <index> FROM <start>, both optional
 		const exprHeader = this.runtime.parser.getInstructionTokens();
-		let asIndex = exprHeader.findIndex((t) => t.type === "IDENTIFIER" && t.value === "AS");
-		if (asIndex === -1) asIndex = exprHeader.length;
-		const expressionTokens = exprHeader.slice(0, asIndex);
-		const indexIteratorToken = asIndex < exprHeader.length ? (exprHeader[asIndex + 1] as IdentifierToken) : undefined;
+		const { valueTokens: expressionTokens, iterator: indexIteratorToken, start } = this.parseIterator(".FOR", "index", exprHeader, "for.start", context);
 
 		// Resolve the array from the symbol table
 		const arrayValue = this.runtime.evaluator.evaluate(expressionTokens, context) as SymbolValue[];
@@ -90,6 +91,7 @@ export class LoopDirective implements IDirective {
 		this.loopStates.set(loopId, {
 			itemIterator: itemIteratorToken,
 			iterator: indexIteratorToken, // The index iterator
+			start,
 			items: arrayValue as SymbolValue[],
 			repeatCount: arrayValue.length,
 			repeatTotal: arrayValue.length,
@@ -106,13 +108,12 @@ export class LoopDirective implements IDirective {
 	}
 
 	private handleRepeatLoop(directive: ScalarToken, context: DirectiveContext): void {
-		const countExpressionTokens = this.runtime.parser.getInstructionTokens();
-
-		// If there is an 'AS' clause, split it
-		const asPos = countExpressionTokens.findIndex((t) => t.type === "IDENTIFIER" && t.value === "AS");
-		let iteratorToken: IdentifierToken | undefined;
-		const exprTokens = asPos === -1 ? countExpressionTokens : countExpressionTokens.slice(0, asPos);
-		if (asPos !== -1) iteratorToken = countExpressionTokens[asPos + 1] as IdentifierToken;
+		// The count, then AS <iterator> FROM <start>, both optional
+		const {
+			valueTokens: exprTokens,
+			iterator: iteratorToken,
+			start,
+		} = this.parseIterator(".REPEAT", "iterator", this.runtime.parser.getInstructionTokens(), "repeat.start", context);
 
 		const count = this.runtime.evaluator.evaluateAsNumber(exprTokens, context);
 		if (count === null)
@@ -131,6 +132,7 @@ export class LoopDirective implements IDirective {
 		const loopId = `${directive.line}`;
 		this.loopStates.set(loopId, {
 			iterator: iteratorToken,
+			start,
 			repeatCount: count,
 			repeatTotal: count,
 			body: bodyTokens,
@@ -144,6 +146,53 @@ export class LoopDirective implements IDirective {
 		this.runNextLoopIteration(loopId, context);
 	}
 
+	/**
+	 * Splits a loop's header into its value (the count, the array) and its `AS <iterator> FROM <start>` end, both parts
+	 * optional and nothing after them. The iterator starts at FROM's value, else at the option's.
+	 */
+	private parseIterator(
+		directiveName: string,
+		role: string,
+		tokens: Token[],
+		startOption: OptionName,
+		context: DirectiveContext,
+	): { valueTokens: Token[]; iterator?: IdentifierToken; start: number } {
+		const isKeyword = (token: Token | undefined, keyword: string) => token?.type === "IDENTIFIER" && token.value === keyword;
+		const optionStart = this.runtime.option(startOption) as number;
+
+		const asPos = tokens.findIndex((token) => isKeyword(token, "AS"));
+		if (asPos === -1) {
+			const fromToken = tokens.find((token) => isKeyword(token, "FROM"));
+			if (fromToken) throw AsmError.at(`${directiveName}: FROM needs an ${role}: AS <${role}> FROM <start>.`, fromToken);
+			return { valueTokens: tokens, start: optionStart };
+		}
+
+		const valueTokens = tokens.slice(0, asPos);
+		const iteratorToken = tokens[asPos + 1];
+		if (iteratorToken?.type !== "IDENTIFIER")
+			throw AsmError.at(`${directiveName}: AS must be followed by the ${role}'s name.`, iteratorToken ?? (tokens[asPos] as Token));
+		const iterator = iteratorToken as IdentifierToken;
+
+		const fromToken = tokens[asPos + 2];
+		if (!fromToken) return { valueTokens, iterator, start: optionStart };
+		if (!isKeyword(fromToken, "FROM"))
+			throw AsmError.at(
+				`${directiveName}: unexpected '${fromToken.raw ?? fromToken.value}' after the ${role}: only FROM <start> can follow it.`,
+				fromToken,
+			);
+
+		const startTokens = tokens.slice(asPos + 3);
+		if (startTokens.length === 0) throw AsmError.at(`${directiveName}: FROM must be followed by the ${role}'s first value.`, fromToken);
+		const start = this.runtime.evaluator.evaluateAsNumber(startTokens, context);
+		if (start === null)
+			throw new Error(
+				`${directiveName}: ${undefinedSymbolName(startTokens, context, this.runtime.symbolTable)} must be defined before it is used here (the ${role}'s first value is needed in pass 1).`,
+			);
+		if (!Number.isInteger(start)) throw new Error(`${directiveName} FROM: ${start} isn't a whole number.`);
+
+		return { valueTokens, iterator, start };
+	}
+
 	private runNextLoopIteration(loopId: string, context: DirectiveContext): void {
 		const state = this.loopStates.get(loopId);
 		if (!state) return; // Should not happen
@@ -154,11 +203,8 @@ export class LoopDirective implements IDirective {
 			const currentIndex = (state.repeatTotal ?? 0) - state.repeatCount;
 			state.repeatCount--; // Decrement remaining count for the next call
 
-			// Define the main iterator variable (0-based index for .FOR, 1-based for .REPEAT)
-			if (state.iterator) {
-				const iteratorValue = state.items ? currentIndex : currentIndex + 1;
-				this.runtime.symbolTable.assignVariable(state.iterator.value, iteratorValue);
-			}
+			// The main iterator: .FOR's index or .REPEAT's iterator
+			if (state.iterator) this.runtime.symbolTable.assignVariable(state.iterator.value, state.start + currentIndex);
 
 			// Handle .FOR specific item value
 			if (state.items && state.itemIterator) {

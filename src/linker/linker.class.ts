@@ -1,6 +1,7 @@
 import { EventEmitter } from "node:events";
 import { ExpressionEvaluator } from "../assembler/expression";
 import type { ValueHolder } from "../assembler/expression.types";
+import { DEFAULT_OPTIONS } from "../assembler/options";
 import { Parser } from "../assembler/parser.class";
 import type { FileHandler, StreamState } from "../assembler/polyasm.types";
 import { PASymbolTable } from "../assembler/symbol.class";
@@ -323,6 +324,8 @@ export class Linker {
 			lister,
 			linker: this,
 			macroHandler,
+			// A link script has no .option
+			option: (name) => DEFAULT_OPTIONS[name],
 			warn: (message, position) => logger.warn(errorLocator.warning(message, position)),
 			currentStatement: () => statementToken,
 			definitionSite: (position) => errorLocator.definitionSite(position),

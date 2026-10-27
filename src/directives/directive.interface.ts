@@ -1,5 +1,6 @@
 import type { ExpressionEvaluator } from "../assembler/expression";
 import type { EvaluationContext } from "../assembler/expression.types";
+import type { OptionName, OptionValue } from "../assembler/options";
 import type { Parser } from "../assembler/parser.class";
 import type { FileHandler } from "../assembler/polyasm.types";
 import type { PASymbolTable } from "../assembler/symbol.class";
@@ -43,6 +44,8 @@ export interface DirectiveRuntime {
 	lister: ILister;
 	linker: Linker;
 	macroHandler: MacroHandler;
+	/** The value of an `.option` in effect. */
+	option: (name: OptionName) => OptionValue;
 	/** Reports a warning, located like an error: at `position`, else at the current statement. */
 	warn: (message: string, position?: { line: number | string; column: number }) => void;
 	/** The first token of the statement being assembled: where its errors are located, and where what it defines is. */

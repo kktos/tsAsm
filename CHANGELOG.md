@@ -6,6 +6,12 @@ The problem is described as it was before the fix, then the fix in _italics_.
 
 ## Assembler
 
+### #151 — `.repeat` counts from 1, `.for` from 0; text after a loop's iterator ignored (TODO 3.2, 1.48)
+
+`.repeat 3 AS i` gave 1, 2, 3, `.for … AS idx` 0, 1, 2, with no way to choose: `.dw base + i*8` is off by one, and ca65's `.repeat` counts from 0. Anything after `AS <iterator>` was ignored: `.repeat 3 AS i junk` and `.repeat 3 AS i FROM 0` gave `01 02 03`, `.repeat 3 AS` and `.repeat 3 AS 5` assembled.
+
+_Decided: the defaults stay, and the start can be chosen. Locally: `.repeat 3 AS i FROM 0`, `.for c of a AS idx FROM 1` (any whole number, negative too, symbols defined before the loop; the `.for` items still start at the first). For a file or the project: the options `repeat.start` and `for.start`, `0` or `1`, by `.option` or the project file's `input.options`; `FROM` wins. They are the first local options: each file starts with the values the assembler was given, an `.option` lasts until the end of its file, and a macro body runs with the values where the macro is defined (the assembler's `useLocalOptions`, for `.include` and macro calls). The others are now called global. REFERENCE explains both kinds. A loop's header is `AS <name> [FROM <start>]` and nothing else: `.REPEAT: unexpected 'junk' after the iterator: only FROM <start> can follow it.`, `.REPEAT: AS must be followed by the iterator's name.`, `.REPEAT: FROM needs an iterator: AS <iterator> FROM <start>.`, at the token._
+
 ### #150 — `.elseif` skipped in a false `.if` (TODO 1.39)
 
 There was no `.elseif`. In a true branch, it was an error (`Syntax error - Unexpected directive 'ELSEIF'`), but in a false one it was skipped with the branch: `.if 0` / `nop` / `.elseif 1` / `rts` / `.else` / `brk` / `.end` → `00`. A branch not taken didn't check its directives at all: `.if 0` / `.foobar 1` / `.end` assembled.

@@ -23,6 +23,8 @@ export class IncludeDirective implements IDirective {
 			const logConfigDepth = this.assembler.logger.getConfigDepth();
 
 			if (!this.assembler.streamManager.startNewStream(filename, true, this.runtime.includeSites(this.assembler.currentStatement ?? directive))) return;
+			// The file starts with the local options the assembler was given, and the includer's are back after it.
+			const restoreOptions = this.assembler.useLocalOptions();
 			this.assembler.parser.pushTokenStream({
 				newTokens: this.assembler.parser.lexer.getBufferedTokens(),
 				file: this.assembler.streamManager.currentFilepath,
@@ -30,6 +32,7 @@ export class IncludeDirective implements IDirective {
 					// cleanup the log config if a .LIST file was included
 					if (logConfigDepth < this.assembler.logger.getConfigDepth()) this.assembler.logger.popConfig();
 					this.assembler.streamManager.endCurrentStream();
+					restoreOptions();
 				},
 			});
 
@@ -46,6 +49,7 @@ export class IncludeDirective implements IDirective {
 
 		const logConfigDepth = this.assembler.logger.getConfigDepth();
 		if (!this.assembler.streamManager.startNewStream(filename, false, this.runtime.includeSites(this.assembler.currentStatement ?? directive))) return;
+		const restoreOptions = this.assembler.useLocalOptions();
 		this.assembler.parser.pushTokenStream({
 			file: this.assembler.streamManager.currentFilepath,
 			newTokens: [],
@@ -53,6 +57,7 @@ export class IncludeDirective implements IDirective {
 				// cleanup the log config if a .LIST file was included
 				if (logConfigDepth < this.assembler.logger.getConfigDepth()) this.assembler.logger.popConfig();
 				this.assembler.streamManager.endCurrentStream();
+				restoreOptions();
 			},
 		});
 

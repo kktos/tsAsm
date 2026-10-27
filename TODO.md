@@ -85,10 +85,6 @@ Since #150, a branch of `.if` not taken rejects an unknown directive starting a 
 
 Found on 2026-10-26 by reviewing README and REFERENCE against the code. Each needs a decision before a fix.
 
-### 3.2 `.repeat` counts from 1, `.for` from 0
-
-`.repeat 3 AS i` gives 1, 2, 3, `.for … AS idx` gives 0, 1, 2. `.dw base + i*8` is off by one, and ca65's `.repeat` counts from 0. Options: count from 0 (breaking), keep 1 and say why, or a start value. Recommended: 0.
-
 ### 3.3 `=` vs `.equ`
 
 REFERENCE says they are the same, but `=` can be reassigned and `.equ` can't (`Symbol 'X' redefined.`). A forward reference to a reassigned variable takes its last value in pass 1: `.db v` / `v = 1` / `v = 2` → `02`. Options: document it, and warn (or error) on a forward reference to a variable assigned more than once.

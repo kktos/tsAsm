@@ -16,7 +16,7 @@ import { getHex } from "../utils/hex.util";
 import { ExpressionEvaluator } from "./expression";
 import type { ValueHolder } from "./expression.types";
 import { NamelessLabels } from "./namelesslabels.class";
-import { type OptionName, withDefaultOptions } from "./options";
+import { LOCAL_OPTIONS, type LocalOptions, type OptionName, type OptionValue, withDefaultOptions } from "./options";
 import { Parser, ParserError } from "./parser.class";
 import type { AssemblerOptions, DataProcessor, FileHandler, SegmentDefinition, StreamState } from "./polyasm.types";
 import { PASymbolTable } from "./symbol.class";
@@ -34,7 +34,9 @@ export class Assembler {
 	private readonly initialCpuHandler: CPUHandler;
 	private readonly segmentDefinitions: SegmentDefinition[];
 	/** The `.option` values each pass starts with. */
-	private readonly initialOptions: Record<OptionName, string>;
+	private readonly initialOptions: Record<OptionName, OptionValue>;
+	/** The `.option` values in effect. */
+	private currentOptions: Record<OptionName, OptionValue>;
 	private hasAssembled = false;
 	/** Where pass 1 started: pass 2 starts with the same current segment and PC. */
 	private passStart: { segment: Segment | undefined; PC: number } = { segment: undefined, PC: DEFAULT_PC };
@@ -68,6 +70,7 @@ export class Assembler {
 		this.initialCpuHandler = handler;
 		this.segmentDefinitions = options?.segments ?? [];
 		this.initialOptions = withDefaultOptions(options?.options);
+		this.currentOptions = { ...this.initialOptions };
 		this.fileHandler = fileHandler;
 		this.logger =
 			options?.logger ??
@@ -100,8 +103,13 @@ export class Assembler {
 		this.parser = new Parser(this.emitter);
 		this.streamManager = new StreamManager(this.fileHandler, this.parser);
 
-		this.macroHandler = new MacroHandler(this.parser, this.symbolTable, this.lister, options?.maxMacroDepth, (tokens, macroArgs) =>
-			this.substituteArgument(tokens, macroArgs),
+		this.macroHandler = new MacroHandler(
+			this.parser,
+			this.symbolTable,
+			this.lister,
+			options?.maxMacroDepth,
+			(tokens, macroArgs) => this.substituteArgument(tokens, macroArgs),
+			(options) => this.useLocalOptions(options),
 		);
 		this.errorLocator = new ErrorLocator(this.parser, this.macroHandler, () => this.statementToken, this.streamManager);
 
@@ -113,6 +121,7 @@ export class Assembler {
 			logger: this.logger,
 			linker: this.linker,
 			macroHandler: this.macroHandler,
+			option: (name) => this.currentOptions[name],
 			warn: (message, position) => this.warn(message, position),
 			currentStatement: () => this.statementToken,
 			definitionSite: (position) => this.errorLocator.definitionSite(position),
@@ -192,14 +201,31 @@ export class Assembler {
 	}
 
 	/** Options are broadcast as "option:<name>" events. They take effect from the next statement on. */
-	public setOption(name: OptionName, value: string) {
+	public setOption(name: OptionName, value: OptionValue) {
+		this.applyOption(name, value);
+		this.lister.directive("option", `${name} = ${JSON.stringify(value)}`);
+	}
+
+	private applyOption(name: OptionName, value: OptionValue) {
+		this.currentOptions[name] = value;
 		this.emitter.emit(`option:${name}`, value);
-		this.lister.directive("option", `${name} = "${value}"`);
+	}
+
+	/**
+	 * Sets the local options to `options`, by default the ones the assembler was given, until the function it returns
+	 * puts back the ones in effect: for an included file or a macro body, see `LOCAL_OPTIONS`.
+	 */
+	public useLocalOptions(options: LocalOptions = this.initialOptions): () => void {
+		const previous = LOCAL_OPTIONS.map((name) => [name, this.currentOptions[name]] as const);
+		for (const name of LOCAL_OPTIONS) this.applyOption(name, options[name]);
+		return () => {
+			for (const [name, value] of previous) this.applyOption(name, value);
+		};
 	}
 
 	/** Each pass starts with the options the assembler was given: the passes read the `.option`s in the same order. */
 	private resetOptions() {
-		for (const [name, value] of Object.entries(this.initialOptions)) this.emitter.emit(`option:${name}`, value);
+		for (const [name, value] of Object.entries(this.initialOptions)) this.applyOption(name as OptionName, value);
 	}
 
 	public setCPUHandler(handler: CPUHandler) {
