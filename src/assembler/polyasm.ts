@@ -308,6 +308,8 @@ export class Assembler {
 
 			this.logger.enabled = isLogEnabled;
 		} catch (e) {
+			// The listing shows what ran up to the error
+			this.lister.endLoops();
 			throw this.errorLocator.toAsmError(e);
 		} finally {
 			// Symbols set up between two assemblies are known in both passes of the next one.
@@ -697,6 +699,7 @@ export class Assembler {
 			addr: instructionPC,
 			bytes: Array.from({ length: sizeInfo.bytes }, () => 0),
 			text: this.lister.instruction(mnemonicToken, operandTokens),
+			isCode: true,
 		});
 	}
 
@@ -732,6 +735,7 @@ export class Assembler {
 				addr: instructionPC,
 				bytes: encodedBytes,
 				text: this.lister.instruction(mnemonicToken, operandTokens),
+				isCode: true,
 			});
 
 			this.linker.writeBytes(this.PC.value, encodedBytes);

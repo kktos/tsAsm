@@ -61,9 +61,9 @@ export class HexDirective implements IDirective {
 			bytes.push(byte);
 		}
 
-		if (bytes.length > 0) context.emitbytes(bytes);
+		this.lister.bytes({ addr: context.PC.value, bytes, text: `.${directive.value.toLowerCase()} <${bytes.length} bytes>` });
 
-		this.lister.directive(directive, `<${bytes.length} bytes>`);
+		if (bytes.length > 0) context.emitbytes(bytes);
 	}
 
 	/** Returns the .HEX data as text, without its comments. */

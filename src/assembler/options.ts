@@ -6,6 +6,8 @@ export const DEFAULT_OPTIONS = {
 	"anon.marker": ":",
 	/** How the listing writes the mnemonics, registers and symbols: `upper` (LDA), `lower` (lda) or `source`, as written. */
 	"listing.case": "upper",
+	/** How the listing writes data and loops of data: `expand`, every byte, or `fold`, the first row only. */
+	"listing.data": "expand",
 	/** The first value of a `.repeat` iterator: 0 or 1. */
 	"repeat.start": 1,
 	/** The first value of a `.for` index: 0 or 1. */
@@ -41,6 +43,15 @@ export function isListingCase(value: unknown): value is ListingCase {
 	return typeof value === "string" && (LISTING_CASES as readonly string[]).includes(value);
 }
 
+/** The values of `listing.data`. */
+const LISTING_DATA = ["expand", "fold"] as const;
+export type ListingData = (typeof LISTING_DATA)[number];
+export const LISTING_DATA_TEXT = LISTING_DATA.map((value) => `'${value}'`).join(", ");
+
+export function isListingData(value: unknown): value is ListingData {
+	return typeof value === "string" && (LISTING_DATA as readonly string[]).includes(value);
+}
+
 /** The values of `repeat.start` and `for.start`. */
 const LOOP_STARTS = [0, 1];
 export const LOOP_STARTS_TEXT = LOOP_STARTS.join(", ");
@@ -54,6 +65,7 @@ const OPTION_VALUES: Record<OptionName, { isValid: (value: unknown) => boolean; 
 	"local.prefix": { isValid: isLabelChar, text: LABEL_CHARS_TEXT },
 	"anon.marker": { isValid: isLabelChar, text: LABEL_CHARS_TEXT },
 	"listing.case": { isValid: isListingCase, text: LISTING_CASES_TEXT },
+	"listing.data": { isValid: isListingData, text: LISTING_DATA_TEXT },
 	"repeat.start": { isValid: isLoopStart, text: LOOP_STARTS_TEXT },
 	"for.start": { isValid: isLoopStart, text: LOOP_STARTS_TEXT },
 };

@@ -1,7 +1,6 @@
 import type { Assembler } from "../assembler/polyasm";
-import type { Logger } from "../helpers/logger.class";
+import type { ILister } from "../helpers/lister.class";
 import type { ScalarToken } from "../shared/lexer/lexer.class";
-import { getHex } from "../utils/hex.util";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class IncbinDirective implements IDirective {
@@ -10,10 +9,10 @@ export class IncbinDirective implements IDirective {
 
 	constructor(
 		private readonly assembler: Assembler,
-		private readonly logger: Logger,
+		private readonly lister: ILister,
 	) {}
 
-	public handlePassOne(_directive: ScalarToken, context: DirectiveContext) {
+	public handlePassOne(directive: ScalarToken, context: DirectiveContext) {
 		const expressionTokens = this.assembler.parser.getInstructionTokens();
 		if (expressionTokens.length === 0) throw new Error(".INCBIN requires a string argument.");
 
@@ -24,7 +23,7 @@ export class IncbinDirective implements IDirective {
 		// Pass 1 knows the file name: a file that can't be read is reported now, not after a pass with a wrong size.
 		const rawBytes = this.readFile(filename);
 		context.PC.value += rawBytes.length;
-		this.logger.log(`[PASS 1] Reserved ${rawBytes.length} bytes for binary file: ${filename}`);
+		this.lister.directive(directive, filename, `<${rawBytes.length} bytes>`);
 
 		return undefined;
 	}
@@ -39,16 +38,9 @@ export class IncbinDirective implements IDirective {
 
 		const rawBytes = this.readFile(filename);
 
+		this.lister.bytes({ addr: context.PC.value, bytes: rawBytes, text: `.${directive.value.toLowerCase()} "${filename}"` });
+
 		context.emitbytes(rawBytes);
-
-		const bytesStr =
-			rawBytes
-				.slice(0, 4)
-				.map((b) => b.toString(16).padStart(2, "0").toUpperCase())
-				.join(" ") + (rawBytes.length > 4 ? "..." : "");
-
-		const addressHex = getHex(context.PC.value, 4);
-		this.logger.log(`[PASS 2] $${addressHex}: ${bytesStr.padEnd(8)} | Line ${directive.line}: .INCBIN "${filename}" (${rawBytes.length} bytes)`);
 
 		return undefined;
 	}

@@ -1,5 +1,14 @@
 import { YAMLException } from "js-yaml";
-import { isLabelChar, isListingCase, isLoopStart, LABEL_CHARS_TEXT, LISTING_CASES_TEXT, LOOP_STARTS_TEXT } from "../assembler/options";
+import {
+	isLabelChar,
+	isListingCase,
+	isListingData,
+	isLoopStart,
+	LABEL_CHARS_TEXT,
+	LISTING_CASES_TEXT,
+	LISTING_DATA_TEXT,
+	LOOP_STARTS_TEXT,
+} from "../assembler/options";
 import type { FileHandler } from "../assembler/polyasm.types";
 import handlers from "../cpu";
 import { AsmError } from "../utils/error.utils";
@@ -20,6 +29,13 @@ const listingCase = {
 	optional: true,
 	validate: isListingCase,
 	errorMessage: `Must be one of ${LISTING_CASES_TEXT}`,
+} as const;
+
+const listingData = {
+	type: "string",
+	optional: true,
+	validate: isListingData,
+	errorMessage: `Must be one of ${LISTING_DATA_TEXT}`,
 } as const;
 
 const loopStart = {
@@ -62,6 +78,7 @@ const confSchema = {
 					"local.prefix": labelChar,
 					"anon.marker": labelChar,
 					"listing.case": listingCase,
+					"listing.data": listingData,
 					"repeat.start": loopStart,
 					"for.start": loopStart,
 				},

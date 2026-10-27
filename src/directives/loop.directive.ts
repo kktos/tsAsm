@@ -1,5 +1,6 @@
 import type { OptionName } from "../assembler/options";
 import type { SymbolValue } from "../assembler/symbol.class";
+import { tokensText } from "../helpers/lister.class";
 import type { IdentifierToken, ScalarToken, Token } from "../shared/lexer/lexer.class";
 import { AsmError } from "../utils/error.utils";
 import { undefinedSymbolName } from "../utils/symbol.utils";
@@ -78,13 +79,18 @@ export class LoopDirective implements IDirective {
 				`The .FOR expression must give an array, not ${typeof arrayValue === "string" ? "a string" : `${typeof arrayValue} ${String(arrayValue)}`}.`,
 			);
 
-		this.runtime.lister.directive(directive, itemIteratorToken, ofToken, exprHeader);
+		const header = `.for ${tokensText([itemIteratorToken, ofToken, ...exprHeader])}`;
 
 		// Find the loop body
 		const bodyTokens = this.runtime.parser.getDirectiveBlockTokens(directive.value);
 
+		this.runtime.lister.beginLoop(header, true);
+
 		// nothing to loop for then leave
-		if (arrayValue.length === 0) return;
+		if (arrayValue.length === 0) {
+			this.runtime.lister.endLoop();
+			return;
+		}
 
 		// Store the complete state for the loop.
 		const loopId = `${directive.line}`; // Use line number as a unique ID for the loop.
@@ -109,11 +115,8 @@ export class LoopDirective implements IDirective {
 
 	private handleRepeatLoop(directive: ScalarToken, context: DirectiveContext): void {
 		// The count, then AS <iterator> FROM <start>, both optional
-		const {
-			valueTokens: exprTokens,
-			iterator: iteratorToken,
-			start,
-		} = this.parseIterator(".REPEAT", "iterator", this.runtime.parser.getInstructionTokens(), "repeat.start", context);
+		const headerTokens = this.runtime.parser.getInstructionTokens();
+		const { valueTokens: exprTokens, iterator: iteratorToken, start } = this.parseIterator(".REPEAT", "iterator", headerTokens, "repeat.start", context);
 
 		const count = this.runtime.evaluator.evaluateAsNumber(exprTokens, context);
 		if (count === null)
@@ -127,6 +130,7 @@ export class LoopDirective implements IDirective {
 
 		// nothing to repeat then leave, like an empty .FOR
 		if (count === 0) return;
+		this.runtime.lister.beginLoop(`.repeat ${tokensText(headerTokens)}`, false);
 
 		// Setup state
 		const loopId = `${directive.line}`;
@@ -227,6 +231,7 @@ export class LoopDirective implements IDirective {
 		const state = this.loopStates.get(loopId);
 		for (const restore of state?.restoreSymbols.reverse() ?? []) restore();
 		this.loopStates.delete(loopId);
+		this.runtime.lister.endLoop();
 	}
 
 	/**
