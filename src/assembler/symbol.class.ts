@@ -511,21 +511,12 @@ export class PASymbolTable {
 		return suggestions.map((s) => s.name);
 	}
 
+	/** The symbols by namespace, keyed by its name (`global` for the default one), for the symbol file. */
 	public getDict() {
 		const dict: Record<string, Record<string | symbol, SymbolValue>> = {};
 
 		for (const [namespace, symbolDict] of this.symbols.entries()) {
-			let displayName = namespace;
-			const metadata = this.namespaceMetadata.get(namespace);
-			if (metadata) {
-				const metaStr = Object.entries(metadata)
-					.map(([k, v]) => `${k}=${v}`)
-					.join(", ");
-				if (metaStr) displayName = `${namespace} [${metaStr}]`;
-			}
-
-			let nsDict = dict[displayName];
-			if (!nsDict) nsDict = {};
+			const nsDict: Record<string | symbol, SymbolValue> = {};
 			for (const symbol of symbolDict.values()) {
 				if (symbol.name === "*") continue;
 				let value = "";
@@ -534,7 +525,7 @@ export class PASymbolTable {
 						value = `number = $${getHex(symbol.value)}`;
 						break;
 					case "string":
-						value = `string = "${symbol.value}"`;
+						value = `string = ${JSON.stringify(symbol.value)}`;
 						break;
 					case "object":
 						if (Array.isArray(symbol.value)) value = `array = ${JSON.stringify(symbol.value)}`;
@@ -546,7 +537,7 @@ export class PASymbolTable {
 				}
 				nsDict[symbol.name] = `${value} ;${symbol.source}:${symbol.line}:${symbol.column}`;
 			}
-			dict[displayName] = nsDict;
+			dict[namespace === INTERNAL_GLOBAL ? "global" : namespace] = nsDict;
 		}
 
 		return dict;

@@ -42,6 +42,14 @@ With `output.listing: { enabled: true, passes: { pass2: true } }`, the statement
 
 Without a linker script, `output.listing: { enabled: true }` writes a `.lst` holding only `--- Assembly Complete ---`. It needs `passes: { pass2: true }` to list anything. Pass 2 should be listed by default, as README's example (`listing: enabled: true`) implies. With a linker script and `linker: true` (the conan game) pass 2 is listed.
 
+### 1.54 `.proc` labels missing from the symbol file
+
+`.proc clear` / `loop:` / `dex` / `bne loop` / `rts` / `.end`: the `.sym` file lists `CLEAR` but not its `loop`. A proc's scope is taken out of the symbol table when it closes (kept aside for the next pass), and the symbol file only reads what's left. Decided: list a proc's labels under its name, as local labels are (`CLEAR.LOOP`); not the symbols of macro calls.
+
+### 1.55 A symbol is located at its directive, not at its name
+
+`SCREEN .equ $0400` is located at `:1:8` (the `.equ`), `counter = 1` at `:1:9` (the `=`), in the `.sym` file and in the notes of `Symbol 'X' redefined.`; a label is located at its name. Locate every symbol at its name.
+
 ## 2. Code review, items left
 
 ### 2.1 CPU back-ends
@@ -192,6 +200,10 @@ A generated table is listed one line per iteration: `.repeat 128 AS idx FROM 0` 
 ### 4.10 Building an array without a loop
 
 Building an array takes a loop of assignments (`row = .push(row, col * 16)`), each one listed. A built-in or an expression form would give it in one: `.range(start, count [, step])` with a `.map(array, function)` once user functions exist (4.8), or a comprehension, `[col * 16 for col in 0..15]`. Then `.db ...` emits it directly. Bigger than 4.9; decide the syntax with 4.8.
+
+### 4.11 Kinds in the symbol file
+
+The `.sym` file doesn't say what a symbol is: `COUNTER: number = $02`, whether it's a variable (`=`, `.let`), a constant (`.equ`) or a label. Decided: a marker in front, `var`, `const` or `label`, in today's one-line format: `COUNTER: var number = $02 ;t.asm:5:1`. The symbol table must then record a label as such.
 
 ## 5. Documentation (REFERENCE.md)
 
