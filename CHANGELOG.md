@@ -6,6 +6,12 @@ The problem is described as it was before the fix, then the fix in _italics_.
 
 ## Assembler
 
+### #154 — a variable's redefinition pointed at its last assignment as its first definition (TODO 1.52)
+
+`v = 1` / `v = 2` / `v .equ 3` → `Symbol 'V' redefined.`, with the note `first defined here` at `v = 2`: each assignment moves where the variable is defined.
+
+_Decided: the note says `last assigned here` when the variable was assigned more than once; a symbol given one value still says `first defined here`._
+
 ### #153 — `=` and `.equ` documented as the same; a variable used before it's assigned (TODO 3.3)
 
 REFERENCE said `=` and `.equ` are the same, but `=` can be reassigned and `.equ` can't (`Symbol 'X' redefined.`). A variable used before it's assigned took its last value in pass 1: `.db v` / `v = 1` / `v = 2` → `02`, and `.db v` / `v = 0` / `.repeat 3 {` / `v = v + 1` / `}` → `03`.

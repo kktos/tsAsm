@@ -79,10 +79,10 @@ export class PASymbolTable {
 		if (label) this.scopeLabels.set(name, label);
 	}
 
-	/** `Symbol 'X' redefined.`, with a note at its first definition. */
+	/** `Symbol 'X' redefined.`, with a note at its definition, or at its last one for a variable assigned more than once. */
 	redefinitionError(symbol: PASymbol): AsmError {
 		const { name, scope } = this.messageName(symbol);
-		return definitionError(`Symbol '${name}' redefined${scope}.`, symbol, "first defined here");
+		return definitionError(`Symbol '${name}' redefined${scope}.`, symbol, symbol.assignments > 1 ? "last assigned here" : "first defined here");
 	}
 
 	/** `Can't redefine constant 'X'.`, with a note at its definition. */

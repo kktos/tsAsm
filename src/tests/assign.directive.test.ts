@@ -56,6 +56,20 @@ describe("= - variable assignment", () => {
 		expect(() => asm.assemble(src)).toThrow("Missing symbol name before =.");
 	});
 
+	it("should point at its last assignment when it's redefined as a constant", () => {
+		const src = `
+				v = 1
+				v = 2
+				v .equ 3
+			`;
+		expect(() => asm.assemble(src)).toThrow(
+			expect.objectContaining({
+				message: "Symbol 'V' redefined.",
+				notes: [expect.objectContaining({ message: "last assigned here", location: expect.objectContaining({ line: 3 }) })],
+			}),
+		);
+	});
+
 	// Pass 2 gets back the symbols pass 1 defined in a macro call or a procedure. Here pass 1 didn't run the assignment,
 	// so pass 2 defines the variable instead of assigning it.
 	it("should define a variable in a macro called in pass 2 only", () => {
