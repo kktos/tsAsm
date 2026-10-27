@@ -405,7 +405,7 @@ export class Assembler {
 					this.lastGlobalLabel = token.value;
 					this.lastGlobalLabelLine = token.line;
 					if (!this.parser.isOperator("=") && !this.parser.isDirective("EQU")) {
-						this.symbolTable.defineConstant(token.value, this.PC.value, {
+						this.symbolTable.defineLabel(token.value, this.PC.value, {
 							filename: this.streamManager.currentFilepath,
 							line: token.line,
 							column: token.column,
@@ -417,7 +417,7 @@ export class Assembler {
 				case "LABEL": {
 					this.lastGlobalLabel = token.value;
 					this.lastGlobalLabelLine = token.line;
-					this.symbolTable.defineConstant(token.value, this.PC.value, {
+					this.symbolTable.defineLabel(token.value, this.PC.value, {
 						filename: this.streamManager.currentFilepath,
 						line: token.line,
 						column: token.column,
@@ -431,7 +431,7 @@ export class Assembler {
 						throw new ParserError(`Local label '${token.raw ?? token.value}' defined without a preceding global label.`, token);
 
 					const qualifiedName = `${this.lastGlobalLabel}.${token.value}`;
-					this.symbolTable.defineConstant(qualifiedName, this.PC.value, {
+					this.symbolTable.defineLabel(qualifiedName, this.PC.value, {
 						filename: this.streamManager.currentFilepath,
 						line: token.line,
 						column: token.column,
@@ -530,7 +530,7 @@ export class Assembler {
 							this.checkLabelPhase(token.value);
 							this.symbolTable.updateSymbol(token.value, this.PC.value);
 						} else
-							this.symbolTable.defineConstant(token.value, this.PC.value, {
+							this.symbolTable.defineLabel(token.value, this.PC.value, {
 								filename: this.streamManager.currentFilepath,
 								line: token.line,
 								column: token.column,
@@ -574,7 +574,7 @@ export class Assembler {
 						this.checkLabelPhase(token.value);
 						this.symbolTable.updateSymbol(token.value, this.PC.value);
 					} else
-						this.symbolTable.defineConstant(token.value, this.PC.value, {
+						this.symbolTable.defineLabel(token.value, this.PC.value, {
 							filename: this.streamManager.currentFilepath,
 							line: token.line,
 							column: token.column,
@@ -592,7 +592,7 @@ export class Assembler {
 						this.checkLabelPhase(qualifiedName, `local label '${token.raw ?? token.value}' of '${this.lastGlobalLabel}'`);
 						this.symbolTable.updateSymbol(qualifiedName, this.PC.value);
 					} else
-						this.symbolTable.defineConstant(qualifiedName, this.PC.value, {
+						this.symbolTable.defineLabel(qualifiedName, this.PC.value, {
 							filename: this.streamManager.currentFilepath,
 							line: token.line,
 							column: token.column,

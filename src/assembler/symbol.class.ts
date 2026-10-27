@@ -17,6 +17,8 @@ interface PASymbol {
 	name: string;
 	value: SymbolValue;
 	isConstant: boolean;
+	/** A label: a constant, the address where it's defined. */
+	isLabel: boolean;
 	namespace: string;
 	source: string;
 	line: number | string;
@@ -241,7 +243,12 @@ export class PASymbolTable {
 		return undefined;
 	}
 
-	defineConstant(constantName: string, value: SymbolValue, source: SymbolSource) {
+	/** Defines a label: a constant, kept as a label for the symbol file. */
+	defineLabel(labelName: string, value: number, source: SymbolSource) {
+		this.defineConstant(labelName, value, source, true);
+	}
+
+	defineConstant(constantName: string, value: SymbolValue, source: SymbolSource, isLabel = false) {
 		let scope: Map<string, PASymbol> | undefined;
 		let name = "";
 		let ns = "";
@@ -265,6 +272,7 @@ export class PASymbolTable {
 			name,
 			value,
 			isConstant: true,
+			isLabel,
 			namespace: ns,
 			...this.symbolSite(source),
 			definedInPass: this.pass,
@@ -300,6 +308,7 @@ export class PASymbolTable {
 			name,
 			value,
 			isConstant: false,
+			isLabel: false,
 			namespace: ns,
 			...this.symbolSite(source),
 			definedInPass: this.pass,
@@ -513,7 +522,8 @@ export class PASymbolTable {
 
 	/**
 	 * The symbols by namespace, for the symbol file: keyed by its name (`global` for the default one),
-	 * followed by its metadata if it has some (`GFX [BASE=8192, KIND=screen]`).
+	 * followed by its metadata if it has some (`GFX [BASE=8192, KIND=screen]`). Each symbol is
+	 * `<kind> <type> = <value> ;<file>:<line>:<column>`, its kind `var`, `const` or `label`.
 	 */
 	public getDict() {
 		const dict: Record<string, Record<string | symbol, SymbolValue>> = {};
@@ -547,7 +557,8 @@ export class PASymbolTable {
 						value = "undefined";
 						break;
 				}
-				nsDict[symbol.name] = `${value} ;${symbol.source}:${symbol.line}:${symbol.column}`;
+				const kind = symbol.isLabel ? "label" : symbol.isConstant ? "const" : "var";
+				nsDict[symbol.name] = `${kind} ${value} ;${symbol.source}:${symbol.line}:${symbol.column}`;
 			}
 			dict[displayName] = nsDict;
 		}
