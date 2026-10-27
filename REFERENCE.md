@@ -237,10 +237,13 @@ The linker script writes a module's segments with `.WRITE MODULE "GAME"`. Withou
 
 The CPU's byte order is little-endian (`.dw $1234` gives `34 12`), except on the 6809, which is big-endian (`12 34`).
 
+A string is its characters, one value each: `.db "AB"` is `.db "A", "B"`, and `.dw "AB"` is `.dw "A", "B"`, `41 00 42 00`. A character above 255 is an error.
+
 ```as
 .db $01, 2, "A"
 .dw $1234           ; 34 12
 .dl $01020304       ; 04 03 02 01
+.dw "AB"            ; 41 00 42 00
 .fill 4, $EA        ; EA EA EA EA
 .align $100         ; pad up to the next page
 
