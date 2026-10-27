@@ -474,6 +474,13 @@ ${call}`),
 			["an indirect mode", "m ($12,x)", "'($12,x)' is an addressing mode"],
 			["an indirect mode, with ( )", "m(($12,x))", "'($12,x)' is an addressing mode"],
 			["an indirect mode on a local label", "m (:ptr,x)", "'(:ptr,x)' is an addressing mode"],
+			[
+				"an immediate in the old < > text",
+				"m <#$4f>",
+				"'<#$4f>' is an addressing mode, not an expression. Pass it as text, in { }: {#$4f}. Text in < > is now in { }.",
+			],
+			["an indirect mode in the old < > text, with ( )", "m(<($12,x)>)", "in { }: {($12,x)}. Text in < > is now in { }."],
+			["an immediate of a low byte", "m #<$1234", "in { }: {#<$1234}."],
 		])("should reject %s outside { }", (_, call, message) => {
 			expect(() =>
 				assemble(`.macro m a
