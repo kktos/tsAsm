@@ -42,6 +42,18 @@ With `output.listing: { enabled: true, passes: { pass2: true } }`, the statement
 
 Without a linker script, `output.listing: { enabled: true }` writes a `.lst` holding only `--- Assembly Complete ---`. It needs `passes: { pass2: true }` to list anything. Pass 2 should be listed by default, as README's example (`listing: enabled: true`) implies. With a linker script and `linker: true` (the conan game) pass 2 is listed.
 
+### 1.58 `.option` listed with its quotes inside quotes
+
+`.option listing.case "lower"` is listed `.option "listing.case = "lower""`: `setOption` lists the name and the value as one string, and the lister quotes it. Found with 4.9.
+
+### 1.59 Anonymous labels aren't listed
+
+`:` / `nop` / `bne :-` lists the `NOP` and the `BNE :-`, but not the `:`, where a named label gets its own line (`1000 start:`). Found with 4.9.
+
+### 1.60 `.repeat`'s header isn't listed, `.for`'s is
+
+The listing shows `.for x of list` before the loop's lines, but nothing for a `.repeat`: its lines come without a word. With `listing.data "fold"`, a folded `.repeat` does show its header. Found with 4.9.
+
 ## 2. Code review, items left
 
 ### 2.1 CPU back-ends
@@ -180,10 +192,6 @@ Two forms, parentheses always written:
 Order: the one-line form (store the expression's tokens, evaluate them with the parameters in scope); the block form with `.return`. Helpful with it: `.min`, `.max`, `.abs`, `.sin`, `.cos`, `.chr`, `.ord`.
 
 Decisions left: the bare `name(…)` call, the recursion limit.
-
-### 4.9 Fold a `.repeat` in the listing
-
-A generated table is listed one line per iteration: `.repeat 128 AS idx FROM 0` / `.db (idx % 16) * 16` gives 128 `.db` lines, where a `.hex` block of the same bytes is listed as a dump. An option to list a loop once, its header and then its bytes 16 per line: `.option listing.repeat "fold"` (or `"expand"`, today's behaviour), or `.list repeat fold`. Found in the conan game (`spritelib/tables.asm`, `spriteLo` / `spriteHi`). The workaround today, building a 16-value row in an array (between `.list off` / `.list on`, or every `row = .push(…)` is listed) then `.repeat 8` / `.db ...row`, is clumsier than the one-line loop it replaces.
 
 ### 4.10 Building an array without a loop
 

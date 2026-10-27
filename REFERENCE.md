@@ -511,6 +511,7 @@ For columns that line up, build each line with `.pad()`: a tab moves to the next
 | `.option local.prefix "<char>"`                | Change the prefix of [local labels](#local-labels) (default `:`)                         |
 | `.option anon.marker "<char>"`                 | Change the char of [anonymous labels](#anonymous-labels), alone or `-`/`+` (default `:`) |
 | `.option listing.case "<case>"`                | How the listing writes the instructions: `upper` (default), `lower` or `source`          |
+| `.option listing.data "<mode>"`                | How the listing writes [data and loops](#listing-data): `expand` (default) or `fold`     |
 | `.option repeat.start <n>`                     | Where a [`.repeat`](#loops) iterator without `FROM` starts: `0` or `1` (default `1`)     |
 | `.option for.start <n>`                        | Where a [`.for`](#loops) index without `FROM` starts: `0` or `1` (default `0`)           |
 
@@ -518,11 +519,28 @@ The char is one of `:` `@` `!` `?` `_` `~`, and the two options can have differe
 
 `listing.case` applies to the mnemonics, registers and symbols of the listed instructions: `Sta Screen,x` is listed `STA SCREEN,X`, `sta screen,x`, or with `source` as written. Numbers are listed in hex.
 
+### Listing data
+
+`listing.data` is about the data: `.db`, `.dw`, `.dl` and the other data directives, `.hex`, `.text` and the string directives, `.fill`, `.align` and `.incbin`. With `expand`, every byte is listed, 8 per line, the statement's text on the first line. With `fold`, only the first line is listed, a `…` after its bytes when more follow, and a text longer than 48 chars is cut with a `…`:
+
+```
+1004: 05 06 07 08 09 0A 0B 0C  …                  .db $05, $06, $07, $08, $09, $0A, $0B, $0C, $0D…
+1018: 00 11 22 33 44 55 66 77  …                  .hex <20 bytes>
+```
+
+With `fold`, a `.repeat` or a `.for` that only emits data, one block of it, is listed as one data statement, its header as the text: `.repeat 128 AS idx FROM 0` / `.db (idx % 16) * 16` / `.end` gives one line. A loop that does more (an instruction, an assignment, a `.log`) is listed line by line, its data folded:
+
+```
+1000: 00 10 20 30 40 50 60 70  …                  .repeat $80 AS idx FROM $00
+```
+
+Instructions are always listed whole.
+
 ### Global and local options
 
 The project file's `input.options` (or the `options` given to the `Assembler`) sets the values the source starts with. Then `.option` changes a value, and how far the change reaches depends on the kind of option.
 
-**Global options**: `local.prefix`, `anon.marker` and `listing.case`. They are about how the source is read, so they follow the reading order:
+**Global options**: `local.prefix`, `anon.marker`, `listing.case` and `listing.data`. They are about how the source is read, so they follow the reading order:
 
 - An option takes effect from the next line on, in the rest of the file and in the files it includes. One set in an included file stays set after the `.include`.
 - A macro body keeps the chars of where the macro is defined.

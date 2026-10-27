@@ -62,6 +62,15 @@ describe("CLI conf", () => {
 		expect(errors).toEqual([{ path: "input.options.listing.case", message: "Must be one of 'upper', 'lower', 'source'" }]);
 	});
 
+	it("accepts a listing.data of expand or fold, and reports another", () => {
+		const { conf, errors } = readConfFrom(`${confWithCpu("6502")}  options:\n    listing.data: fold\n`);
+		expect(errors).toBeUndefined();
+		expect(conf.input.options).toEqual({ "listing.data": "fold" });
+
+		const { errors: compactErrors } = readConfFrom(`${confWithCpu("6502")}  options:\n    listing.data: compact\n`);
+		expect(compactErrors).toEqual([{ path: "input.options.listing.data", message: "Must be one of 'expand', 'fold'" }]);
+	});
+
 	it("accepts repeat.start and for.start of 0 or 1", () => {
 		const { conf, errors } = readConfFrom(`${confWithCpu("6502")}  options:\n    repeat.start: 0\n    for.start: 1\n`);
 		expect(errors).toBeUndefined();

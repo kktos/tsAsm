@@ -64,7 +64,7 @@ export class DirectiveHandler {
 		this.register("OPTION", new OptionDirective(assembler));
 		this.register("INCLUDE", new IncludeDirective(assembler, runtime));
 		this.register("ONCE", new OnceDirective(assembler));
-		this.register("INCBIN", new IncbinDirective(assembler, runtime.logger));
+		this.register("INCBIN", new IncbinDirective(assembler, runtime.lister));
 
 		this.register("HEX", new HexDirective(assembler, runtime.lister));
 		this.register("DB", new DataDirective(runtime, 1, cpuEndianness)); // Define Byte (1 byte)
