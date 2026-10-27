@@ -1,6 +1,5 @@
 import type { Parser } from "../assembler/parser.class";
 import type { Assembler } from "../assembler/polyasm";
-import handlers from "../cpu";
 import type { ILister } from "../helpers/lister.class";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
 import type { DirectiveContext, IDirective } from "./directive.interface";
@@ -49,13 +48,7 @@ export class CpuDirective implements IDirective {
 
 	private setCpu(directive: ScalarToken, context: DirectiveContext) {
 		const cpuName = this.readName(directive, context);
-
-		const upperCpuName = cpuName.toUpperCase();
-		const handlerClass = handlers[upperCpuName];
-
-		if (!handlerClass) throw new Error(`Unknown CPU name '${cpuName}'.`);
-		if (this.assembler.getCPUHandler().cpuType !== upperCpuName) this.assembler.setCPUHandler(new handlerClass());
-
+		this.assembler.setCPUHandler(this.assembler.findCPUHandler(cpuName));
 		this.lister.directive(directive, cpuName);
 	}
 

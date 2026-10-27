@@ -17,7 +17,7 @@ describe("Assembler reuse", () => {
 		},
 		readBinaryFile: () => [],
 	};
-	const createAssembler = (cpu: CPUHandler = new Cpu6502Handler()) =>
+	const createAssembler = (cpu: CPUHandler | CPUHandler[] = new Cpu6502Handler()) =>
 		new Assembler(cpu, fileHandler, { segments: [{ name: "CODE", start: 0x1000, size: 0, resizable: true }] });
 	const assemble = (assembler: Assembler, source: string) => {
 		assembler.assemble(source);
@@ -43,7 +43,7 @@ describe("Assembler reuse", () => {
 	});
 
 	it("should not keep the symbols, macros or CPU of a previous call", () => {
-		const assembler = createAssembler();
+		const assembler = createAssembler([new Cpu6502Handler(), new Cpu65C02Handler()]);
 		assembler.assemble('x = 7\n.macro m\n.db 5\n.end\n.cpu "65C02"');
 		expect(() => assembler.assemble(".db x")).toThrow("Undefined symbol 'X'");
 		expect(() => assembler.assemble(" stz $10")).toThrow(); // back to the 6502

@@ -30,6 +30,8 @@ export class Assembler {
 	public linker: Linker;
 	public streamManager: StreamManager;
 	private cpuHandler: CPUHandler;
+	/** The CPUs given to the constructor: the ones `.cpu` can switch to. */
+	private readonly cpuHandlers: CPUHandler[];
 	/** The CPU and segments given to the constructor: each assemble() starts from them. */
 	private readonly initialCpuHandler: CPUHandler;
 	private readonly segmentDefinitions: SegmentDefinition[];
@@ -65,9 +67,18 @@ export class Assembler {
 	private defaultRawDataProcessor = "";
 	public emitter: EventEmitter;
 
-	constructor(handler: CPUHandler, fileHandler: FileHandler, options?: AssemblerOptions) {
-		this.cpuHandler = handler;
-		this.initialCpuHandler = handler;
+	/** `cpus`: the CPUs `.cpu` can switch to. The source starts with the one `options.cpu` names, else the first. */
+	constructor(cpus: CPUHandler | CPUHandler[], fileHandler: FileHandler, options?: AssemblerOptions) {
+		this.cpuHandlers = Array.isArray(cpus) ? cpus : [cpus];
+		const [firstCpu] = this.cpuHandlers;
+		if (!firstCpu) throw new Error("The assembler needs a CPU.");
+		const names = new Set<string>();
+		for (const { cpuType } of this.cpuHandlers) {
+			if (names.has(cpuType.toUpperCase())) throw new Error(`Two CPUs are named '${cpuType}'.`);
+			names.add(cpuType.toUpperCase());
+		}
+		this.initialCpuHandler = options?.cpu === undefined ? firstCpu : this.findCPUHandler(options.cpu);
+		this.cpuHandler = this.initialCpuHandler;
 		this.segmentDefinitions = options?.segments ?? [];
 		this.initialOptions = withDefaultOptions(options?.options);
 		this.currentOptions = { ...this.initialOptions };
@@ -234,6 +245,14 @@ export class Assembler {
 
 	public getCPUHandler(): CPUHandler {
 		return this.cpuHandler;
+	}
+
+	/** The CPU given to the constructor with this name, in any case. */
+	public findCPUHandler(name: string): CPUHandler {
+		const upperName = name.toUpperCase();
+		const handler = this.cpuHandlers.find((cpu) => cpu.cpuType.toUpperCase() === upperName);
+		if (!handler) throw new Error(`Unknown CPU name '${name}': the CPUs are ${this.cpuHandlers.map((cpu) => cpu.cpuType).join(", ")}.`);
+		return handler;
 	}
 
 	private addConfiguredSegments() {

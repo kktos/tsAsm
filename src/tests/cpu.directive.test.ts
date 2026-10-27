@@ -3,6 +3,9 @@ import { Assembler } from "../assembler/polyasm";
 import type { SegmentDefinition } from "../assembler/polyasm.types";
 import { Cpu65C02Handler } from "../cpu/cpu65c02.class";
 import { Cpu6502Handler } from "../cpu/cpu6502.class";
+import { Cpu6809Handler } from "../cpu/cpu6809.class";
+import type { CPUHandler } from "../cpu/cpuhandler.interface";
+import { CpuRV32IHandler } from "../cpu/cpurv32i.class";
 import { MockFileHandler } from "./mockfilehandler.class";
 
 // A simple mock for the FileHandler so we don't need to interact with the filesystem.
@@ -15,9 +18,16 @@ describe("CpuDirective", () => {
 
 	beforeEach(() => {
 		fileHandler = new MockFileHandler();
-		// Initialize the assembler with the 6502 handler by default for each test.
-		assembler = new Assembler(new Cpu6502Handler(), fileHandler, { segments: DEFAULT_SEGMENTS });
+		// The 6502 first: the source starts with it.
+		assembler = new Assembler([new Cpu6502Handler(), new Cpu65C02Handler(), new Cpu6809Handler(), new CpuRV32IHandler()], fileHandler, {
+			segments: DEFAULT_SEGMENTS,
+		});
 	});
+
+	const cpuAfter = (source: string) => {
+		assembler.assemble(source);
+		return assembler.getCPUHandler().cpuType;
+	};
 
 	it('should switch the CPU handler from 6502 to 65C02 when .cpu "65C02" is used', () => {
 		const source = `
@@ -63,11 +73,6 @@ describe("CpuDirective", () => {
 	});
 
 	describe("the CPU's name", () => {
-		const cpuAfter = (source: string) => {
-			assembler.assemble(source);
-			return assembler.getCPUHandler().cpuType;
-		};
-
 		it("is a word alone, starting with a digit or not, in any case", () => {
 			expect(cpuAfter(".cpu 65C02")).toBe("65C02");
 			expect(cpuAfter(".cpu 65c02 ; comment")).toBe("65C02");
@@ -76,7 +81,7 @@ describe("CpuDirective", () => {
 		});
 
 		it("is 6502, a bare number, too", () => {
-			assembler = new Assembler(new Cpu65C02Handler(), fileHandler, { segments: DEFAULT_SEGMENTS });
+			assembler = new Assembler([new Cpu65C02Handler(), new Cpu6502Handler()], fileHandler, { segments: DEFAULT_SEGMENTS });
 			expect(cpuAfter(".cpu 6502")).toBe("6502");
 		});
 
@@ -122,12 +127,63 @@ describe("CpuDirective", () => {
 				CPU = "65C02"
 				.cpu CPU
 			`;
-			expect(() => assembler.assemble(source)).toThrow("Unknown CPU name 'CPU'.");
+			expect(() => assembler.assemble(source)).toThrow("Unknown CPU name 'CPU': the CPUs are 6502, 65C02, 6809, RV32I.");
 		});
 
 		it("is an error when it's no CPU's name", () => {
-			expect(() => assembler.assemble(".cpu 65816")).toThrow("Unknown CPU name '65816'.");
-			expect(() => assembler.assemble(".cpu 6502x")).toThrow("Unknown CPU name '6502x'.");
+			expect(() => assembler.assemble(".cpu 65816")).toThrow("Unknown CPU name '65816': the CPUs are 6502, 65C02, 6809, RV32I.");
+			expect(() => assembler.assemble(".cpu 6502x")).toThrow("Unknown CPU name '6502x': the CPUs are 6502, 65C02, 6809, RV32I.");
+		});
+	});
+
+	describe("the CPUs it's given", () => {
+		const create = (cpus: CPUHandler | CPUHandler[], cpu?: string) => new Assembler(cpus, fileHandler, { segments: DEFAULT_SEGMENTS, cpu });
+
+		it("are the only ones .cpu switches to, and the error lists them", () => {
+			const cpu6502 = new Cpu6502Handler();
+			const cpu65C02 = new Cpu65C02Handler();
+			assembler = create([cpu6502, cpu65C02]);
+
+			assembler.assemble(".cpu 65C02");
+			expect(assembler.getCPUHandler()).toBe(cpu65C02);
+			assembler.assemble(`
+				.cpu 65C02
+				.cpu 6502
+			`);
+			expect(assembler.getCPUHandler()).toBe(cpu6502);
+			expect(() => assembler.assemble(".cpu 6809")).toThrow(
+				expect.objectContaining({ message: "Unknown CPU name '6809': the CPUs are 6502, 65C02.", location: expect.objectContaining({ line: 1 }) }),
+			);
+		});
+
+		it("is one: .cpu can only name it", () => {
+			assembler = create(new Cpu6502Handler());
+			expect(cpuAfter(".cpu 6502")).toBe("6502");
+			expect(() => assembler.assemble(".cpu 65C02")).toThrow("Unknown CPU name '65C02': the CPUs are 6502.");
+		});
+
+		it("start with the first one, at each assemble()", () => {
+			assembler = create([new Cpu65C02Handler(), new Cpu6502Handler()]);
+			expect(assembler.getCPUHandler().cpuType).toBe("65C02");
+			expect(cpuAfter(".cpu 6502")).toBe("6502");
+			expect(cpuAfter("nop")).toBe("65C02");
+		});
+
+		it("start with the one the cpu option names, in any case, wherever it is", () => {
+			assembler = create([new Cpu65C02Handler(), new Cpu6502Handler(), new Cpu6809Handler()], "6809");
+			expect(assembler.getCPUHandler().cpuType).toBe("6809");
+			expect(cpuAfter(".cpu 6502")).toBe("6502");
+			expect(cpuAfter("nop")).toBe("6809");
+			expect(create([new Cpu6502Handler(), new CpuRV32IHandler()], "rv32i").getCPUHandler().cpuType).toBe("RV32I");
+		});
+
+		it("must hold the one the cpu option names", () => {
+			expect(() => create([new Cpu6502Handler(), new Cpu65C02Handler()], "6809")).toThrow("Unknown CPU name '6809': the CPUs are 6502, 65C02.");
+		});
+
+		it("can't be none, or two with the same name", () => {
+			expect(() => create([])).toThrow("The assembler needs a CPU.");
+			expect(() => create([new Cpu6502Handler(), new Cpu65C02Handler(), new Cpu6502Handler()])).toThrow("Two CPUs are named '6502'.");
 		});
 	});
 });
