@@ -277,6 +277,10 @@ describe("6502 Opcodes", () => {
 		expect(assembleAndGetCode(source)).toEqual([0xa9, 0x41, 0xa2, 0x41, 0xc9, 0x42, 0xa0, 0xc8]);
 	});
 
+	it.each([`lda #"AB"`, `lda #"AB"+1`])("should say a longer string isn't a number: %s", (source) => {
+		expect(() => assembleAndGetCode(source)).toThrow(`Only a one-character string can be used as a number: "AB".`);
+	});
+
 	// In pass 1, an operand using a symbol defined later has no value yet: its size is the worst case.
 	describe("operands defined later", () => {
 		it.each([

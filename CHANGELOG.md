@@ -10,7 +10,7 @@ The problem is described as it was before the fix, then the fix in _italics_.
 
 REFERENCE said `lda #"A"` loads `$41`: only on the 65C02. On the 6502 and the 6809, `lda #"A"` → `Expression did not evaluate to a number as expected.` On every CPU, `.db "A"+1` → `Binary operator '+' requires two strings.`, and `$80|"H"` → `requires two numbers.`: only `"H"|$80` and `"H"&n` worked, special-cased.
 
-_Decided: a one-char string used as a number is its character code, with any operator, on either side, and wherever a number is expected (`lda #"A"`, `.fill 3, " "`): `"A"+1` is `$42`, `$80|"H"` is `$C8`, `-"A"` is `-$41`, and `"9"-"0"` is `9`. Between two strings, `+` still joins and `=` `==` `!=` compare the text: `"A"+"B"` is `"AB"`. `"AB"+1` and `""+1` stay errors. The 65C02-only `numberMax` is gone, and with it `lda #""` loading `0`._
+_Decided: a one-char string used as a number is its character code, with any operator, on either side, and wherever a number is expected (`lda #"A"`, `.fill 3, " "`): `"A"+1` is `$42`, `$80|"H"` is `$C8`, `-"A"` is `-$41`, and `"9"-"0"` is `9`. Between two strings, `+` still joins and `=` `==` `!=` compare the text: `"A"+"B"` is `"AB"`. A longer or empty string used as a number says so, `lda #"AB"`, `"AB"+1`, `1+"AB"`, `-"AB"` → `Only a one-character string can be used as a number: "AB".`, instead of `requires two strings` / `two numbers` or `did not evaluate to a number`. The 65C02-only `numberMax` is gone, and with it `lda #""` loading `0`._
 
 ### #148 — A string in `.dw` / `.dl` emits bytes (TODO 1.42)
 

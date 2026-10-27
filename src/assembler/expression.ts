@@ -17,6 +17,8 @@ const STRING_OPERATORS = new Set(["+", "=", "==", "!="]);
 
 /** A one-character string used as a number is its character code: `"A"+1` is $42. Anything else is returned as is. */
 const charCode = <T>(value: T): T | number => (typeof value === "string" && value.length === 1 ? value.charCodeAt(0) : value);
+const notACharMessage = (value: string) => `Only a one-character string can be used as a number: ${JSON.stringify(value)}.`;
+const UNARY_OPERATORS = new Set(["UNARY_MINUS", "!", "UNARY_LSB", "UNARY_MSB"]);
 
 export class ExpressionEvaluator {
 	public readonly functionDispatcher: FunctionDispatcher;
@@ -47,6 +49,7 @@ export class ExpressionEvaluator {
 	public evaluateAsNumber(tokens: Token[], context: EvaluationContext) {
 		const result = charCode(this.evaluate(tokens, context));
 
+		if (typeof result === "string") throw new Error(notACharMessage(result));
 		if (result !== null && typeof result !== "number") throw new Error("Expression did not evaluate to a number as expected.");
 
 		return result;
@@ -539,6 +542,7 @@ export class ExpressionEvaluator {
 
 	private handleUnaryOperator(token: OperatorToken, operand: SymbolValue | undefined | null, stack: (SymbolValue | null)[]): boolean {
 		const right = charCode(operand);
+		if (typeof right === "string" && UNARY_OPERATORS.has(token.value)) throw AsmError.at(notACharMessage(right), token);
 		switch (token.value) {
 			case "UNARY_MINUS":
 				if (right === null) {
@@ -621,6 +625,9 @@ export class ExpressionEvaluator {
 			left = charCode(left);
 			right = charCode(right);
 		}
+		// A longer string next to a number: "AB"+1, 1+"AB"
+		if (typeof left === "string" && typeof right === "number") throw AsmError.at(notACharMessage(left), token);
+		if (typeof right === "string" && typeof left === "number") throw AsmError.at(notACharMessage(right), token);
 
 		// Handle string operations first
 		if (typeof left === "string") {

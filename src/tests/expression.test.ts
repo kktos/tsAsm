@@ -468,7 +468,9 @@ describe("ExpressionEvaluator", () => {
 		it("should throw when a number is expected but a string is found", () => {
 			const { evaluator, tokenize } = setup();
 			const tokens = tokenize('"this is not a number"');
-			expect(() => evaluator.evaluateAsNumber(tokens, { PC: { value: 0 } })).toThrow("Expression did not evaluate to a number as expected.");
+			expect(() => evaluator.evaluateAsNumber(tokens, { PC: { value: 0 } })).toThrow(
+				'Only a one-character string can be used as a number: "this is not a number".',
+			);
 		});
 
 		it("should throw on invalid expression format", () => {
@@ -597,11 +599,13 @@ describe("ExpressionEvaluator", () => {
 		});
 
 		it.each([
-			[`"AB"+1`, "Binary operator '+' requires two strings."],
-			[`1+"AB"`, "Binary operator '+' requires two numbers."],
+			[`"AB"+1`, `Only a one-character string can be used as a number: "AB".`],
+			[`1+"AB"`, `Only a one-character string can be used as a number: "AB".`],
+			[`"AB"|$80`, `Only a one-character string can be used as a number: "AB".`],
+			[`-"AB"`, `Only a one-character string can be used as a number: "AB".`],
+			[`<"AB"`, `Only a one-character string can be used as a number: "AB".`],
+			[`""+1`, `Only a one-character string can be used as a number: "".`],
 			[`"AB"-"C"`, "Operator '-' cannot be applied to strings."],
-			[`-"AB"`, "Unary operator requires a numeric operand."],
-			[`""+1`, "Binary operator '+' requires two strings."],
 		])("should throw on a longer string: %s", (expr, message) => {
 			const { evaluator, tokenize } = setup();
 			expect(() => evaluator.evaluate(tokenize(expr), { PC: { value: 0 } })).toThrow(message);
@@ -609,7 +613,9 @@ describe("ExpressionEvaluator", () => {
 
 		it.each([`"AB"`, `""`])("should throw where a number is expected: %s", (expr) => {
 			const { evaluator, tokenize } = setup();
-			expect(() => evaluator.evaluateAsNumber(tokenize(expr), { PC: { value: 0 } })).toThrow("Expression did not evaluate to a number as expected.");
+			expect(() => evaluator.evaluateAsNumber(tokenize(expr), { PC: { value: 0 } })).toThrow(
+				`Only a one-character string can be used as a number: ${expr}.`,
+			);
 		});
 
 		it("should pass a forward reference through", () => {
