@@ -42,10 +42,6 @@ With `output.listing: { enabled: true, passes: { pass2: true } }`, the statement
 
 Without a linker script, `output.listing: { enabled: true }` writes a `.lst` holding only `--- Assembly Complete ---`. It needs `passes: { pass2: true }` to list anything. Pass 2 should be listed by default, as README's example (`listing: enabled: true`) implies. With a linker script and `linker: true` (the conan game) pass 2 is listed.
 
-### 1.56 `.cpu` with a symbol defined after it
-
-`.cpu .iif(C02, "65C02", "6502")` / `C02 = 1` → `.CPU name must evaluate to a string.`: in pass 1, `C02` isn't defined yet. The CPU is needed from pass 1 on (it sizes the instructions), so it's an error, but the message should say why: the symbol is undefined, and it must be defined before the `.cpu`.
-
 ## 2. Code review, items left
 
 ### 2.1 CPU back-ends

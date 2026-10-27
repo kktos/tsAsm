@@ -6,6 +6,12 @@ The problem is described as it was before the fix, then the fix in _italics_.
 
 ## Assembler
 
+### #163 — `.cpu` with a symbol defined after it (TODO 1.56)
+
+`.cpu .iif(C02, "65C02", "6502")` / `C02 = 1` → `.CPU name must evaluate to a string.`: in pass 1, `C02` isn't defined yet. It's an error, the CPU is needed from pass 1 on, but the message didn't say why.
+
+_As `.repeat`, `.for` and `.str` do: `.CPU: 'C02' must be defined before it is used here (the CPU is needed to read what follows).` Same for `.cpu (TARGET)` and a symbol never defined._
+
 ### #162 — Pass 2 started with the CPU pass 1 ended with (TODO 1.57)
 
 `input.cpu: 65C02` (or `new Assembler(new Cpu65C02Handler(), …)`) and `stz $44` / `.cpu 6502` / `nop` → `EA`: the `STZ` was lost, silently. Pass 2 started with the 6502, where pass 1 ended, so `stz` was read as a label and the `$44` after it dropped. Only `assemble()` went back to the initial CPU, between two calls.

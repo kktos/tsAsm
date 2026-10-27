@@ -130,6 +130,23 @@ describe("CpuDirective", () => {
 			expect(() => assembler.assemble(source)).toThrow("Unknown CPU name 'CPU': the CPUs are 6502, 65C02, 6809, RV32I.");
 		});
 
+		it("must come from symbols defined before the .cpu: the CPU is needed in pass 1", () => {
+			const message = (symbol: string) => `.CPU: ${symbol} must be defined before it is used here (the CPU is needed to read what follows).`;
+			const forwardIif = `
+				.cpu .iif(C02, "65C02", "6502")
+				C02 = 1
+			`;
+			expect(() => assembler.assemble(forwardIif)).toThrow(
+				expect.objectContaining({ message: message("'C02'"), location: expect.objectContaining({ line: 2 }) }),
+			);
+			const forwardParens = `
+				.cpu (TARGET)
+				TARGET = "65C02"
+			`;
+			expect(() => assembler.assemble(forwardParens)).toThrow(message("'TARGET'"));
+			expect(() => assembler.assemble(".cpu (NOWHERE)")).toThrow(message("'NOWHERE'"));
+		});
+
 		it("is an error when it's no CPU's name", () => {
 			expect(() => assembler.assemble(".cpu 65816")).toThrow("Unknown CPU name '65816': the CPUs are 6502, 65C02, 6809, RV32I.");
 			expect(() => assembler.assemble(".cpu 6502x")).toThrow("Unknown CPU name '6502x': the CPUs are 6502, 65C02, 6809, RV32I.");
