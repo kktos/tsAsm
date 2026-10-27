@@ -236,11 +236,13 @@ export class MacroHandler {
 		});
 		if (!isAddressingMode) return;
 
-		const text = argTokens.map((token) => token.raw ?? token.value).join("");
-		throw AsmError.at(
-			`Macro '${macroName}': '${text}' is an addressing mode, not an expression. Pass it as text, in { }: {${text}}.`,
-			argTokens[0] as Token,
-		);
+		const toText = (tokens: Token[]) => tokens.map((token) => token.raw ?? token.value).join("");
+		const text = toText(argTokens);
+		// `<#$4f>`: text in the old < > form, which is now { }.
+		const isOperator = (token: Token | undefined, value: string) => token?.type === "OPERATOR" && token.value === value;
+		const isOldText = isOperator(argTokens.at(0), "<") && isOperator(argTokens.at(-1), ">");
+		const hint = isOldText ? `{${toText(argTokens.slice(1, -1))}}. Text in < > is now in { }.` : `{${text}}.`;
+		throw AsmError.at(`Macro '${macroName}': '${text}' is an addressing mode, not an expression. Pass it as text, in { }: ${hint}`, argTokens[0] as Token);
 	}
 
 	private withoutEmptyCall(argsArray: Token[][]): Token[][] {

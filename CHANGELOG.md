@@ -6,6 +6,12 @@ The problem is described as it was before the fix, then the fix in _italics_.
 
 ## Assembler
 
+### #147 — The "pass it as text" hint keeps the old `< >` delimiters (TODO 1.46)
+
+An argument still written in the old text form, `m <#$4f>`, gave `'<#$4f>' is an addressing mode, not an expression. Pass it as text, in { }: {<#$4f>}.`: `{<#$4f>}` passes `<#$4f>`, not `#$4f`. Found migrating the conan game (`drawSprite <#$4f>,<#25>,<#16>`).
+
+_When the argument is a whole `<…>`, the hint drops them and says why: `Pass it as text, in { }: {#$4f}. Text in < > is now in { }.` `#<$1234` and `<#$4f>+1` keep the plain hint._
+
 ### #146 — An instruction without operand takes a `}` as its operand (TODO 1.45)
 
 `{ nop }` and `nop }` → `Invalid expression format.` on the 6502, `Invalid addressing mode for instruction NOP` on the 65C02: `getInstructionTokens` checked the line's first token for a `{`, not a `}`. `{ lda 1 }` worked, the `}` ending the operand. A directive had the same bug: `{ .org }` → `Unbalanced braces. Depth: 1`, `{ .once }` → `.ONCE takes no argument.`
