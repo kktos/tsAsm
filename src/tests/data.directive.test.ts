@@ -3,6 +3,7 @@ import { Assembler } from "../assembler/polyasm";
 import type { SegmentDefinition } from "../assembler/polyasm.types";
 import { Cpu65C02Handler } from "../cpu/cpu65c02.class";
 import { Cpu6809Handler } from "../cpu/cpu6809.class";
+import type { CPUHandler } from "../cpu/cpuhandler.interface";
 import { Logger } from "../helpers/logger.class";
 import { MemorySink } from "../helpers/memorysink.class";
 import { MockFileHandler } from "./mockfilehandler.class";
@@ -336,7 +337,7 @@ here: .DB 0
 	});
 
 	describe("byte order", () => {
-		const assembleWith = (cpu: Cpu65C02Handler | Cpu6809Handler, source: string) => {
+		const assembleWith = (cpu: CPUHandler | CPUHandler[], source: string) => {
 			const assembler = new Assembler(cpu, new MockFileHandler(), { segments: DEFAULT_SEGMENTS });
 			assembler.assemble(source);
 			return assembler.link();
@@ -359,7 +360,7 @@ here: .DB 0
 		});
 
 		it("should follow the CPU selected with .CPU", () => {
-			expect(assembleWith(new Cpu65C02Handler(), '.DW $1234\n.CPU "6809"\n.DW $1234\n.CPU "65C02"\n.DW $1234')).toEqual([
+			expect(assembleWith([new Cpu65C02Handler(), new Cpu6809Handler()], '.DW $1234\n.CPU "6809"\n.DW $1234\n.CPU "65C02"\n.DW $1234')).toEqual([
 				0x34, 0x12, 0x12, 0x34, 0x34, 0x12,
 			]);
 		});

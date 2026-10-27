@@ -4,7 +4,6 @@ import { name, version } from "../../package.json";
 import { Assembler } from "../assembler/polyasm";
 import type { AssemblerOptions } from "../assembler/polyasm.types";
 import handlers from "../cpu";
-import type { CPUHandler } from "../cpu/cpuhandler.interface";
 import type { DirectiveContext } from "../directives/directive.interface";
 import { Logger } from "../helpers/logger.class";
 import { TeeSink } from "../helpers/teesink.class";
@@ -92,15 +91,11 @@ if (segments) options.segments = segments;
 if (conf.input.options) options.options = conf.input.options;
 
 try {
-	const cpuName = (conf.input.cpu || "6502").toUpperCase();
-	const CpuHandlerClass = handlers[cpuName];
-	if (!CpuHandlerClass) {
-		console.error(colors.red(`Invalid CPU: ${cpuName}`));
-		process.exit(-1);
-	}
-	const cpuHandler: CPUHandler = new CpuHandlerClass();
+	// Every CPU the CLI has: .cpu can switch to any of them. The project file picks the one the source starts with.
+	const cpus = Object.values(handlers).map((CpuHandlerClass) => new CpuHandlerClass());
+	options.cpu = conf.input.cpu || "6502";
 
-	const assembler = new Assembler(cpuHandler, fileHandler, options);
+	const assembler = new Assembler(cpus, fileHandler, options);
 	const sourceFile = fileHandler.readSourceFile(basename(conf.input.source));
 
 	const segmentList = assembler.assemble(sourceFile);

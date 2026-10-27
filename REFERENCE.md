@@ -564,14 +564,14 @@ To set a local option for the whole project, give it in the project file.
 
 ### Selecting the CPU
 
-The CPUs are `6502`, `65C02`, `6809` and `RV32I`, in any case. The project file's `input.cpu` selects the one the source starts with (`6502` by default), and `.cpu` changes it for the lines after it.
+The CLI has the CPUs `6502`, `65C02`, `6809` and `RV32I`; a program using the library gives the assembler its own (see [README](README.md#library)). The project file's `input.cpu` selects the one the source starts with (`6502` by default), and `.cpu` changes it for the lines after it. The names are in any case, and an unknown one is an error that lists them: `Unknown CPU name '65816': the CPUs are 6502, 6809, 65C02, ARM_RISC, RV32I.` (the CLI's)
 
 A word alone after `.cpu` is the CPU's name: `.cpu 65C02`, `.cpu rv32i`. Anything else is a string expression giving it: `.cpu "65C02"`, or a symbol in parentheses.
 
 ```as
 TARGET = "65C02"
 .cpu (TARGET)       ; the CPU named by TARGET
-.cpu TARGET         ; error: Unknown CPU name 'TARGET'.
+.cpu TARGET         ; error: Unknown CPU name 'TARGET': …
 ```
 
 To choose the CPU depending on a condition, use `.iif()` (or `.if`). The CPU is needed from pass 1 on, so the symbols must be defined before the `.cpu`.

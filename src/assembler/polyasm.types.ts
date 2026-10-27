@@ -53,6 +53,8 @@ export interface PushTokenStreamParams {
 }
 
 export interface AssemblerOptions {
+	/** The name of the CPU the source starts with, among those given to the assembler (default: the first). */
+	cpu?: string;
 	segments?: SegmentDefinition[];
 	logger?: Logger;
 	log?: {
