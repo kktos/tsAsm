@@ -25,6 +25,8 @@ interface PASymbol {
 	includeStack: IncludeStack;
 	/** The pass that last defined it, 0 outside the passes: see `isDefined`. */
 	definedInPass: number;
+	/** How many values it was given before pass 2, a value set up before assembling included: see `isAmbiguousForwardReference`. */
+	assignments: number;
 }
 
 /** An error about a symbol already defined, with a note pointing at its definition. */
@@ -266,6 +268,7 @@ export class PASymbolTable {
 			namespace: ns,
 			...this.symbolSite(source),
 			definedInPass: this.pass,
+			assignments: 1,
 		});
 	}
 
@@ -300,6 +303,7 @@ export class PASymbolTable {
 			namespace: ns,
 			...this.symbolSite(source),
 			definedInPass: this.pass,
+			assignments: this.countAssignment(symbol),
 		});
 	}
 
@@ -329,7 +333,7 @@ export class PASymbolTable {
 
 		if (!symbol) throw new Error(`assignVariable: Unknown symbol "${ns === INTERNAL_GLOBAL ? "global" : ns}::${name}".`);
 
-		scope.set(name, { ...symbol, value, definedInPass: this.pass });
+		scope.set(name, { ...symbol, value, definedInPass: this.pass, assignments: this.countAssignment(symbol) });
 	}
 
 	updateSymbol(symbolName: string, value: SymbolValue, nonVolatile = false) {
@@ -364,7 +368,7 @@ export class PASymbolTable {
 		const symbol = scope.get(name);
 		if (!symbol) throw new Error(`Unknown symbol "${ns === INTERNAL_GLOBAL ? "global" : ns}::${name}".`);
 
-		scope.set(name, { ...symbol, value, definedInPass: this.pass });
+		scope.set(name, { ...symbol, value, definedInPass: this.pass, assignments: this.countAssignment(symbol) });
 	}
 
 	lookupSymbolInScope(symbolName: string) {
@@ -398,6 +402,21 @@ export class PASymbolTable {
 		}
 		const currentScope = this.getCurrentScope();
 		return currentScope?.has(name);
+	}
+
+	/** A new value for `symbol`: counted before pass 2 only, as pass 2 gives it the same values again. */
+	private countAssignment(symbol: PASymbol | undefined): number {
+		if (!symbol) return 1;
+		return this.pass === 2 ? symbol.assignments : symbol.assignments + 1;
+	}
+
+	/**
+	 * Whether the variable is used in pass 2 before it's assigned there, while it was given several values:
+	 * it still has the last one of pass 1, not the one it has at this point of the source.
+	 */
+	isAmbiguousForwardReference(symbolName: string): boolean {
+		const symbol = this.lookup(symbolName);
+		return this.pass === 2 && symbol !== undefined && !symbol.isConstant && symbol.definedInPass !== 2 && symbol.assignments > 1;
 	}
 
 	lookupSymbol(symbolName: string) {
