@@ -1,8 +1,9 @@
+import { RelocValue } from "../assembler/reloc-value.class";
 import type { OperatorStackToken } from "../shared/lexer/lexer.class";
 import { getHex } from "../utils/hex.util";
 import { assertFitsInBytes } from "../utils/number.utils";
 import { findTopLevelComma } from "../utils/token.utils";
-import type { CPUHandler, ModeInfo, ResolvedModeInfo } from "./cpuhandler.interface";
+import type { CPUHandler, ModeInfo, OperandReader, ResolvedModeInfo } from "./cpuhandler.interface";
 import type { Mos65xxMode, OpcodeSet } from "./mos65xx.opcodes";
 
 /** What makes one 65xx CPU: its name, the opcode sets it's made of, and its mnemonic suffixes. */
@@ -90,6 +91,29 @@ export class Mos65xxHandler implements CPUHandler<Mos65xxModeInfo> {
 			throw new Error(`${max === 0xff ? "Zero page address" : "Address"} ${address} is out of range ($0..$${getHex(max)}).`);
 	}
 
+	/** A zero page address: a relocatable one can't be. */
+	private zeroPageAddress(base: string, value: number | RelocValue | null): number | null {
+		if (value instanceof RelocValue) throw new Error(`${base} needs a zero page address here, and ${value} is relocatable: it can't be in zero page.`);
+		this.checkAddress(value, 0xff);
+		return value;
+	}
+
+	/**
+	 * `info` with its address operand: a number within 0..max, or, for an absolute one, a relocatable address: its offset,
+	 * with the fixup of its 2 bytes.
+	 */
+	private addressInfo(base: string, info: ModeInfo, value: number | RelocValue | null, max: 0xff | 0xffff): ModeInfo {
+		if (max === 0xff) return { ...info, resolvedAddress: this.zeroPageAddress(base, value) };
+		if (!(value instanceof RelocValue)) {
+			this.checkAddress(value, max);
+			return { ...info, resolvedAddress: value };
+		}
+		if (value.byteShift !== undefined)
+			throw new Error(`${base} needs an address here, and ${value} is one byte of a relocatable one: only an immediate (#) takes one.`);
+		this.checkAddress(value.offset, max);
+		return { ...info, resolvedAddress: value.offset, fixup: { at: 1, size: 2, value } };
+	}
+
 	/** Extracts tokens between two delimiters (e.g., inside parentheses). */
 	private extractTokensBetween(tokens: OperatorStackToken[], startVal: string, endVal: string) {
 		const start = tokens.findIndex((t) => t.value === startVal);
@@ -102,19 +126,26 @@ export class Mos65xxHandler implements CPUHandler<Mos65xxModeInfo> {
 	 * Zero page or absolute, for a direct or indexed operand (`index` is "", ",X" or ",Y").
 	 * A suffix forces it, if the instruction has that form: .b zero page (with the address's low byte), .w absolute.
 	 * Without one: zero page when the address is known, fits, and the instruction has that form, else absolute
-	 * (the worst case for an address defined later).
+	 * (the worst case for an address defined later). A relocatable address is absolute: its address is only known when
+	 * it's loaded.
 	 */
 	private selectAddressMode(
 		mnemonic: string,
 		modes: ReadonlyMap<Mos65xxMode, number>,
 		index: keyof typeof ADDRESS_MODES,
-		address: number | null,
+		address: number | RelocValue | null,
 		forcedWidth: 1 | 2 | null,
 	): Mos65xxMode {
 		const base = mnemonic.split(".")[0];
 		const [zeroPageMode, absoluteMode] = ADDRESS_MODES[index];
 		const hasZeroPage = modes.has(zeroPageMode);
 		const hasAbsolute = modes.has(absoluteMode);
+
+		if (address instanceof RelocValue) {
+			if (forcedWidth === 1 || !hasAbsolute)
+				throw new Error(`'${mnemonic}' needs a zero page address here, and ${address} is relocatable: it can't be in zero page.`);
+			return absoluteMode;
+		}
 
 		if (forcedWidth === 1) {
 			if (!hasZeroPage) throw new Error(`'${mnemonic}': ${base} has no zero page${index} form.`);
@@ -134,10 +165,12 @@ export class Mos65xxHandler implements CPUHandler<Mos65xxModeInfo> {
 		throw new Error(`Invalid addressing mode for instruction ${mnemonic}`);
 	}
 
+	/** The operands are read with `operands`: a relocatable address is absolute, its fixup recorded. See `addressInfo`. */
 	resolveAddressingMode(
 		mnemonic: string,
 		operandTokens: OperatorStackToken[],
-		resolveValue: (tokens: OperatorStackToken[]) => number | null,
+		_resolveValue: (tokens: OperatorStackToken[]) => number | null,
+		operands: OperandReader,
 	): Mos65xxModeInfo {
 		// Check if the base mnemonic is supported. If not, THROW to signal a potential label.
 		const parts = mnemonic.split(".");
@@ -180,17 +213,22 @@ export class Mos65xxHandler implements CPUHandler<Mos65xxModeInfo> {
 			rejectSuffix();
 			const comma = findTopLevelComma(operandTokens);
 			if (comma === -1) throw new Error(`${baseMnemonic} takes a zero page address and a branch target: '${baseMnemonic} $12,label'.`);
-			const zeroPage = resolveValue(operandTokens.slice(0, comma));
-			this.checkAddress(zeroPage, 0xff);
-			return { ...modeInfo("ZEROPAGE_RELATIVE", resolveValue(operandTokens.slice(comma + 1))), zeroPage };
+			const zeroPage = this.zeroPageAddress(baseMnemonic, operands.value(operandTokens.slice(0, comma)));
+			return { ...modeInfo("ZEROPAGE_RELATIVE", operands.branchTarget(operandTokens.slice(comma + 1))), zeroPage };
 		}
 
-		// 3. Immediate Mode (e.g., LDA #$42)
+		// 3. Immediate Mode (e.g., LDA #$42), or one byte of a relocatable address (LDA #<label)
 		if (tokenIs(0, "#")) {
 			rejectSuffix();
-			const resolvedAddress = resolveValue(operandTokens.slice(1));
-			if (resolvedAddress !== null) assertFitsInBytes(resolvedAddress, 1, "Immediate value");
-			return modeInfo("IMMEDIATE", resolvedAddress);
+			const value = operands.value(operandTokens.slice(1));
+			if (value instanceof RelocValue) {
+				const { byteShift } = value;
+				if (byteShift === undefined)
+					throw new Error(`${baseMnemonic} #${value}: an immediate is one byte, take one of the relocatable address with <, > or ^.`);
+				return { ...modeInfo("IMMEDIATE", (value.offset >> byteShift) & 0xff), fixup: { at: 1, size: 1, value } };
+			}
+			if (value !== null) assertFitsInBytes(value, 1, "Immediate value");
+			return modeInfo("IMMEDIATE", value);
 		}
 
 		// 4. Indirect, Indirect Indexed Modes: the instruction's modes tell (abs) from (zp), and (abs,X) from (zp,X)
@@ -199,28 +237,22 @@ export class Mos65xxHandler implements CPUHandler<Mos65xxModeInfo> {
 
 			// Indirect Y: (zp),Y
 			if (tokenIs(numTokens - 1, "Y") && tokenIs(numTokens - 2, ",")) {
-				const resolvedAddress = resolveValue(this.extractTokensBetween(operandTokens, "(", ")"));
-				const info = modeInfo("INDIRECT_Y", resolvedAddress);
-				this.checkAddress(resolvedAddress, 0xff);
-				return info;
+				const value = operands.value(this.extractTokensBetween(operandTokens, "(", ")"));
+				return this.addressInfo(baseMnemonic, modeInfo("INDIRECT_Y"), value, 0xff);
 			}
 
 			if (tokenIs(numTokens - 1, ")")) {
 				// Indexed: JMP (abs,X), or (zp,X)
 				if (tokenIs(numTokens - 2, "X") && tokenIs(numTokens - 3, ",")) {
-					const resolvedAddress = resolveValue(this.extractTokensBetween(operandTokens, "(", ","));
+					const value = operands.value(this.extractTokensBetween(operandTokens, "(", ","));
 					const isAbsolute = instructionModes.has("ABSOLUTE_INDIRECT_X");
-					const info = modeInfo(isAbsolute ? "ABSOLUTE_INDIRECT_X" : "INDIRECT_X", resolvedAddress);
-					this.checkAddress(resolvedAddress, isAbsolute ? 0xffff : 0xff);
-					return info;
+					return this.addressInfo(baseMnemonic, modeInfo(isAbsolute ? "ABSOLUTE_INDIRECT_X" : "INDIRECT_X"), value, isAbsolute ? 0xffff : 0xff);
 				}
 
 				// JMP (abs), or (zp)
-				const resolvedAddress = resolveValue(this.extractTokensBetween(operandTokens, "(", ")"));
+				const value = operands.value(this.extractTokensBetween(operandTokens, "(", ")"));
 				const isAbsolute = instructionModes.has("INDIRECT");
-				const info = modeInfo(isAbsolute ? "INDIRECT" : "ZEROPAGE_INDIRECT", resolvedAddress);
-				this.checkAddress(resolvedAddress, isAbsolute ? 0xffff : 0xff);
-				return info;
+				return this.addressInfo(baseMnemonic, modeInfo(isAbsolute ? "INDIRECT" : "ZEROPAGE_INDIRECT"), value, isAbsolute ? 0xffff : 0xff);
 			}
 			throw new Error(`Invalid addressing mode for instruction ${mnemonic}`);
 		}
@@ -228,21 +260,33 @@ export class Mos65xxHandler implements CPUHandler<Mos65xxModeInfo> {
 		// 5. Absolute/Zero Page Indexed Modes (e.g., LDA $1234,X or LDA $40,Y)
 		if ((tokenIs(numTokens - 1, "X") || tokenIs(numTokens - 1, "Y")) && tokenIs(numTokens - 2, ",")) {
 			const index = tokenIs(numTokens - 1, "X") ? ",X" : ",Y";
-			const resolvedAddress = resolveValue(operandTokens.slice(0, numTokens - 2));
-			this.checkAddress(resolvedAddress, 0xffff);
-			return modeInfo(this.selectAddressMode(mnemonic, instructionModes, index, resolvedAddress, forcedWidth), resolvedAddress);
+			return this.directAddress(mnemonic, instructionModes, index, operands.value(operandTokens.slice(0, numTokens - 2)), forcedWidth, modeInfo);
 		}
 
 		// 6. Relative Mode (Branches)
 		if (instructionModes.has("RELATIVE")) {
 			rejectSuffix();
-			return modeInfo("RELATIVE", resolveValue(operandTokens));
+			return modeInfo("RELATIVE", operands.branchTarget(operandTokens));
 		}
 
 		// 7. Absolute/Zero Page Direct (e.g., LDA $1234 or LDA MyLabel)
-		const resolvedAddress = resolveValue(operandTokens);
-		this.checkAddress(resolvedAddress, 0xffff);
-		return modeInfo(this.selectAddressMode(mnemonic, instructionModes, "", resolvedAddress, forcedWidth), resolvedAddress);
+		return this.directAddress(mnemonic, instructionModes, "", operands.value(operandTokens), forcedWidth, modeInfo);
+	}
+
+	/** A direct or indexed address operand: zero page or absolute, see `selectAddressMode`. */
+	private directAddress(
+		mnemonic: string,
+		modes: ReadonlyMap<Mos65xxMode, number>,
+		index: keyof typeof ADDRESS_MODES,
+		value: number | RelocValue | null,
+		forcedWidth: 1 | 2 | null,
+		modeInfo: (mode: Mos65xxMode, resolvedAddress?: number | null) => ModeInfo,
+	): ModeInfo {
+		if (!(value instanceof RelocValue)) this.checkAddress(value, 0xffff);
+		const mode = this.selectAddressMode(mnemonic, modes, index, value, forcedWidth);
+		// A number forced to zero page (.b) keeps its low byte; a relocatable address is absolute.
+		if (!(value instanceof RelocValue)) return modeInfo(mode, value);
+		return this.addressInfo(mnemonic.split(".")[0] as string, modeInfo(mode), value, 0xffff);
 	}
 
 	/** A branch's offset from the next instruction, as a signed byte (two's complement). */

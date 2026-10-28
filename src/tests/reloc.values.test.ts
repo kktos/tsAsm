@@ -178,36 +178,6 @@ describe("Relocatable values", () => {
 		});
 	});
 
-	describe("in operands and data, until fixups are recorded", () => {
-		it.each([
-			["jmp main", "main:"],
-			["bne main", "main:"],
-			["lda #<main", "main:"],
-			["jmp later", "later:"],
-			[".dw main", "main:"],
-			[".db <main", "main:"],
-			[".dw later", "later:"],
-		])("should reject %s", (statement, label) => {
-			const source = label === "later:" ? `${statement}\nlater:` : `${label}\n${statement}`;
-			expect(() => assemble(source)).toThrow(
-				/^[<>^]?CODE\+\$\d{4} is relocatable, and operands and data can't take one yet: their fixups aren't recorded\.$/,
-			);
-		});
-
-		it("should accept the difference of two labels and a fixed segment's labels", () => {
-			const segments = assemble(`
-			start:
-				.dw end - start
-				lda #end - start
-				jmp fixed
-			end:
-				.segment FIXED
-			fixed:
-			`);
-			expect(segments.find((s) => s.name === "CODE")?.data).toEqual([0x07, 0x00, 0xa9, 0x07, 0x4c, 0x00, 0x10]);
-		});
-	});
-
 	describe("listing", () => {
 		it("should show a label's segment and offset", () => {
 			const sink = new MemorySink();

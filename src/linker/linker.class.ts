@@ -4,6 +4,7 @@ import type { ValueHolder } from "../assembler/expression.types";
 import { DEFAULT_OPTIONS } from "../assembler/options";
 import { Parser } from "../assembler/parser.class";
 import type { FileHandler, StreamState } from "../assembler/polyasm.types";
+import type { RelocValue } from "../assembler/reloc-value.class";
 import { PASymbolTable } from "../assembler/symbol.class";
 import type { Endianness } from "../cpu/cpuhandler.interface";
 import type { DirectiveContext, DirectiveRuntime } from "../directives/directive.interface";
@@ -19,6 +20,20 @@ import { getHex } from "../utils/hex.util";
 import { stringToBytes } from "../utils/string.utils";
 import { Dispatcher } from "./directives/dispatcher.class";
 
+/** A relocatable value written in a segment: when it's loaded, the address of the value's segment is added there. */
+export interface Fixup {
+	/** Where its bytes start, from the start of the segment holding them. */
+	offset: number;
+	/** How many bytes: 1 to 4. */
+	size: number;
+	/** How many bits the address is shifted right before its `size` bytes are written: 0, 8 for `>`, 16 for `^`. */
+	shift: number;
+	/** The segment the value is in. */
+	segment: string;
+	/** The value's offset in that segment. */
+	targetOffset: number;
+}
+
 export interface Segment {
 	name: string;
 	start: number;
@@ -32,6 +47,8 @@ export interface Segment {
 	relocatable?: boolean;
 	/** Whether this segment has been emitted to the final image. */
 	emitted?: boolean;
+	/** The relocatable values written in it, recorded in pass 2. */
+	relocs?: Fixup[];
 }
 
 export class Linker {
@@ -94,6 +111,7 @@ export class Linker {
 			padValue,
 			relocatable,
 			emitted: false,
+			relocs: [],
 		};
 		this.segments.push(newSeg);
 	}
@@ -166,9 +184,18 @@ export class Linker {
 			throw new Error(`Segment '${this.currentSegment.name}' is relocatable: it has no address until it's loaded, so .ORG and * = can't set one.`);
 	}
 
-	/** At the start of each pass, every segment starts again from its start address. */
+	/** At the start of each pass, every segment starts again from its start address, without fixups. */
 	public resetSegmentPositions() {
 		this.resumePC.clear();
+		for (const segment of this.segments) segment.relocs = [];
+	}
+
+	/** Records the fixup of the relocatable `value`, written in `size` bytes at `addr` of the current segment. */
+	public addFixup(addr: number, size: number, value: RelocValue) {
+		const active = this.currentSegment;
+		if (!active) throw new Error(`No active segment for the bytes at $${getHex(addr)}: select a segment with .SEGMENT before emitting code or data.`);
+		active.relocs ??= [];
+		active.relocs.push({ offset: addr - active.start, size, shift: value.byteShift ?? 0, segment: value.segment, targetOffset: value.offset });
 	}
 
 	public writeBytes(addr: number, values: number[]): void {
