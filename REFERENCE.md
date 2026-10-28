@@ -489,6 +489,7 @@ A file can be included several times: each `.include` assembles it again. A file
 | `.log` / `.echo` / `.out` `<value> [, <value> …]` | Print the values, separated by tabs                                          |
 | `.warning` / `.warn` `<value> [, <value> …]`      | Print a warning                                                              |
 | `.error` / `.err` `<value> [, <value> …]`         | Stop the assembly with this error                                            |
+| `.assert <condition> [, warn] [, <value> …]`      | Stop the assembly when the condition is false, or only warn: see below       |
 | `.list on` / `.list off`                          | Turn the listing on or off (when the listing is enabled in the project file) |
 | `.list file = "<name>"`                           | Write the listing of the current file to another file                        |
 
@@ -501,6 +502,13 @@ For columns that line up, build each line with `.pad()`: a tab moves to the next
 ```as
 .log .pad("#", -4) + .pad("Size", -7) + "Name"
 .log .pad(.hex(id), -4) + .pad(.hex(size, 4), -7) + name   ; $02 $0200  WELCOME
+```
+
+`.assert` checks a condition in pass 2, when every symbol is known, so it can use labels defined after it. A false condition stops the assembly with the values as the error, `Assertion failed` without any. With `warn` (or `warning`) as its second argument, a word alone in any case, it's a warning and the assembly goes on; `err` (or `error`) is the default. Any other second argument is the start of the message.
+
+```as
+.assert end - start <= $100, "the code is ", end - start, " bytes"
+.assert .len(name) <= 10, warn, "name is too long"
 ```
 
 ## Assembler settings

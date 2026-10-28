@@ -154,7 +154,6 @@ As ca65's `.org` in a relocatable segment, ACME's `!pseudopc` or 64tass's `.logi
 
 ### 4.7 Smaller ones
 
-- `.assert <condition>, <message>`;
 - `.struct` / `.enum`, for field offsets;
 - leaving a macro early;
 - `.for` over a numeric range;

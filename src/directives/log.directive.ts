@@ -65,17 +65,10 @@ export class LogDirective implements IDirective {
 		for (const exprTokens of exprs) {
 			const value = this.runtime.evaluator.evaluate(exprTokens, context);
 
-			outputs.push(this.formatValue(value));
+			outputs.push(formatValue(value));
 		}
 
 		this.emitLog(outputs.join("\t"));
-	}
-
-	private formatValue(value: unknown): string {
-		if (Array.isArray(value)) return `[${value.map((v) => this.formatValue(v)).join(", ")}]`;
-		if (typeof value === "object") return JSON.stringify(value);
-
-		return String(value);
 	}
 
 	private emitLog(message: string): void {
@@ -89,4 +82,12 @@ export class LogDirective implements IDirective {
 				this.runtime.logger.log(message);
 		}
 	}
+}
+
+/** A value as `.log` prints it: an array as `[a, b]`, an object as JSON. */
+export function formatValue(value: unknown): string {
+	if (Array.isArray(value)) return `[${value.map((v) => formatValue(v)).join(", ")}]`;
+	if (typeof value === "object") return JSON.stringify(value);
+
+	return String(value);
 }
