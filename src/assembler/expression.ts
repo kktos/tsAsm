@@ -10,6 +10,8 @@ import type { FunctionToken, OperatorStackToken, OperatorToken, ScalarToken, Tok
 import { AsmError } from "../utils/error.utils";
 import { nestingDelta } from "../utils/token.utils";
 import { type EvaluationContext, type EvaluatorHost, PRECEDENCE } from "./expression.types";
+import { DEFAULT_OPTIONS } from "./options";
+import { UserFunction } from "./user-function.class";
 
 const UNARY_TEST_OPERATORS = new Set([")", "]"]);
 // What two strings do as text: `+` joins them, the others compare them.
@@ -20,8 +22,19 @@ const charCode = <T>(value: T): T | number => (typeof value === "string" && valu
 const notACharMessage = (value: string) => `Only a one-character string can be used as a number: ${JSON.stringify(value)}.`;
 const UNARY_OPERATORS = new Set(["UNARY_MINUS", "!", "UNARY_LSB", "UNARY_MSB"]);
 
+/** A system function's (`.len(`) or a user function's (`screen(`), on the operator stack until its `)`. */
+const isCall = (token: Token | undefined): token is FunctionToken => token?.type === "FUNCTION" || token?.type === "USER_FUNCTION";
+
+/** `name(`, the `(` glued to the name, is a call, as a macro's `m(1, 2)`: `name (1)` isn't. */
+const opensCall = (name: Token, next: Token | undefined) =>
+	next?.type === "OPERATOR" && next.value === "(" && next.line === name.line && next.column === name.column + String(name.raw ?? name.value).length;
+
 export class ExpressionEvaluator {
 	public readonly functionDispatcher: FunctionDispatcher;
+	/** The user functions being called, each with how many of its calls are running: see `callFunction`. */
+	private readonly runningCalls = new Map<UserFunction, number>();
+	/** The errors already given the note of the function they're in: only the innermost function's. */
+	private readonly notedErrors = new WeakSet<AsmError>();
 
 	constructor(
 		private readonly symbolTable: PASymbolTable,
@@ -97,7 +110,7 @@ export class ExpressionEvaluator {
 			if (operatorStack[k]?.value === "(") {
 				foundParen = true;
 				// Increment argument count of the function, which is right before the '('.
-				if (k > 0 && operatorStack[k - 1]?.type === "FUNCTION") {
+				if (k > 0 && isCall(operatorStack[k - 1])) {
 					const funcToken = operatorStack[k - 1] as Token;
 					// Safely increment argCount
 					funcToken.argCount = (funcToken.argCount ?? 0) + 1;
@@ -220,7 +233,7 @@ export class ExpressionEvaluator {
 
 				// If the token before the '(' was a function, pop it to the output.
 				const topOfStack = operatorStack[operatorStack.length - 1];
-				if (topOfStack?.type === "FUNCTION") {
+				if (isCall(topOfStack)) {
 					const funcToken = operatorStack.pop() as Token;
 					// If there's only one argument and it's empty (e.g., .FOO()), arg count is 0.
 					if (funcToken.argCount === 1 && lastToken?.value === "(") {
@@ -331,6 +344,13 @@ export class ExpressionEvaluator {
 						processedToken = { ...processedToken, type: "SYMBOL_NAME" };
 						outputQueue.push(processedToken);
 						break;
+					}
+
+					if (opensCall(processedToken, tokens[index + 1])) {
+						const callToken: FunctionToken = { ...processedToken, type: "USER_FUNCTION", argCount: 1 };
+						operatorStack.push(callToken);
+						lastToken = callToken;
+						continue;
 					}
 
 					outputQueue.push(processedToken);
@@ -497,6 +517,13 @@ export class ExpressionEvaluator {
 						resolver,
 						context.allowForwardRef,
 					);
+					break;
+				}
+
+				case "USER_FUNCTION": {
+					const argCount = token.argCount ?? 0;
+					const args = stack.splice(stack.length - argCount, argCount);
+					stack.push(this.callFunction(token, args, context));
 					break;
 				}
 
@@ -728,6 +755,58 @@ export class ExpressionEvaluator {
 		}
 	}
 
+	/**
+	 * Calls the user function `token` names with the values of its arguments: its parameters are variables of the call's
+	 * scope, and its body is evaluated there, without the macro parameters of where it's called. An error in the body is
+	 * located at the call, with a note at the function.
+	 */
+	private callFunction(token: ScalarToken, args: (SymbolValue | null)[], context: EvaluationContext): SymbolValue {
+		const name = token.raw ?? token.value;
+		// Defined at this point: pass 2 has the functions pass 1 defined further down, as `.def()` knows.
+		const fn = this.symbolTable.isDefined(token.value) ? this.symbolTable.lookupSymbol(token.value) : undefined;
+		if (fn === undefined) throw AsmError.at(`Unknown function '${name}'.`, token);
+		if (!(fn instanceof UserFunction)) throw AsmError.at(`'${name}' isn't a function.`, token);
+
+		const { parameters } = fn;
+		if (args.length !== parameters.length)
+			throw AsmError.at(
+				`Function '${fn.name}' expects ${parameters.length} argument${parameters.length === 1 ? "" : "s"}, but got ${args.length}.`,
+				token,
+			);
+
+		const depth = this.runningCalls.get(fn) ?? 0;
+		const maxDepth = this.host.functionRecursion?.() ?? DEFAULT_OPTIONS["function.recursion"];
+		if (depth > maxDepth)
+			throw AsmError.at(
+				maxDepth === 0
+					? `Function '${fn.name}' calls itself, and .option function.recursion is 0.`
+					: `Function '${fn.name}' calls itself more than ${maxDepth} deep (.option function.recursion).`,
+				token,
+			);
+
+		this.runningCalls.set(fn, depth + 1);
+		try {
+			return this.symbolTable.withFunctionScope(fn.scopes, `function ${fn.name}`, () => {
+				const { file = "", line = token.line, column = token.column } = fn.site.location;
+				parameters.forEach((parameter, index) => {
+					this.symbolTable.defineVariable(parameter.value, args[index] as SymbolValue, { filename: file, line, column });
+				});
+				return this.evaluate([...fn.body], { ...context, macroArgs: undefined });
+			});
+		} catch (e) {
+			const error = e instanceof AsmError ? e : new AsmError(e instanceof Error ? e.message : String(e));
+			if (!this.notedErrors.has(error)) {
+				error.notes.push({ message: `in function ${fn.name}, defined here`, ...fn.site });
+				this.notedErrors.add(error);
+			}
+			error.location = { line: token.line, column: token.column };
+			throw error;
+		} finally {
+			if (depth === 0) this.runningCalls.delete(fn);
+			else this.runningCalls.set(fn, depth);
+		}
+	}
+
 	/** A symbol's value: an error for a variable used before it's assigned, when it's assigned more than once. */
 	private lookupVariable(name: string, position: { line: number | string; column: number }): SymbolValue | undefined {
 		if (this.symbolTable.isAmbiguousForwardReference(name))
@@ -755,6 +834,8 @@ export class ExpressionEvaluator {
 					return this.evaluate(macroArgTokens, { ...context, macroArgs: undefined });
 
 				const value = this.lookupVariable(token.value, token);
+				if (value instanceof UserFunction)
+					throw AsmError.at(`'${token.raw ?? token.value}' is a function: call it, ${token.raw ?? token.value}(…).`, token);
 
 				// If the symbol's value is an array of tokens, it's a macro parameter.
 				// We need to evaluate it recursively. This handles .EQU with token arrays.

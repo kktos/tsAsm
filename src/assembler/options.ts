@@ -12,6 +12,8 @@ export const DEFAULT_OPTIONS = {
 	"repeat.start": 1,
 	/** The first value of a `.for` index: 0 or 1. */
 	"for.start": 0,
+	/** How deep a user function can call itself, directly or through another: 0 to 256, 0 for not at all. */
+	"function.recursion": 64,
 };
 
 export type OptionName = keyof typeof DEFAULT_OPTIONS;
@@ -24,6 +26,7 @@ export const OPTION_SHORT_NAMES: Record<OptionName, string> = {
 	"listing.data": "ld",
 	"repeat.start": "rs",
 	"for.start": "fs",
+	"function.recursion": "fr",
 };
 export type OptionValue = string | number;
 export type Options = Partial<Record<OptionName, OptionValue>>;
@@ -70,14 +73,23 @@ export function isLoopStart(value: unknown): value is number {
 	return typeof value === "number" && LOOP_STARTS.includes(value);
 }
 
-/** What each option's value can be, and the values the error message lists. */
-const OPTION_VALUES: Record<OptionName, { isValid: (value: unknown) => boolean; text: string }> = {
+/** The values of `function.recursion`: a whole number in this range. */
+const MAX_FUNCTION_RECURSION = 256;
+export const FUNCTION_RECURSION_TEXT = `0 to ${MAX_FUNCTION_RECURSION}`;
+
+export function isFunctionRecursion(value: unknown): value is number {
+	return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= MAX_FUNCTION_RECURSION;
+}
+
+/** What each option's value can be, the values the help lists, and what the error message says it must be (`one of <text>` unless given). */
+const OPTION_VALUES: Record<OptionName, { isValid: (value: unknown) => boolean; text: string; expected?: string }> = {
 	"local.prefix": { isValid: isLabelChar, text: LABEL_CHARS_TEXT },
 	"anon.marker": { isValid: isLabelChar, text: LABEL_CHARS_TEXT },
 	"listing.case": { isValid: isListingCase, text: LISTING_CASES_TEXT },
 	"listing.data": { isValid: isListingData, text: LISTING_DATA_TEXT },
 	"repeat.start": { isValid: isLoopStart, text: LOOP_STARTS_TEXT },
 	"for.start": { isValid: isLoopStart, text: LOOP_STARTS_TEXT },
+	"function.recursion": { isValid: isFunctionRecursion, text: FUNCTION_RECURSION_TEXT, expected: `a whole number from ${FUNCTION_RECURSION_TEXT}` },
 };
 
 export function isOptionName(name: string): name is OptionName {
@@ -97,9 +109,9 @@ export function optionValuesText(name: OptionName): string {
 
 /** Why `value` can't be the value of the option `name`, or undefined when it can. */
 export function optionValueError(name: OptionName, value: unknown): string | undefined {
-	const { isValid, text } = OPTION_VALUES[name];
+	const { isValid, text, expected = `one of ${text}` } = OPTION_VALUES[name];
 	if (isValid(value)) return undefined;
-	return `'${name}' must be one of ${text}.`;
+	return `'${name}' must be ${expected}.`;
 }
 
 /** The options given to the assembler, with the defaults for the others. An unknown option or a wrong value throws. */

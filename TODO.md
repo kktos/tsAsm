@@ -50,6 +50,14 @@ Without a linker script, `output.listing: { enabled: true }` writes a `.lst` hol
 
 `.macro m` / `.if 1 { .db 0 }` / `.db 1` / `.end` → `Missing .END for the .MACRO block.`, same in a `.for` … `.end`. Reading the block, `getKeywordBlock` counts the `.if` as a block that needs its own `.end`, though its `{ }` already ended it. Found with `.exitmacro`.
 
+### 1.62 A call in a loop header listed with a space
+
+`.repeat sq(2) AS i` is listed `.repeat sq ($02) AS i`, and `.repeat .lobyte(2) AS i` is listed `.repeat . lobyte ($02) AS i`: `tokensText` spaces the tokens of a call, its dot and its `(`. Found with 4.8.
+
+### 1.63 A `.macro` / `.function` definition listed in quotes
+
+`.function sq(x) = x * x` is listed `.function "sq(x) = x * x"`, and `.macro m a` as `.macro "m(A)"`: the lister quotes the text it's given, as for 1.58. Found with 4.8.
+
 ## 2. Code review, items left
 
 ### 2.1 CPU back-ends
@@ -167,6 +175,7 @@ Apple II `COUT` expects high-bit chars: the README's `.cstr "HELLO"` doesn't pri
 - **Checked at the `.option`:** an array of 256 whole numbers, 0 to 255; anything else is an error there.
 - **Where a character becomes a byte, never on a string value:** the string directives (`.text`, `.cstr`, `.pstr`, `.pstrl`), strings in `.db` / `.dw` / `.dl`, and a one-char string used as a number (`lda #"A"`), so `cmp #"A"` matches what `.text "A"` emitted. String comparisons, `+`, `.len`, `.split`, … see the text. `"9"-"0"` goes through the map too.
 - **A local option** (`repeat.start`'s kind): each file decides, an include starts with the assembler's value, and a macro body uses the map of where it's defined. A library's strings don't change with its includer; a macro meant to follow its caller takes the map as a parameter.
+
 Follow-ups: a function as the value, with 4.8 (`.function apple2(c) = c | $80`, then `.option charmap apple2`); partial maps (an object, `{ "A": 0xC1 }`, or ranges as 64tass's `.cdef`), where a character with no entry is an error; the raw code of a char while a map is on (`.ord()`, 4.8).
 
 ### 4.7 Smaller ones
@@ -178,7 +187,9 @@ Follow-ups: a function as the value, with 4.8 (`.function apple2(c) = c | $80`, 
 
 ### 4.8 User functions
 
-Nothing computes a reusable value today: a macro is a statement and emits lines, and it can't set a variable for its caller (its variables are local to the call). So a formula is written again at each use (`sta $0400 + 5*40 + 10`). Uses: address formulas (screen, tiles, banks), packed values (colours, sprite pointers), generated tables (`.db reverse(i)` in a `.repeat`), checks (`.if !samePage(a, b)`), a char mapping (4.6). KickAssembler and 64tass have them; ca65 users fake them with `.define`.
+The one-line form is done (#173, see CHANGELOG): `.function name(params) = expression`, its call `name(…)`, `.option function.recursion`. Left: the block form.
+
+Nothing computed a reusable value: a macro is a statement and emits lines, and it can't set a variable for its caller (its variables are local to the call). So a formula is written again at each use (`sta $0400 + 5*40 + 10`). Uses: address formulas (screen, tiles, banks), packed values (colours, sprite pointers), generated tables (`.db reverse(i)` in a `.repeat`), checks (`.if !samePage(a, b)`), a char mapping (4.6). KickAssembler and 64tass have them; ca65 users fake them with `.define`.
 
 Two forms, parentheses always written:
 
@@ -207,7 +218,12 @@ Two forms, parentheses always written:
 
 Order: the one-line form (store the expression's tokens, evaluate them with the parameters in scope); the block form with `.return`. Helpful with it: `.min`, `.max`, `.abs`, `.sin`, `.cos`, `.chr`, `.ord`.
 
-Decisions left: the bare `name(…)` call, the recursion limit.
+Follow-ups:
+
+- The block form: its body collected as a `{ }` block (`getRawBlock` leaves the `{` to the block reading it), and run in the call's scope (`PASymbolTable.withFunctionScope`), its statements checked to be pure.
+- A one-line function's expression is only read when it's called: a typo in a function never called isn't reported. Reading it at the definition, without evaluating it, would.
+- With the block form, a recursion can end (`.if n == 0` / `.return 1`): `.option function.recursion` then matters for real.
+- A function defined in a macro body doesn't see the macro's parameters: its expression is evaluated without them. To decide: substitute them at the definition, as a macro call's arguments are.
 
 ### 4.10 Building an array without a loop
 

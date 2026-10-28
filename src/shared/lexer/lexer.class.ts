@@ -8,6 +8,7 @@ export type TokenType =
 	| "LOCAL_LABEL" // :loop
 	| "ANONYMOUS_LABEL_DEF" // :
 	| "FUNCTION"
+	| "USER_FUNCTION" // a call to a function `.function` defines: `screen(` in `screen(10, 5)`
 	| "SYSVAR"
 	| "SYMBOL_NAME" // a symbol's name, not its value: `X` in `.def(X)`
 	| "ANONYMOUS_LABEL_REF" // :- or :+ or :-- or :+3
@@ -46,7 +47,7 @@ export type StringValueToken<T extends TokenType> = BaseToken & {
 };
 
 export type OperatorToken = StringValueToken<"OPERATOR">;
-export type FunctionToken = StringValueToken<"FUNCTION">;
+export type FunctionToken = StringValueToken<"FUNCTION" | "USER_FUNCTION">;
 export type NumberToken = StringValueToken<"NUMBER">;
 export type StringToken = StringValueToken<"STRING">;
 export type OperatorStackToken = OperatorToken | FunctionToken | NumberToken | IdentifierToken;
