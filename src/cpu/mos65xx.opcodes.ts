@@ -4,6 +4,7 @@ export type Mos65xxMode =
 	| "ACCUMULATOR" // asl a, or asl
 	| "IMMEDIATE" // lda #$12
 	| "RELATIVE" // bne label
+	| "ZEROPAGE_RELATIVE" // bbr0 $12,label
 	| "ZEROPAGE" // lda $12
 	| "ZEROPAGE_X" // lda $12,x
 	| "ZEROPAGE_Y" // ldx $12,y
@@ -101,4 +102,20 @@ export const CMOS_ADDITIONS: OpcodeSet = {
 	STZ: { ZEROPAGE: 0x64, ZEROPAGE_X: 0x74, ABSOLUTE: 0x9c, ABSOLUTE_X: 0x9e },
 	TRB: { ZEROPAGE: 0x14, ABSOLUTE: 0x1c },
 	TSB: { ZEROPAGE: 0x04, ABSOLUTE: 0x0c },
+};
+
+/** Rockwell's bit instructions, in the WDC 65C02 too: the bit number is in the mnemonic and in the opcode's high nibble. */
+export const ROCKWELL_BITOPS: OpcodeSet = Object.fromEntries(
+	[0, 1, 2, 3, 4, 5, 6, 7].flatMap((bit) => [
+		[`RMB${bit}`, { ZEROPAGE: 0x07 + bit * 0x10 }],
+		[`SMB${bit}`, { ZEROPAGE: 0x87 + bit * 0x10 }],
+		[`BBR${bit}`, { ZEROPAGE_RELATIVE: 0x0f + bit * 0x10 }],
+		[`BBS${bit}`, { ZEROPAGE_RELATIVE: 0x8f + bit * 0x10 }],
+	]),
+);
+
+/** What WDC adds, in its 65C02 and the 65816: STP stops the clock, WAI waits for an interrupt. */
+export const WDC_ADDITIONS: OpcodeSet = {
+	STP: { IMPLIED: 0xdb },
+	WAI: { IMPLIED: 0xcb },
 };

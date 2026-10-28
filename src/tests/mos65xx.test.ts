@@ -22,6 +22,11 @@ describe("Mos65xxHandler", () => {
 		expect(() => new Mos65xxHandler(profile)).toThrow("The test's opcode sets give LDA IMMEDIATE twice.");
 	});
 
+	it.each(["STP", "WAI", "RMB0", "SMB7", "BBR0", "BBS7"])("should give %s to the 65C02 only", (mnemonic) => {
+		expect(new Cpu65C02Handler().isInstruction(mnemonic)).toBe(true);
+		expect(new Cpu6502Handler().isInstruction(mnemonic)).toBe(false);
+	});
+
 	it("should not add a 65C02 mode to the 6502 by building a 65C02 first", () => {
 		new Cpu65C02Handler();
 		expect(NMOS.LDA).not.toHaveProperty("ZEROPAGE_INDIRECT");

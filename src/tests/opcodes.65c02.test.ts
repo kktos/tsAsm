@@ -194,6 +194,60 @@ describe("65C02 Opcodes", () => {
 		expect(data).toEqual([0xa9, 0x41, 0xa9, 0x41]);
 	});
 
+	describe("WDC and Rockwell instructions", () => {
+		it("should assemble STP and WAI", () => {
+			const source = `
+				STP
+				WAI
+			`;
+			expect(assembleAndGetCode(source)).toEqual([0xdb, 0xcb]);
+		});
+
+		it("should assemble RMB0..7 and SMB0..7, the bit number in the opcode's high nibble", () => {
+			const source = `
+				RMB0 $12
+				RMB7 $12
+				SMB0 $12
+				SMB7 zp
+				zp = $FF
+			`;
+			expect(assembleAndGetCode(source)).toEqual([0x07, 0x12, 0x77, 0x12, 0x87, 0x12, 0xf7, 0xff]);
+		});
+
+		it("should assemble BBR0..7 and BBS0..7, branching from the next instruction", () => {
+			const source = `
+			back:
+				BBR0 $12,forward
+				BBR7 $12,back
+				BBS0 $34,*
+				BBS7 zp+1,forward
+			forward:
+				zp = $55
+			`;
+			// back = $8000, each BBx is 3 bytes: forward = $800C
+			expect(assembleAndGetCode(source)).toEqual([0x0f, 0x12, 0x09, 0x7f, 0x12, 0xfa, 0x8f, 0x34, 0xfd, 0xff, 0x56, 0x00]);
+		});
+
+		it("should split a BBR's operands at the first comma outside parentheses", () => {
+			const source = `
+				BBR1 .iif(1, 3, 4),next
+			next:
+			`;
+			expect(assembleAndGetCode(source)).toEqual([0x1f, 0x03, 0x00]);
+		});
+
+		it.each([
+			["BBR0 $12", "BBR0 takes a zero page address and a branch target: 'BBR0 $12,label'."],
+			["BBR0 $1234,*", "Zero page address 4660 is out of range ($0..$FF)."],
+			["BBS0 $12,*+200", "Branch target out of range."],
+			["BBR0.b $12,*", "'BBR0.B': .B only applies to an address that can be zero page or absolute."],
+			["RMB0 $1234", "RMB0 has no absolute form, and $1234 isn't a zero page address."],
+			["SMB0.w $12", "'SMB0.W': SMB0 has no absolute form."],
+		])("should throw on %j", (source, message) => {
+			expect(() => assembleAndGetCode(source)).toThrow(message);
+		});
+	});
+
 	describe("operand ranges", () => {
 		it("should accept operands at the limits, and < > on any 16-bit value", () => {
 			const source = `
