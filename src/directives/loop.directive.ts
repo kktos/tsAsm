@@ -219,7 +219,7 @@ export class LoopDirective implements IDirective {
 			this.runtime.parser.pushTokenStream({
 				newTokens: state.body,
 				macroArgs: context.macroArgs,
-				onEndOfStream: () => this.runNextLoopIteration(loopId, context),
+				onEndOfStream: (exited) => (exited ? this.endLoop(loopId) : this.runNextLoopIteration(loopId, context)),
 			});
 		} else {
 			// No iterations left, end the loop.

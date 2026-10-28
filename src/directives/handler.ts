@@ -17,6 +17,7 @@ import { DefineDirective } from "./define.directive";
 import type { DirectiveContext, DirectiveRuntime, IDirective } from "./directive.interface";
 import { EndDirective } from "./end.directive";
 import { EquDirective } from "./equ.directive";
+import { ExitMacroDirective } from "./exitmacro.directive";
 import { FillDirective } from "./fill.directive";
 import { FunctionDirective } from "./function.directive";
 import { HexDirective } from "./hex.directive";
@@ -106,6 +107,10 @@ export class DirectiveHandler {
 		this.register("WARN", warnLogHandler);
 
 		this.register("ASSERT", new AssertDirective(runtime));
+
+		const exitMacroHandler = new ExitMacroDirective(runtime);
+		this.register("EXITMACRO", exitMacroHandler);
+		this.register("EXITM", exitMacroHandler);
 
 		const fillHandler = new FillDirective(runtime);
 		this.register("FILL", fillHandler);
