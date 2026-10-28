@@ -462,11 +462,13 @@ export class Assembler {
 						line: token.line,
 						column: token.column,
 					});
+					this.lister.label(token.raw ?? token.value, this.PC.value);
 					break;
 				}
 
 				case "ANONYMOUS_LABEL_DEF": {
 					this.namelessLabels.add(this.PC.value);
+					this.lister.label(token.value, this.PC.value);
 					break;
 				}
 
@@ -624,12 +626,14 @@ export class Assembler {
 							line: token.line,
 							column: token.column,
 						});
+					this.lister.label(token.raw ?? token.value, this.PC.value);
 					break;
 				}
 
 				case "ANONYMOUS_LABEL_DEF": {
 					const pass1Address = this.namelessLabels.update(this.PC.value);
 					if (pass1Address !== undefined && pass1Address !== this.PC.value) throw this.phaseError("anonymous label", pass1Address);
+					this.lister.label(token.value, this.PC.value);
 					break;
 				}
 			}
