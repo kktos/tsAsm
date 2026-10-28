@@ -36,9 +36,9 @@ export function notRelocatable<T>(value: T): Exclude<T, RelocValue> {
 	return value as Exclude<T, RelocValue>;
 }
 
-/** An operand's or a data value's: until fixups are recorded, a relocatable value can't be emitted. */
-export function noFixupError(value: RelocValue): Error {
-	return new Error(`${value} is relocatable, and operands and data can't take one yet: their fixups aren't recorded.`);
+/** An operand of a CPU that doesn't record fixups (`cpuType`): a relocatable value can't be emitted. */
+export function noFixupError(value: RelocValue, cpuType: string): Error {
+	return new Error(`${value} is relocatable, and the ${cpuType}'s operands can't take one: their fixups aren't recorded.`);
 }
 
 /** The error for `what` (`Operator '*'`, `.HEX()`) applied to a relocatable value. */

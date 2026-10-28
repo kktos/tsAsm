@@ -62,6 +62,10 @@ Without a linker script, `output.listing: { enabled: true }` writes a `.lst` hol
 
 `.segment X { start: $1000, start: $2000, size: 4 }` puts `X` at `$2000`: the last value wins, silently. Only `reloc` / `relocatable` given twice is an error. Found with 4.19.
 
+### 1.66 A 6809 or RV32I branch to a fixed address in a relocatable segment
+
+In a relocatable segment, the instruction's PC is its offset there: a branch to a fixed address is computed from it, silently. `.segment CODE { reloc: true }` / `nop` / `bra $10` → `12 20 0D` on the 6809; `beq x0, x0, $10` the same on the RV32I. The 65xx reads its branch targets with `OperandReader.branchTarget` since #181, which rejects them (`A branch from relocatable segment 'CODE' can't reach $10: …`); the other CPUs should too. Their operands don't take relocatable values (`the 6809's operands can't take one`): fixups for them would follow, RV32I's with `%hi` / `%lo` (2.1). Found with 4.19.
+
 ## 2. Code review, items left
 
 ### 2.1 CPU back-ends
@@ -260,7 +264,7 @@ For relocatable outputs (Apple IIgs OMF, 4.22; later o65 or another object forma
 
 1. The declaration: `relocatable: true` / `reloc: true`, no `start`, `.org` an error. Done in #178.
 2. Relocatable values: a label in a relocatable segment is a segment and an offset, through expressions (below); an error where a plain number is needed; the listing and the `.sym` file show `CODE+$0012`. Done in #180.
-3. Fixups: recorded in pass 2, for data then operands, with the shift of `<`, `>`, `^`. Until then, operands and data reject a relocatable value (#180): lifting that is this step, branches inside a segment included.
+3. Fixups: recorded in pass 2, for data then operands, with the shift of `<`, `>`, `^`. Done in #181, for the 65xx's operands; the other CPUs' are 1.66.
 4. The linker script reads `seg.relocs` and `seg.attrs` (4.21).
 5. The linker script reads the assembler's symbols (4.21).
 6. OMF output: the `omf.linker.asm` script library (4.22).
@@ -270,8 +274,8 @@ Addressing modes go with 4.18, after step 2.
 - **Relocatable segments:** declared in #178; their labels are a segment and an offset since #180.
 - **Without a linker script:** an error since #180.
 - **Through expressions:** done in #180, see `CHANGELOG.md`.
-- **Fixups:** each operand or data value (`.dw`, `.dl`, the long `.db` forms) built from a relocatable value records `{ offset, size, shift, segment, targetOffset }` in its segment, in pass 2. The linker script reads them as `seg.relocs` (4.21).
-- **Addressing modes (with 4.18):** a relocatable label is never direct page, whatever its offset: absolute in its own segment, long elsewhere unless `.w`. "The size comes from the value" only applies to plain numbers. `jmp` / `jsr` to another relocatable segment are errors suggesting `jml` / `jsl`: its bank isn't known.
+- **Fixups:** done in #181: `seg.relocs`, `{ offset, size, shift, segment, targetOffset }`, see `CHANGELOG.md`. Reading them from the linker script is step 4.
+- **Addressing modes (with 4.18):** a relocatable label is never direct page, whatever its offset (the 6502 / 65C02 since #181): absolute in its own segment, long elsewhere unless `.w`. "The size comes from the value" only applies to plain numbers. `jmp` / `jsr` to another relocatable segment are errors suggesting `jml` / `jsl`: its bank isn't known.
 - **Where a plain number is needed:** an error since #180. Left: the CPU's widths, with 4.18.
 - **Listing and symbol file:** done in #180: `CODE+0012     main:`, `label reloc = CODE+$0012`.
 

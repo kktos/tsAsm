@@ -1,4 +1,4 @@
-import { noFixupError, RelocValue } from "../assembler/reloc-value.class";
+import { RelocValue } from "../assembler/reloc-value.class";
 import type { SymbolValue } from "../assembler/symbol.class";
 import type { Endianness } from "../cpu/cpuhandler.interface";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
@@ -41,8 +41,8 @@ export class DataDirective implements IDirective {
 				switch (typeof value) {
 					case "object": {
 						// null: not known yet, a number or a string later
-						if (value instanceof RelocValue) throw noFixupError(value);
-						if (value !== null) throw this.notData(directive, value, tokens);
+						if (value instanceof RelocValue) this.checkRelocatable(directive, value, tokens);
+						else if (value !== null) throw this.notData(directive, value, tokens);
 						totalSize += this.bytesPerElement;
 						break;
 					}
@@ -92,8 +92,12 @@ export class DataDirective implements IDirective {
 						break;
 					}
 					case "object":
+						if (value instanceof RelocValue) {
+							outputBytes.push(...this.relocatableBytes(directive, value, tokens, context.PC.value + outputBytes.length));
+							params.push(value);
+							break;
+						}
 						// An array defined after the directive was null in pass 1, counted as one element.
-						if (value instanceof RelocValue) throw noFixupError(value);
 						if (value !== null) throw this.notData(directive, value, tokens);
 						break;
 				}
@@ -119,6 +123,29 @@ export class DataDirective implements IDirective {
 	private elementBytes(value: number): number[] {
 		const bytes = Array.from({ length: this.bytesPerElement }, (_, i) => (value >> (i * 8)) & 0xff);
 		return this.getEndianness() === "big" ? bytes.reverse() : bytes;
+	}
+
+	/** A whole relocatable address fills an element: a byte takes one byte of it. */
+	private checkRelocatable(directive: ScalarToken, value: RelocValue, exprTokens: Token[]) {
+		if (this.bytesPerElement === 1 && value.byteShift === undefined)
+			throw AsmError.at(`.${directive.value} value: ${value} is a whole address: take one byte of it with <, > or ^.`, exprTokens[0] as Token);
+	}
+
+	/**
+	 * The element holding a relocatable value, written at `addr`: its offset, or the byte `<`, `>` or `^` took, zero-extended
+	 * (`.dw <label`). Its fixup covers the element, or only that byte: the low one, first in little-endian, last in big-endian.
+	 */
+	private relocatableBytes(directive: ScalarToken, value: RelocValue, exprTokens: Token[], addr: number): number[] {
+		this.checkRelocatable(directive, value, exprTokens);
+		const { byteShift } = value;
+		if (byteShift === undefined) {
+			assertFitsInBytes(value.offset, this.bytesPerElement, `.${directive.value} value:`);
+			this.runtime.linker.addFixup(addr, this.bytesPerElement, value);
+			return this.elementBytes(value.offset);
+		}
+		const byteAt = this.getEndianness() === "big" ? this.bytesPerElement - 1 : 0;
+		this.runtime.linker.addFixup(addr + byteAt, 1, value);
+		return this.elementBytes((value.offset >> byteShift) & 0xff);
 	}
 
 	/** Only numbers and strings are data: an array or an object, emitted whole, would hide a missing index or field. */

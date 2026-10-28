@@ -11,7 +11,7 @@ import { AsmError, type AsmNote } from "../utils/error.utils";
 import { nestingDelta } from "../utils/token.utils";
 import { type EvaluationContext, type EvaluatorHost, PRECEDENCE } from "./expression.types";
 import { DEFAULT_OPTIONS } from "./options";
-import { type ByteShift, noFixupError, notRelocatable, RelocValue, relocatableArgumentMessage, relocatableByte } from "./reloc-value.class";
+import { type ByteShift, notRelocatable, RelocValue, relocatableArgumentMessage, relocatableByte } from "./reloc-value.class";
 import { UserFunction } from "./user-function.class";
 
 const UNARY_TEST_OPERATORS = new Set([")", "]"]);
@@ -68,11 +68,10 @@ export class ExpressionEvaluator {
 		return this.asNumber(notRelocatable(this.evaluate(tokens, context)));
 	}
 
-	/** An instruction's operand: a number, as `evaluateAsNumber`. A relocatable one needs a fixup, which isn't recorded yet. */
-	public evaluateOperand(tokens: Token[], context: EvaluationContext) {
+	/** An instruction's operand: a number, as `evaluateAsNumber`, or a relocatable value, whose fixup is recorded. */
+	public evaluateOperand(tokens: Token[], context: EvaluationContext): number | RelocValue | null {
 		const value = this.evaluate(tokens, context);
-		if (value instanceof RelocValue) throw noFixupError(value);
-		return this.asNumber(value);
+		return value instanceof RelocValue ? value : this.asNumber(value);
 	}
 
 	private asNumber(value: SymbolValue) {

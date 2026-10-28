@@ -1,5 +1,5 @@
 import { EventEmitter } from "node:events";
-import type { CPUHandler } from "../cpu/cpuhandler.interface";
+import type { CPUHandler, OperandReader } from "../cpu/cpuhandler.interface";
 import type { DirectiveContext, DirectiveRuntime } from "../directives/directive.interface";
 import { DirectiveHandler } from "../directives/handler";
 import { MacroHandler } from "../directives/macro/handler";
@@ -19,7 +19,7 @@ import { NamelessLabels } from "./namelesslabels.class";
 import { LOCAL_OPTIONS, type LocalOptions, type OptionName, type OptionValue, withDefaultOptions } from "./options";
 import { Parser, ParserError } from "./parser.class";
 import type { AssemblerOptions, DataProcessor, FileHandler, FunctionCall, SegmentDefinition, StreamState } from "./polyasm.types";
-import { RelocValue } from "./reloc-value.class";
+import { noFixupError, RelocValue } from "./reloc-value.class";
 import { PASymbolTable, type SymbolValue } from "./symbol.class";
 import type { UserFunction } from "./user-function.class";
 
@@ -849,14 +849,8 @@ export class Assembler {
 		const instructionPC = this.PC.value;
 
 		// It's an instruction. Resolve its size and advance the PC.
-		const sizeInfo = this.cpuHandler.resolveAddressingMode(mnemonicToken.value, operandTokens, (exprTokens) =>
-			this.expressionEvaluator.evaluateOperand(exprTokens, {
-				PC: this.PC,
-				allowForwardRef: true,
-				currentLabel: this.lastGlobalLabel,
-				macroArgs: currentStream.macroArgs,
-			}),
-		);
+		const { resolveValue, operands } = this.operandReaders(currentStream.macroArgs, true);
+		const sizeInfo = this.cpuHandler.resolveAddressingMode(mnemonicToken.value, operandTokens, resolveValue, operands);
 		this.PC.value += sizeInfo.bytes;
 
 		this.lister.bytes({
@@ -877,13 +871,8 @@ export class Assembler {
 			if (currentStream.macroArgs) operandTokens = this.substituteTokens(operandTokens, currentStream.macroArgs) as OperatorStackToken[];
 
 			// 1. Resolve Mode & Address
-			const modeInfo = this.cpuHandler.resolveAddressingMode(mnemonicToken.value, operandTokens, (exprTokens) =>
-				this.expressionEvaluator.evaluateOperand(exprTokens, {
-					PC: this.PC,
-					currentLabel: this.lastGlobalLabel,
-					macroArgs: currentStream.macroArgs,
-				}),
-			);
+			const { resolveValue, operands } = this.operandReaders(currentStream.macroArgs, false);
+			const modeInfo = this.cpuHandler.resolveAddressingMode(mnemonicToken.value, operandTokens, resolveValue, operands);
 
 			// 2. Encode Bytes using resolved info. Every symbol is known in pass 2, so is the operand.
 			const { resolvedAddress } = modeInfo;
@@ -903,8 +892,38 @@ export class Assembler {
 			});
 
 			this.linker.writeBytes(this.PC.value, encodedBytes);
+			if (modeInfo.fixup) this.linker.addFixup(instructionPC + modeInfo.fixup.at, modeInfo.fixup.size, modeInfo.fixup.value);
 			this.PC.value += encodedBytes.length;
 		}
+	}
+
+	/**
+	 * How the CPU reads an instruction's operands: `resolveValue` takes numbers only, `operands` relocatable values too,
+	 * for a CPU that records their fixups.
+	 */
+	private operandReaders(macroArgs: Map<string, Token[]> | undefined, allowForwardRef: boolean) {
+		const context = { PC: this.PC, allowForwardRef, currentLabel: this.lastGlobalLabel, macroArgs };
+		const evaluate = (tokens: Token[]) => this.expressionEvaluator.evaluateOperand(tokens, context);
+		const resolveValue = (tokens: Token[]) => {
+			const value = evaluate(tokens);
+			if (value instanceof RelocValue) throw noFixupError(value, this.cpuHandler.cpuType);
+			return value;
+		};
+		const operands: OperandReader = { value: evaluate, branchTarget: (tokens) => this.branchTarget(evaluate(tokens)) };
+		return { resolveValue, operands };
+	}
+
+	/** A branch's target, an address in the current segment whose distance is known: its offset in a relocatable one. */
+	private branchTarget(target: number | RelocValue | null): number | null {
+		const segment = this.linker.currentSegment;
+		const from = segment ? `segment '${segment.name}'` : "outside any segment";
+		if (target instanceof RelocValue) {
+			if (segment?.relocatable && target.segment === segment.name && target.byteShift === undefined) return target.offset;
+			throw new Error(`A branch from ${from} can't reach ${target}: the distance is only known when it's loaded.`);
+		}
+		if (target !== null && segment?.relocatable)
+			throw new Error(`A branch from relocatable ${from} can't reach $${getHex(target)}: the distance is only known when it's loaded.`);
+		return target;
 	}
 
 	/**

@@ -226,7 +226,14 @@ Its labels, `*` and `.PC` in it are relocatable values: a segment and an offset 
 - `<label`, `>label`, `^label`, and `.lobyte()`, `.hibyte()`, `.bankbyte()`, are one byte of it, still relocatable (`>CODE+$0012`);
 - anything else is an error, as its address is only known when it's loaded: `label * 2`, `label & $FF`, a comparison, `-label`, `.hex(label)`, and a relocatable value where a number is needed (`.if`, `.assert`, `.repeat`, `.fill`, `.align`, `.org`, a segment's bounds).
 
-A variable or a constant can hold one (`next = label + 2`), an array too, and `.iif()` can give one. Instruction operands and data (`jmp label`, `.dw label`, `lda #<label`) can't use one yet: they need fixups, still to come (TODO 4.19).
+A variable or a constant can hold one (`next = label + 2`), an array too, and `.iif()` can give one.
+
+Written in the code or the data, a relocatable value is its offset, and a fixup is recorded where it goes: the loader adds its segment's address there. Each segment keeps its fixups in `relocs`, for the linker script: `{ offset, size, shift, segment, targetOffset }`, where its bytes are in the segment, how many, how many bits the address is shifted right (0, 8 for `>`, 16 for `^`), and the segment and offset of the value.
+
+- **Data:** `.dw label` and `.dl label` record the element's 2 or 4 bytes. `<`, `>` and `^` give one byte: `.db >label`, and `.dw <label`, the byte then 0, its fixup on that byte. A whole address in a `.db` is an error: `.DB value: CODE+$0012 is a whole address: take one byte of it with <, > or ^.`
+- **6502 and 65C02 operands:** a relocatable address is absolute, never zero page whatever its offset, with a fixup of 2 bytes: `jmp label`, `lda label,x`, `jmp (label)`. An immediate takes one byte: `lda #<label`, `lda #>label`; `lda #label` is an error. A relocatable address can't be in zero page: `lda (label),y`, `lda.b label`, `stx label,y` are errors.
+- **Branches:** a branch target is an address in the branch's own segment. In a relocatable one, `bne loop` is the distance between their offsets, without a fixup. A branch to another segment, or from a relocatable segment to a fixed address, is an error: `A branch from relocatable segment 'CODE' can't reach $1000: the distance is only known when it's loaded.`
+- **Other CPUs:** their operands can't take a relocatable value yet: `CODE+$0012 is relocatable, and the 6809's operands can't take one: their fixups aren't recorded.`
 
 The listing shows a relocatable label as its segment and offset (`CODE+0012     main:`), the [symbol file](README.md#symbol-file) with the type `reloc`.
 
