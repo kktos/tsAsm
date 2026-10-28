@@ -538,7 +538,7 @@ Instructions are always listed whole.
 
 ### Global and local options
 
-The project file's `input.options` (or the `options` given to the `Assembler`) sets the values the source starts with. Then `.option` changes a value, and how far the change reaches depends on the kind of option.
+The project file's `input.options` (or the `options` given to the `Assembler`) sets the values the source starts with; a value given on the command line (`-O listing.data=fold`, see [README](README.md#command-line)) overrides it. Then `.option` changes a value, and how far the change reaches depends on the kind of option.
 
 **Global options**: `local.prefix`, `anon.marker`, `listing.case` and `listing.data`. They are about how the source is read, so they follow the reading order:
 

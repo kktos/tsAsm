@@ -88,7 +88,8 @@ const options: AssemblerOptions = {
 	},
 };
 if (segments) options.segments = segments;
-if (conf.input.options) options.options = conf.input.options;
+// The command line's .option values override the project file's
+options.options = { ...conf.input.options, ...cliArgs.options };
 
 try {
 	// Every CPU the CLI has: .cpu can switch to any of them. The project file picks the one the source starts with.

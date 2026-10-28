@@ -197,19 +197,6 @@ Decisions left: the bare `name(…)` call, the recursion limit.
 
 Building an array takes a loop of assignments (`row = .push(row, col * 16)`), each one listed. A built-in or an expression form would give it in one: `.range(start, count [, step])` with a `.map(array, function)` once user functions exist (4.8), or a comprehension, `[col * 16 for col in 0..15]`. Then `.db ...` emits it directly. Bigger than 4.9; decide the syntax with 4.8.
 
-### 4.13 `.option` values on the command line
-
-To assemble once with another option than the project file's, e.g. `listing.data` `expand` when `input.options` says `fold`, the project file has to be edited.
-
-_Decided:_
-
-- **Forms:** `--listing.data expand`, `--listing.data=expand`, and the short `-O listing.data=expand`, which can be repeated. `-o` stays free for an output path, `-D` for defining a symbol.
-- **Short names:** each option declares one in `options.ts`, next to `DEFAULT_OPTIONS`: `ld` (`listing.data`), `lc` (`listing.case`), `lp` (`local.prefix`), `am` (`anon.marker`), `rs` (`repeat.start`), `fs` (`for.start`). They are declared, not computed from the initials, so adding an option never changes what one means; a test checks they are unique. A short name works wherever a full one does: `-O ld=fold`, `--ld fold`.
-- **Which options:** every `.option` name, from `DEFAULT_OPTIONS`; `args.ts` doesn't list them again (conf selects, code provides). `--help` lists them, with their short name and values, from the same table.
-- **Precedence:** CLI > project file > default, as the starting value. A `.option` in the source still applies after it, as it does over `input.options`. The CLI values are merged over `conf.input.options` before the `Assembler` is built; the library doesn't change.
-- **Errors:** an unknown name lists the known ones; a wrong value says what `optionValueError()` says for the project file and `.option`; the same option given twice (`-O ld=fold --listing.data expand`) is an error. `repeat.start` / `for.start` are read as numbers.
-- **Not done:** flags named after a value (`--fold`, `--expand`): only some options have values no other option takes (`:` and `0` / `1` are shared), `--source` would read as the source file, and they would take names future flags may want. Forcing a value over the source's `.option`: if it's wanted later, as its own flag, for `listing.*` only, with a warning.
-
 ### 4.14 Project file settings on the command line
 
 After 4.13: change any project file setting for one run, e.g. turn the listing on (`output.listing.enabled`) or a pass's listing (`output.listing.passes.pass1`), or pick another `input.cpu`. To decide: the syntax (`--output.listing.enabled true`, with the setting's path?), how a value gets its type (from the schema in `conf.ts`), how these names stay apart from the `.option` ones and their short names, and short forms for the usual ones (listing on).

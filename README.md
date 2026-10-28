@@ -30,14 +30,29 @@ This links the command into npm's global bin directory, which is normally in you
 ## Command line
 
 ```shell
-node dist/tsasm <project-file> [--link true|false]
+node dist/tsasm <project-file> [--link true|false] [-O <option>=<value>]…
 ```
 
-| Option                       | Description                                                              |
-| ---------------------------- | ------------------------------------------------------------------------ |
-| `<project-file>`             | Project configuration file (YAML). Required.                             |
-| `-l`, `--link <true\|false>` | Run the final linking stage and write the output file (default: `true`). |
-| `-h`, `--help`               | Show the help.                                                           |
+| Option                       | Description                                                                             |
+| ---------------------------- | --------------------------------------------------------------------------------------- |
+| `<project-file>`             | Project configuration file (YAML). Required.                                            |
+| `-l`, `--link <true\|false>` | Run the final linking stage and write the output file (default: `true`).                |
+| `-O <option>=<value>`        | Set a [`.option`](REFERENCE.md#assembler-settings) value for this run. Can be repeated. |
+| `--<option> <value>`         | The same, also written `--<option>=<value>`.                                            |
+| `-h`, `--help`               | Show the help, with the options, their short names and values.                          |
+
+A `.option` value given on the command line overrides the project file's `input.options`, for one run: `tsasm proj.yaml -O listing.data=expand`, `tsasm proj.yaml --listing.data expand`. A `.option` in the source still applies after it. Each option has a short name: `-O ld=expand`, `--ld expand`.
+
+| Option         | Short name |
+| -------------- | ---------- |
+| `local.prefix` | `lp`       |
+| `anon.marker`  | `am`       |
+| `listing.case` | `lc`       |
+| `listing.data` | `ld`       |
+| `repeat.start` | `rs`       |
+| `for.start`    | `fs`       |
+
+An unknown option, a wrong value or an option given twice is an error.
 
 ### A first project
 
