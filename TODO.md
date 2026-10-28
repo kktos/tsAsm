@@ -256,6 +256,17 @@ To check first: 24-bit addresses through the PC, `.org`, segments, the listing a
 
 For relocatable outputs (Apple IIgs OMF, 4.22; later o65 or another object format). Today a label is a plain number and the linker only receives bytes: nothing says which bytes hold an address, so no relocation record can be written.
 
+**Plan, one PR per step,** 4.19 to 4.22:
+
+1. The declaration: `relocatable: true` / `reloc: true`, no `start`, `.org` an error. Done in #178.
+2. Relocatable values: a label in a relocatable segment is a segment and an offset, through expressions (below); an error where a plain number is needed; the listing and the `.sym` file show `CODE+$0012`. The `.sym` format is read by a debugger: agree on it first. Decide linking without a script (below).
+3. Fixups: recorded in pass 2, for data then operands, with the shift of `<`, `>`, `^`.
+4. The linker script reads `seg.relocs` and `seg.attrs` (4.21).
+5. The linker script reads the assembler's symbols (4.21).
+6. OMF output: the `omf.linker.asm` script library (4.22).
+
+Addressing modes go with 4.18, after step 2.
+
 - **Relocatable segments:** declared in #178: `relocatable: true` / `reloc: true`, no `start`, `.org` an error. Left: its labels are a segment and an offset, not a number; for now they're offsets from 0.
 - **Without a linker script:** a relocatable segment is linked at address 0, among the fixed ones. To decide: an error (it needs a script to place it), or written after the others.
 - **Through expressions:** `label + n`, `label - n` stay relocatable. `L2 - L1` in the same segment is a plain number. Anything else on a relocatable value (`label * 2`, `label & $FF`, a comparison, `.hex(label)`) is an error saying the value has no address until load time, never a number computed from the offset. `<`, `>` and `^` (4.20) are allowed: they give a byte with a shift.
@@ -268,9 +279,9 @@ To decide before 4.18 is implemented, since it changes how the mode is chosen: w
 
 ### 4.21 Segment attributes and symbols in the linker script
 
-A linker script only sees `name`, `start`, `size`, `data`, `padValue`, `resizable` and `emitted`, and starts with an empty symbol table.
+A linker script only sees `name`, `start`, `size`, `data`, `padValue`, `resizable`, `relocatable` and `emitted`, and starts with an empty symbol table. Steps 4 and 5 of the plan in 4.19.
 
-- **Attributes:** `.segment` rejects any key but `start`, `end`, `size` and `pad`. Let it take others, kept as they are and read by the script as `seg.attrs.kind`, `seg.attrs.loadname`… (OMF's KIND, LOADNAME, BANKSIZE, ALIGN), the assembler never reading them. To decide: free keys, or declared by the output format; how the project file's `input.segments` gives them.
+- **Attributes:** `.segment` rejects any key but `start`, `end`, `size`, `pad` and `relocatable` / `reloc`. Let it take others, kept as they are and read by the script as `seg.attrs.kind`, `seg.attrs.loadname`… (OMF's KIND, LOADNAME, BANKSIZE, ALIGN), the assembler never reading them. To decide: free keys, or declared by the output format; how the project file's `input.segments` gives them.
 - **Relocations:** `seg.relocs`, the fixups of 4.19.
 - **Symbols:** the assembler's global symbols readable from the script, for an entry point, a version number, a size computed in the source. To decide: all of them, or only the ones exported (`.export`?), and under what name (`.symbol("main")`, `asm::main`).
 
