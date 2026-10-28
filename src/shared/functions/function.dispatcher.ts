@@ -3,6 +3,7 @@ import type { PASymbolTable } from "../../assembler/symbol.class";
 import { AsmError } from "../../utils/error.utils";
 import type { Token } from "../lexer/lexer.class";
 import { arrayFunction } from "./array.function";
+import { bankbyteFunction } from "./bankbyte.function";
 import { ceilFunction } from "./ceil.function";
 import { defFunctions } from "./def.function";
 import { floorFunction } from "./floor.function";
@@ -72,6 +73,8 @@ export class FunctionDispatcher {
 		this.register("JOIN", { handler: joinFunction, minArgs: 2, maxArgs: 2 });
 		this.register("LOBYTE", { handler: lobyteFunction, minArgs: 1, maxArgs: 1 });
 		this.register("HIBYTE", { handler: hibyteFunction, minArgs: 1, maxArgs: 1 });
+		this.register("BANKBYTE", { handler: bankbyteFunction, minArgs: 1, maxArgs: 1 });
+		this.register("BKBYTE", { handler: bankbyteFunction, minArgs: 1, maxArgs: 1 });
 
 		this.register("CEIL", { handler: ceilFunction, minArgs: 1, maxArgs: 1 });
 		this.register("FLOOR", { handler: floorFunction, minArgs: 1, maxArgs: 1 });

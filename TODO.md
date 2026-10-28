@@ -261,10 +261,6 @@ For relocatable outputs (Apple IIgs OMF, 4.22; later o65 or another object forma
 
 To decide before 4.18 is implemented, since it changes how the mode is chosen: the declaration's syntax, whether `.org` is allowed in a relocatable segment (4.5), and whether a whole-program `relocatable` project setting is wanted.
 
-### 4.20 Bank byte operator `^`
-
-`lda #^label`, `pea ^label`: the bits 16–23 of an address, as ca65's unary `^`. Today `^` is only XOR, and `>` gives bits 8–15. On a relocatable value (4.19) it records a fixup with shift −16. With 4.18; also as `.bankbyte()` next to `.lobyte()` / `.hibyte()`.
-
 ### 4.21 Segment attributes and symbols in the linker script
 
 A linker script only sees `name`, `start`, `size`, `data`, `padValue`, `resizable` and `emitted`, and starts with an empty symbol table.

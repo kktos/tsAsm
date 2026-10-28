@@ -88,6 +88,27 @@ describe("ExpressionEvaluator", () => {
 			["!!5", 1],
 			["!!0", 0],
 			["-<$1234 * 2", -0x68], // unary operators still bind tighter than binary ones
+			["-^$123456", -0x12],
+			["<^$123456", 0x12],
+		])("%s = %d", (expression, expected) => {
+			const { evaluator, tokenize } = setup();
+			expect(evaluator.evaluateAsNumber(tokenize(expression as string), { PC: { value: 0 } })).toBe(expected);
+		});
+	});
+
+	describe("'^': bank byte or XOR", () => {
+		// As '<' and '>': unary where an operand starts, binary after one.
+		it.each([
+			["^$123456", 0x12],
+			["^$12345678", 0x34], // bits 16-23 only
+			["^$1234", 0x00],
+			["^-1", 0xff],
+			["^$123456 + 1", 0x13], // binds tighter than '+'
+			["^($123456 + $10000)", 0x13],
+			["$AA ^ $FF", 0x55],
+			["1 ^ ^$030000", 0x02], // XOR, then bank byte
+			["(^$123456)", 0x12],
+			["$123456^$FF", 0x1234a9],
 		])("%s = %d", (expression, expected) => {
 			const { evaluator, tokenize } = setup();
 			expect(evaluator.evaluateAsNumber(tokenize(expression as string), { PC: { value: 0 } })).toBe(expected);
@@ -105,6 +126,7 @@ describe("ExpressionEvaluator", () => {
 			[".IIF(1, !X, 5)", 0],
 			[".IIF(1, <$1234, 0)", 0x34],
 			[".IIF(1, >$1234, 0)", 0x12],
+			[".IIF(1, ^$123456, 0)", 0x12],
 			[".IIF(1, *, 0)", 0x1000], // the program counter, not a multiplication
 		])("%s = %d", (expression, expected) => {
 			const { evaluator, tokenize, symbolTable } = setup();
@@ -604,6 +626,7 @@ describe("ExpressionEvaluator", () => {
 			[`"AB"|$80`, `Only a one-character string can be used as a number: "AB".`],
 			[`-"AB"`, `Only a one-character string can be used as a number: "AB".`],
 			[`<"AB"`, `Only a one-character string can be used as a number: "AB".`],
+			[`^"AB"`, `Only a one-character string can be used as a number: "AB".`],
 			[`""+1`, `Only a one-character string can be used as a number: "".`],
 			[`"AB"-"C"`, "Operator '-' cannot be applied to strings."],
 		])("should throw on a longer string: %s", (expr, message) => {

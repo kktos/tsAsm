@@ -267,6 +267,15 @@ describe("6502 Opcodes", () => {
 		]);
 	});
 
+	it("should assemble the bank byte, '^', and XOR", () => {
+		const data = assembleAndGetCode(`
+			lda #^far
+			ldx #<far ^ $FF
+			far = $123456
+		`);
+		expect(data).toEqual([0xa9, 0x12, 0xa2, 0xa9]);
+	});
+
 	it("should accept a one-char string as an 8-bit value", () => {
 		const source = `
 			lda #"A"
