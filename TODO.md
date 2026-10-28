@@ -146,7 +146,28 @@ As ca65's `.org` in a relocatable segment, ACME's `!pseudopc` or 64tass's `.logi
 
 ### 4.6 Character mapping
 
-`.charmap` / `.encoding`, or at least a high-bit string directive. Apple II `COUT` expects high-bit chars: the README's `.cstr "HELLO"` doesn't print `HELLO`. One char at a time works since 1.40: `.db "H"|$80`.
+Apple II `COUT` expects high-bit chars: the README's `.cstr "HELLO"` doesn't print `HELLO`. One char at a time works since 1.40: `.db "H"|$80`. The previous version of this assembler had `.option charmap <name>`, the table declared with `.define charmap_<name>`; the same, without the prefix:
+
+```as
+.define apple2
+[
+    0x00, 0x01, …,      ; $00-$1F unchanged
+    0xA0, 0xA1, …,      ; $20-$7F: high bit set
+    0x80, 0x81, …       ; $80-$FF unchanged
+]
+.end
+
+.option charmap apple2
+    .text "ABC"         ; C1 C2 C3
+    cmp #"A"            ; C9 C1
+.option charmap none
+```
+
+- **The value is an array symbol,** from `.define`, a literal or a loop: nothing is special about its name. It is defined before the `.option`, as for `...`. `none` turns the mapping off (the default).
+- **Checked at the `.option`:** an array of 256 whole numbers, 0 to 255; anything else is an error there.
+- **Where a character becomes a byte, never on a string value:** the string directives (`.text`, `.cstr`, `.pstr`, `.pstrl`), strings in `.db` / `.dw` / `.dl`, and a one-char string used as a number (`lda #"A"`), so `cmp #"A"` matches what `.text "A"` emitted. String comparisons, `+`, `.len`, `.split`, … see the text. `"9"-"0"` goes through the map too.
+- **A local option** (`repeat.start`'s kind): each file decides, an include starts with the assembler's value, and a macro body uses the map of where it's defined. A library's strings don't change with its includer; a macro meant to follow its caller takes the map as a parameter.
+Follow-ups: a function as the value, with 4.8 (`.function apple2(c) = c | $80`, then `.option charmap apple2`); partial maps (an object, `{ "A": 0xC1 }`, or ranges as 64tass's `.cdef`), where a character with no entry is an error; the raw code of a char while a map is on (`.ord()`, 4.8).
 
 ### 4.7 Smaller ones
 
