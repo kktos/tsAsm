@@ -1,4 +1,5 @@
 import type { ScalarToken } from "../shared/lexer/lexer.class";
+import { formatValue } from "../utils/format.utils";
 import type { DirectiveContext, DirectiveRuntime, IDirective } from "./directive.interface";
 
 export class LogDirective implements IDirective {
@@ -82,12 +83,4 @@ export class LogDirective implements IDirective {
 				this.runtime.logger.log(message);
 		}
 	}
-}
-
-/** A value as `.log` prints it: an array as `[a, b]`, an object as JSON. */
-export function formatValue(value: unknown): string {
-	if (Array.isArray(value)) return `[${value.map((v) => formatValue(v)).join(", ")}]`;
-	if (typeof value === "object") return JSON.stringify(value);
-
-	return String(value);
 }

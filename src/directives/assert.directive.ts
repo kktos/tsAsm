@@ -1,7 +1,7 @@
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
 import { AsmError } from "../utils/error.utils";
+import { formatValue } from "../utils/format.utils";
 import type { DirectiveContext, DirectiveRuntime, IDirective } from "./directive.interface";
-import { formatValue } from "./log.directive";
 
 /** The kind of a failed assertion, its second argument when given: the names of `.warning` and `.error`. */
 const KINDS: Record<string, "WARN" | "ERR"> = { WARN: "WARN", WARNING: "WARN", ERR: "ERR", ERROR: "ERR" };
