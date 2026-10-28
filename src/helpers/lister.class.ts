@@ -24,8 +24,6 @@ type DirectiveBytesArgs = Omit<BytesArgs, "text"> & { pragma: ScalarToken | stri
 type ListedLoop = {
 	/** The loop's header: `.repeat 128 AS idx FROM 0`. */
 	text: string;
-	/** Whether the header is listed when the loop isn't folded. */
-	listsHeader: boolean;
 	isFolded: boolean;
 	/** The data the loop emitted, while it is one block. */
 	addr?: number;
@@ -43,7 +41,7 @@ export interface ILister {
 	macro(name: string, params: Token[][]): void;
 	directive(pragma: ScalarToken | string, ...params: SymbolValue[]): void;
 	directiveWithBytes(args: DirectiveBytesArgs): void;
-	beginLoop(text: string, listsHeader: boolean): void;
+	beginLoop(text: string): void;
 	endLoop(): void;
 }
 
@@ -120,15 +118,12 @@ export class Lister implements ILister {
 		return `${header.padEnd(TEXT_PAD)} ${text}`;
 	}
 
-	/**
-	 * A loop starts. With `listing.data` "fold", its lines are held until `endLoop()`; else its header is listed now,
-	 * when `listsHeader`.
-	 */
-	public beginLoop(text: string, listsHeader: boolean) {
+	/** A loop starts. With `listing.data` "fold", its lines are held until `endLoop()`; else its header is listed now. */
+	public beginLoop(text: string) {
 		const isFolded = this.listingData === "fold";
-		this.loops.push({ text, listsHeader, isFolded, bytes: [], hasText: true, dataLines: 0, isBlock: true });
+		this.loops.push({ text, isFolded, bytes: [], hasText: true, dataLines: 0, isBlock: true });
 		if (isFolded) this.logger.hold();
-		else if (listsHeader) this.logger.log(`${"".padStart(TEXT_PAD)}${text}`);
+		else this.logger.log(`${"".padStart(TEXT_PAD)}${text}`);
 	}
 
 	/**
@@ -154,7 +149,7 @@ export class Lister implements ILister {
 			return;
 		}
 		// The enclosing loop sees these lines as not data: it isn't folded either.
-		if (loop.listsHeader) this.logger.log(`${"".padStart(TEXT_PAD)}${loop.text}`);
+		this.logger.log(`${"".padStart(TEXT_PAD)}${loop.text}`);
 		for (const line of lines) this.logger.log(line);
 	}
 
@@ -185,7 +180,7 @@ export class Lister implements ILister {
 
 export class NullLister implements ILister {
 	public bytes(_args: BytesArgs) {}
-	public beginLoop(_text: string, _listsHeader: boolean) {}
+	public beginLoop(_text: string) {}
 	public endLoop() {}
 	public label(_label: string, _address: number) {}
 	public symbol(_label: string, _value: SymbolValue) {}

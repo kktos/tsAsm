@@ -550,7 +550,7 @@ The char is one of `:` `@` `!` `?` `_` `~`, and the two options can have differe
 1018: 00 11 22 33 44 55 66 77  …                  .hex <20 bytes>
 ```
 
-With `fold`, a `.repeat` or a `.for` that only emits data, one block of it, is listed as one data statement, its header as the text: `.repeat 128 AS idx FROM 0` / `.db (idx % 16) * 16` / `.end` gives one line. A loop that does more (an instruction, an assignment, a `.log`) is listed line by line, its data folded:
+A `.repeat` or a `.for` is listed as its header, then its lines as they ran, iteration by iteration. With `fold`, a loop that only emits data, one block of it, is listed as one data statement, its header as the text: `.repeat 128 AS idx FROM 0` / `.db (idx % 16) * 16` / `.end` gives one line. A loop that does more (an instruction, an assignment, a `.log`) is listed line by line, its data folded:
 
 ```
 1000: 00 10 20 30 40 50 60 70  …                  .repeat $80 AS idx FROM $00
