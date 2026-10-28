@@ -1,5 +1,4 @@
 import type { ScalarToken } from "../shared/lexer/lexer.class";
-import { AsmError } from "../utils/error.utils";
 import type { DirectiveRuntime, IDirective } from "./directive.interface";
 
 /**
@@ -28,16 +27,6 @@ export class ExitMacroDirective implements IDirective {
 		const macroAt = streams.findLastIndex((stream) => stream.macroName !== undefined || stream.file !== undefined);
 		if (macroAt === -1 || streams[macroAt]?.macroName === undefined) throw new Error(`Unexpected directive '.${directive.value}': it isn't in a macro.`);
 
-		const next = parser.peek();
-		if (next && next.line === directive.line && !["EOF", "LBRACE", "RBRACE"].includes(next.type))
-			throw AsmError.at(`Unexpected '${next.value}' after .${directive.value}.`, next);
-
-		// The active stream is read from the parser's position, the others from where they were left.
-		for (let i = streams.length - 1; i >= macroAt; i--) {
-			const stream = streams[i];
-			if (stream) parser.checkDirectives(stream.tokens.slice(i === streams.length - 1 ? parser.getPosition() : stream.index));
-		}
-
-		parser.exitTokenStreams(streams.length - macroAt);
+		parser.exitTokenStreams(directive, macroAt);
 	}
 }
