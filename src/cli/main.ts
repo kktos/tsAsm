@@ -107,7 +107,7 @@ try {
 		const segmentsFilename = conf.output.segments.path ?? `${basename(conf.input.source)}.seg`;
 		const map: Record<string, unknown> = {};
 		for (const segment of segmentList) {
-			const s: Record<string, unknown> = { size: segment.size, start: segment.start };
+			const s: Record<string, unknown> = segment.relocatable ? { size: segment.size, relocatable: true } : { size: segment.size, start: segment.start };
 			if (segment.padValue) s.padValue = segment.padValue;
 			if (segment.resizable) s.resizable = segment.resizable;
 			map[segment.name] = s;

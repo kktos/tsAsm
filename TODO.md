@@ -58,6 +58,10 @@ Without a linker script, `output.listing: { enabled: true }` writes a `.lst` hol
 
 `.function f(x) = x +* 2` or a body with `.retrun x` is an error only where `f` is called: a function never called, in a library, keeps its typo. The one-line form's expression could be parsed at the definition, without evaluating it, and a block's statements checked as a branch not taken is (`Parser.checkDirectives`). Found with 4.8.
 
+### 1.65 A `.segment` property given twice
+
+`.segment X { start: $1000, start: $2000, size: 4 }` puts `X` at `$2000`: the last value wins, silently. Only `reloc` / `relocatable` given twice is an error. Found with 4.19.
+
 ## 2. Code review, items left
 
 ### 2.1 CPU back-ends
@@ -252,14 +256,15 @@ To check first: 24-bit addresses through the PC, `.org`, segments, the listing a
 
 For relocatable outputs (Apple IIgs OMF, 4.22; later o65 or another object format). Today a label is a plain number and the linker only receives bytes: nothing says which bytes hold an address, so no relocation record can be written.
 
-- **Relocatable segments:** a segment declared relocatable (`.segment CODE { reloc: true }`, name to decide) has no load address. Its labels are a segment and an offset, not a number.
+- **Relocatable segments:** declared in #178: `relocatable: true` / `reloc: true`, no `start`, `.org` an error. Left: its labels are a segment and an offset, not a number; for now they're offsets from 0.
+- **Without a linker script:** a relocatable segment is linked at address 0, among the fixed ones. To decide: an error (it needs a script to place it), or written after the others.
 - **Through expressions:** `label + n`, `label - n` stay relocatable. `L2 - L1` in the same segment is a plain number. Anything else on a relocatable value (`label * 2`, `label & $FF`, a comparison, `.hex(label)`) is an error saying the value has no address until load time, never a number computed from the offset. `<`, `>` and `^` (4.20) are allowed: they give a byte with a shift.
 - **Fixups:** each operand or data value (`.dw`, `.dl`, the long `.db` forms) built from a relocatable value records `{ offset, size, shift, segment, targetOffset }` in its segment, in pass 2. The linker script reads them as `seg.relocs` (4.21).
 - **Addressing modes (with 4.18):** a relocatable label is never direct page, whatever its offset: absolute in its own segment, long elsewhere unless `.w`. "The size comes from the value" only applies to plain numbers. `jmp` / `jsr` to another relocatable segment are errors suggesting `jml` / `jsl`: its bank isn't known.
 - **Where a plain number is needed** (`.org`, `.fill` counts, `.if`, `.repeat`, the CPU's widths, `.segment` bounds): a relocatable value is an error.
 - **Listing and symbol file:** a relocatable label is shown as its segment and offset (`CODE+$0012`).
 
-To decide before 4.18 is implemented, since it changes how the mode is chosen: the declaration's syntax, whether `.org` is allowed in a relocatable segment (4.5), and whether a whole-program `relocatable` project setting is wanted.
+To decide before 4.18 is implemented, since it changes how the mode is chosen: whether a whole-program `relocatable` project setting is wanted.
 
 ### 4.21 Segment attributes and symbols in the linker script
 

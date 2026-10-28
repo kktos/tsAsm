@@ -284,7 +284,22 @@ export class Assembler {
 	}
 
 	private addConfiguredSegments() {
-		for (const seg of this.segmentDefinitions) this.linker.addSegment(seg.name, seg.start, seg.size, seg.padValue, seg.resizable);
+		for (const seg of this.segmentDefinitions) {
+			if (seg.reloc !== undefined && seg.relocatable !== undefined)
+				throw new Error(`Segment '${seg.name}' gives 'relocatable' twice ('reloc' is the same property).`);
+
+			// A relocatable segment has no address until it's loaded: it starts at 0, and grows without a size.
+			if (seg.relocatable ?? seg.reloc) {
+				if (seg.start !== undefined)
+					throw new Error(`Segment '${seg.name}' is relocatable: it has no 'start', its address is only known when it's loaded.`);
+				this.linker.addSegment(seg.name, 0, seg.size ?? 0, seg.padValue, seg.size === undefined || seg.resizable, true);
+				continue;
+			}
+
+			if (seg.start === undefined) throw new Error(`Segment '${seg.name}' needs a 'start' address, or 'relocatable: true'.`);
+			if (seg.size === undefined) throw new Error(`Segment '${seg.name}' needs a 'size'.`);
+			this.linker.addSegment(seg.name, seg.start, seg.size, seg.padValue, seg.resizable);
+		}
 		if (this.segmentDefinitions[0]) this.linker.useSegment(this.segmentDefinitions[0].name);
 	}
 

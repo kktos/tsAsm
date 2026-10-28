@@ -202,7 +202,7 @@ The function `.segment("<name>")` returns a segment by name.
 
 ### Segments and modules
 
-A segment has the fields `name`, `start` (its address), `size`, `data` (its bytes), `padValue`, `resizable` and `emitted` (true once written). A module has `name`, `segments` (an array of segments) and `size` (the sum of their sizes).
+A segment has the fields `name`, `start` (its address, 0 for a relocatable one), `size`, `data` (its bytes), `padValue`, `resizable`, `relocatable` and `emitted` (true once written). A module has `name`, `segments` (an array of segments) and `size` (the sum of their sizes).
 
 ```as
 .FOR s OF .segments_list

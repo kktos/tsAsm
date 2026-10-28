@@ -72,10 +72,13 @@ const confSchema = {
 					type: "object",
 					schema: {
 						name: { type: "string" },
-						start: { type: "number" },
-						size: { type: "number" },
+						// Required unless relocatable: checked by the assembler
+						start: { type: "number", optional: true },
+						size: { type: "number", optional: true },
 						padValue: { type: "number", optional: true },
 						resizable: { type: "boolean", optional: true },
+						relocatable: { type: "boolean", optional: true },
+						reloc: { type: "boolean", optional: true },
 					},
 				},
 			},

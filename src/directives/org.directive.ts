@@ -9,6 +9,7 @@ export class OrgDirective implements IDirective {
 	constructor(private readonly assembler: Assembler) {}
 
 	public handlePassOne(_directive: ScalarToken, context: DirectiveContext) {
+		this.assembler.linker.checkOrg();
 		const orgExpressionTokens = this.assembler.parser.getInstructionTokens();
 
 		try {
@@ -20,6 +21,7 @@ export class OrgDirective implements IDirective {
 	}
 
 	public handlePassTwo(_directive: ScalarToken, context: DirectiveContext) {
+		this.assembler.linker.checkOrg();
 		const orgExpressionTokens = this.assembler.parser.getInstructionTokens();
 		context.PC.value = this.assembler.expressionEvaluator.evaluateAsNumber(orgExpressionTokens, context);
 	}
