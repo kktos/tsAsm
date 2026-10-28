@@ -1,3 +1,4 @@
+import { LOCAL_OPTIONS, type LocalOptions } from "../assembler/options";
 import type { Parser } from "../assembler/parser.class";
 import { UserFunction } from "../assembler/user-function.class";
 import { tokensText } from "../helpers/lister.class";
@@ -13,8 +14,11 @@ const isFunctionName = (name: Token | null | undefined, next: Token | null | und
 	next.line === name.line &&
 	next.column === name.column + String(name.raw ?? name.value).length;
 
+const isAssign = (token: Token | undefined) => token?.type === "OPERATOR" && token.value === "=";
+
 /**
- * `.function name(params) = expression` (`.fn`): a user function, called as `name(…)` in an expression.
+ * `.function name(params) = expression` (`.fn`): a user function, called as `name(…)` in an expression. Or, without
+ * the `=`, a block of statements, in `{ }` or up to `.end`, whose `.return` gives the value.
  * Without the parentheses, it's the old routine scope, now `.proc`: an error that says so.
  */
 export class FunctionDirective implements IDirective {
@@ -23,11 +27,21 @@ export class FunctionDirective implements IDirective {
 
 	constructor(private readonly runtime: DirectiveRuntime) {}
 
-	/** In a block: a function is its line; the old routine scope is closed by its `.end`, which isn't the block's. */
+	/**
+	 * In a block: a one-line function is its line. A block function, as the old routine scope, is read up to its end,
+	 * kept with it: its `.end` isn't the end of the block reading it.
+	 */
 	getRawBlock(parser: Parser, directive: Token): Token[] {
 		const lineTokens = parser.getInstructionTokens(directive);
-		if (isFunctionName(lineTokens[0], lineTokens[1])) return lineTokens;
-		return [...lineTokens, ...parser.getDirectiveBlockTokens("FUNCTION")];
+		// A function has a block when its line ends with its parameters: nothing after their `)`.
+		const closeIndex = lineTokens.findIndex((token) => token.type === "OPERATOR" && token.value === ")");
+		if (isFunctionName(lineTokens[0], lineTokens[1]) && closeIndex !== lineTokens.length - 1) return lineTokens;
+
+		const start = parser.getPosition();
+		parser.getDirectiveBlockTokens("FUNCTION");
+		const end = parser.getPosition();
+		const blockTokens = Array.from({ length: end - start }, (_, index) => parser.ensureToken(start + index) as Token);
+		return [...lineTokens, ...blockTokens];
 	}
 
 	public handlePassOne(directive: ScalarToken, context: DirectiveContext): void {
@@ -48,24 +62,29 @@ export class FunctionDirective implements IDirective {
 		const tokens = parser.getInstructionTokens(directive);
 		const name = String(nameToken.raw ?? nameToken.value);
 		const { parameters, closeIndex } = this.readParameters(name, tokens);
-		const assign = tokens[closeIndex + 1];
-		if (assign?.type !== "OPERATOR" || assign.value !== "=") {
-			if (!assign && parser.peek()?.type === "LBRACE")
-				throw AsmError.at(`A function's body is one expression for now: write .${directive.value} ${name}(…) = <expression>.`, parser.peek() as Token);
-			throw AsmError.at(`Missing '=' and the expression of function '${name}'.`, assign ?? (tokens[closeIndex] as Token));
-		}
-		const body = tokens.slice(closeIndex + 2);
-		if (body.length === 0) throw AsmError.at(`Missing the expression of function '${name}' after '='.`, assign);
+		const parametersText = `${name}(${parameters.map((parameter) => parameter.raw ?? parameter.value).join(", ")})`;
 
-		this.runtime.lister.directive(
-			directive,
-			`${name}(${parameters.map((parameter) => parameter.raw ?? parameter.value).join(", ")}) = ${tokensText(body)}`,
-		);
+		const assign = tokens[closeIndex + 1];
+		let body: Token[];
+		if (!assign) {
+			body = parser.getDirectiveBlockTokens(directive.value);
+			this.runtime.lister.directive(directive, parametersText);
+		} else {
+			if (!isAssign(assign))
+				throw AsmError.at(
+					`Unexpected '${assign.raw ?? assign.value}' after the parameters of function '${name}': write = <expression>, or a body.`,
+					assign,
+				);
+			body = tokens.slice(closeIndex + 2);
+			if (body.length === 0) throw AsmError.at(`Missing the expression of function '${name}' after '='.`, assign);
+			this.runtime.lister.directive(directive, `${parametersText} = ${tokensText(body)}`);
+		}
 
 		const statement = this.runtime.currentStatement() ?? directive;
 		const site = this.runtime.definitionSite(statement);
 		site.location.file ??= context.filename;
-		return new UserFunction(name, parameters, body, this.runtime.symbolTable.captureScopes(), site);
+		const options = Object.fromEntries(LOCAL_OPTIONS.map((option) => [option, this.runtime.option(option)])) as LocalOptions;
+		return new UserFunction(name, parameters, body, !assign, this.runtime.symbolTable.captureScopes(), site, options);
 	}
 
 	/** The names between the parentheses, `tokens` starting with the function's name, and where the `)` is. */

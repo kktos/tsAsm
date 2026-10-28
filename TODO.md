@@ -58,6 +58,10 @@ Without a linker script, `output.listing: { enabled: true }` writes a `.lst` hol
 
 `.function sq(x) = x * x` is listed `.function "sq(x) = x * x"`, and `.macro m a` as `.macro "m(A)"`: the lister quotes the text it's given, as for 1.58. Found with 4.8.
 
+### 1.64 A function's body is only read when it's called
+
+`.function f(x) = x +* 2` or a body with `.retrun x` is an error only where `f` is called: a function never called, in a library, keeps its typo. The one-line form's expression could be parsed at the definition, without evaluating it, and a block's statements checked as a branch not taken is (`Parser.checkDirectives`). Found with 4.8.
+
 ## 2. Code review, items left
 
 ### 2.1 CPU back-ends
@@ -130,6 +134,10 @@ Rename (keeping aliases), or document.
 
 `.function` was a label scope, not a function usable in expressions: done in #142, it's `.proc` (see `CHANGELOG.md`).
 
+### 3.9 A function defined in a macro body doesn't see the macro's parameters
+
+`.macro m base` / `.function f(x) = base + x` / `.db f(1)` / `.end` → `Undefined symbol 'BASE'.`: a function's expression is evaluated without macro parameters, as it's called from anywhere. To decide: substitute them at the definition, as a nested macro call's arguments are (`substituteArgument`), or keep it an error and say so. Found with 4.8.
+
 ## 4. Features (ideas)
 
 ### 4.1 Default values for macro parameters
@@ -183,51 +191,12 @@ Follow-ups: a function as the value, with 4.8 (`.function apple2(c) = c | $80`, 
 - `.struct` / `.enum`, for field offsets;
 - `.continue`, to go to a loop's next iteration (`.break` ends the loop), as 64tass's;
 - `.for` over a numeric range;
-- a `\0` escape.
-
-### 4.8 User functions
-
-The one-line form is done (#173, see CHANGELOG): `.function name(params) = expression`, its call `name(…)`, `.option function.recursion`. Left: the block form.
-
-Nothing computed a reusable value: a macro is a statement and emits lines, and it can't set a variable for its caller (its variables are local to the call). So a formula is written again at each use (`sta $0400 + 5*40 + 10`). Uses: address formulas (screen, tiles, banks), packed values (colours, sprite pointers), generated tables (`.db reverse(i)` in a `.repeat`), checks (`.if !samePage(a, b)`), a char mapping (4.6). KickAssembler and 64tass have them; ca65 users fake them with `.define`.
-
-Two forms, parentheses always written:
-
-```as
-; one line: one expression
-.function screen(col, row) = $0400 + row*40 + col
-
-; block: assignments, .if, .repeat / .for, .error, and .return
-.function reverse(b) {
-    r = 0
-    .repeat 8 AS i {
-        r = (r << 1) | ((b >> (i - 1)) & 1)
-    }
-    .return r
-}
-
-    sta screen(10, 5)
-```
-
-- **Arguments are values, evaluated at the call** (unlike a macro's, evaluated where the macro uses them).
-- **A scope per call**, as for macros: the parameters and the body's variables are local to it.
-- **Pure:** emitting, a label, `.org`, `.segment` or assigning an outer variable in the body is an error. Outer symbols and `*` can be read. It then gives the same result in both passes: no new phase errors.
-- **Errors:** a block ending without `.return`; a recursion deeper than a limit.
-- **Call:** `name(…)` in an expression, `ns::name(…)` from another namespace. System functions keep their dot, so they don't collide. Functions and symbols share their names: defining both is an error.
-- **Migration** (3.7, done in #142): the routine scope is `.proc` / `.procedure`, and until user functions exist, `.function` / `.fn` are an error that says to write `.proc clearScreen`. With them, only the old form (no parentheses) will be.
-
-Order: the one-line form (store the expression's tokens, evaluate them with the parameters in scope); the block form with `.return`. Helpful with it: `.min`, `.max`, `.abs`, `.sin`, `.cos`, `.chr`, `.ord`.
-
-Follow-ups:
-
-- The block form: its body collected as a `{ }` block (`getRawBlock` leaves the `{` to the block reading it), and run in the call's scope (`PASymbolTable.withFunctionScope`), its statements checked to be pure.
-- A one-line function's expression is only read when it's called: a typo in a function never called isn't reported. Reading it at the definition, without evaluating it, would.
-- With the block form, a recursion can end (`.if n == 0` / `.return 1`): `.option function.recursion` then matters for real.
-- A function defined in a macro body doesn't see the macro's parameters: its expression is evaluated without them. To decide: substitute them at the definition, as a macro call's arguments are.
+- a `\0` escape;
+- `.min`, `.max`, `.abs`, `.sin`, `.cos`, `.chr`, `.ord`: system functions to write user functions with (4.8).
 
 ### 4.10 Building an array without a loop
 
-Building an array takes a loop of assignments (`row = .push(row, col * 16)`), each one listed. A built-in or an expression form would give it in one: `.range(start, count [, step])` with a `.map(array, function)` once user functions exist (4.8), or a comprehension, `[col * 16 for col in 0..15]`. Then `.db ...` emits it directly. Bigger than 4.9; decide the syntax with 4.8.
+Building an array takes a loop of assignments (`row = .push(row, col * 16)`), each one listed. A built-in or an expression form would give it in one: `.range(start, count [, step])` with a `.map(array, function)` taking a user function (4.8, #173 and #174), or a comprehension, `[col * 16 for col in 0..15]`. Then `.db ...` emits it directly. Bigger than 4.9; decide the syntax with 4.8.
 
 ### 4.14 Project file settings on the command line
 

@@ -334,7 +334,17 @@ export class Parser {
 	}
 
 	/** Pushes the current stream state and activates a new stream (macro/loop body). */
-	public pushTokenStream({ newTokens, macroArgs, cacheName: name, file, macroName, macroCall, loop, onEndOfStream }: PushTokenStreamParams): number {
+	public pushTokenStream({
+		newTokens,
+		macroArgs,
+		cacheName: name,
+		file,
+		macroName,
+		macroCall,
+		loop,
+		functionCall,
+		onEndOfStream,
+	}: PushTokenStreamParams): number {
 		const cacheName = file === undefined ? name : this.fileCacheName(file);
 
 		// Save current position and arguments
@@ -366,6 +376,7 @@ export class Parser {
 			macroName,
 			macroCall,
 			loop,
+			functionCall,
 		});
 
 		// Activate new stream

@@ -1,6 +1,7 @@
 import type { Segment } from "../linker/linker.class";
 import type { Token } from "../shared/lexer/lexer.class";
 import type { SymbolValue } from "./symbol.class";
+import type { UserFunction } from "./user-function.class";
 
 export const PRECEDENCE: Record<string, number> = {
 	// Property access has the highest precedence
@@ -71,6 +72,11 @@ export interface EvaluatorHost {
 	findNearestLabel?(address: number, distance: number): number | null;
 	/** Whether a macro is defined at this point, for `.def(name)` / `.undef(name)`. Without it, there are none. */
 	isMacroDefined?(name: string): boolean;
+	/**
+	 * Runs the statements of a block function's body, in the call's scope, up to its `.return`: its value. Without it,
+	 * a block function can't be called.
+	 */
+	runFunction?(fn: UserFunction): SymbolValue;
 	/** The `function.recursion` option: how deep a function can call itself. Without it, the option's default. */
 	functionRecursion?(): number;
 }

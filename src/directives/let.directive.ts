@@ -46,8 +46,12 @@ export class LetDirective implements IDirective {
 		this.lister.symbol(name, value);
 
 		const nameToken = nameTokens[0] ?? directive;
-		if (this.assembler.pass === 1)
-			this.assembler.symbolTable.defineVariable(name, value, { filename: context.filename, line: nameToken.line, column: nameToken.column }, true);
-		else this.assembler.symbolTable.updateSymbol(name, value, true);
+		const symbolTable = this.assembler.symbolTable;
+		// Out of a macro call to the scope around it, but a function's variables stay in its call.
+		const isLocal = symbolTable.isFunctionScope();
+		if (isLocal && name.includes("::")) throw new Error(`A function's variables are its own: it can't assign '${name}'.`);
+		if (this.assembler.pass === 1 || (isLocal && !symbolTable.hasSymbolInScope(name)))
+			symbolTable.defineVariable(name, value, { filename: context.filename, line: nameToken.line, column: nameToken.column }, !isLocal);
+		else symbolTable.updateSymbol(name, value, !isLocal);
 	}
 }

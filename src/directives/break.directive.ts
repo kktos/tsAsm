@@ -23,11 +23,18 @@ export class BreakDirective implements IDirective {
 		const parser = this.runtime.parser;
 		const streams = parser.tokenStreamStack;
 
-		// The innermost loop's iteration, unless a macro body or an included file comes first: it has its own text.
-		const loopAt = streams.findLastIndex((stream) => stream.loop || stream.macroName !== undefined || stream.file !== undefined);
+		// The innermost loop's iteration, unless a macro body, a function's body or an included file comes first: it has its own text.
+		const loopAt = streams.findLastIndex((stream) => stream.loop || stream.macroName !== undefined || stream.functionCall || stream.file !== undefined);
 		const stream = streams[loopAt];
 		if (!stream?.loop) {
-			const where = stream?.macroName !== undefined ? ` of the macro '${stream.macroName}'` : stream?.file !== undefined ? " of the included file" : "";
+			const where =
+				stream?.macroName !== undefined
+					? ` of the macro '${stream.macroName}'`
+					: stream?.functionCall
+						? ` of the function '${stream.functionCall.name}'`
+						: stream?.file !== undefined
+							? " of the included file"
+							: "";
 			throw new Error(`Unexpected directive '.${directive.value}': it isn't in a loop${where}.`);
 		}
 

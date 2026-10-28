@@ -19,6 +19,14 @@ export interface StreamState {
 	macroCall?: Token;
 	/** Set on the stream of a loop's iteration: where `.break` leaves. */
 	loop?: boolean;
+	/** Set on the stream of a block function's call: where `.return` leaves, and the value it gives. */
+	functionCall?: FunctionCall;
+}
+
+/** A block function's call running: its name, and the value its `.return` gives, once it's run. */
+export interface FunctionCall {
+	name: string;
+	result?: { value: SymbolValue };
 }
 
 export interface FileHandler {
@@ -52,6 +60,7 @@ export interface PushTokenStreamParams {
 	macroName?: string;
 	macroCall?: Token;
 	loop?: boolean;
+	functionCall?: FunctionCall;
 	/** Called when the stream ends: `exited` when a `.exitmacro` or a `.break` left it before its end. */
 	onEndOfStream?: (exited?: boolean) => void;
 }
