@@ -197,22 +197,56 @@ Decisions left: the bare `name(…)` call, the recursion limit.
 
 Building an array takes a loop of assignments (`row = .push(row, col * 16)`), each one listed. A built-in or an expression form would give it in one: `.range(start, count [, step])` with a `.map(array, function)` once user functions exist (4.8), or a comprehension, `[col * 16 for col in 0..15]`. Then `.db ...` emits it directly. Bigger than 4.9; decide the syntax with 4.8.
 
-### 4.13 `.option` values on the command line
-
-To assemble once with another option than the project file's, e.g. `listing.data` `expand` when `input.options` says `fold`, the project file has to be edited.
-
-_Decided:_
-
-- **Forms:** `--listing.data expand`, `--listing.data=expand`, and the short `-O listing.data=expand`, which can be repeated. `-o` stays free for an output path, `-D` for defining a symbol.
-- **Short names:** each option declares one in `options.ts`, next to `DEFAULT_OPTIONS`: `ld` (`listing.data`), `lc` (`listing.case`), `lp` (`local.prefix`), `am` (`anon.marker`), `rs` (`repeat.start`), `fs` (`for.start`). They are declared, not computed from the initials, so adding an option never changes what one means; a test checks they are unique. A short name works wherever a full one does: `-O ld=fold`, `--ld fold`.
-- **Which options:** every `.option` name, from `DEFAULT_OPTIONS`; `args.ts` doesn't list them again (conf selects, code provides). `--help` lists them, with their short name and values, from the same table.
-- **Precedence:** CLI > project file > default, as the starting value. A `.option` in the source still applies after it, as it does over `input.options`. The CLI values are merged over `conf.input.options` before the `Assembler` is built; the library doesn't change.
-- **Errors:** an unknown name lists the known ones; a wrong value says what `optionValueError()` says for the project file and `.option`; the same option given twice (`-O ld=fold --listing.data expand`) is an error. `repeat.start` / `for.start` are read as numbers.
-- **Not done:** flags named after a value (`--fold`, `--expand`): only some options have values no other option takes (`:` and `0` / `1` are shared), `--source` would read as the source file, and they would take names future flags may want. Forcing a value over the source's `.option`: if it's wanted later, as its own flag, for `listing.*` only, with a warning.
-
 ### 4.14 Project file settings on the command line
 
 After 4.13: change any project file setting for one run, e.g. turn the listing on (`output.listing.enabled`) or a pass's listing (`output.listing.passes.pass1`), or pick another `input.cpu`. To decide: the syntax (`--output.listing.enabled true`, with the setting's path?), how a value gets its type (from the schema in `conf.ts`), how these names stay apart from the `.option` ones and their short names, and short forms for the usual ones (listing on).
+
+### 4.15 CPU-specific directives
+
+A CPU can bring its own directives: the 65C816's width directives (4.16), later the 6809's `.setdp`.
+
+- **Declared by the CPU:** `CPUHandler` gets an optional list of directives.
+- **Registered at startup, every CPU's:** the parser needs all directive names up front (`parser.registerDirective`). The dispatcher then rejects one the current CPU doesn't have: "`.a16` is a 65816 directive; the current CPU is 6502".
+- **No shadowing:** a CPU directive can't take the name of a general one; a test checks it.
+- **CPU state:** a CPU keeping state (the 65C816's M / X) gets an optional `resetState()` on `CPUHandler`, called with `resetOptions()` at the start of each pass. `findCPUHandler` gives the same instance each time, so without it the state would carry from pass 1 into pass 2 and into a reused assembler. The state is kept across `.cpu` switches: `.cpu 6502` then `.cpu 65816` finds it as it was left.
+
+### 4.16 65C816: accumulator and index widths
+
+The size of an immediate depends on the M and X flags: `lda #$10` is `A9 10` with an 8-bit accumulator, `A9 10 00` with a 16-bit one. The CPU handler tracks them.
+
+- **State:** M (A and memory) and X (X / Y) are each 8, 16 or unknown. Both start at 8, as after reset. Reset at each pass, kept across `.cpu` switches (4.15).
+- **Directives** (4.15), the ca65 names: `.a8`, `.a16`, `.i8`, `.i16`.
+- **`SEP` / `REP`, always tracked:** `rep #n` makes the flags in `n` 16-bit (bit 5 is M, bit 4 is X), `sep #n` 8-bit. An operand not known in pass 1 is an error: it must be defined before it is used (the sizes after it depend on it).
+- **Unknown widths:** `PLP` and `RTI` make M and X unknown. `XCE` changes them as 4.17 says. A directive, or a `SEP` / `REP` covering the flag, makes it known again.
+- **Width-dependent immediates:** M: `LDA ADC SBC AND ORA EOR CMP BIT`; X: `LDX LDY CPX CPY`. 16 bits gives two bytes, little-endian. An unknown width is an error saying which flag and what made it unknown ("the accumulator width is unknown since the `PLP` at …; set it with `.a8` / `.a16`"). A value too large for 8 bits is an error, never truncated.
+- **One instruction:** `lda.b #imm` / `lda.w #imm` force the immediate's width without changing the state. On an address `.b` / `.w` keep their 6502 meaning (direct page / absolute); `.l` is added for long.
+- **Listing:** a line whose size depends on M or X shows the width it was assembled with.
+
+Follow-ups: emulation mode (4.17); direct page / absolute / long addressing (4.18); saving and restoring the widths per `.proc`.
+
+### 4.17 65C816: emulation mode
+
+After 4.16. In emulation mode (E=1) M and X are forced to 8 bits and `REP` can't change them. Without tracking E, `rep #$30` right after reset (which starts in emulation) would make the tracker assemble 16-bit immediates the CPU reads as 8-bit: wrong bytes, silently.
+
+- **State:** E is emulation, native or unknown. It starts in emulation, as after reset. Reset at each pass, kept across `.cpu` switches (4.15).
+- **Directives** (4.15): `.native` and `.emulation` say which mode the code runs in. `.emulation` makes M and X 8.
+- **`XCE`** swaps the carry and E. Only the idiom is followed: `clc` right before `xce` gives native, M and X unchanged; `sec` right before gives emulation, M and X 8. Any other instruction before it, or a label between them (a branch could reach the `XCE` with another carry), makes E unknown, and M and X with it unless both are 8.
+- **In emulation:** a `REP` clearing bit 4 or 5, `.a16` and `.i16` are errors: they have no effect there.
+- **E unknown:** a `REP` clearing bit 4 or 5 is an error until E is known again, by `clc` / `sec` + `xce` or a directive.
+- **Cost:** a file of native-mode routines (a library, an included file) needs `.native` before its first `rep #$30`. One line, and it states the assumption.
+
+### 4.18 65C816: direct page, absolute and long addressing
+
+D (direct page) and DBR (data bank) only get their values at run time: the assembler never chooses an encoding from them. The writer knows what they hold; the assembler can point out a shorter form.
+
+- **The size comes from the value written:** $00–$FF is direct page, $0100–$FFFF absolute, above $FFFF long, or an error for an instruction without a long form. As the 6502 does. With a variable in bank $7E, write its address in the bank (`counter = $2000`), or `.w`.
+- **Suffixes:** `.b` forces direct page; on a value above $FF it's an error, not a truncation (D needn't be page-aligned: an address's low byte isn't its offset in the direct page). `.w` forces absolute; on a 24-bit address it keeps the low 16 bits (the writer says it's in the data bank). `.l` forces long.
+- **`JMP` / `JSR`** absolute use the program bank, known from the PC: a target in another bank is an error suggesting `jml` / `jsl`. A branch to another bank is an error.
+- **Forward references:** absolute in pass 1, as on the 6502; an error in pass 2 if the value needs long, saying to write `.l` or define the symbol earlier.
+- **Hints, never encoding** (4.15 directives): `.dp <expr>` and `.dbank <expr>` say what D and DBR hold. They only let the assembler point out a shorter form: "`$2012` is in the direct page declared at …: `lda.b $12` is one byte shorter"; "`$7E2000` is in the data bank declared at …: `lda.w $7E2000` is one byte shorter". Without them, no hint.
+- **Hints are reported** at a level of their own, not as warnings. On by default: there are none without `.dp` / `.dbank`, so writing one is already asking for them. `.option hints off` turns them off.
+
+To check first: 24-bit addresses through the PC, `.org`, segments, the listing and the linker. `.org` takes any number today and nothing checks the PC's range.
 
 ## 5. Documentation (REFERENCE.md)
 

@@ -15,6 +15,16 @@ export const DEFAULT_OPTIONS = {
 };
 
 export type OptionName = keyof typeof DEFAULT_OPTIONS;
+
+/** Each option's short name, for the command line: `-O ld=fold`, `--ld fold`. Declared, not computed, so adding an option never changes what one means. */
+export const OPTION_SHORT_NAMES: Record<OptionName, string> = {
+	"local.prefix": "lp",
+	"anon.marker": "am",
+	"listing.case": "lc",
+	"listing.data": "ld",
+	"repeat.start": "rs",
+	"for.start": "fs",
+};
 export type OptionValue = string | number;
 export type Options = Partial<Record<OptionName, OptionValue>>;
 
@@ -72,6 +82,17 @@ const OPTION_VALUES: Record<OptionName, { isValid: (value: unknown) => boolean; 
 
 export function isOptionName(name: string): name is OptionName {
 	return Object.hasOwn(DEFAULT_OPTIONS, name);
+}
+
+/** The option named `name`, by its full or its short name, or undefined. */
+export function findOptionName(name: string): OptionName | undefined {
+	if (isOptionName(name)) return name;
+	return (Object.keys(OPTION_SHORT_NAMES) as OptionName[]).find((optionName) => OPTION_SHORT_NAMES[optionName] === name);
+}
+
+/** The values the option `name` can take, as the error messages list them. */
+export function optionValuesText(name: OptionName): string {
+	return OPTION_VALUES[name].text;
 }
 
 /** Why `value` can't be the value of the option `name`, or undefined when it can. */
