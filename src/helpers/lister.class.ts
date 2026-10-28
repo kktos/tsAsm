@@ -158,8 +158,9 @@ export class Lister implements ILister {
 		for (const line of lines) this.logger.log(line);
 	}
 
+	/** A label's line: a named one with its colon (`start:`), an anonymous or a local one as written (`:`, `:loop`). */
 	public label(label: string, address: number) {
-		this.logger.log(`${getHex(address)}${"".padStart(LABEL_START_COL)}${label}:`);
+		this.logger.log(`${getHex(address)}${"".padStart(LABEL_START_COL)}${label.startsWith(":") ? label : `${label}:`}`);
 	}
 
 	public symbol(label: string, value: SymbolValue) {

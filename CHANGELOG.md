@@ -6,6 +6,12 @@ The problem is described as it was before the fix, then the fix in _italics_.
 
 ## Assembler
 
+### #169 — Anonymous and local labels not listed (TODO 1.59)
+
+`:` / `nop` / `bne :-` listed the `NOP` and the `BNE :-`, but not the `:`, where a named label gets its own line (`1000 start:`). Same for a local label: `:loop` / `dex` / `bne :loop` listed no `:loop`.
+
+_They get their line, as written: `1000 :`, `1003 :loop`._
+
 ### #163 — `.cpu` with a symbol defined after it (TODO 1.56)
 
 `.cpu .iif(C02, "65C02", "6502")` / `C02 = 1` → `.CPU name must evaluate to a string.`: in pass 1, `C02` isn't defined yet. It's an error, the CPU is needed from pass 1 on, but the message didn't say why.

@@ -46,10 +46,6 @@ Without a linker script, `output.listing: { enabled: true }` writes a `.lst` hol
 
 `.option listing.case "lower"` is listed `.option "listing.case = "lower""`: `setOption` lists the name and the value as one string, and the lister quotes it. Found with 4.9.
 
-### 1.59 Anonymous labels aren't listed
-
-`:` / `nop` / `bne :-` lists the `NOP` and the `BNE :-`, but not the `:`, where a named label gets its own line (`1000 start:`). Found with 4.9.
-
 ### 1.60 `.repeat`'s header isn't listed, `.for`'s is
 
 The listing shows `.for x of list` before the loop's lines, but nothing for a `.repeat`: its lines come without a word. With `listing.data "fold"`, a folded `.repeat` does show its header. Found with 4.9.
