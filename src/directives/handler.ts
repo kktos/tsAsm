@@ -55,7 +55,7 @@ export class DirectiveHandler {
 		const procDirective = new ProcDirective(assembler, runtime.lister);
 		this.register("PROC", procDirective);
 		this.register("PROCEDURE", procDirective);
-		const functionDirective = new FunctionDirective(runtime.parser);
+		const functionDirective = new FunctionDirective(runtime);
 		this.register("FUNCTION", functionDirective);
 		this.register("FN", functionDirective);
 

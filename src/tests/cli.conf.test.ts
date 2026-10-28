@@ -85,6 +85,15 @@ describe("CLI conf", () => {
 		]);
 	});
 
+	it("accepts a function.recursion from 0 to 256, and reports another", () => {
+		const { conf, errors } = readConfFrom(`${confWithCpu("6502")}  options:\n    function.recursion: 256\n`);
+		expect(errors).toBeUndefined();
+		expect(conf.input.options).toEqual({ "function.recursion": 256 });
+
+		const { errors: tooDeep } = readConfFrom(`${confWithCpu("6502")}  options:\n    function.recursion: 257\n`);
+		expect(tooDeep).toEqual([{ path: "input.options.function.recursion", message: "Must be a whole number from 0 to 256" }]);
+	});
+
 	it("reports a cpu of the wrong type instead of crashing", () => {
 		const { errors } = readConfFrom(confWithCpu("true"));
 		expect(errors).toEqual([{ path: "input.cpu", message: "Expected string, got boolean" }]);

@@ -71,4 +71,6 @@ export interface EvaluatorHost {
 	findNearestLabel?(address: number, distance: number): number | null;
 	/** Whether a macro is defined at this point, for `.def(name)` / `.undef(name)`. Without it, there are none. */
 	isMacroDefined?(name: string): boolean;
+	/** The `function.recursion` option: how deep a function can call itself. Without it, the option's default. */
+	functionRecursion?(): number;
 }

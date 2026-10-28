@@ -176,7 +176,7 @@ describe("Procedure name", () => {
 	});
 });
 
-// `.function` / `.fn` were a routine scope: they are kept for user functions (TODO 4.8), and say to write `.proc`.
+// `.function` / `.fn` were a routine scope: without parentheses, the old form, they say to write `.proc`.
 describe(".FUNCTION and .FN", () => {
 	let assembler: Assembler;
 
@@ -195,7 +195,7 @@ describe(".FUNCTION and .FN", () => {
 		rts
 	.end
 `,
-			".FUNCTION is no longer a routine scope: write .proc clearScreen.",
+			".FUNCTION is no longer a routine scope: write .proc clearScreen. A function has parentheses: .FUNCTION clearScreen(…) = <expression>.",
 		],
 		[
 			".fn with braces",
@@ -205,7 +205,7 @@ describe(".FUNCTION and .FN", () => {
 		rts
 	}
 `,
-			".FN is no longer a routine scope: write .proc clearScreen.",
+			".FN is no longer a routine scope: write .proc clearScreen. A function has parentheses: .FN clearScreen(…) = <expression>.",
 		],
 		[
 			"a name on the next line",
@@ -215,7 +215,7 @@ describe(".FUNCTION and .FN", () => {
 	clearScreen
 	.end
 `,
-			".FUNCTION is no longer a routine scope: write .proc.",
+			".FUNCTION is no longer a routine scope: write .proc. A function has parentheses: .FUNCTION name(…) = <expression>.",
 		],
 	])("should be an error: %s", (_, source, message) => {
 		expect(() => assembler.assemble(source)).toThrow(expect.objectContaining({ message, location: expect.objectContaining({ line: 3, column: 3 }) }));

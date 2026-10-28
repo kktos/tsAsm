@@ -1,5 +1,7 @@
 import { YAMLException } from "js-yaml";
 import {
+	FUNCTION_RECURSION_TEXT,
+	isFunctionRecursion,
 	isLabelChar,
 	isListingCase,
 	isListingData,
@@ -45,6 +47,13 @@ const loopStart = {
 	errorMessage: `Must be one of ${LOOP_STARTS_TEXT}`,
 } as const;
 
+const functionRecursion = {
+	type: "number",
+	optional: true,
+	validate: isFunctionRecursion,
+	errorMessage: `Must be a whole number from ${FUNCTION_RECURSION_TEXT}`,
+} as const;
+
 const confSchema = {
 	input: {
 		type: "object",
@@ -81,6 +90,7 @@ const confSchema = {
 					"listing.data": listingData,
 					"repeat.start": loopStart,
 					"for.start": loopStart,
+					"function.recursion": functionRecursion,
 				},
 			},
 		},

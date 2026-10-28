@@ -2,6 +2,7 @@ import type { ILister } from "../helpers/lister.class";
 import type { Token } from "../shared/lexer/lexer.class";
 import { AsmError, type DefinitionSite, type IncludeStack } from "../utils/error.utils";
 import { getHex } from "../utils/hex.util";
+import { UserFunction } from "./user-function.class";
 
 // Internal unique key for the global namespace to avoid collisions with user namespaces
 const INTERNAL_GLOBAL = "%%GLOBAL";
@@ -51,6 +52,8 @@ export class PASymbolTable {
 	private namespaceMetadata: Map<string, Record<string, SymbolValue>> = new Map();
 	/** What messages call the scopes the user can't name (a macro call's, a function's): `macro m`, `function f`. */
 	private scopeLabels: Map<string, string> = new Map();
+	/** The function calls so far, naming each call's scope. */
+	private functionCalls = 0;
 	/** The pass being assembled, kept with each symbol defined. 0 outside the passes (symbols set up before assembling, the linker). */
 	public pass = 0;
 
@@ -124,6 +127,31 @@ export class PASymbolTable {
 			if (saved) scope.set(name, saved);
 			else scope.delete(name);
 		};
+	}
+
+	/** The scopes in effect here, where a function defined here reads its symbols: see `withFunctionScope`. */
+	captureScopes(): readonly string[] {
+		return [...this.scopeStack];
+	}
+
+	/**
+	 * Runs `run` in a function call's scope: a new one, on top of the scopes where the function is defined instead of the
+	 * caller's. Its parameters are local to the call, and its body reads the symbols of where it's defined.
+	 * `label` is what messages call the scope: `function f`.
+	 */
+	withFunctionScope<T>(scopes: readonly string[], label: string, run: () => T): T {
+		const callerScopes = this.scopeStack;
+		const name = `@@function_${this.functionCalls++}__`;
+		this.scopeStack = [...scopes, name];
+		this.symbols.set(name, new Map());
+		this.scopeLabels.set(name, label);
+		try {
+			return run();
+		} finally {
+			this.symbols.delete(name);
+			this.scopeLabels.delete(name);
+			this.scopeStack = callerScopes;
+		}
 	}
 
 	/** Pops the current scope from the stack, returning to the parent scope. */
@@ -557,7 +585,8 @@ export class PASymbolTable {
 	/** Writes the symbols of `scope` into `nsDict`, each name after `prefix`, and those of the `.proc`s among them after theirs. */
 	private addToDict(nsDict: Record<string | symbol, SymbolValue>, scope: Map<string, PASymbol>, prefix: string) {
 		for (const symbol of scope.values()) {
-			if (symbol.name === "*") continue;
+			// A function is neither a value nor an address: nothing for the symbol file.
+			if (symbol.name === "*" || symbol.value instanceof UserFunction) continue;
 			let value = "";
 			switch (typeof symbol.value) {
 				case "number":

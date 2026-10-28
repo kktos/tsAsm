@@ -50,6 +50,11 @@ describe("CLI args: .option values", () => {
 		});
 	});
 
+	it("reads function.recursion as a whole number from 0 to 256", () => {
+		expect(parse("proj.yaml", "--fr", "0").options).toEqual({ "function.recursion": 0 });
+		expect(parseErrors("proj.yaml", "-O", "function.recursion=300")).toEqual(["ERROR: 'function.recursion' must be a whole number from 0 to 256."]);
+	});
+
 	it("reads repeat.start and for.start as numbers", () => {
 		expect(parse("proj.yaml", "-O", "rs=0", "--for.start", "1").options).toEqual({ "repeat.start": 0, "for.start": 1 });
 	});
@@ -62,10 +67,10 @@ describe("CLI args: .option values", () => {
 
 	it("lists the known options for an unknown one", () => {
 		expect(parseErrors("proj.yaml", "-O", "listing.fold=1")).toEqual([
-			"ERROR: Unknown option 'listing.fold': the options are local.prefix (lp), anon.marker (am), listing.case (lc), listing.data (ld), repeat.start (rs), for.start (fs).",
+			"ERROR: Unknown option 'listing.fold': the options are local.prefix (lp), anon.marker (am), listing.case (lc), listing.data (ld), repeat.start (rs), for.start (fs), function.recursion (fr).",
 		]);
 		expect(parseErrors("proj.yaml", "--fold")).toEqual([
-			"ERROR: Unknown option: --fold. The .option names are local.prefix (lp), anon.marker (am), listing.case (lc), listing.data (ld), repeat.start (rs), for.start (fs); see --help for the others.",
+			"ERROR: Unknown option: --fold. The .option names are local.prefix (lp), anon.marker (am), listing.case (lc), listing.data (ld), repeat.start (rs), for.start (fs), function.recursion (fr); see --help for the others.",
 		]);
 	});
 

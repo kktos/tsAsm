@@ -109,6 +109,7 @@ export class Assembler {
 			findSegment: (name) => this.linker.findSegment(name),
 			findNearestLabel: (address, distance) => this.namelessLabels.findNearest(address, distance),
 			isMacroDefined: (name) => this.macroHandler.isDefined(name),
+			functionRecursion: () => this.currentOptions["function.recursion"] as number,
 		});
 
 		this.parser = new Parser(this.emitter);

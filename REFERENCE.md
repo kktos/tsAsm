@@ -12,6 +12,7 @@ The complete syntax of the tsAsm assembler. For installation and command-line us
 - [Conditional assembly](#conditional-assembly)
 - [Loops](#loops)
 - [Macros](#macros)
+- [Functions](#functions)
 - [Procedures](#procedures)
 - [Namespaces](#namespaces)
 - [Files](#files)
@@ -457,6 +458,31 @@ A last parameter written `...name` collects the remaining arguments into an arra
 .end
 ```
 
+## Functions
+
+`.function <name>(<parameters>) = <expression>` (alias `.fn`) defines a function, which an expression calls as `name(…)` and which gives the value of its expression:
+
+```as
+.function screen(col, row) = $0400 + row*40 + col
+.function sq(x) = x * x
+
+    sta screen(10, 5)   ; sta $04D2
+.repeat 4 AS i FROM 0
+    .db sq(i)           ; 00 01 04 09
+.end
+```
+
+- **A call** is the name with its `(` glued to it, as a macro's `m(1, 2)`: `screen (10, 5)` is the name followed by an expression, and a function's name without a call is an error (`'screen' is a function: call it, screen(…).`). From another namespace: `gfx::line(2)`. The system functions keep their dot, `.len()`, so they never have the same name.
+- **The arguments are values**, evaluated at the call, unlike a macro's: with `.function double(x) = x * 2`, `double(1 + 2)` is 6. There must be as many as there are parameters; `f()` is a call without arguments.
+- **A scope per call:** the parameters are local to it, and hide a symbol of the same name. The expression reads the symbols of where the function is defined, with the values they have at the call, and `*` is the address of the call. It doesn't see the parameters and variables of the macro it's called from.
+- **Defined before its call:** a call above the `.function` line is `Unknown function 'f'.`, in both passes, as `.def()` says.
+- **A name like a symbol's:** a function and a symbol (a label, a constant, a variable) can't have the same name (`Symbol 'F' redefined.`), and a function is defined once. In a loop, which [generates lines](#loops), a `.function` is defined again at each iteration: an error. Functions aren't in the symbol file.
+- **An error in the expression** is located at the call, with a note at the function: `note: in function f, defined here`.
+
+A function can call another, and itself through another or directly. How deep it can call itself is the `.option function.recursion` (default `64`, from `0`, never, to `256`), a [global option](#global-and-local-options): past it, `Function 'f' calls itself more than 64 deep (.option function.recursion).` Calls of other functions and calls one after the other don't count: `inc(inc(x))` is no recursion.
+
+Without parentheses, `.function clearScreen` is an error that says to write [`.proc`](#procedures), what it used to be. A body in braces, with statements and a `.return`, isn't there yet: `A function's body is one expression for now: …`.
+
 ## Procedures
 
 `.proc <name>` … `.end` defines a routine whose labels stay local to it. Alias: `.procedure`.
@@ -474,7 +500,7 @@ loop:               ; not visible outside clearScreen
     jsr clearScreen
 ```
 
-`.function` and `.fn` were aliases: they are now an error that says to write `.proc`, as they are kept for functions usable in expressions.
+`.function` and `.fn` were aliases: they now define [functions](#functions), and without parentheses they are an error that says to write `.proc`.
 
 ## Namespaces
 
@@ -547,6 +573,7 @@ For columns that line up, build each line with `.pad()`: a tab moves to the next
 | `.option listing.data "<mode>"`                | How the listing writes [data and loops](#listing-data): `expand` (default) or `fold`     |
 | `.option repeat.start <n>`                     | Where a [`.repeat`](#loops) iterator without `FROM` starts: `0` or `1` (default `1`)     |
 | `.option for.start <n>`                        | Where a [`.for`](#loops) index without `FROM` starts: `0` or `1` (default `0`)           |
+| `.option function.recursion <n>`               | How deep a [function](#functions) can call itself: `0` to `256` (default `64`)           |
 
 The char is one of `:` `@` `!` `?` `_` `~`, and the two options can have different ones. Elsewhere, the char keeps its meaning: with `anon.marker "!"`, `!x` and `!=` are still operators.
 
@@ -573,7 +600,7 @@ Instructions are always listed whole.
 
 The project file's `input.options` (or the `options` given to the `Assembler`) sets the values the source starts with; a value given on the command line (`-O listing.data=fold`, see [README](README.md#command-line)) overrides it. Then `.option` changes a value, and how far the change reaches depends on the kind of option.
 
-**Global options**: `local.prefix`, `anon.marker`, `listing.case` and `listing.data`. They are about how the source is read, so they follow the reading order:
+**Global options**: `local.prefix`, `anon.marker`, `listing.case`, `listing.data` and `function.recursion`. They are about how the source is read, or how far the assembler goes, so they follow the reading order:
 
 - An option takes effect from the next line on, in the rest of the file and in the files it includes. One set in an included file stays set after the `.include`.
 - A macro body keeps the chars of where the macro is defined.
@@ -646,24 +673,24 @@ Read-only values, prefixed with a dot.
 
 ## System functions
 
-| Function                                   | Returns                                                                                                                                                                                                                                                                                                                                                        |
-| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `.len(<array or string>)`                  | Its length                                                                                                                                                                                                                                                                                                                                                     |
-| `.def(<symbol>)`, `.undef(<symbol>)`       | `1` if the symbol or macro is defined (`.def`) or not (`.undef`) at this point of the source, else `0`: one defined further down isn't yet. The name is written as is, `.def(X)`, never evaluated; in a macro, `.def(param)` checks the name passed. Any other expression gives the name: `.def("utils::getKey")`, `.def((name))` for the name held by `name`. |
-| `.label(<name>)`                           | The address of the label with that name                                                                                                                                                                                                                                                                                                                        |
-| `.type(<value>)`                           | `"number"`, `"string"`, `"array"` or `"object"`                                                                                                                                                                                                                                                                                                                |
-| `.hex(<value> [, <digits>])`               | The value as a hexadecimal string: `.hex(10, 4)` is `"$000A"`. A negative value gives its two's complement: `.hex(-1)` is `"$FF"`                                                                                                                                                                                                                              |
-| `.str(<value>)`                            | The value as a string                                                                                                                                                                                                                                                                                                                                          |
-| `.pad(<value>, <width> [, <fill>])`        | The value (string or number) padded with `fill` (space by default) to `width` characters: on the left for a positive width, `.pad(25, 4)` is `"  25"`, on the right for a negative one, `.pad("AB", -4)` is `"AB  "`. A longer value is kept whole                                                                                                             |
-| `.json(<value>)`                           | The value as a JSON string                                                                                                                                                                                                                                                                                                                                     |
-| `.lobyte(<value>)`, `.hibyte(<value>)`     | Low byte, high byte                                                                                                                                                                                                                                                                                                                                            |
-| `.floor(<n>)`, `.ceil(<n>)`, `.round(<n>)` | `n` rounded down, up, or to the nearest integer                                                                                                                                                                                                                                                                                                                |
-| `.iif(<condition>, <then>, <else>)`        | `then` if the condition is not `0`, else `else`                                                                                                                                                                                                                                                                                                                |
-| `.array(<item>, …)`                        | A new array                                                                                                                                                                                                                                                                                                                                                    |
-| `.push(<array>, <item>, …)`                | The array, with the items added at the end                                                                                                                                                                                                                                                                                                                     |
-| `.pop(<array>)`                            | The last item, removed from the array                                                                                                                                                                                                                                                                                                                          |
-| `.split(<string> [, <separator>])`         | An array of the parts (separator: space by default)                                                                                                                                                                                                                                                                                                            |
-| `.join(<array>, <separator>)`              | A string of the items joined by the separator                                                                                                                                                                                                                                                                                                                  |
+| Function                                   | Returns                                                                                                                                                                                                                                                                                                                                                                  |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `.len(<array or string>)`                  | Its length                                                                                                                                                                                                                                                                                                                                                               |
+| `.def(<symbol>)`, `.undef(<symbol>)`       | `1` if the symbol, function or macro is defined (`.def`) or not (`.undef`) at this point of the source, else `0`: one defined further down isn't yet. The name is written as is, `.def(X)`, never evaluated; in a macro, `.def(param)` checks the name passed. Any other expression gives the name: `.def("utils::getKey")`, `.def((name))` for the name held by `name`. |
+| `.label(<name>)`                           | The address of the label with that name                                                                                                                                                                                                                                                                                                                                  |
+| `.type(<value>)`                           | `"number"`, `"string"`, `"array"` or `"object"`                                                                                                                                                                                                                                                                                                                          |
+| `.hex(<value> [, <digits>])`               | The value as a hexadecimal string: `.hex(10, 4)` is `"$000A"`. A negative value gives its two's complement: `.hex(-1)` is `"$FF"`                                                                                                                                                                                                                                        |
+| `.str(<value>)`                            | The value as a string                                                                                                                                                                                                                                                                                                                                                    |
+| `.pad(<value>, <width> [, <fill>])`        | The value (string or number) padded with `fill` (space by default) to `width` characters: on the left for a positive width, `.pad(25, 4)` is `"  25"`, on the right for a negative one, `.pad("AB", -4)` is `"AB  "`. A longer value is kept whole                                                                                                                       |
+| `.json(<value>)`                           | The value as a JSON string                                                                                                                                                                                                                                                                                                                                               |
+| `.lobyte(<value>)`, `.hibyte(<value>)`     | Low byte, high byte                                                                                                                                                                                                                                                                                                                                                      |
+| `.floor(<n>)`, `.ceil(<n>)`, `.round(<n>)` | `n` rounded down, up, or to the nearest integer                                                                                                                                                                                                                                                                                                                          |
+| `.iif(<condition>, <then>, <else>)`        | `then` if the condition is not `0`, else `else`                                                                                                                                                                                                                                                                                                                          |
+| `.array(<item>, …)`                        | A new array                                                                                                                                                                                                                                                                                                                                                              |
+| `.push(<array>, <item>, …)`                | The array, with the items added at the end                                                                                                                                                                                                                                                                                                                               |
+| `.pop(<array>)`                            | The last item, removed from the array                                                                                                                                                                                                                                                                                                                                    |
+| `.split(<string> [, <separator>])`         | An array of the parts (separator: space by default)                                                                                                                                                                                                                                                                                                                      |
+| `.join(<array>, <separator>)`              | A string of the items joined by the separator                                                                                                                                                                                                                                                                                                                            |
 
 ## CPU
 
