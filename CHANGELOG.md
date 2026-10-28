@@ -6,6 +6,12 @@ The problem is described as it was before the fix, then the fix in _italics_.
 
 ## Assembler
 
+### #170 — `.repeat`'s header not listed (TODO 1.60)
+
+The listing showed `.for x of list` before the loop's lines, but nothing for a `.repeat`: its lines came without a word. With `listing.data "fold"`, only a folded `.repeat` showed its header. `.repeat 0` listed nothing, where an empty `.for` lists its header.
+
+_Decided: a `.repeat` is listed as a `.for` is, its header (`.repeat $02 AS i`) before its lines, also when it repeats 0 times._
+
 ### #169 — Anonymous and local labels not listed (TODO 1.59)
 
 `:` / `nop` / `bne :-` listed the `NOP` and the `BNE :-`, but not the `:`, where a named label gets its own line (`1000 start:`). Same for a local label: `:loop` / `dex` / `bne :loop` listed no `:loop`.

@@ -52,7 +52,7 @@ describe(".option listing.data", () => {
 			expect(listing(source, {}, bytes)).toEqual(["1000: EA NOP", '1001: 01 02 03 04 05 06 07 08 .incbin "data.bin"', "1009: 09"]);
 		});
 
-		it("lists a loop iteration by iteration, a .for with its header", () => {
+		it("lists a loop iteration by iteration, after its header", () => {
 			const source = `
 				.repeat 2 AS i
 				.db i
@@ -62,6 +62,7 @@ describe(".option listing.data", () => {
 				.end
 			`;
 			expect(listing(source)).toEqual([
+				".repeat $02 AS i",
 				"1000: 01 .db $01",
 				"1001: 02 .db $02",
 				".for x of [$10, ($02 + $03) * $04] AS n FROM $00",
@@ -148,6 +149,7 @@ describe(".option listing.data", () => {
 				.end
 			`;
 			expect(listing(source, { "listing.data": "fold" })).toEqual([
+				".repeat $02",
 				"1000: A9 01 LDA #$01",
 				"1002: 01 02 03 04 05 06 07 08 … .db $01, $02, $03, $04, $05, $06, $07, $08, $09",
 				"100B: A9 01 LDA #$01",
@@ -157,6 +159,7 @@ describe(".option listing.data", () => {
 				"1016: 01 .db $01",
 				"LAST = $02",
 				"1017: 02 .db $02",
+				".repeat $02 AS i",
 				"i = 1",
 				"1018: 01 .db $01",
 				"i = 2",
@@ -164,8 +167,16 @@ describe(".option listing.data", () => {
 			]);
 		});
 
-		it("lists an empty .for as its header", () => {
-			expect(listing(".for x of []\n.db x\n.end", { "listing.data": "fold" })).toEqual([".for x of []"]);
+		it.each(["expand", "fold"])("lists an empty loop as its header, with %s", (listingData) => {
+			const source = `
+				.repeat 0
+				nop
+				.end
+				.for x of []
+				.db x
+				.end
+			`;
+			expect(listing(source, { "listing.data": listingData })).toEqual([".repeat $00", ".for x of []"]);
 		});
 
 		it("lists what a loop ran up to an error", () => {

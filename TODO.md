@@ -46,10 +46,6 @@ Without a linker script, `output.listing: { enabled: true }` writes a `.lst` hol
 
 `.option listing.case "lower"` is listed `.option "listing.case = "lower""`: `setOption` lists the name and the value as one string, and the lister quotes it. Found with 4.9.
 
-### 1.60 `.repeat`'s header isn't listed, `.for`'s is
-
-The listing shows `.for x of list` before the loop's lines, but nothing for a `.repeat`: its lines come without a word. With `listing.data "fold"`, a folded `.repeat` does show its header. Found with 4.9.
-
 ### 1.61 A braced `.if` in a keyword block
 
 `.macro m` / `.if 1 { .db 0 }` / `.db 1` / `.end` → `Missing .END for the .MACRO block.`, same in a `.for` … `.end`. Reading the block, `getKeywordBlock` counts the `.if` as a block that needs its own `.end`, though its `{ }` already ended it. Found with `.exitmacro`.

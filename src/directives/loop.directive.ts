@@ -84,7 +84,7 @@ export class LoopDirective implements IDirective {
 		// Find the loop body
 		const bodyTokens = this.runtime.parser.getDirectiveBlockTokens(directive.value);
 
-		this.runtime.lister.beginLoop(header, true);
+		this.runtime.lister.beginLoop(header);
 
 		// nothing to loop for then leave
 		if (arrayValue.length === 0) {
@@ -128,9 +128,13 @@ export class LoopDirective implements IDirective {
 		// Find loop body
 		const bodyTokens = this.runtime.parser.getDirectiveBlockTokens(directive.value);
 
+		this.runtime.lister.beginLoop(`.repeat ${tokensText(headerTokens)}`);
+
 		// nothing to repeat then leave, like an empty .FOR
-		if (count === 0) return;
-		this.runtime.lister.beginLoop(`.repeat ${tokensText(headerTokens)}`, false);
+		if (count === 0) {
+			this.runtime.lister.endLoop();
+			return;
+		}
 
 		// Setup state
 		const loopId = `${directive.line}`;
