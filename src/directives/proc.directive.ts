@@ -19,12 +19,12 @@ export class ProcDirective implements IDirective {
 
 		// Define the procedure name as a label in the current scope.
 		if (this.assembler.pass === 1)
-			this.assembler.symbolTable.defineLabel(nameToken.value, context.PC.value, {
+			this.assembler.symbolTable.defineLabel(nameToken.value, this.assembler.addressValue(context.PC.value), {
 				filename: context.filename,
 				line: nameToken.line,
 				column: nameToken.column,
 			});
-		else this.assembler.symbolTable.updateSymbol(nameToken.value, context.PC.value);
+		else this.assembler.symbolTable.updateSymbol(nameToken.value, this.assembler.addressValue(context.PC.value));
 
 		this.lister.directive(directive, nameToken.raw as string);
 

@@ -1,3 +1,4 @@
+import { notRelocatable } from "../assembler/reloc-value.class";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
 import { AsmError } from "../utils/error.utils";
 import { formatValue } from "../utils/format.utils";
@@ -23,7 +24,7 @@ export class AssertDirective implements IDirective {
 		const kind = second && this.kindOf(second);
 		const message = kind ? others : second ? [second, ...others] : [];
 
-		if (this.runtime.evaluator.evaluate(condition as Token[], context)) return;
+		if (notRelocatable(this.runtime.evaluator.evaluate(condition as Token[], context))) return;
 
 		const text = message.length ? message.map((tokens) => formatValue(this.runtime.evaluator.evaluate(tokens, context))).join("\t") : "Assertion failed";
 		if (kind === "WARN") this.runtime.warn(text);

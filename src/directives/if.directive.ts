@@ -1,3 +1,4 @@
+import { notRelocatable } from "../assembler/reloc-value.class";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
 import { AsmError } from "../utils/error.utils";
 import type { DirectiveContext, DirectiveRuntime, IDirective } from "./directive.interface";
@@ -21,7 +22,7 @@ export class IfDirective implements IDirective {
 		while (true) {
 			const conditionTokens = parser.getInstructionTokens(branchToken);
 			if (!conditionTokens.length) throw AsmError.at("Missing expression.", branchToken);
-			const isTaken = !activeBranch && Boolean(this.runtime.evaluator.evaluate(conditionTokens, context));
+			const isTaken = !activeBranch && Boolean(notRelocatable(this.runtime.evaluator.evaluate(conditionTokens, context)));
 			const tokens = parser.getDirectiveBlockTokens(branchToken.value, [...BRANCHES]);
 			if (isTaken) activeBranch = tokens;
 			else parser.checkDirectives(tokens);

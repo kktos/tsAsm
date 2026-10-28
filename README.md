@@ -120,7 +120,7 @@ Paths are relative to the project file. Missing output directories are created.
 
 ### Symbol file
 
-The symbols by namespace: `global` for the default one, a namespace's metadata after its name. A symbol's line gives its kind (`var` for `=`, `.let` and `.define`, `const` for `.equ`, `label`), its type (`number`, `string`, `array` or `object`; a label is a `number`), its value and where it's defined, at its name:
+The symbols by namespace: `global` for the default one, a namespace's metadata after its name. A symbol's line gives its kind (`var` for `=`, `.let` and `.define`, `const` for `.equ`, `label`), its type (`number`, `string`, `array` or `object`; a label is a `number`, or `reloc` in a relocatable segment, its value its segment and offset: `CODE+$0012`), its value and where it's defined, at its name:
 
 ```yaml
 GFX [BASE=8192]:
@@ -131,6 +131,7 @@ global:
     SPRITES: var object = {"x":1} ;hello.asm:4:9
     START: label number = $0800 ;hello.asm:7:1
     START.LOOP: label number = $0800 ;hello.asm:8:1
+    PRINT: label reloc = CODE+$0012 ;lib.asm:4:1
 ```
 
 A variable has its last value, and the place it was last assigned. A `.proc`'s symbols follow its name, as local labels do: `CLEAR.LOOP`. The symbols of a macro call are left out.

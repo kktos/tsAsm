@@ -2,6 +2,7 @@ import type { ILister } from "../helpers/lister.class";
 import type { Token } from "../shared/lexer/lexer.class";
 import { AsmError, type DefinitionSite, type IncludeStack } from "../utils/error.utils";
 import { getHex } from "../utils/hex.util";
+import { RelocValue } from "./reloc-value.class";
 import { UserFunction } from "./user-function.class";
 
 // Internal unique key for the global namespace to avoid collisions with user namespaces
@@ -282,7 +283,7 @@ export class PASymbolTable {
 	}
 
 	/** Defines a label: a constant, kept as a label for the symbol file. */
-	defineLabel(labelName: string, value: number, source: SymbolSource) {
+	defineLabel(labelName: string, value: number | RelocValue, source: SymbolSource) {
 		this.defineConstant(labelName, value, source, true);
 	}
 
@@ -566,7 +567,8 @@ export class PASymbolTable {
 	/**
 	 * The symbols by namespace, for the symbol file: keyed by its name (`global` for the default one),
 	 * followed by its metadata if it has some (`GFX [BASE=8192, KIND=screen]`). Each symbol is
-	 * `<kind> <type> = <value> ;<file>:<line>:<column>`, its kind `var`, `const` or `label`.
+	 * `<kind> <type> = <value> ;<file>:<line>:<column>`, its kind `var`, `const` or `label`. A relocatable value's
+	 * type is `reloc`, its value its segment and offset: `label reloc = CODE+$0012`.
 	 * A `.proc`'s symbols follow its name, as local labels do: `CLEAR.LOOP`.
 	 */
 	public getDict() {
@@ -604,7 +606,8 @@ export class PASymbolTable {
 					value = `string = ${JSON.stringify(symbol.value)}`;
 					break;
 				case "object":
-					if (Array.isArray(symbol.value)) value = `array = ${JSON.stringify(symbol.value)}`;
+					if (symbol.value instanceof RelocValue) value = `reloc = ${symbol.value}`;
+					else if (Array.isArray(symbol.value)) value = `array = ${JSON.stringify(symbol.value)}`;
 					else value = `object = ${JSON.stringify(symbol.value)}`;
 					break;
 				case "undefined":

@@ -19,6 +19,7 @@ import { NamelessLabels } from "./namelesslabels.class";
 import { LOCAL_OPTIONS, type LocalOptions, type OptionName, type OptionValue, withDefaultOptions } from "./options";
 import { Parser, ParserError } from "./parser.class";
 import type { AssemblerOptions, DataProcessor, FileHandler, FunctionCall, SegmentDefinition, StreamState } from "./polyasm.types";
+import { RelocValue } from "./reloc-value.class";
 import { PASymbolTable, type SymbolValue } from "./symbol.class";
 import type { UserFunction } from "./user-function.class";
 
@@ -127,6 +128,7 @@ export class Assembler {
 
 		this.expressionEvaluator = new ExpressionEvaluator(this.symbolTable, {
 			resolveSysValue: (nameToken) => this.resolveSysValue(nameToken),
+			addressValue: (address) => this.addressValue(address),
 			findSegment: (name) => this.linker.findSegment(name),
 			findNearestLabel: (address, distance) => this.namelessLabels.findNearest(address, distance),
 			isMacroDefined: (name) => this.macroHandler.isDefined(name),
@@ -184,7 +186,7 @@ export class Assembler {
 				return this.symbolTable.getCurrentNamespace();
 
 			case "PC":
-				return this.PC.value;
+				return this.addressValue(this.PC.value);
 
 			case "PASS":
 				return this.pass;
@@ -201,6 +203,12 @@ export class Assembler {
 			default:
 				throw AsmError.at(`Unknown system variable: ${nameToken.value}.`, nameToken);
 		}
+	}
+
+	/** An address in the current segment: in a relocatable one, its offset there (`CODE+$0012`), as it has no address until it's loaded. */
+	public addressValue(address: number): number | RelocValue {
+		const segment = this.linker.currentSegment;
+		return segment?.relocatable ? new RelocValue(segment.name, address) : address;
 	}
 
 	/** Convenience: add a segment via the embedded linker. */
@@ -469,24 +477,24 @@ export class Assembler {
 					this.lastGlobalLabel = token.value;
 					this.lastGlobalLabelLine = token.line;
 					if (!this.parser.isOperator("=") && !this.parser.isDirective("EQU")) {
-						this.symbolTable.defineLabel(token.value, this.PC.value, {
+						this.symbolTable.defineLabel(token.value, this.addressValue(this.PC.value), {
 							filename: this.streamManager.currentFilepath,
 							line: token.line,
 							column: token.column,
 						});
-						this.lister.label(token.raw ?? token.value, this.PC.value);
+						this.lister.label(token.raw ?? token.value, this.addressValue(this.PC.value));
 					}
 					break;
 				}
 				case "LABEL": {
 					this.lastGlobalLabel = token.value;
 					this.lastGlobalLabelLine = token.line;
-					this.symbolTable.defineLabel(token.value, this.PC.value, {
+					this.symbolTable.defineLabel(token.value, this.addressValue(this.PC.value), {
 						filename: this.streamManager.currentFilepath,
 						line: token.line,
 						column: token.column,
 					});
-					this.lister.label(token.raw ?? token.value, this.PC.value);
+					this.lister.label(token.raw ?? token.value, this.addressValue(this.PC.value));
 					break;
 				}
 
@@ -495,18 +503,18 @@ export class Assembler {
 						throw new ParserError(`Local label '${token.raw ?? token.value}' defined without a preceding global label.`, token);
 
 					const qualifiedName = `${this.lastGlobalLabel}.${token.value}`;
-					this.symbolTable.defineLabel(qualifiedName, this.PC.value, {
+					this.symbolTable.defineLabel(qualifiedName, this.addressValue(this.PC.value), {
 						filename: this.streamManager.currentFilepath,
 						line: token.line,
 						column: token.column,
 					});
-					this.lister.label(token.raw ?? token.value, this.PC.value);
+					this.lister.label(token.raw ?? token.value, this.addressValue(this.PC.value));
 					break;
 				}
 
 				case "ANONYMOUS_LABEL_DEF": {
 					this.namelessLabels.add(this.PC.value);
-					this.lister.label(token.value, this.PC.value);
+					this.lister.label(token.value, this.addressValue(this.PC.value));
 					break;
 				}
 
@@ -595,14 +603,14 @@ export class Assembler {
 						// In functions, the scope is lost between the passes
 						if (this.symbolTable.hasSymbolInScope(token.value)) {
 							this.checkLabelPhase(token.value);
-							this.symbolTable.updateSymbol(token.value, this.PC.value);
+							this.symbolTable.updateSymbol(token.value, this.addressValue(this.PC.value));
 						} else
-							this.symbolTable.defineLabel(token.value, this.PC.value, {
+							this.symbolTable.defineLabel(token.value, this.addressValue(this.PC.value), {
 								filename: this.streamManager.currentFilepath,
 								line: token.line,
 								column: token.column,
 							});
-						this.lister.label(token.raw ?? token.value, this.PC.value);
+						this.lister.label(token.raw ?? token.value, this.addressValue(this.PC.value));
 					}
 					break;
 				}
@@ -639,15 +647,15 @@ export class Assembler {
 					// In functions, the scope is lost between the passes
 					if (this.symbolTable.hasSymbolInScope(token.value)) {
 						this.checkLabelPhase(token.value);
-						this.symbolTable.updateSymbol(token.value, this.PC.value);
+						this.symbolTable.updateSymbol(token.value, this.addressValue(this.PC.value));
 					} else
-						this.symbolTable.defineLabel(token.value, this.PC.value, {
+						this.symbolTable.defineLabel(token.value, this.addressValue(this.PC.value), {
 							filename: this.streamManager.currentFilepath,
 							line: token.line,
 							column: token.column,
 						});
 
-					this.lister.label(token.raw ?? token.value, this.PC.value);
+					this.lister.label(token.raw ?? token.value, this.addressValue(this.PC.value));
 
 					break;
 				}
@@ -657,21 +665,21 @@ export class Assembler {
 					const qualifiedName = `${this.lastGlobalLabel}.${token.value}`;
 					if (this.symbolTable.hasSymbolInScope(qualifiedName)) {
 						this.checkLabelPhase(qualifiedName, `local label '${token.raw ?? token.value}' of '${this.lastGlobalLabel}'`);
-						this.symbolTable.updateSymbol(qualifiedName, this.PC.value);
+						this.symbolTable.updateSymbol(qualifiedName, this.addressValue(this.PC.value));
 					} else
-						this.symbolTable.defineLabel(qualifiedName, this.PC.value, {
+						this.symbolTable.defineLabel(qualifiedName, this.addressValue(this.PC.value), {
 							filename: this.streamManager.currentFilepath,
 							line: token.line,
 							column: token.column,
 						});
-					this.lister.label(token.raw ?? token.value, this.PC.value);
+					this.lister.label(token.raw ?? token.value, this.addressValue(this.PC.value));
 					break;
 				}
 
 				case "ANONYMOUS_LABEL_DEF": {
 					const pass1Address = this.namelessLabels.update(this.PC.value);
 					if (pass1Address !== undefined && pass1Address !== this.PC.value) throw this.phaseError("anonymous label", pass1Address);
-					this.lister.label(token.value, this.PC.value);
+					this.lister.label(token.value, this.addressValue(this.PC.value));
 					break;
 				}
 			}
@@ -796,7 +804,8 @@ export class Assembler {
 	 * between the passes, and every forward reference to it was assembled with the pass-1 address.
 	 */
 	private checkLabelPhase(symbolName: string, description = `label '${symbolName}'`) {
-		const pass1Value = this.symbolTable.lookupSymbol(symbolName);
+		const value = this.symbolTable.lookupSymbol(symbolName);
+		const pass1Value = value instanceof RelocValue ? value.offset : value;
 		if (typeof pass1Value === "number" && pass1Value !== this.PC.value) throw this.phaseError(description, pass1Value);
 	}
 
@@ -841,7 +850,7 @@ export class Assembler {
 
 		// It's an instruction. Resolve its size and advance the PC.
 		const sizeInfo = this.cpuHandler.resolveAddressingMode(mnemonicToken.value, operandTokens, (exprTokens) =>
-			this.expressionEvaluator.evaluateAsNumber(exprTokens, {
+			this.expressionEvaluator.evaluateOperand(exprTokens, {
 				PC: this.PC,
 				allowForwardRef: true,
 				currentLabel: this.lastGlobalLabel,
@@ -869,7 +878,7 @@ export class Assembler {
 
 			// 1. Resolve Mode & Address
 			const modeInfo = this.cpuHandler.resolveAddressingMode(mnemonicToken.value, operandTokens, (exprTokens) =>
-				this.expressionEvaluator.evaluateAsNumber(exprTokens, {
+				this.expressionEvaluator.evaluateOperand(exprTokens, {
 					PC: this.PC,
 					currentLabel: this.lastGlobalLabel,
 					macroArgs: currentStream.macroArgs,

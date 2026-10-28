@@ -1,4 +1,5 @@
 import type { EvaluatorHost } from "../../assembler/expression.types";
+import { RelocValue, relocatableArgumentMessage } from "../../assembler/reloc-value.class";
 import type { PASymbolTable } from "../../assembler/symbol.class";
 import { AsmError } from "../../utils/error.utils";
 import type { Token } from "../lexer/lexer.class";
@@ -59,22 +60,24 @@ export class FunctionDispatcher {
 			minArgs: 0,
 			maxArgs: Number.POSITIVE_INFINITY,
 			knownArgs: 0,
+			relocatable: true,
 		});
 		this.register("PUSH", {
 			handler: pushFunction,
 			minArgs: 2,
 			maxArgs: Number.POSITIVE_INFINITY,
 			knownArgs: 1,
+			relocatable: true,
 		});
-		this.register("POP", { handler: popFunction, minArgs: 1, maxArgs: 1 });
+		this.register("POP", { handler: popFunction, minArgs: 1, maxArgs: 1, relocatable: true });
 		this.register("TYPE", { handler: typeFunction, minArgs: 1, maxArgs: 1 });
 		this.register("JSON", { handler: jsonFunction, minArgs: 1, maxArgs: 1 });
-		this.register("IIF", { handler: iifFunction, minArgs: 3, maxArgs: 3, knownArgs: 1 });
+		this.register("IIF", { handler: iifFunction, minArgs: 3, maxArgs: 3, knownArgs: 1, relocatable: true });
 		this.register("JOIN", { handler: joinFunction, minArgs: 2, maxArgs: 2 });
-		this.register("LOBYTE", { handler: lobyteFunction, minArgs: 1, maxArgs: 1 });
-		this.register("HIBYTE", { handler: hibyteFunction, minArgs: 1, maxArgs: 1 });
-		this.register("BANKBYTE", { handler: bankbyteFunction, minArgs: 1, maxArgs: 1 });
-		this.register("BKBYTE", { handler: bankbyteFunction, minArgs: 1, maxArgs: 1 });
+		this.register("LOBYTE", { handler: lobyteFunction, minArgs: 1, maxArgs: 1, relocatable: true });
+		this.register("HIBYTE", { handler: hibyteFunction, minArgs: 1, maxArgs: 1, relocatable: true });
+		this.register("BANKBYTE", { handler: bankbyteFunction, minArgs: 1, maxArgs: 1, relocatable: true });
+		this.register("BKBYTE", { handler: bankbyteFunction, minArgs: 1, maxArgs: 1, relocatable: true });
 
 		this.register("CEIL", { handler: ceilFunction, minArgs: 1, maxArgs: 1 });
 		this.register("FLOOR", { handler: floorFunction, minArgs: 1, maxArgs: 1 });
@@ -100,6 +103,11 @@ export class FunctionDispatcher {
 		// Centralized argument count validation
 		if (argCount < funcDef.minArgs || argCount > funcDef.maxArgs)
 			throw AsmError.at(`Function '${name}' expects between ${funcDef.minArgs} and ${funcDef.maxArgs} arguments, but got ${argCount}.`, token);
+
+		if (!funcDef.relocatable) {
+			const relocatable = stack.slice(stack.length - argCount).find((arg) => arg instanceof RelocValue);
+			if (relocatable) throw AsmError.at(relocatableArgumentMessage(`.${name.toUpperCase()}()`, relocatable as RelocValue), token);
+		}
 
 		// Pass 1: an argument not known yet makes the result not known yet.
 		if (allowForwardRef) {
