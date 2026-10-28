@@ -29,4 +29,9 @@ export interface IFunctionDef {
 	 * known or not. A macro parameter stands for its argument. Any other expression is evaluated. None by default.
 	 */
 	nameArgs?: number;
+	/**
+	 * Whether it takes relocatable values (`CODE+$0012`): a function that computes on its arguments can't, as their
+	 * address is only known when the segment is loaded. Not by default.
+	 */
+	relocatable?: boolean;
 }

@@ -1,3 +1,4 @@
+import { RelocValue, relocatableByte } from "../../assembler/reloc-value.class";
 import { AsmError } from "../../utils/error.utils";
 import type { Token } from "../lexer/lexer.class";
 import type { EvaluationStack, FunctionHandler } from "./types";
@@ -8,6 +9,11 @@ export const lobyteFunction: FunctionHandler = (stack: EvaluationStack, token: T
 	// this is probably a label not yet resolved (pass 1)
 	if (arg === null) {
 		stack.push(null);
+		return;
+	}
+
+	if (arg instanceof RelocValue) {
+		stack.push(relocatableByte(arg, 0, ".LOBYTE()", token));
 		return;
 	}
 

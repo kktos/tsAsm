@@ -11,6 +11,7 @@ import { AsmError, type AsmNote } from "../utils/error.utils";
 import { nestingDelta } from "../utils/token.utils";
 import { type EvaluationContext, type EvaluatorHost, PRECEDENCE } from "./expression.types";
 import { DEFAULT_OPTIONS } from "./options";
+import { type ByteShift, noFixupError, notRelocatable, RelocValue, relocatableArgumentMessage, relocatableByte } from "./reloc-value.class";
 import { UserFunction } from "./user-function.class";
 
 const UNARY_TEST_OPERATORS = new Set([")", "]"]);
@@ -21,6 +22,10 @@ const STRING_OPERATORS = new Set(["+", "=", "==", "!="]);
 const charCode = <T>(value: T): T | number => (typeof value === "string" && value.length === 1 ? value.charCodeAt(0) : value);
 const notACharMessage = (value: string) => `Only a one-character string can be used as a number: ${JSON.stringify(value)}.`;
 const UNARY_OPERATORS = new Set(["UNARY_MINUS", "!", "UNARY_LSB", "UNARY_MSB", "UNARY_BANK"]);
+/** The byte `<`, `>` and `^` take, by their shift. */
+const BYTE_SHIFTS: Record<string, ByteShift> = { UNARY_LSB: 0, UNARY_MSB: 8, UNARY_BANK: 16 };
+/** A unary operator as written, for messages. */
+const UNARY_SYMBOLS: Record<string, string> = { UNARY_MINUS: "-", "!": "!", UNARY_LSB: "<", UNARY_MSB: ">", UNARY_BANK: "^" };
 
 /** A system function's (`.len(`) or a user function's (`screen(`), on the operator stack until its `)`. */
 const isCall = (token: Token | undefined): token is FunctionToken => token?.type === "FUNCTION" || token?.type === "USER_FUNCTION";
@@ -60,7 +65,18 @@ export class ExpressionEvaluator {
 	 * A one-character string is its character code: `lda #"A"`.
 	 */
 	public evaluateAsNumber(tokens: Token[], context: EvaluationContext) {
-		const result = charCode(this.evaluate(tokens, context));
+		return this.asNumber(notRelocatable(this.evaluate(tokens, context)));
+	}
+
+	/** An instruction's operand: a number, as `evaluateAsNumber`. A relocatable one needs a fixup, which isn't recorded yet. */
+	public evaluateOperand(tokens: Token[], context: EvaluationContext) {
+		const value = this.evaluate(tokens, context);
+		if (value instanceof RelocValue) throw noFixupError(value);
+		return this.asNumber(value);
+	}
+
+	private asNumber(value: SymbolValue) {
+		const result = charCode(value);
 
 		if (typeof result === "string") throw new Error(notACharMessage(result));
 		if (result !== null && typeof result !== "number") throw new Error("Expression did not evaluate to a number as expected.");
@@ -495,7 +511,7 @@ export class ExpressionEvaluator {
 
 				case "FUNCTION": {
 					const resolver = (name: string) => {
-						if (name === "*") return context.PC.value;
+						if (name === "*") return this.addressValue(context.PC.value);
 
 						// 1. Macro Args (evaluated without the macro's own args, see resolveValue)
 						if (context.macroArgs?.has(name)) {
@@ -544,7 +560,7 @@ export class ExpressionEvaluator {
 						break;
 					}
 					// Arrays too: the linker's SEGMENTS is meant to be both an array and a map (its skipped test, "Hybrid SEGMENTS Variable").
-					if (typeof obj !== "object" || obj === null) throw new Error("Invalid property access on a non-object value.");
+					if (typeof obj !== "object" || obj === null || obj instanceof RelocValue) throw new Error("Invalid property access on a non-object value.");
 
 					const property = token.value;
 					if (property && property in obj) {
@@ -579,6 +595,13 @@ export class ExpressionEvaluator {
 	private handleUnaryOperator(token: OperatorToken, operand: SymbolValue | undefined | null, stack: (SymbolValue | null)[]): boolean {
 		const right = charCode(operand);
 		if (typeof right === "string" && UNARY_OPERATORS.has(token.value)) throw AsmError.at(notACharMessage(right), token);
+		if (right instanceof RelocValue && UNARY_OPERATORS.has(token.value)) {
+			const what = `'${UNARY_SYMBOLS[token.value]}'`;
+			const shift = BYTE_SHIFTS[token.value];
+			if (shift === undefined) throw AsmError.at(relocatableArgumentMessage(`Operator ${what}`, right), token);
+			stack.push(relocatableByte(right, shift, what, token));
+			return true;
+		}
 		switch (token.value) {
 			case "UNARY_MINUS":
 				if (right === null) {
@@ -703,6 +726,10 @@ export class ExpressionEvaluator {
 			stack.push(null);
 			return;
 		}
+		if (left instanceof RelocValue || right instanceof RelocValue) {
+			stack.push(this.relocatableOperation(token, left, right));
+			return;
+		}
 		if (typeof left !== "number" || typeof right !== "number") throw AsmError.at(`Binary operator '${token.value}' requires two numbers.`, token);
 
 		// Numeric operations
@@ -770,6 +797,23 @@ export class ExpressionEvaluator {
 			default:
 				throw AsmError.at(`Unknown operator: ${token.value}`, token);
 		}
+	}
+
+	/**
+	 * `left` `token` `right`, one of them relocatable: `label + n`, `n + label` and `label - n` stay relocatable, the
+	 * difference of two labels of the same segment is a number. Anything else has no value until the segment is loaded.
+	 */
+	private relocatableOperation(token: OperatorToken, left: SymbolValue, right: SymbolValue): SymbolValue {
+		const isAddress = (value: SymbolValue): value is RelocValue => value instanceof RelocValue && value.byteShift === undefined;
+		if (token.value === "+" && isAddress(left) && typeof right === "number") return new RelocValue(left.segment, left.offset + right);
+		if (token.value === "+" && typeof left === "number" && isAddress(right)) return new RelocValue(right.segment, left + right.offset);
+		if (token.value === "-" && isAddress(left) && typeof right === "number") return new RelocValue(left.segment, left.offset - right);
+		if (token.value === "-" && isAddress(left) && isAddress(right)) {
+			if (left.segment === right.segment) return left.offset - right.offset;
+			throw AsmError.at(`${left} - ${right}: two relocatable segments are a distance apart only known when they're loaded.`, token);
+		}
+		const relocatable = (left instanceof RelocValue ? left : right) as RelocValue;
+		throw AsmError.at(relocatableArgumentMessage(`Operator '${token.value}'`, relocatable), token);
 	}
 
 	/**
@@ -843,6 +887,11 @@ export class ExpressionEvaluator {
 		return this.symbolTable.lookupSymbol(name);
 	}
 
+	/** An address in the current segment: relocatable in a relocatable segment. */
+	private addressValue(address: number): SymbolValue {
+		return this.host.addressValue?.(address) ?? address;
+	}
+
 	private resolveValue(token: Token, context: EvaluationContext): SymbolValue | null {
 		switch (token.type) {
 			case "NUMBER":
@@ -853,7 +902,7 @@ export class ExpressionEvaluator {
 
 			case "IDENTIFIER":
 			case "LABEL": {
-				if (token.value === "*") return context.PC.value;
+				if (token.value === "*") return this.addressValue(context.PC.value);
 
 				// PRIORITY 1: Check if it's a macro argument from the current stream context.
 				const macroArgTokens = context.macroArgs?.get(token.value);
@@ -902,7 +951,7 @@ export class ExpressionEvaluator {
 				if (addr === null && !context.allowForwardRef)
 					throw AsmError.at(`Not enough ${distance < 0 ? "preceding" : "succeeding"} anonymous labels to satisfy '${token.value}'.`, token);
 
-				return addr;
+				return addr === null ? null : this.addressValue(addr);
 			}
 
 			default:

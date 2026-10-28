@@ -259,21 +259,21 @@ For relocatable outputs (Apple IIgs OMF, 4.22; later o65 or another object forma
 **Plan, one PR per step,** 4.19 to 4.22:
 
 1. The declaration: `relocatable: true` / `reloc: true`, no `start`, `.org` an error. Done in #178.
-2. Relocatable values: a label in a relocatable segment is a segment and an offset, through expressions (below); an error where a plain number is needed; the listing and the `.sym` file show `CODE+$0012`. The `.sym` format is read by a debugger: agree on it first. Decide linking without a script (below).
-3. Fixups: recorded in pass 2, for data then operands, with the shift of `<`, `>`, `^`.
+2. Relocatable values: a label in a relocatable segment is a segment and an offset, through expressions (below); an error where a plain number is needed; the listing and the `.sym` file show `CODE+$0012`. Done in #180.
+3. Fixups: recorded in pass 2, for data then operands, with the shift of `<`, `>`, `^`. Until then, operands and data reject a relocatable value (#180): lifting that is this step, branches inside a segment included.
 4. The linker script reads `seg.relocs` and `seg.attrs` (4.21).
 5. The linker script reads the assembler's symbols (4.21).
 6. OMF output: the `omf.linker.asm` script library (4.22).
 
 Addressing modes go with 4.18, after step 2.
 
-- **Relocatable segments:** declared in #178: `relocatable: true` / `reloc: true`, no `start`, `.org` an error. Left: its labels are a segment and an offset, not a number; for now they're offsets from 0.
-- **Without a linker script:** a relocatable segment is linked at address 0, among the fixed ones. To decide: an error (it needs a script to place it), or written after the others.
-- **Through expressions:** `label + n`, `label - n` stay relocatable. `L2 - L1` in the same segment is a plain number. Anything else on a relocatable value (`label * 2`, `label & $FF`, a comparison, `.hex(label)`) is an error saying the value has no address until load time, never a number computed from the offset. `<`, `>` and `^` (4.20) are allowed: they give a byte with a shift.
+- **Relocatable segments:** declared in #178; their labels are a segment and an offset since #180.
+- **Without a linker script:** an error since #180.
+- **Through expressions:** done in #180, see `CHANGELOG.md`.
 - **Fixups:** each operand or data value (`.dw`, `.dl`, the long `.db` forms) built from a relocatable value records `{ offset, size, shift, segment, targetOffset }` in its segment, in pass 2. The linker script reads them as `seg.relocs` (4.21).
 - **Addressing modes (with 4.18):** a relocatable label is never direct page, whatever its offset: absolute in its own segment, long elsewhere unless `.w`. "The size comes from the value" only applies to plain numbers. `jmp` / `jsr` to another relocatable segment are errors suggesting `jml` / `jsl`: its bank isn't known.
-- **Where a plain number is needed** (`.org`, `.fill` counts, `.if`, `.repeat`, the CPU's widths, `.segment` bounds): a relocatable value is an error.
-- **Listing and symbol file:** a relocatable label is shown as its segment and offset (`CODE+$0012`).
+- **Where a plain number is needed:** an error since #180. Left: the CPU's widths, with 4.18.
+- **Listing and symbol file:** done in #180: `CODE+0012     main:`, `label reloc = CODE+$0012`.
 
 To decide before 4.18 is implemented, since it changes how the mode is chosen: whether a whole-program `relocatable` project setting is wanted.
 

@@ -1,5 +1,6 @@
 import type { EventEmitter } from "node:events";
 import type { ListingCase, ListingData } from "../assembler/options";
+import { RelocValue } from "../assembler/reloc-value.class";
 import type { SymbolValue } from "../assembler/symbol.class";
 import type { ScalarToken, Token, TokenType } from "../shared/lexer/lexer.class";
 import { getHex } from "../utils/hex.util";
@@ -36,7 +37,7 @@ type ListedLoop = {
 
 export interface ILister {
 	bytes(args: BytesArgs): void;
-	label(label: string, address: number): void;
+	label(label: string, address: number | RelocValue): void;
 	symbol(label: string, value: SymbolValue): void;
 	macro(name: string, params: Token[][]): void;
 	directive(pragma: ScalarToken | string, ...params: SymbolValue[]): void;
@@ -159,10 +160,20 @@ export class Lister implements ILister {
 		for (const line of lines) this.logger.log(line);
 	}
 
-	/** A label's line: a named one with its colon (`start:`), an anonymous or a local one as written (`:`, `:loop`). */
-	public label(label: string, address: number) {
+	/**
+	 * A label's line: a named one with its colon (`start:`), an anonymous or a local one as written (`:`, `:loop`).
+	 * In a relocatable segment, its segment and offset (`CODE+0012`) where the address is.
+	 */
+	public label(label: string, address: number | RelocValue) {
 		if (this.mutes) return;
-		this.logger.log(`${getHex(address)}${"".padStart(LABEL_START_COL)}${label.startsWith(":") ? label : `${label}:`}`);
+		const name = label.startsWith(":") ? label : `${label}:`;
+		if (address instanceof RelocValue) {
+			const where = `${address.segment}+${getHex(address.offset, 4)}`;
+			// At least one space before the name, which starts where a 4-digit address puts it.
+			this.logger.log(`${where.padEnd(4 + LABEL_START_COL - 1)} ${name}`);
+			return;
+		}
+		this.logger.log(`${getHex(address)}${"".padStart(LABEL_START_COL)}${name}`);
 	}
 
 	public symbol(label: string, value: SymbolValue) {
@@ -200,7 +211,7 @@ export class NullLister implements ILister {
 	public bytes(_args: BytesArgs) {}
 	public beginLoop(_text: string) {}
 	public endLoop() {}
-	public label(_label: string, _address: number) {}
+	public label(_label: string, _address: number | RelocValue) {}
 	public symbol(_label: string, _value: SymbolValue) {}
 	public macro(_name: string, _params: Token[][]) {}
 	public directive(_pragma: ScalarToken | string, ..._params: SymbolValue[]) {}
@@ -245,6 +256,7 @@ function cut(text: string, width: number): string {
 export function asString(value: SymbolValue, wannaJoinArray = false): string {
 	switch (typeof value) {
 		case "object":
+			if (value instanceof RelocValue) return String(value);
 			if (Array.isArray(value)) {
 				if (!wannaJoinArray) return `[${value.map((v) => asString(v)).join(",")}]`;
 				return `${value.map((v) => asString(v)).join("")}`;

@@ -204,11 +204,14 @@ export class Linker {
 	/**
 	 * Links the segments into a flat binary, each one at its address relative to the lowest one.
 	 * Gaps between segments are filled with 0; where segments overlap, the later one wins.
-	 * Empty segments are ignored. With a logger, each segment's place in the binary is logged.
+	 * Empty segments are ignored. With a logger, each segment's place in the binary is logged. A relocatable segment
+	 * has no address: only a linker script can place it.
 	 */
 	public rawBinaryLink(segments?: Segment[], logger?: Logger): number[] {
 		const segs = (segments ?? this.segments).filter((s) => s.size > 0);
 		if (segs.length === 0) return [];
+		const relocatable = segs.find((s) => s.relocatable);
+		if (relocatable) throw new Error(`Segment '${relocatable.name}' is relocatable: it needs a linker script to place it.`);
 
 		const minStart = Math.min(...segs.map((s) => s.start));
 		const maxEnd = Math.max(...segs.map((s) => s.start + s.size));

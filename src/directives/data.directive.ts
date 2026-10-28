@@ -1,3 +1,4 @@
+import { noFixupError, RelocValue } from "../assembler/reloc-value.class";
 import type { SymbolValue } from "../assembler/symbol.class";
 import type { Endianness } from "../cpu/cpuhandler.interface";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
@@ -40,6 +41,7 @@ export class DataDirective implements IDirective {
 				switch (typeof value) {
 					case "object": {
 						// null: not known yet, a number or a string later
+						if (value instanceof RelocValue) throw noFixupError(value);
 						if (value !== null) throw this.notData(directive, value, tokens);
 						totalSize += this.bytesPerElement;
 						break;
@@ -91,6 +93,7 @@ export class DataDirective implements IDirective {
 					}
 					case "object":
 						// An array defined after the directive was null in pass 1, counted as one element.
+						if (value instanceof RelocValue) throw noFixupError(value);
 						if (value !== null) throw this.notData(directive, value, tokens);
 						break;
 				}

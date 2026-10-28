@@ -212,12 +212,23 @@ Code is assembled into segments. The command line tool defines them in the proje
 
 A segment needs a `start`, and an `end` or a `size`: a `size` of `0` makes one that grows as code is written to it.
 
-A relocatable segment has no address until it's loaded: it's declared with `relocatable: true` (or `reloc: true`), and has no `start` nor `end`, which are errors. Its `size` is optional: without one, it grows. Its code starts at 0, and its labels are, for now, offsets from its start. `.org` and `* =` are errors in it.
+A relocatable segment has no address until it's loaded: it's declared with `relocatable: true` (or `reloc: true`), and has no `start` nor `end`, which are errors. Its `size` is optional: without one, it grows. `.org` and `* =` are errors in it. Only a [linker script](src/linker/linker_script.md) can place it: linking without one is an error (`Segment 'CODE' is relocatable: it needs a linker script to place it.`).
 
 ```as
 .segment CODE { relocatable: true }
 .segment TABLES { reloc: true, size: $100 }
 ```
+
+Its labels, `*` and `.PC` in it are relocatable values: a segment and an offset from its start, `CODE+$0012`, not a number. In expressions:
+
+- `label + n`, `n + label` and `label - n` are relocatable;
+- `end - start`, two labels of the same segment, is a number; of two segments, an error;
+- `<label`, `>label`, `^label`, and `.lobyte()`, `.hibyte()`, `.bankbyte()`, are one byte of it, still relocatable (`>CODE+$0012`);
+- anything else is an error, as its address is only known when it's loaded: `label * 2`, `label & $FF`, a comparison, `-label`, `.hex(label)`, and a relocatable value where a number is needed (`.if`, `.assert`, `.repeat`, `.fill`, `.align`, `.org`, a segment's bounds).
+
+A variable or a constant can hold one (`next = label + 2`), an array too, and `.iif()` can give one. Instruction operands and data (`jmp label`, `.dw label`, `lda #<label`) can't use one yet: they need fixups, still to come (TODO 4.19).
+
+The listing shows a relocatable label as its segment and offset (`CODE+0012     main:`), the [symbol file](README.md#symbol-file) with the type `reloc`.
 
 `.segment <name>` selects a segment: the following code is assembled into it, starting at its start address the first time, and where it left off when the segment is selected again.
 

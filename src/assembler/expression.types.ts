@@ -69,6 +69,8 @@ export interface EvaluatorHost {
 	resolveSysValue(nameToken: Token): SymbolValue | undefined;
 	/** A segment by name, for `.segment(name)`. */
 	findSegment(name: string): Segment | undefined;
+	/** An address in the current segment, `*` or an anonymous label: relocatable in a relocatable segment. Without it, the address. */
+	addressValue?(address: number): SymbolValue;
 	/** The anonymous label `distance` labels away from `address`. Without it, there are none. */
 	findNearestLabel?(address: number, distance: number): number | null;
 	/** Whether a macro is defined at this point, for `.def(name)` / `.undef(name)`. Without it, there are none. */
