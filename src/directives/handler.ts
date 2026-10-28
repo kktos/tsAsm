@@ -9,6 +9,7 @@ import type { Parser } from "../assembler/parser.class";
 import type { Assembler } from "../assembler/polyasm";
 import type { ScalarToken } from "../shared/lexer/lexer.class";
 import { AlignDirective } from "./align.directive";
+import { AssertDirective } from "./assert.directive";
 import { AssignDirective } from "./assign.directive";
 import { CpuDirective } from "./cpu.directive";
 import { DataDirective } from "./data.directive";
@@ -103,6 +104,8 @@ export class DirectiveHandler {
 		const warnLogHandler = new LogDirective(runtime, "WARN");
 		this.register("WARNING", warnLogHandler);
 		this.register("WARN", warnLogHandler);
+
+		this.register("ASSERT", new AssertDirective(runtime));
 
 		const fillHandler = new FillDirective(runtime);
 		this.register("FILL", fillHandler);
