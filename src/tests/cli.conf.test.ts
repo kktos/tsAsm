@@ -34,6 +34,31 @@ describe("CLI conf", () => {
 		expect(errors).toEqual([{ path: "input.cpu", message: expect.stringContaining("Invalid cpu") }]);
 	});
 
+	it("accepts a relocatable segment, with no start nor size", () => {
+		const { conf, errors } = readConfFrom(`
+input:
+  source: main.asm
+  segments:
+    - { name: CODE, reloc: true }
+    - { name: DATA, relocatable: true, size: 0x100 }
+`);
+		expect(errors).toBeUndefined();
+		expect(conf.input.segments).toEqual([
+			{ name: "CODE", reloc: true },
+			{ name: "DATA", relocatable: true, size: 0x100 },
+		]);
+	});
+
+	it("reports a relocatable flag that isn't a boolean", () => {
+		const { errors } = readConfFrom(`
+input:
+  source: main.asm
+  segments:
+    - { name: CODE, reloc: 1 }
+`);
+		expect(errors).toEqual([expect.objectContaining({ path: expect.stringContaining("reloc"), message: "Expected boolean" })]);
+	});
+
 	it("accepts output.listing.linker, a boolean", () => {
 		const { conf, errors } = readConfFrom(`${confWithCpu("6502")}output:\n  listing:\n    linker: true\n`);
 		expect(errors).toBeUndefined();

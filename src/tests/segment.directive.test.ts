@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Assembler } from "../assembler/polyasm";
+import type { SegmentDefinition } from "../assembler/polyasm.types";
 import { Cpu6502Handler } from "../cpu/cpu6502.class";
 import { MockFileHandler } from "./mockfilehandler.class";
 
@@ -112,7 +113,11 @@ describe("Segments", () => {
 
 	it.each([
 		// a property spread over lines: the error is at the property, not at the .SEGMENT
-		[".SEGMENT CODE {\n  start: $1000,\n  foo: 1\n}", "Unknown .SEGMENT property 'foo': expected start, end, size or pad.", { line: 3, column: 3 }],
+		[
+			".SEGMENT CODE {\n  start: $1000,\n  foo: 1\n}",
+			"Unknown .SEGMENT property 'foo': expected start, end, size, pad or relocatable.",
+			{ line: 3, column: 3 },
+		],
 		[".SEGMENT CODE { start: $1000, 5 }", "Expected 'key: value' in the .SEGMENT definition, got '5'.", { line: 1, column: 31 }],
 	])("should report a .SEGMENT definition error at its token: %j", (source, message, location) => {
 		const assembler = new Assembler(new Cpu6502Handler(), new MockFileHandler());
@@ -193,6 +198,139 @@ describe("Segments", () => {
 		it("should resolve labels across the switches", () => {
 			// a2 follows a1 in A ($1001); b1 is B's start ($1008)
 			expect(assemble("a1: .db 1\n.segment B\nb1: jmp a2\n.segment A\na2: jmp b1")).toEqual([0x01, 0x4c, 0x08, 0x10, 0, 0, 0, 0, 0x4c, 0x01, 0x10]);
+		});
+	});
+
+	describe("a fixed segment needs a start", () => {
+		it("should reject a definition with a size and no start", () => {
+			const assembler = new Assembler(new Cpu6502Handler(), new MockFileHandler());
+			expect(() => assembler.assemble(`.segment X { size: 4 }`)).toThrow(".SEGMENT definition requires 'start','end' or 'start','size' parameters.");
+		});
+
+		it("should reject a project segment with no start", () => {
+			expect(() => new Assembler(new Cpu6502Handler(), new MockFileHandler(), { segments: [{ name: "X", size: 4 }] })).toThrow(
+				"Segment 'X' needs a 'start' address, or 'relocatable: true'.",
+			);
+		});
+
+		it("should reject a project segment with no size", () => {
+			expect(() => new Assembler(new Cpu6502Handler(), new MockFileHandler(), { segments: [{ name: "X", start: 0x1000 }] })).toThrow(
+				"Segment 'X' needs a 'size'.",
+			);
+		});
+	});
+
+	describe("relocatable segments", () => {
+		const assemble = (source: string) => {
+			const assembler = new Assembler(new Cpu6502Handler(), new MockFileHandler());
+			return assembler.assemble(source);
+		};
+
+		it.each(["reloc", "relocatable", "RELOC"])("should define a relocatable segment with '%s: true', starting at 0", (key) => {
+			const segments = assemble(`
+				.segment CODE { ${key}: true, size: 4 }
+				.segment CODE
+				lda #1
+			`);
+			expect(segments[0]).toMatchObject({ name: "CODE", start: 0, size: 4, relocatable: true, resizable: false, data: [0xa9, 0x01, 0, 0] });
+		});
+
+		it("should grow without a size", () => {
+			const segments = assemble(`
+				.segment CODE { reloc: true }
+				.segment CODE
+				lda #1
+				rts
+			`);
+			expect(segments[0]).toMatchObject({ start: 0, size: 3, relocatable: true, resizable: true, data: [0xa9, 0x01, 0x60] });
+		});
+
+		it("should define a fixed segment with 'reloc: false'", () => {
+			const segments = assemble(`.segment CODE { start: $1000, size: 2, reloc: FALSE }`);
+			expect(segments[0]).toMatchObject({ start: 0x1000, size: 2, relocatable: false });
+		});
+
+		it("should mark a fixed segment as not relocatable", () => {
+			const segments = assemble(`.segment CODE { start: $1000, size: 2 }`);
+			expect(segments[0]?.relocatable).toBe(false);
+		});
+
+		it("should reject a start", () => {
+			expect(() => assemble(`.segment CODE { reloc: true, start: $1000, size: 4 }`)).toThrow(
+				expect.objectContaining({
+					message: "A relocatable segment has no 'start': its address is only known when it's loaded.",
+					location: expect.objectContaining({ line: 1, column: 30 }),
+				}),
+			);
+		});
+
+		it("should reject an end", () => {
+			expect(() => assemble(`.segment CODE { end: $10, reloc: true }`)).toThrow(
+				"A relocatable segment has no 'end': give its 'size', or none for a segment that grows.",
+			);
+		});
+
+		it.each(["1", "yes", "true + 1"])("should reject '%s' as its value", (value) => {
+			expect(() => assemble(`.segment CODE { reloc: ${value} }`)).toThrow(".SEGMENT property 'reloc' must be true or false.");
+		});
+
+		it("should reject reloc and relocatable together", () => {
+			expect(() => assemble(`.segment CODE { reloc: true, relocatable: true }`)).toThrow(
+				"The .SEGMENT definition gives 'relocatable' twice ('reloc' is the same property).",
+			);
+		});
+
+		it.each([".org $10", "* = $10"])("should reject '%s' in it", (org) => {
+			expect(() =>
+				assemble(`
+					.segment CODE { reloc: true }
+					.segment CODE
+					${org}
+				`),
+			).toThrow("Segment 'CODE' is relocatable: it has no address until it's loaded, so .ORG and * = can't set one.");
+		});
+
+		it("should accept .org in a fixed segment after a relocatable one", () => {
+			const segments = assemble(`
+				.segment R { reloc: true }
+				.segment F { start: $1000, size: 0 }
+				.segment R
+				nop
+				.segment F
+				.org $1002
+				nop
+			`);
+			expect(segments[1]).toMatchObject({ start: 0x1000, data: [0, 0, 0xea] });
+		});
+
+		describe("in the project file", () => {
+			const create = (segments: SegmentDefinition[]) => new Assembler(new Cpu6502Handler(), new MockFileHandler(), { segments });
+
+			it.each(["reloc", "relocatable"])("should define one with '%s: true', growing without a size", (key) => {
+				const segments = create([{ name: "CODE", [key]: true }]).assemble(`
+					lda #1
+				`);
+				expect(segments[0]).toMatchObject({ name: "CODE", start: 0, relocatable: true, resizable: true, data: [0xa9, 0x01] });
+			});
+
+			it("should keep a fixed size when given", () => {
+				const segments = create([{ name: "CODE", relocatable: true, size: 4 }]).assemble(`
+					lda #1
+				`);
+				expect(segments[0]).toMatchObject({ start: 0, size: 4, relocatable: true, resizable: false, data: [0xa9, 0x01, 0, 0] });
+			});
+
+			it("should reject a start", () => {
+				expect(() => create([{ name: "CODE", reloc: true, start: 0x1000 }])).toThrow(
+					"Segment 'CODE' is relocatable: it has no 'start', its address is only known when it's loaded.",
+				);
+			});
+
+			it("should reject reloc and relocatable together", () => {
+				expect(() => create([{ name: "CODE", reloc: true, relocatable: false }])).toThrow(
+					"Segment 'CODE' gives 'relocatable' twice ('reloc' is the same property).",
+				);
+			});
 		});
 	});
 });

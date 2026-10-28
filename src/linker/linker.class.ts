@@ -28,6 +28,8 @@ export interface Segment {
 	resizable?: boolean;
 	/** Value used to pad the segment to its declared size when linking. Default: 0. */
 	padValue?: number;
+	/** Whether this segment has no address until it's loaded: its `start` is 0. Default: false. */
+	relocatable?: boolean;
 	/** Whether this segment has been emitted to the final image. */
 	emitted?: boolean;
 }
@@ -78,7 +80,7 @@ export class Linker {
 		return this.segments.find((s) => s.name === name);
 	}
 
-	public addSegment(name: string, start: number, size: number, padValue = 0, resizable = false) {
+	public addSegment(name: string, start: number, size: number, padValue = 0, resizable = false, relocatable = false) {
 		const seg = this.findSegment(name);
 		if (seg) throw new Error(`Segment already defined : ${name}`);
 
@@ -90,6 +92,7 @@ export class Linker {
 			data: size > 0 ? Array.from({ length: size }, () => padValue) : [],
 			resizable,
 			padValue,
+			relocatable,
 			emitted: false,
 		};
 		this.segments.push(newSeg);
@@ -155,6 +158,12 @@ export class Linker {
 		this.PC.value = this.resumePC.get(seg) ?? seg.start;
 
 		return this.PC.value;
+	}
+
+	/** `.org` and `* =` set an address: a relocatable segment has none until it's loaded. */
+	public checkOrg() {
+		if (this.currentSegment?.relocatable)
+			throw new Error(`Segment '${this.currentSegment.name}' is relocatable: it has no address until it's loaded, so .ORG and * = can't set one.`);
 	}
 
 	/** At the start of each pass, every segment starts again from its start address. */
