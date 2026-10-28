@@ -432,6 +432,20 @@ A last parameter written `...name` collects the remaining arguments into an arra
     struct $CAFE, $1234, $5678
 ```
 
+`.exitmacro` (alias `.exitm`) ends the macro's expansion: what follows in its body isn't assembled, but its directives are checked as in a branch not taken. It also ends what it's in within the body, an `.if` branch or a loop, with all its iterations. In a macro called from another one, it ends only the inner one. Anywhere else, at the top level, in a `.proc` or in a file included from a macro, it's an error.
+
+```as
+.macro ldax value
+    .if value == 0
+        lda #0
+        tax
+        .exitmacro
+    .end
+    lda #<value
+    ldx #>value
+.end
+```
+
 ## Procedures
 
 `.proc <name>` … `.end` defines a routine whose labels stay local to it. Alias: `.procedure`.

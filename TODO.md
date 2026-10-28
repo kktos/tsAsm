@@ -54,6 +54,10 @@ Without a linker script, `output.listing: { enabled: true }` writes a `.lst` hol
 
 The listing shows `.for x of list` before the loop's lines, but nothing for a `.repeat`: its lines come without a word. With `listing.data "fold"`, a folded `.repeat` does show its header. Found with 4.9.
 
+### 1.61 A braced `.if` in a keyword block
+
+`.macro m` / `.if 1 { .db 0 }` / `.db 1` / `.end` → `Missing .END for the .MACRO block.`, same in a `.for` … `.end`. Reading the block, `getKeywordBlock` counts the `.if` as a block that needs its own `.end`, though its `{ }` already ended it. Found with `.exitmacro`.
+
 ## 2. Code review, items left
 
 ### 2.1 CPU back-ends
@@ -155,7 +159,7 @@ As ca65's `.org` in a relocatable segment, ACME's `!pseudopc` or 64tass's `.logi
 ### 4.7 Smaller ones
 
 - `.struct` / `.enum`, for field offsets;
-- leaving a macro early;
+- `.break`, to leave a loop early (`.exitmacro` leaves the whole macro);
 - `.for` over a numeric range;
 - a `\0` escape.
 

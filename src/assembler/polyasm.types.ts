@@ -49,7 +49,8 @@ export interface PushTokenStreamParams {
 	file?: string;
 	macroName?: string;
 	macroCall?: Token;
-	onEndOfStream?: () => void;
+	/** Called when the stream ends: `exited` when a `.exitmacro` left it before its end. */
+	onEndOfStream?: (exited?: boolean) => void;
 }
 
 export interface AssemblerOptions {

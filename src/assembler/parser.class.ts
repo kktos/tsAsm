@@ -9,6 +9,9 @@ import { nestingDelta } from "../utils/token.utils";
 /** Called right after a raw directive's name: returns the rest of the directive's tokens, raw text included. */
 type GetRawBlock = (parser: Parser, directive: Token) => Token[];
 
+/** The directives that end a branch of an `.if`: read by the `.if`, they aren't registered. */
+const IF_BRANCHES = ["ELSEIF", "ELSE"];
+
 /** An error at a token: its line and column are where it is reported. */
 export class ParserError extends AsmError {
 	public token: Token | null = null;
@@ -44,6 +47,28 @@ export class Parser {
 
 	public isKnownDirective(name: string): boolean {
 		return this.directives.has(name);
+	}
+
+	/**
+	 * Tokens not assembled (a branch not taken, what follows a `.exitmacro`) are still checked: a directive that starts
+	 * one of their statements must exist, or a typo there would only show when they are assembled. A directive starts
+	 * a statement at the start of a line, after a label or after a brace. `.elseif` and `.else` are read by their `.if`.
+	 */
+	public checkDirectives(tokens: Token[]) {
+		for (let i = 0; i < tokens.length - 1; i++) {
+			const dot = tokens[i] as Token;
+			const name = tokens[i + 1] as Token;
+			if (dot.type !== "DOT" || name.type !== "IDENTIFIER") continue;
+			if (tokens[i + 2]?.type === "OPERATOR" && tokens[i + 2]?.value === "(") continue;
+
+			const previous = tokens[i - 1];
+			const startsStatement = !previous || previous.line !== dot.line || ["LBRACE", "RBRACE", "LABEL", "LOCAL_LABEL"].includes(previous.type);
+			if (!startsStatement) continue;
+
+			const directiveName = name.value as string;
+			if (!this.isKnownDirective(directiveName) && !IF_BRANCHES.includes(directiveName))
+				throw AsmError.at(`Syntax error - Unexpected directive '${directiveName}'`, name);
+		}
 	}
 
 	/** Local and anonymous labels are lexed with `labelSyntax` from the statement being read on. */
@@ -363,6 +388,17 @@ export class Parser {
 			if (poppedStream?.file !== undefined) this.relexAhead();
 		}
 		return poppedStream;
+	}
+
+	/**
+	 * Ends the `count` streams on top, what they have left unread: their end is told they were exited, so a loop
+	 * doesn't run its next iteration.
+	 */
+	public exitTokenStreams(count: number) {
+		for (let i = 0; i < count; i++) {
+			const poppedStream = this.popTokenStream(false);
+			if (poppedStream) this.emitter.emit(`endOfStream:${poppedStream.id}`, true);
+		}
 	}
 
 	public getInstructionTokens(instructionToken?: Token): Token[] {
