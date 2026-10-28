@@ -6,10 +6,6 @@ What is done is in `CHANGELOG.md`. How we work (PR rules, design rules, commands
 
 ## 1. Bugs
 
-### 1.3 6502: no operand range checks (silent truncation)
-
-`lda $12345` → `ad 45 23`, `lda #$1FF` → `a9 ff`, `lda ($1234),y` → `b1 34`. The 65C02 rejects these with `checkAddress` / `assertFitsInBytes`. Bring the same checks to the 6502, or do 2.1 first and get them for free.
-
 ### 1.31 A `{ }` block in a block closed by `.end`
 
 `.macro m` / `.repeat 2 {` / `nop` / `}` / `.end` / `m` → `Missing .END for the .MACRO block.` Same with `.proc f {`, and in an `.if` / `.elseif` / `.else` branch: `.if 0` / `.repeat 2 {` / `nop` / `}` / `.end` → `Missing .END for the .IF block.` It works in a `.macro m { … }` body, and with the `.end` form of the inner block.
@@ -66,7 +62,6 @@ Without a linker script, `output.listing: { enabled: true }` writes a `.lst` hol
 
 ### 2.1 CPU back-ends
 
-- **6502 / 65C02 duplication** (architecture #3): about 600 lines nearly copied, with `selectAddressMode`, `rejectSuffix` and the suffix code now in both. Make `Cpu65C02Handler extends Cpu6502Handler`. This also fixes 1.3.
 - **6809:**
     - `LBRA` / `LBSR` emitted with a `$10` page-2 prefix (`10 16 …`, should be `16 …`), and their size differs between the passes;
     - negative indexed offsets, `#-1` and backward `,PCR` throw (unsigned `pushNumber`);
@@ -75,7 +70,7 @@ Without a linker script, `output.listing: { enabled: true }` writes a `.lst` hol
     - many instructions missing (`CMPX CLR INC DEC TST TFR EXG ANDCC ORCC LDS …`, indirect `[,X]`);
     - `PSHS` / `PULS` may map both `U` and `S` to `$40` (unverified).
 - **Unknown mnemonics silently become labels**, emitting nothing (architecture #8): 6809 `SWI RTI MUL SYNC DAA SEX`, 65C02 `STP WAI`, RV32I `ECALL EBREAK FENCE`. Decision needed: require `:` for labels, or warn when a "label" alone on its line looks like a mnemonic.
-- **65C02:** missing `BBR` / `BBS` / `RMB` / `SMB`.
+- **65C02:** missing `BBR` / `BBS` / `RMB` / `SMB`: a `ROCKWELL_BITOPS` opcode set in `P65C02` (#175), with a zero page + relative mode.
 - **RV32I:**
     - `SRAI` encoded as `SRLI` (funct7 ignored);
     - no range or alignment checks on the B/J/I/S/U immediates (an out-of-range branch becomes branch-to-self);
@@ -137,6 +132,10 @@ Rename (keeping aliases), or document.
 ### 3.9 A function defined in a macro body doesn't see the macro's parameters
 
 `.macro m base` / `.function f(x) = base + x` / `.db f(1)` / `.end` → `Undefined symbol 'BASE'.`: a function's expression is evaluated without macro parameters, as it's called from anywhere. To decide: substitute them at the definition, as a nested macro call's arguments are (`substituteArgument`), or keep it an error and say so. Found with 4.8.
+
+### 3.10 A parenthesised expression as a 6502 address
+
+An operand starting with `(` is an indirect mode on the 6502 and 65C02, or an error: `lda (2+3)*4`, `lda (2+3)*4,x` → `Invalid addressing mode for instruction LDA`, where `lda 0+(2+3)*4` works. Until #175 the 6502 read them as expressions, and `lda ($12),x` as `lda $12,x`. To decide: keep it (as now), or read an operand that isn't an indirect shape as an expression, `(e),x` and `(e),y` without a `(zp),Y` form staying errors (they look like a typo for an indirect mode).
 
 ## 4. Features (ideas)
 
@@ -246,6 +245,7 @@ D (direct page) and DBR (data bank) only get their values at run time: the assem
 - **Forward references:** absolute in pass 1, as on the 6502; an error in pass 2 if the value needs long, saying to write `.l` or define the symbol earlier.
 - **Hints, never encoding** (4.15 directives): `.dp <expr>` and `.dbank <expr>` say what D and DBR hold. They only let the assembler point out a shorter form: "`$2012` is in the direct page declared at …: `lda.b $12` is one byte shorter"; "`$7E2000` is in the data bank declared at …: `lda.w $7E2000` is one byte shorter". Without them, no hint.
 - **Hints are reported** at a level of their own, not as warnings. On by default: there are none without `.dp` / `.dbank`, so writing one is already asking for them. `.option hints off` turns them off.
+- **In `Mos65xxHandler`** (#175): a `P65816` profile, with the opcode sets `[NMOS, CMOS_ADDITIONS, W65816_ADDITIONS]` and no `ROCKWELL_BITOPS` (`$07` is `RMB0 zp` on the 65C02, `ORA [dp]` on the 65816), the suffix `L: 3`, a long width next to zero page and absolute in `selectAddressMode`, the bracket and stack-relative operands, the immediate size from M / X (4.16), and `MVN` / `MVP` and 16-bit relative in the encoder.
 
 To check first: 24-bit addresses through the PC, `.org`, segments, the listing and the linker. `.org` takes any number today and nothing checks the PC's range.
 

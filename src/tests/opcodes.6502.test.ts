@@ -281,6 +281,39 @@ describe("6502 Opcodes", () => {
 		expect(() => assembleAndGetCode(source)).toThrow(`Only a one-character string can be used as a number: "AB".`);
 	});
 
+	it("should take an accumulator instruction without operand as its A form", () => {
+		expect(assembleAndGetCode("ASL")).toEqual([0x0a]);
+	});
+
+	it.each(["LDA (2+3)*4", "LDA (2+3)*4,X", "LDA ($12),X"])("should take an operand starting with ( as an indirect mode: %s", (source) => {
+		expect(() => assembleAndGetCode(source)).toThrow("Invalid addressing mode for instruction LDA");
+	});
+
+	describe("operand ranges", () => {
+		it("should accept operands at the limits", () => {
+			const source = `
+				LDA #255
+				LDA #-128
+				LDA $FFFF
+				LDA ($FF),Y
+				LDA ($FF,X)
+				JMP ($FFFF)
+			`;
+			expect(assembleAndGetCode(source)).toEqual([0xa9, 0xff, 0xa9, 0x80, 0xad, 0xff, 0xff, 0xb1, 0xff, 0xa1, 0xff, 0x6c, 0xff, 0xff]);
+		});
+
+		it.each([
+			["LDA #$1FF", "Immediate value 511 doesn't fit in a byte (-128..255)."],
+			["LDA $12345", "Address 74565 is out of range ($0..$FFFF)."],
+			["LDA $12345,X", "Address 74565 is out of range ($0..$FFFF)."],
+			["JMP ($12345)", "Address 74565 is out of range ($0..$FFFF)."],
+			["LDA ($1234),Y", "Zero page address 4660 is out of range ($0..$FF)."],
+			["LDA ($1234,X)", "Zero page address 4660 is out of range ($0..$FF)."],
+		])("should throw on an out-of-range operand: %s", (source, message) => {
+			expect(() => assembleAndGetCode(source)).toThrow(message);
+		});
+	});
+
 	// In pass 1, an operand using a symbol defined later has no value yet: its size is the worst case.
 	describe("operands defined later", () => {
 		it.each([

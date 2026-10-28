@@ -2,7 +2,7 @@ import type { OperatorStackToken } from "../shared/lexer/lexer.class";
 
 /** * Defines the standard addressing modes recognizable by the assembler.
  * Changed to 'string' to allow CPU Handlers to define their own specific modes
- * (e.g., 'M6502_ABSOLUTE', 'M6809_INDIRECT').
+ * (e.g., the 65xx's 'ZEROPAGE_X', the 6809's 'M6809_INDIRECT').
  */
 export type AddressingMode = string;
 

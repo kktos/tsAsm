@@ -751,6 +751,12 @@ tsAsm assembles 65C02 code, with the usual syntax:
 | Indexed indirect / indirect indexed | `lda ($12,x)`, `lda ($12),y` |
 | Relative                            | `bne loop`                   |
 
+The 6502 reads the same syntax, without the 65C02's instructions and modes. On both:
+
+- `asl` alone is `asl a`.
+- An operand that doesn't fit is an error, never truncated: an immediate in a byte (`-128..255`), an address in 16 bits, the address in `($12,x)`, `($12),y` and `($12)` in the zero page.
+- An operand starting with `(` is an indirect mode: `lda (2+3)*4` is an error. Write `lda 0+(2+3)*4`.
+
 A `.b` or `.w` suffix forces the addressing mode of an address, whatever its value. Without one, an address that fits in the zero page uses it.
 
 - `.b` uses zero page, with the address's low byte: with `X = $1234`, `lda.b X` is `lda $34` (`a5 34`).
