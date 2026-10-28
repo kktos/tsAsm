@@ -1,6 +1,7 @@
 import type { OperatorStackToken } from "../shared/lexer/lexer.class";
 import { getHex } from "../utils/hex.util";
 import { assertFitsInBytes } from "../utils/number.utils";
+import { findTopLevelComma } from "../utils/token.utils";
 import type { CPUHandler, ModeInfo, ResolvedModeInfo } from "./cpuhandler.interface";
 import type { Mos65xxMode, OpcodeSet } from "./mos65xx.opcodes";
 
@@ -13,12 +14,18 @@ export interface Mos65xxProfile {
 	suffixes: Readonly<Record<string, 1 | 2>>;
 }
 
+/** BBR / BBS have two operands: the branch target is in resolvedAddress, the zero page address here. */
+export interface Mos65xxModeInfo extends ModeInfo {
+	zeroPage?: number | null;
+}
+
 /** An instruction's size follows from its mode. */
 const MODE_BYTES: Record<Mos65xxMode, number> = {
 	IMPLIED: 1,
 	ACCUMULATOR: 1,
 	IMMEDIATE: 2,
 	RELATIVE: 2,
+	ZEROPAGE_RELATIVE: 3,
 	ZEROPAGE: 2,
 	ZEROPAGE_X: 2,
 	ZEROPAGE_Y: 2,
@@ -40,7 +47,7 @@ const ADDRESS_MODES = {
 } as const satisfies Record<string, readonly [Mos65xxMode, Mos65xxMode]>;
 
 /** The 6502 family, one CPU per profile. */
-export class Mos65xxHandler implements CPUHandler {
+export class Mos65xxHandler implements CPUHandler<Mos65xxModeInfo> {
 	readonly cpuType: string;
 	readonly endianness = "little" as const;
 	readonly mnemonicSuffixes: readonly string[];
@@ -127,7 +134,11 @@ export class Mos65xxHandler implements CPUHandler {
 		throw new Error(`Invalid addressing mode for instruction ${mnemonic}`);
 	}
 
-	resolveAddressingMode(mnemonic: string, operandTokens: OperatorStackToken[], resolveValue: (tokens: OperatorStackToken[]) => number | null): ModeInfo {
+	resolveAddressingMode(
+		mnemonic: string,
+		operandTokens: OperatorStackToken[],
+		resolveValue: (tokens: OperatorStackToken[]) => number | null,
+	): Mos65xxModeInfo {
 		// Check if the base mnemonic is supported. If not, THROW to signal a potential label.
 		const parts = mnemonic.split(".");
 		const baseMnemonic = parts[0];
@@ -164,7 +175,17 @@ export class Mos65xxHandler implements CPUHandler {
 			return info;
 		}
 
-		// 2. Immediate Mode (e.g., LDA #$42)
+		// 2. Zero page and relative: `BBR0 $12,label`, split at the first comma outside parentheses
+		if (instructionModes.has("ZEROPAGE_RELATIVE")) {
+			rejectSuffix();
+			const comma = findTopLevelComma(operandTokens);
+			if (comma === -1) throw new Error(`${baseMnemonic} takes a zero page address and a branch target: '${baseMnemonic} $12,label'.`);
+			const zeroPage = resolveValue(operandTokens.slice(0, comma));
+			this.checkAddress(zeroPage, 0xff);
+			return { ...modeInfo("ZEROPAGE_RELATIVE", resolveValue(operandTokens.slice(comma + 1))), zeroPage };
+		}
+
+		// 3. Immediate Mode (e.g., LDA #$42)
 		if (tokenIs(0, "#")) {
 			rejectSuffix();
 			const resolvedAddress = resolveValue(operandTokens.slice(1));
@@ -172,7 +193,7 @@ export class Mos65xxHandler implements CPUHandler {
 			return modeInfo("IMMEDIATE", resolvedAddress);
 		}
 
-		// 3. Indirect, Indirect Indexed Modes: the instruction's modes tell (abs) from (zp), and (abs,X) from (zp,X)
+		// 4. Indirect, Indirect Indexed Modes: the instruction's modes tell (abs) from (zp), and (abs,X) from (zp,X)
 		if (tokenIs(0, "(")) {
 			rejectSuffix();
 
@@ -204,7 +225,7 @@ export class Mos65xxHandler implements CPUHandler {
 			throw new Error(`Invalid addressing mode for instruction ${mnemonic}`);
 		}
 
-		// 4. Absolute/Zero Page Indexed Modes (e.g., LDA $1234,X or LDA $40,Y)
+		// 5. Absolute/Zero Page Indexed Modes (e.g., LDA $1234,X or LDA $40,Y)
 		if ((tokenIs(numTokens - 1, "X") || tokenIs(numTokens - 1, "Y")) && tokenIs(numTokens - 2, ",")) {
 			const index = tokenIs(numTokens - 1, "X") ? ",X" : ",Y";
 			const resolvedAddress = resolveValue(operandTokens.slice(0, numTokens - 2));
@@ -212,30 +233,35 @@ export class Mos65xxHandler implements CPUHandler {
 			return modeInfo(this.selectAddressMode(mnemonic, instructionModes, index, resolvedAddress, forcedWidth), resolvedAddress);
 		}
 
-		// 5. Relative Mode (Branches)
+		// 6. Relative Mode (Branches)
 		if (instructionModes.has("RELATIVE")) {
 			rejectSuffix();
 			return modeInfo("RELATIVE", resolveValue(operandTokens));
 		}
 
-		// 6. Absolute/Zero Page Direct (e.g., LDA $1234 or LDA MyLabel)
+		// 7. Absolute/Zero Page Direct (e.g., LDA $1234 or LDA MyLabel)
 		const resolvedAddress = resolveValue(operandTokens);
 		this.checkAddress(resolvedAddress, 0xffff);
 		return modeInfo(this.selectAddressMode(mnemonic, instructionModes, "", resolvedAddress, forcedWidth), resolvedAddress);
 	}
 
+	/** A branch's offset from the next instruction, as a signed byte (two's complement). */
+	private branchOffset(modeInfo: ResolvedModeInfo<Mos65xxModeInfo>) {
+		const targetAddress = modeInfo.resolvedAddress;
+		const offset = targetAddress - (modeInfo.pc + modeInfo.bytes);
+		if (offset < -128 || offset > 127)
+			throw new Error(`Branch target out of range. Target: $${getHex(targetAddress)}, PC: $${getHex(modeInfo.pc)}, Offset: ${offset}`);
+		return offset & 0xff;
+	}
+
 	/** Pass 2: Encodes the instruction using the resolved mode and address. */
-	encodeInstruction(_tokens: OperatorStackToken[], modeInfo: ResolvedModeInfo): number[] {
-		if (modeInfo.mode === "RELATIVE") {
-			const targetAddress = modeInfo.resolvedAddress;
-			const offset = targetAddress - (modeInfo.pc + modeInfo.bytes);
+	encodeInstruction(_tokens: OperatorStackToken[], modeInfo: ResolvedModeInfo<Mos65xxModeInfo>): number[] {
+		if (modeInfo.mode === "RELATIVE") return [modeInfo.opcode, this.branchOffset(modeInfo)];
 
-			// Check if the offset is within the valid 8-bit signed range (-128 to 127)
-			if (offset < -128 || offset > 127)
-				throw new Error(`Branch target out of range. Target: $${getHex(targetAddress)}, PC: $${getHex(modeInfo.pc)}, Offset: ${offset}`);
-
-			// Convert to 8-bit two's complement if negative
-			return [modeInfo.opcode, offset & 0xff];
+		if (modeInfo.mode === "ZEROPAGE_RELATIVE") {
+			const { zeroPage } = modeInfo;
+			if (zeroPage == null) throw new Error("Internal error: the zero page address of a bit branch is still unknown in pass 2.");
+			return [modeInfo.opcode, zeroPage, this.branchOffset(modeInfo)];
 		}
 
 		const address = modeInfo.resolvedAddress;
