@@ -151,7 +151,7 @@ As ca65's `.org` in a relocatable segment, ACME's `!pseudopc` or 64tass's `.logi
 ### 4.7 Smaller ones
 
 - `.struct` / `.enum`, for field offsets;
-- `.break`, to leave a loop early (`.exitmacro` leaves the whole macro);
+- `.continue`, to go to a loop's next iteration (`.break` ends the loop), as 64tass's;
 - `.for` over a numeric range;
 - a `\0` escape.
 

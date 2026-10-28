@@ -17,6 +17,8 @@ export interface StreamState {
 	macroName?: string;
 	/** Set on the stream of a macro expansion: the token calling the macro. */
 	macroCall?: Token;
+	/** Set on the stream of a loop's iteration: where `.break` leaves. */
+	loop?: boolean;
 }
 
 export interface FileHandler {
@@ -49,7 +51,8 @@ export interface PushTokenStreamParams {
 	file?: string;
 	macroName?: string;
 	macroCall?: Token;
-	/** Called when the stream ends: `exited` when a `.exitmacro` left it before its end. */
+	loop?: boolean;
+	/** Called when the stream ends: `exited` when a `.exitmacro` or a `.break` left it before its end. */
 	onEndOfStream?: (exited?: boolean) => void;
 }
 

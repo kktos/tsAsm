@@ -334,7 +334,7 @@ export class Parser {
 	}
 
 	/** Pushes the current stream state and activates a new stream (macro/loop body). */
-	public pushTokenStream({ newTokens, macroArgs, cacheName: name, file, macroName, macroCall, onEndOfStream }: PushTokenStreamParams): number {
+	public pushTokenStream({ newTokens, macroArgs, cacheName: name, file, macroName, macroCall, loop, onEndOfStream }: PushTokenStreamParams): number {
 		const cacheName = file === undefined ? name : this.fileCacheName(file);
 
 		// Save current position and arguments
@@ -365,6 +365,7 @@ export class Parser {
 			file,
 			macroName,
 			macroCall,
+			loop,
 		});
 
 		// Activate new stream
@@ -391,11 +392,23 @@ export class Parser {
 	}
 
 	/**
-	 * Ends the `count` streams on top, what they have left unread: their end is told they were exited, so a loop
-	 * doesn't run its next iteration.
+	 * Leaves the streams from the one at `at` to the top, for a `directive` ending them early (`.exitmacro`, `.break`),
+	 * with nothing after it on its line. What they have left unread isn't assembled, but checked as a branch not taken.
+	 * Their end is told they were exited, so a loop doesn't run its next iteration.
 	 */
-	public exitTokenStreams(count: number) {
-		for (let i = 0; i < count; i++) {
+	public exitTokenStreams(directive: Token, at: number) {
+		const next = this.peek();
+		if (next && next.line === directive.line && !["EOF", "LBRACE", "RBRACE"].includes(next.type))
+			throw AsmError.at(`Unexpected '${next.value}' after .${directive.value}.`, next);
+
+		// The active stream is read from the parser's position, the others from where they were left.
+		const streams = this.tokenStreamStack;
+		for (let i = streams.length - 1; i >= at; i--) {
+			const stream = streams[i];
+			if (stream) this.checkDirectives(stream.tokens.slice(i === streams.length - 1 ? this.getPosition() : stream.index));
+		}
+
+		while (streams.length > at) {
 			const poppedStream = this.popTokenStream(false);
 			if (poppedStream) this.emitter.emit(`endOfStream:${poppedStream.id}`, true);
 		}

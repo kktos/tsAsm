@@ -377,6 +377,17 @@ A loop only generates lines, as if the block were written out once per iteration
 - A label written in a block run more than once is defined more than once, which is an error: branch with [anonymous labels](#labels) (`:` and `:-`) instead.
 - The iterators (`i`, `colour`, `idx`) are local to the loop, like macro parameters: after it, a symbol of the same name has its previous value again.
 
+`.break` ends the innermost loop it's in, with the iterations left: what follows in its block isn't assembled, but its directives are checked as in a branch not taken. It also ends what it's in within the loop, an `.if` branch for instance. What the iterations already run defined stays, and the iterators get their previous value back, as at the loop's normal end. Anywhere else, at the top level, in a `.proc` out of a loop, in a macro whose body has no loop around it (even if the macro is called from a loop) or in a file included from a loop, it's an error.
+
+```as
+.for c of chars
+    .if c == 0
+        .break
+    .end
+    .db c
+.end
+```
+
 ## Macros
 
 ```as

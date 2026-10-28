@@ -11,6 +11,7 @@ import type { ScalarToken } from "../shared/lexer/lexer.class";
 import { AlignDirective } from "./align.directive";
 import { AssertDirective } from "./assert.directive";
 import { AssignDirective } from "./assign.directive";
+import { BreakDirective } from "./break.directive";
 import { CpuDirective } from "./cpu.directive";
 import { DataDirective } from "./data.directive";
 import { DefineDirective } from "./define.directive";
@@ -107,6 +108,8 @@ export class DirectiveHandler {
 		this.register("WARN", warnLogHandler);
 
 		this.register("ASSERT", new AssertDirective(runtime));
+
+		this.register("BREAK", new BreakDirective(runtime));
 
 		const exitMacroHandler = new ExitMacroDirective(runtime);
 		this.register("EXITMACRO", exitMacroHandler);
