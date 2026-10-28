@@ -20,7 +20,7 @@ const STRING_OPERATORS = new Set(["+", "=", "==", "!="]);
 /** A one-character string used as a number is its character code: `"A"+1` is $42. Anything else is returned as is. */
 const charCode = <T>(value: T): T | number => (typeof value === "string" && value.length === 1 ? value.charCodeAt(0) : value);
 const notACharMessage = (value: string) => `Only a one-character string can be used as a number: ${JSON.stringify(value)}.`;
-const UNARY_OPERATORS = new Set(["UNARY_MINUS", "!", "UNARY_LSB", "UNARY_MSB"]);
+const UNARY_OPERATORS = new Set(["UNARY_MINUS", "!", "UNARY_LSB", "UNARY_MSB", "UNARY_BANK"]);
 
 /** A system function's (`.len(`) or a user function's (`screen(`), on the operator stack until its `)`. */
 const isCall = (token: Token | undefined): token is FunctionToken => token?.type === "FUNCTION" || token?.type === "USER_FUNCTION";
@@ -206,6 +206,15 @@ export class ExpressionEvaluator {
 			case ">":
 				if (isUnary) {
 					const unaryToken: OperatorToken = { ...token, value: "UNARY_MSB" };
+					operatorStack.push(unaryToken); // prefix operator, see UNARY_MINUS
+					break;
+				}
+				this.pushOperatorWithPrecedence(token, outputQueue, operatorStack);
+				break;
+
+			case "^":
+				if (isUnary) {
+					const unaryToken: OperatorToken = { ...token, value: "UNARY_BANK" };
 					operatorStack.push(unaryToken); // prefix operator, see UNARY_MINUS
 					break;
 				}
@@ -602,6 +611,14 @@ export class ExpressionEvaluator {
 				}
 				if (typeof right !== "number") throw AsmError.at("Unary operator '>' (MSB) requires a numeric operand.", token);
 				stack.push((right >> 8) & 0xff);
+				return true;
+			case "UNARY_BANK":
+				if (right === null) {
+					stack.push(right);
+					return true;
+				}
+				if (typeof right !== "number") throw AsmError.at("Unary operator '^' (bank) requires a numeric operand.", token);
+				stack.push((right >> 16) & 0xff);
 				return true;
 		}
 

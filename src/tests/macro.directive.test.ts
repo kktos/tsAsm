@@ -605,6 +605,19 @@ ${call}`),
 			).toEqual([0x34, 0x12]);
 		});
 
+		it.each([
+			["without ( )", "setp ^addr, <addr ^ $FF"],
+			["with ( )", "setp(^addr, <addr ^ $FF)"],
+		])("should read a leading '^' as the bank byte, a '^' between values as XOR %s", (_, call) => {
+			expect(
+				assemble(`.macro setp bank, x
+.db bank, x
+.end
+addr = $123456
+${call}`),
+			).toEqual([0x12, 0xa9]);
+		});
+
 		it("should reject a text argument not closed on its line", () => {
 			expect(() =>
 				assemble(`.macro m a

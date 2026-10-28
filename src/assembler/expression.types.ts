@@ -12,6 +12,7 @@ export const PRECEDENCE: Record<string, number> = {
 	"!": 9,
 	UNARY_MSB: 9,
 	UNARY_LSB: 9,
+	UNARY_BANK: 9,
 
 	// High precedence for array indexing
 	ARRAY_ACCESS: 9,

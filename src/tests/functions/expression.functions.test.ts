@@ -96,6 +96,24 @@ describe("ExpressionEvaluator", () => {
 			result = evaluator.evaluateAsNumber(tokens, { PC: { value: 0 } });
 			expect(result).toBe(0x00);
 		});
+
+		it.each([
+			[".BANKBYTE($123456)", 0x12],
+			[".BANKBYTE($12345678)", 0x34],
+			[".BANKBYTE($1234)", 0x00],
+			[".BKBYTE($123456)", 0x12],
+		])("should evaluate %s to get the bank byte of a 24-bit value", (expr, expected) => {
+			const { evaluator, tokenize } = setup();
+			expect(evaluator.evaluateAsNumber(tokenize(expr), { PC: { value: 0 } })).toBe(expected);
+		});
+
+		it.each([
+			['.BANKBYTE("A")', ".BANKBYTE() requires a number argument."],
+			['.BKBYTE("A")', ".BKBYTE() requires a number argument."],
+		])("should reject a string: %s", (expr, message) => {
+			const { evaluator, tokenize } = setup();
+			expect(() => evaluator.evaluate(tokenize(expr), { PC: { value: 0 } })).toThrow(message);
+		});
 	});
 
 	describe("Arguments defined later (pass 1)", () => {

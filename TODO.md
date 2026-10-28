@@ -246,7 +246,37 @@ D (direct page) and DBR (data bank) only get their values at run time: the assem
 - **Hints are reported** at a level of their own, not as warnings. On by default: there are none without `.dp` / `.dbank`, so writing one is already asking for them. `.option hints off` turns them off.
 - **In `Mos65xxHandler`** (#175): a `P65816` profile, with the opcode sets `[NMOS, CMOS_ADDITIONS, WDC_ADDITIONS, W65816_ADDITIONS]` (#176: `STP`, `WAI`) and no `ROCKWELL_BITOPS` (`$07` is `RMB0 zp` on the 65C02, `ORA [dp]` on the 65816), the suffix `L: 3`, a long width next to zero page and absolute in `selectAddressMode`, the bracket and stack-relative operands, the immediate size from M / X (4.16), and `MVN` / `MVP` and 16-bit relative in the encoder.
 
-To check first: 24-bit addresses through the PC, `.org`, segments, the listing and the linker. `.org` takes any number today and nothing checks the PC's range.
+To check first: 24-bit addresses through the PC, `.org`, segments, the listing and the linker. `.org` takes any number today and nothing checks the PC's range. Relocatable labels (4.19) change how the mode is chosen: decide them first.
+
+### 4.19 Relocatable values and fixups
+
+For relocatable outputs (Apple IIgs OMF, 4.22; later o65 or another object format). Today a label is a plain number and the linker only receives bytes: nothing says which bytes hold an address, so no relocation record can be written.
+
+- **Relocatable segments:** a segment declared relocatable (`.segment CODE { reloc: true }`, name to decide) has no load address. Its labels are a segment and an offset, not a number.
+- **Through expressions:** `label + n`, `label - n` stay relocatable. `L2 - L1` in the same segment is a plain number. Anything else on a relocatable value (`label * 2`, `label & $FF`, a comparison, `.hex(label)`) is an error saying the value has no address until load time, never a number computed from the offset. `<`, `>` and `^` (4.20) are allowed: they give a byte with a shift.
+- **Fixups:** each operand or data value (`.dw`, `.dl`, the long `.db` forms) built from a relocatable value records `{ offset, size, shift, segment, targetOffset }` in its segment, in pass 2. The linker script reads them as `seg.relocs` (4.21).
+- **Addressing modes (with 4.18):** a relocatable label is never direct page, whatever its offset: absolute in its own segment, long elsewhere unless `.w`. "The size comes from the value" only applies to plain numbers. `jmp` / `jsr` to another relocatable segment are errors suggesting `jml` / `jsl`: its bank isn't known.
+- **Where a plain number is needed** (`.org`, `.fill` counts, `.if`, `.repeat`, the CPU's widths, `.segment` bounds): a relocatable value is an error.
+- **Listing and symbol file:** a relocatable label is shown as its segment and offset (`CODE+$0012`).
+
+To decide before 4.18 is implemented, since it changes how the mode is chosen: the declaration's syntax, whether `.org` is allowed in a relocatable segment (4.5), and whether a whole-program `relocatable` project setting is wanted.
+
+### 4.21 Segment attributes and symbols in the linker script
+
+A linker script only sees `name`, `start`, `size`, `data`, `padValue`, `resizable` and `emitted`, and starts with an empty symbol table.
+
+- **Attributes:** `.segment` rejects any key but `start`, `end`, `size` and `pad`. Let it take others, kept as they are and read by the script as `seg.attrs.kind`, `seg.attrs.loadname`… (OMF's KIND, LOADNAME, BANKSIZE, ALIGN), the assembler never reading them. To decide: free keys, or declared by the output format; how the project file's `input.segments` gives them.
+- **Relocations:** `seg.relocs`, the fixups of 4.19.
+- **Symbols:** the assembler's global symbols readable from the script, for an entry point, a version number, a size computed in the source. To decide: all of them, or only the ones exported (`.export`?), and under what name (`.symbol("main")`, `asm::main`).
+
+### 4.22 Apple IIgs: OMF output (S16)
+
+After 4.19–4.21. The linker script language already writes an OMF segment's structure: little-endian header fields, the LCONST record (`$F2`, the length, `.WRITE SEGMENT`), the END record, and BYTECNT patched with `.WRITE LONG .PC - hdr AT hdr`. What's missing is the relocation dictionary.
+
+- **An includable script library,** `omf.linker.asm`, not a built-in: macros writing a segment's header, its LCONST, its RELOC (`$E2`) / INTERSEG (`$E3`) records from `seg.relocs`, and END. The linker stays generic, as conan's ProDOS image is a script.
+- **Later:** the compact cRELOC (`$F5`) / cINTERSEG (`$F6`) and SUPER (`$F7`) records; DS (`$F1`) for a segment's trailing zeros; ExpressLoad.
+- **File type:** S16 is ProDOS type `$B3`, a directory entry's field, not in the file: a disk image written by the script (as conan's), or an external tool (Cadius, AppleCommander).
+- **To check:** a 65816 segment can't cross a bank (`BANKSIZE`, 4.18's PC range); a test assembling a small S16 and checking it against a known-good file (Merlin 16+ or ORCA/M output) and in an emulator.
 
 ## 5. Documentation (REFERENCE.md)
 
