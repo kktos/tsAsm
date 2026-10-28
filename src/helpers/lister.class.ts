@@ -43,6 +43,8 @@ export interface ILister {
 	directiveWithBytes(args: DirectiveBytesArgs): void;
 	beginLoop(text: string): void;
 	endLoop(): void;
+	/** Lists nothing until the returned function is called: a function's body runs unlisted. Mutes nest. */
+	mute(): () => void;
 }
 
 export class Lister implements ILister {
@@ -50,6 +52,8 @@ export class Lister implements ILister {
 	private listingData: ListingData = "expand";
 	/** The loops being listed, innermost last. */
 	private loops: ListedLoop[] = [];
+	/** How many `mute()`s are on: nothing is listed while there is one. */
+	private mutes = 0;
 
 	constructor(
 		private logger: Logger,
@@ -89,6 +93,7 @@ export class Lister implements ILister {
 
 	/** Bytes, 8 per line, with their text on the first line; data with `listing.data` "fold", the first line only. */
 	public bytes({ addr, bytes, text = "", hasText = false, isCode = false }: BytesArgs) {
+		if (this.mutes) return;
 		const isFolded = this.listingData === "fold" && !isCode;
 		const lines = isFolded
 			? [this.bytesLine(addr, bytes.slice(0, BYTES_PER_LINE), hasText, bytes.length > BYTES_PER_LINE, cut(text, FOLDED_TEXT_WIDTH))]
@@ -120,6 +125,7 @@ export class Lister implements ILister {
 
 	/** A loop starts. With `listing.data` "fold", its lines are held until `endLoop()`; else its header is listed now. */
 	public beginLoop(text: string) {
+		if (this.mutes) return;
 		const isFolded = this.listingData === "fold";
 		this.loops.push({ text, isFolded, bytes: [], hasText: true, dataLines: 0, isBlock: true });
 		if (isFolded) this.logger.hold();
@@ -131,7 +137,7 @@ export class Lister implements ILister {
 	 * its header as the text; any other is listed line by line, as it ran.
 	 */
 	public endLoop() {
-		this.closeLoop(true);
+		if (!this.mutes) this.closeLoop(true);
 	}
 
 	/** Lists the lines of the loops that didn't end (an error stopped the assembly), as they ran. */
@@ -155,26 +161,38 @@ export class Lister implements ILister {
 
 	/** A label's line: a named one with its colon (`start:`), an anonymous or a local one as written (`:`, `:loop`). */
 	public label(label: string, address: number) {
+		if (this.mutes) return;
 		this.logger.log(`${getHex(address)}${"".padStart(LABEL_START_COL)}${label.startsWith(":") ? label : `${label}:`}`);
 	}
 
 	public symbol(label: string, value: SymbolValue) {
+		if (this.mutes) return;
 		this.logger.log(`${"".padStart(LABEL_START_COL)}${label.padEnd(LABEL_PAD)} = ${asString(value)}`);
 	}
 
 	public macro(name: string, params: Token[][]) {
+		if (this.mutes) return;
 		this.logger.log(`${"".padStart(LABEL_START_COL)}${name}(${params.map((p) => p.map((t) => t.value).join("")).join(", ")})`);
 	}
 
 	public directive(pragma: ScalarToken | string, ...params: SymbolValue[]) {
+		if (this.mutes) return;
 		this.logger.log(
 			`${"".padStart(TEXT_PAD)}.${(typeof pragma === "string" ? pragma : pragma.value).toLowerCase()} ${params.map((p) => asString(p, true)).join(", ")}`,
 		);
 	}
 
 	public directiveWithBytes(args: DirectiveBytesArgs) {
+		if (this.mutes) return;
 		const text = `.${(typeof args.pragma === "string" ? args.pragma : args.pragma.value).toLowerCase()} ${args.params.map((p) => asString(p, true)).join(", ")}`;
 		this.bytes({ ...args, text });
+	}
+
+	public mute(): () => void {
+		this.mutes++;
+		return () => {
+			this.mutes--;
+		};
 	}
 }
 
@@ -187,6 +205,9 @@ export class NullLister implements ILister {
 	public macro(_name: string, _params: Token[][]) {}
 	public directive(_pragma: ScalarToken | string, ..._params: SymbolValue[]) {}
 	public directiveWithBytes(_args: DirectiveBytesArgs) {}
+	public mute(): () => void {
+		return () => {};
+	}
 }
 
 /** A directive's operands as text: numbers in hex, names as written, spaced like `.repeat 4 AS i FROM 0`, `.for x of [$01, ($02 + $03) * 4]`. */

@@ -7,7 +7,7 @@
 import type { PASymbolTable, SymbolValue } from "../assembler/symbol.class";
 import { FunctionDispatcher } from "../shared/functions/function.dispatcher";
 import type { FunctionToken, OperatorStackToken, OperatorToken, ScalarToken, Token } from "../shared/lexer/lexer.class";
-import { AsmError } from "../utils/error.utils";
+import { AsmError, type AsmNote } from "../utils/error.utils";
 import { nestingDelta } from "../utils/token.utils";
 import { type EvaluationContext, type EvaluatorHost, PRECEDENCE } from "./expression.types";
 import { DEFAULT_OPTIONS } from "./options";
@@ -791,12 +791,14 @@ export class ExpressionEvaluator {
 				parameters.forEach((parameter, index) => {
 					this.symbolTable.defineVariable(parameter.value, args[index] as SymbolValue, { filename: file, line, column });
 				});
-				return this.evaluate([...fn.body], { ...context, macroArgs: undefined });
+				if (!fn.isBlock) return this.evaluate([...fn.body], { ...context, macroArgs: undefined });
+				if (!this.host.runFunction) throw AsmError.at(`Function '${fn.name}' can't be called here: its body has statements.`, token);
+				return this.host.runFunction(fn);
 			});
 		} catch (e) {
 			const error = e instanceof AsmError ? e : new AsmError(e instanceof Error ? e.message : String(e));
 			if (!this.notedErrors.has(error)) {
-				error.notes.push({ message: `in function ${fn.name}, defined here`, ...fn.site });
+				error.notes.push(this.functionNote(fn, error));
 				this.notedErrors.add(error);
 			}
 			error.location = { line: token.line, column: token.column };
@@ -805,6 +807,16 @@ export class ExpressionEvaluator {
 			if (depth === 0) this.runningCalls.delete(fn);
 			else this.runningCalls.set(fn, depth);
 		}
+	}
+
+	/**
+	 * The note of an error in the body of `fn`: where it is in the body, else where `fn` is defined. A body line is
+	 * numbered in its file, unless the function is defined in a macro body.
+	 */
+	private functionNote(fn: UserFunction, error: AsmError): AsmNote {
+		const { line, column } = error.location;
+		if (typeof line !== "number") return { message: `in function ${fn.name}, defined here`, ...fn.site };
+		return { message: `in function ${fn.name}`, location: { file: fn.site.location.file, line, column }, includeStack: fn.site.includeStack };
 	}
 
 	/** A symbol's value: an error for a variable used before it's assigned, when it's assigned more than once. */

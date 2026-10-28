@@ -68,9 +68,12 @@ export class AssignDirective implements IDirective {
 			return;
 		}
 
-		// In a macro call or a function, pass 2 gets back what pass 1 defined there. A variable pass 1 didn't define
-		// (its block wasn't run) is defined now.
-		if (this.assembler.symbolTable.isVolatileScope() && this.assembler.symbolTable.findSymbol(label) === undefined)
+		// In a macro call, pass 2 gets back what pass 1 defined there. A variable pass 1 didn't define (its block wasn't
+		// run) is defined now. A function call starts empty in each pass, and its variables are its own: one of the same
+		// name outside is hidden, not assigned.
+		const symbolTable = this.assembler.symbolTable;
+		const isNew = symbolTable.isFunctionScope() ? !symbolTable.hasSymbolInScope(label) : symbolTable.findSymbol(label) === undefined;
+		if (symbolTable.isVolatileScope() && isNew)
 			this.assembler.symbolTable.defineVariable(label, value, {
 				filename: context.filename,
 				line: labelToken.line,

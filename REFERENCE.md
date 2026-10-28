@@ -460,7 +460,7 @@ A last parameter written `...name` collects the remaining arguments into an arra
 
 ## Functions
 
-`.function <name>(<parameters>) = <expression>` (alias `.fn`) defines a function, which an expression calls as `name(…)` and which gives the value of its expression:
+`.function <name>(<parameters>) = <expression>` (alias `.fn`) defines a function, which an expression calls as `name(…)` and which gives the value of its expression. Without the `=`, its body is a block of statements, in `{ }` or up to `.end`, and `.return <expression>` gives the value:
 
 ```as
 .function screen(col, row) = $0400 + row*40 + col
@@ -470,18 +470,63 @@ A last parameter written `...name` collects the remaining arguments into an arra
 .repeat 4 AS i FROM 0
     .db sq(i)           ; 00 01 04 09
 .end
+
+.function reverse(b) {
+    r = 0
+    .repeat 8 AS i {
+        r = (r << 1) | ((b >> (i - 1)) & 1)
+    }
+    .return r
+}
+
+    .db reverse($0F)    ; F0
 ```
 
 - **A call** is the name with its `(` glued to it, as a macro's `m(1, 2)`: `screen (10, 5)` is the name followed by an expression, and a function's name without a call is an error (`'screen' is a function: call it, screen(…).`). From another namespace: `gfx::line(2)`. The system functions keep their dot, `.len()`, so they never have the same name.
 - **The arguments are values**, evaluated at the call, unlike a macro's: with `.function double(x) = x * 2`, `double(1 + 2)` is 6. There must be as many as there are parameters; `f()` is a call without arguments.
-- **A scope per call:** the parameters are local to it, and hide a symbol of the same name. The expression reads the symbols of where the function is defined, with the values they have at the call, and `*` is the address of the call. It doesn't see the parameters and variables of the macro it's called from.
+- **A scope per call:** the parameters are local to it, and hide a symbol of the same name. The expression reads the symbols of where the function is defined, with the values they have at the call, and `*` is the address of the call. It doesn't see the parameters and variables of the macro it's called from, nor those of the macro it's defined in.
 - **Defined before its call:** a call above the `.function` line is `Unknown function 'f'.`, in both passes, as `.def()` says.
 - **A name like a symbol's:** a function and a symbol (a label, a constant, a variable) can't have the same name (`Symbol 'F' redefined.`), and a function is defined once. In a loop, which [generates lines](#loops), a `.function` is defined again at each iteration: an error. Functions aren't in the symbol file.
-- **An error in the expression** is located at the call, with a note at the function: `note: in function f, defined here`.
+- **An error in the expression or the body** is located at the call, with a note at its place in the function: `note: in function f`.
 
-A function can call another, and itself through another or directly. How deep it can call itself is the `.option function.recursion` (default `64`, from `0`, never, to `256`), a [global option](#global-and-local-options): past it, `Function 'f' calls itself more than 64 deep (.option function.recursion).` Calls of other functions and calls one after the other don't count: `inc(inc(x))` is no recursion.
+### A function's body
 
-Without parentheses, `.function clearScreen` is an error that says to write [`.proc`](#procedures), what it used to be. A body in braces, with statements and a `.return`, isn't there yet: `A function's body is one expression for now: …`.
+A body only computes its value. It can have:
+
+- assignments, `=` and `.let`: the variables are the call's, even when a symbol outside has the same name. That one is read until the body assigns the name, and doesn't change: with `x = 1`, a body's `x = x + 1` gives 2 at each call, and `x` stays 1. `.let` doesn't reach out of the call either, as it does out of a macro's: `.let "ns::x"` is an error;
+- `.if` / `.elseif` / `.else`, `.repeat`, `.for` and `.break`;
+- `.return <expression>`, which ends the call with that value. What follows isn't run. A body that ends without one is an error (`Function 'f' ends without .return.`), as is a `.return` out of a function;
+- `.error`, `.warning`, `.log` and `.assert`.
+
+Anything else is an error when a call runs it: an instruction, a label, a macro call, data, `.org`, `*`, `.segment`, `.equ`, `.option`, `.include`, a `.function`… (`Instruction 'lda' can't be in a function: a function only computes a value.`). The body runs with the [local options](#global-and-local-options) of where the function is defined, as a macro body does, and isn't listed: the listing shows the line calling it.
+
+```as
+.function first(list, limit) {
+    .for item of list {
+        .if item > limit {
+            .return item
+        }
+    }
+    .error "nothing above ", limit
+}
+```
+
+### Recursion
+
+A function can call another, and itself through another or directly: a block's `.if` ends the recursion.
+
+```as
+.function fact(n) {
+    .if n <= 1 {
+        .return 1
+    }
+    .return n * fact(n - 1)
+}
+```
+
+How deep a function can call itself is the `.option function.recursion` (default `64`, from `0`, never, to `256`), a [global option](#global-and-local-options): past it, `Function 'f' calls itself more than 64 deep (.option function.recursion).` Calls of other functions and calls one after the other don't count: `inc(inc(x))` is no recursion.
+
+Without parentheses, `.function clearScreen` is an error that says to write [`.proc`](#procedures), what it used to be.
 
 ## Procedures
 

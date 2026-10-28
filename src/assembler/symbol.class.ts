@@ -8,6 +8,8 @@ import { UserFunction } from "./user-function.class";
 const INTERNAL_GLOBAL = "%%GLOBAL";
 /** A `.proc`'s scope is this prefix and the proc's full path: `@@proc_global::CLEAR`. */
 const PROC_SCOPE_PREFIX = "@@proc_";
+/** A function call's scope is this prefix and the call's number: `@@function_3__`. */
+const FUNCTION_SCOPE_PREFIX = "@@function_";
 
 export type SymbolValue = number | string | object | Token[] | SymbolValue[];
 
@@ -141,7 +143,7 @@ export class PASymbolTable {
 	 */
 	withFunctionScope<T>(scopes: readonly string[], label: string, run: () => T): T {
 		const callerScopes = this.scopeStack;
-		const name = `@@function_${this.functionCalls++}__`;
+		const name = `${FUNCTION_SCOPE_PREFIX}${this.functionCalls++}__`;
 		this.scopeStack = [...scopes, name];
 		this.symbols.set(name, new Map());
 		this.scopeLabels.set(name, label);
@@ -250,6 +252,12 @@ export class PASymbolTable {
 	isVolatileScope() {
 		const current = this.scopeStack[this.scopeStack.length - 1] as string;
 		return current.startsWith("@@");
+	}
+
+	/** Whether the current scope is a function call's: what its body assigns stays in it, hiding an outer symbol. */
+	isFunctionScope() {
+		const current = this.scopeStack[this.scopeStack.length - 1] as string;
+		return current.startsWith(FUNCTION_SCOPE_PREFIX);
 	}
 
 	findSymbol(symbolName: string) {

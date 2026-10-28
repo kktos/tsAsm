@@ -36,6 +36,7 @@ import { OnceDirective } from "./once.directive";
 import { OptionDirective } from "./option.directive";
 import { OrgDirective } from "./org.directive";
 import { ProcDirective } from "./proc.directive";
+import { ReturnDirective } from "./return.directive";
 import { SegmentDirective } from "./segment.directive";
 import { StringDirective } from "./string.directive";
 
@@ -110,6 +111,7 @@ export class DirectiveHandler {
 		this.register("ASSERT", new AssertDirective(runtime));
 
 		this.register("BREAK", new BreakDirective(runtime));
+		this.register("RETURN", new ReturnDirective(runtime));
 
 		const exitMacroHandler = new ExitMacroDirective(runtime);
 		this.register("EXITMACRO", exitMacroHandler);

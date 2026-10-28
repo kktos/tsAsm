@@ -18,10 +18,31 @@ import type { ValueHolder } from "./expression.types";
 import { NamelessLabels } from "./namelesslabels.class";
 import { LOCAL_OPTIONS, type LocalOptions, type OptionName, type OptionValue, withDefaultOptions } from "./options";
 import { Parser, ParserError } from "./parser.class";
-import type { AssemblerOptions, DataProcessor, FileHandler, SegmentDefinition, StreamState } from "./polyasm.types";
-import { PASymbolTable } from "./symbol.class";
+import type { AssemblerOptions, DataProcessor, FileHandler, FunctionCall, SegmentDefinition, StreamState } from "./polyasm.types";
+import { PASymbolTable, type SymbolValue } from "./symbol.class";
+import type { UserFunction } from "./user-function.class";
 
 const DEFAULT_PC = 0x1000;
+
+/** The directives a function's body can run: it only computes a value, so none that emits, defines a label or a scope, or changes a setting. */
+const FUNCTION_DIRECTIVES = new Set([
+	"IF",
+	"END",
+	"REPEAT",
+	"FOR",
+	"BREAK",
+	"RETURN",
+	"LET",
+	"LOG",
+	"ECHO",
+	"OUT",
+	"ERROR",
+	"ERR",
+	"WARNING",
+	"WARN",
+	"ASSERT",
+]);
+const FUNCTION_ONLY = "a function only computes a value";
 
 export class Assembler {
 	public logger: Logger;
@@ -110,6 +131,7 @@ export class Assembler {
 			findNearestLabel: (address, distance) => this.namelessLabels.findNearest(address, distance),
 			isMacroDefined: (name) => this.macroHandler.isDefined(name),
 			functionRecursion: () => this.currentOptions["function.recursion"] as number,
+			runFunction: (fn) => this.runFunction(fn),
 		});
 
 		this.parser = new Parser(this.emitter);
@@ -639,6 +661,119 @@ export class Assembler {
 				}
 			}
 		}
+	}
+
+	/**
+	 * Runs the body of a block function, in the call's scope the evaluator set up, up to its `.return`: the value it gives.
+	 * The body is a stream of its own, run here to its end while the statement calling the function waits, with the local
+	 * options of where it's defined, unlisted. An instruction, a label, a macro call or a directive that isn't about
+	 * computing a value is an error.
+	 */
+	private runFunction(fn: UserFunction): SymbolValue {
+		const parser = this.parser;
+		const depth = parser.tokenStreamStack.length;
+		const caller = { statement: this.statementToken, label: this.lastGlobalLabel, labelLine: this.lastGlobalLabelLine };
+		const functionCall: FunctionCall = { name: fn.name };
+		const restoreOptions = this.useLocalOptions(fn.options);
+		const unmute = this.lister.mute();
+		this.lastGlobalLabel = null;
+		parser.pushTokenStream({ newTokens: [...fn.body], functionCall });
+
+		try {
+			while (parser.tokenStreamStack.length > depth) {
+				const token = parser.next();
+				if (!token || token.type === "EOF") {
+					const poppedStream = parser.popTokenStream(false);
+					if (poppedStream) this.emitter.emit(`endOfStream:${poppedStream.id}`);
+					continue;
+				}
+				this.statementToken = token;
+				try {
+					this.runFunctionStatement(token);
+				} catch (e) {
+					// Located in the body: the assembler would locate it at the statement calling the function.
+					const error = e instanceof AsmError ? e : new AsmError(e instanceof Error ? e.message : String(e));
+					if (error.location.line === undefined) error.location = { line: token.line, column: token.column };
+					throw error;
+				}
+			}
+		} finally {
+			// An error leaves the body's streams: the caller's is back.
+			while (parser.tokenStreamStack.length > depth) parser.popTokenStream(false);
+			unmute();
+			restoreOptions();
+			this.statementToken = caller.statement;
+			this.lastGlobalLabel = caller.label;
+			this.lastGlobalLabelLine = caller.labelLine;
+		}
+
+		if (!functionCall.result) throw new Error(`Function '${fn.name}' ends without .return.`);
+		return functionCall.result.value;
+	}
+
+	/** One statement of a function's body: an assignment or one of `FUNCTION_DIRECTIVES`. */
+	private runFunctionStatement(token: Token) {
+		switch (token.type) {
+			case "DOT": {
+				const directive = this.parser.next() as ScalarToken;
+				if (directive?.type !== "IDENTIFIER") throw new ParserError(`Expected a directive name after '.', got '${directive.value}'.`, directive);
+				if (!this.parser.isKnownDirective(directive.value))
+					throw new ParserError(`Syntax error - Unexpected directive '${directive.value}'`, directive);
+				if (!FUNCTION_DIRECTIVES.has(directive.value)) throw AsmError.at(`.${directive.value} can't be in a function: ${FUNCTION_ONLY}.`, directive);
+				this.runFunctionDirective(directive);
+				return;
+			}
+
+			case "IDENTIFIER": {
+				const name = token.raw ?? token.value;
+				if (this.parser.isOperator("=")) {
+					this.lastGlobalLabel = token.value;
+					this.lastGlobalLabelLine = token.line;
+					return;
+				}
+				if (this.parser.isDirective("EQU")) throw AsmError.at(`.EQU can't be in a function: ${FUNCTION_ONLY}.`, token);
+				if (this.macroHandler.isMacro(token.value)) throw AsmError.at(`Macro '${name}' can't be called in a function: ${FUNCTION_ONLY}.`, token);
+				if (this.cpuHandler.isInstruction(this.joinMnemonicSuffix(token as ScalarToken).value))
+					throw AsmError.at(`Instruction '${name}' can't be in a function: ${FUNCTION_ONLY}.`, token);
+				throw AsmError.at(`Label '${name}' can't be in a function: ${FUNCTION_ONLY}.`, token);
+			}
+
+			case "OPERATOR":
+				if (token.value === "=" && this.lastGlobalLabel) {
+					this.runFunctionDirective(token as ScalarToken);
+					return;
+				}
+				if (token.value === "*") throw AsmError.at(`'*' can't be set in a function: ${FUNCTION_ONLY}.`, token);
+				throw new ParserError(`Syntax error - Unexpected operator '${token.value}'`, token);
+
+			// The braces of a block in the body: the block directive reads them.
+			case "LBRACE":
+			case "RBRACE":
+				return;
+
+			default:
+				throw AsmError.at(`Label '${token.raw ?? token.value}' can't be in a function: ${FUNCTION_ONLY}.`, token);
+		}
+	}
+
+	private runFunctionDirective(directive: ScalarToken) {
+		const context: DirectiveContext = {
+			filename: this.streamManager.currentFilepath,
+			PC: this.PC,
+			allowForwardRef: this.pass === 1,
+			currentLabel: this.lastGlobalLabel,
+			emitbytes: () => {
+				throw new Error(`Internal error: a function's body emitted bytes.`);
+			},
+		};
+		if (this.pass === 1) {
+			this.directiveHandler.handlePassOneDirective(directive, context);
+			return;
+		}
+		const streamBefore = this.parser.tokenStreamStack.length;
+		this.directiveHandler.handlePassTwoDirective(directive, context);
+		// A new stream was pushed: it's read from its beginning.
+		if (this.parser.tokenStreamStack.length > streamBefore) this.parser.setPosition(0);
 	}
 
 	/**
