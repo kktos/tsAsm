@@ -326,6 +326,7 @@ export class ExpressionEvaluator {
 					lastToken.type === "STRING" ||
 					lastToken.type === "IDENTIFIER" ||
 					lastToken.type === "PROPERTY_ACCESS" ||
+					lastToken.type === "SYSVAR" || // `.SEGMENTS_LIST[0]`
 					lastToken.type === "LABEL" ||
 					lastToken.type === "LOCAL_LABEL" ||
 					lastToken.type === "ANONYMOUS_LABEL_REF" ||

@@ -346,6 +346,7 @@ _Now `.REPEAT: 'N' must be defined before it is used here (the count is needed t
 
 ## Linker (TODO 2.2)
 
+- **#188** — `.segments_list[0]` → `Invalid expression format.`: a system variable can't be indexed directly. `segments = .segments_list` then `segments[0]` works. In the assembler too: `.ns[0]` gives the same message instead of `Attempted to index a non-array value.` Found with 4.22. _A `[` after a system variable now indexes it, as after a symbol. `omf.linker.asm` reads `.segments_list[0]`._
 - **#87** — A write past the end of a fixed segment is accepted. Through a linker script it gives `RangeError: Invalid array length`. _A write that starts in a fixed segment and goes past its end is now an error at its line: `Write out of bounds: address $804 outside fixed segment 'SEG' …`, as one that starts past it already was._
 - **#87** — `.WRITE SEGMENT` / `.WRITE MODULE` in a `.SECTION … AT` silently go to the end of the output, not to the section. With `.OUTPUT "x" FIXED 4`, `.SECTION S AT 2`, `.WRITE SEGMENT "CODE"` puts `CODE` at 0. Either write them to the section or make it an error. They ignore `.WRITE … AT` too. _They now go to the section, and take `AT`, like the other writes. A fixed segment is padded to its size._
 - **#86** — `.OUTPUT … FIXED n` too large fails the same way before the friendly check. _Now `Output file is too large. Max size is n bytes, …`._

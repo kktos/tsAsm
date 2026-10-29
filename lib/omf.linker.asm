@@ -24,8 +24,7 @@
 	.ENDIAN LITTLE
 
 	entry = .symbol(entryName)
-	segments = .segments_list
-	first = segments[0]
+	first = .segments_list[0]
 	.IF entry.segment != first.name
 		.ERROR "The entry point '" + entryName + "' is in segment '" + entry.segment + "': it must be in the first one, '" + first.name + "', where GS/OS starts the program."
 	.END
