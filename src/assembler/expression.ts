@@ -400,7 +400,9 @@ export class ExpressionEvaluator {
 					break;
 
 				case "DOT": {
-					const isUnary = !lastToken || (lastToken.type === "OPERATOR" && lastToken.value !== "]") || lastToken.type === "COMMA";
+					// After `]` or `)`, a field of what they close: `t[0].x`, `.segment("CODE").size`
+					const isUnary =
+						!lastToken || (lastToken.type === "OPERATOR" && lastToken.value !== "]" && lastToken.value !== ")") || lastToken.type === "COMMA";
 					const nextToken = tokens[index + 1];
 
 					if (nextToken?.type !== "IDENTIFIER") throw AsmError.at(`Invalid syntax: '.' must be followed by an identifier.`, processedToken);

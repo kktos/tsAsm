@@ -412,6 +412,18 @@ describe("Linker", () => {
 			expect(result.data).toEqual([0xbb, 4]);
 		});
 
+		it("should read a field of a function's result directly", () => {
+			linker.addSegment("CODE", { start: 0x1234, size: 3 });
+
+			const script = `
+				.OUTPUT "test.bin"
+				.WRITE BYTE .segment("CODE").size
+				.WRITE WORD .segment("CODE").start
+			`;
+			const result = linker.link(script, undefined, logger);
+			expect(result.data).toEqual([3, 0x34, 0x12]);
+		});
+
 		it("should stop the value at AT, with or without parentheses", () => {
 			const script = `
 				.OUTPUT "test.bin"

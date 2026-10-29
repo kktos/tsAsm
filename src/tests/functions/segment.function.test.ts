@@ -37,6 +37,16 @@ describe("Function .SEGMENT()", () => {
 		expect(assemble(source)).toEqual([0x00, 0x90, 0x10, 0x00]);
 	});
 
+	it("should read a field of its result directly", () => {
+		const source = `
+			.SEGMENT CODE { start: $8000, size: $10 }
+			.SEGMENT "CODE"
+			.WORD .segment("DATA").start, .segment("DATA").size
+			.SEGMENT DATA { start: $9000, size: $10 }
+		`;
+		expect(assemble(source)).toEqual([0x00, 0x90, 0x10, 0x00]);
+	});
+
 	it("should size an instruction using a segment defined further down", () => {
 		const source = `
 			.SEGMENT CODE { start: $8000, size: $10 }

@@ -233,7 +233,7 @@ code = .segment("CODE")
 .LOG "CODE is ", code.size, " bytes"
 ```
 
-Read the fields from a variable: `.segment("CODE").size` doesn't work.
+A field of a function's result can be read directly: `.segment("CODE").size`.
 
 A relocation record for each fixup, after the segment's kind:
 

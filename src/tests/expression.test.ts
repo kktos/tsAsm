@@ -553,6 +553,13 @@ describe("ExpressionEvaluator", () => {
 			const result = evaluator.evaluate(tokens, { PC: { value: 0 } });
 			expect(result).toEqual("london");
 		});
+		it("should evaluate property access on a parenthesised value", () => {
+			const { evaluator, tokenize, symbolTable } = setup();
+			symbolTable.defineVariable("person", { name: "tom" }, { filename: "test", line: 1, column: 1 });
+			const tokens = tokenize("(person).name");
+			const result = evaluator.evaluate(tokens, { PC: { value: 0 } });
+			expect(result).toEqual("tom");
+		});
 		it("should evaluate property access from sys variables", () => {
 			const { evaluator, tokenize, assembler } = setup();
 
