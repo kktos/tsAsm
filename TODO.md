@@ -88,7 +88,6 @@ In a relocatable segment, the instruction's PC is its offset there: a branch to 
 ### 2.2 Linker
 
 - `link()` isn't idempotent.
-- `.segment("CODE").size` → `Unknown system variable: SIZE`: a field of a function's result can't be read directly. `seg = .segment("CODE")` then `seg.size` works. Check if the assembler's `.segment()` does the same.
 - The assembler's `.module` (`module.directive.ts`; it groups segments for the linker's `.WRITE MODULE`) always fails when the project file defines segments → `Segments were used before any module was defined.` The first project segment is selected before the source starts (`polyasm.ts:191`), which puts it in the implicit `__MAIN__` module. Modules only work with segments defined in the source.
 - One skipped linker test: the hybrid `SEGMENTS` variable (the maintainer didn't remember what it held).
 
