@@ -11,6 +11,7 @@ export type TokenType =
 	| "USER_FUNCTION" // a call to a function `.function` defines: `screen(` in `screen(10, 5)`
 	| "SYSVAR"
 	| "SYMBOL_NAME" // a symbol's name, not its value: `X` in `.def(X)`
+	| "FUNCTION_NAME" // a function's name, not a call: `f` or `.lobyte` (value ".lobyte") in `.map(list, f)`
 	| "ANONYMOUS_LABEL_REF" // :- or :+ or :-- or :+3
 
 	// Literals

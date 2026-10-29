@@ -17,16 +17,18 @@ import { jsonFunction } from "./json.function";
 import { labelFunction } from "./label.function";
 import { lenFunction } from "./len.function";
 import { lobyteFunction } from "./lobyte.function";
+import { mapFunction } from "./map.function";
 import { padFunction } from "./pad.function";
 import { popFunction } from "./pop.function";
 import { pushFunction } from "./push.function";
+import { rangeFunction } from "./range.function";
 import { roundFunction } from "./round.function";
 import { segmentFunction } from "./segment.function";
 import { splitFunction } from "./split.function";
 import { strFunction } from "./str.function";
 import { symbolFunction } from "./symbol.function";
 import { typeFunction } from "./type.function";
-import type { EvaluationStack, IFunctionDef, SymbolResolver } from "./types";
+import type { EvaluationStack, FunctionCaller, IFunctionDef, SymbolResolver } from "./types";
 
 export class FunctionDispatcher {
 	private readonly functions = new Map<string, IFunctionDef>();
@@ -46,6 +48,17 @@ export class FunctionDispatcher {
 	/** Whether the argument at `index` of the function, when a lone identifier, is the symbol's name: see `IFunctionDef.nameArgs`. */
 	public isNameArgument(name: string, index: number): boolean {
 		return index < (this.functions.get(name.toUpperCase())?.nameArgs ?? 0);
+	}
+
+	/** Whether the argument at `index` of the function is a function, written by its name: see `IFunctionDef.functionArg`. */
+	public isFunctionArgument(name: string, index: number): boolean {
+		return this.functions.get(name.toUpperCase())?.functionArg === index;
+	}
+
+	/** How many arguments the function takes, at least and at most. */
+	public arity(name: string): [number, number] | undefined {
+		const definition = this.functions.get(name.toUpperCase());
+		return definition && [definition.minArgs, definition.maxArgs];
 	}
 
 	private registerDefaultFunctions(): void {
@@ -72,6 +85,8 @@ export class FunctionDispatcher {
 			relocatable: true,
 		});
 		this.register("POP", { handler: popFunction, minArgs: 1, maxArgs: 1, relocatable: true });
+		this.register("RANGE", { handler: rangeFunction, minArgs: 2, maxArgs: 3 });
+		this.register("MAP", { handler: mapFunction, minArgs: 2, maxArgs: 2, functionArg: 1 });
 		this.register("TYPE", { handler: typeFunction, minArgs: 1, maxArgs: 1 });
 		this.register("HAS", { handler: hasFunction, minArgs: 2, maxArgs: 2 });
 		this.register("JSON", { handler: jsonFunction, minArgs: 1, maxArgs: 1 });
@@ -101,6 +116,7 @@ export class FunctionDispatcher {
 		argCount = 0,
 		resolver?: SymbolResolver,
 		allowForwardRef = false,
+		call?: FunctionCaller,
 	): void {
 		const funcDef = this.functions.get(name.toUpperCase());
 		if (!funcDef) throw AsmError.at(`Unknown function '${name}'.`, token);
@@ -125,6 +141,6 @@ export class FunctionDispatcher {
 			}
 		}
 
-		funcDef.handler(stack, token, symbolTable, argCount, resolver, allowForwardRef);
+		funcDef.handler(stack, token, symbolTable, argCount, resolver, allowForwardRef, call);
 	}
 }

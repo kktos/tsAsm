@@ -182,13 +182,8 @@ Follow-ups: a function as the value, with 4.8 (`.function apple2(c) = c | $80`, 
 
 - `.struct` / `.enum`, for field offsets;
 - `.continue`, to go to a loop's next iteration (`.break` ends the loop), as 64tass's;
-- `.for` over a numeric range;
 - a `\0` escape;
 - `.min`, `.max`, `.abs`, `.sin`, `.cos`, `.chr`, `.ord`: system functions to write user functions with (4.8).
-
-### 4.10 Building an array without a loop
-
-Building an array takes a loop of assignments (`row = .push(row, col * 16)`), each one listed. A built-in or an expression form would give it in one: `.range(start, count [, step])` with a `.map(array, function)` taking a user function (4.8, #173 and #174), or a comprehension, `[col * 16 for col in 0..15]`. Then `.db ...` emits it directly. Bigger than 4.9; decide the syntax with 4.8.
 
 ### 4.14 Project file settings on the command line
 
