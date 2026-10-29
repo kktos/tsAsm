@@ -24,6 +24,14 @@ export class RelocValue {
 		return this.byteShift === undefined ? address : `${BYTE_OPERATORS[this.byteShift]}${address}`;
 	}
 
+	/** `.segment`, its segment's name, or `.offset`, its offset there: a number, known before it's loaded. */
+	field(name: string): string | number {
+		if (name !== "segment" && name !== "offset")
+			throw new Error(`Property '${name}' does not exist on ${this}: a relocatable value has .segment and .offset.`);
+		if (this.byteShift !== undefined) throw new Error(`${this} is one byte of a relocatable address: read .${name} on the address.`);
+		return this[name];
+	}
+
 	/** In an array or an object, as `.log` and the symbol file show them. */
 	toJSON(): string {
 		return this.toString();

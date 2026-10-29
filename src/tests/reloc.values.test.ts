@@ -139,7 +139,6 @@ describe("Relocatable values", () => {
 			[".str(main)", ".STR() can't take CODE+$0000"],
 			[".json(main)", ".JSON() can't take CODE+$0000"],
 			[".type(main)", ".TYPE() can't take CODE+$0000"],
-			["main.segment", "Invalid property access on a non-object value."],
 		])("should reject %s", (expression, message) => {
 			expect(() =>
 				assemble(`
@@ -156,6 +155,20 @@ describe("Relocatable values", () => {
 
 		it("should locate an operator's error at the operator", () => {
 			expect(() => assemble(`main:\nx = 1 + main * 2`)).toThrow(expect.objectContaining({ location: expect.objectContaining({ line: 7, column: 14 }) }));
+		});
+	});
+
+	describe("its fields", () => {
+		it("should give its segment's name and its offset there, for a label defined later too", () => {
+			const segments = assemble(`nop\nmain:\nnext = main + 2\n.db main.offset, later.offset, next.offset\n.db .len(main.segment)\nlater:`);
+			expect(segments.find((s) => s.name === "CODE")?.data).toEqual([0xea, 0x01, 0x05, 0x03, 0x04]);
+		});
+
+		it.each([
+			["main:\n.db main.size", "Property 'size' does not exist on CODE+$0000: a relocatable value has .segment and .offset."],
+			["main:\nx = >main\n.db x.offset", ">CODE+$0000 is one byte of a relocatable address: read .offset on the address."],
+		])("should reject another field, or a byte of the address: %j", (source, message) => {
+			expect(() => assemble(source)).toThrow(message);
 		});
 	});
 

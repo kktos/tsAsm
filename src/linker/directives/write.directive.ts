@@ -1,3 +1,4 @@
+import { notRelocatable } from "../../assembler/reloc-value.class";
 import type { DirectiveContext, DirectiveRuntime, IDirective } from "../../directives/directive.interface";
 import type { ScalarToken, Token } from "../../shared/lexer/lexer.class";
 
@@ -16,6 +17,7 @@ export class WriteDirective implements IDirective {
 		const valueTokens = this.getValueTokens(directive);
 		if (valueTokens.length === 0) throw new Error(`Missing value for .WRITE ${cmd}`);
 		const value = this.runtime.evaluator.evaluate(valueTokens, context);
+		if (cmd === "BYTE" || cmd === "WORD" || cmd === "LONG") notRelocatable(value);
 
 		let offset: number | undefined;
 

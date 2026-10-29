@@ -266,7 +266,7 @@ For relocatable outputs (Apple IIgs OMF, 4.22; later o65 or another object forma
 2. Relocatable values: a label in a relocatable segment is a segment and an offset, through expressions (below); an error where a plain number is needed; the listing and the `.sym` file show `CODE+$0012`. Done in #180.
 3. Fixups: recorded in pass 2, for data then operands, with the shift of `<`, `>`, `^`. Done in #181, for the 65xx's operands; the other CPUs' are 1.66.
 4. The linker script reads `seg.relocs` and `seg.attrs` (4.21). Done in #182.
-5. The linker script reads the assembler's symbols (4.21).
+5. The linker script reads the assembler's symbols (4.21). Done in #183.
 6. OMF output: the `omf.linker.asm` script library (4.22).
 
 Addressing modes go with 4.18, after step 2.
@@ -283,10 +283,10 @@ To decide before 4.18 is implemented, since it changes how the mode is chosen: w
 
 ### 4.21 Segment attributes and symbols in the linker script
 
-A linker script starts with an empty symbol table. Step 5 of the plan in 4.19; step 4, `seg.attrs` and `seg.relocs`, is done in #182.
+Steps 4 and 5 of the plan in 4.19: `seg.attrs` and `seg.relocs` are done in #182, `.symbol()` in #183.
 
 - **Segment map:** the `output.segments` file doesn't write a segment's attributes.
-- **Symbols:** the assembler's global symbols readable from the script, for an entry point, a version number, a size computed in the source. To decide: all of them, or only the ones exported (`.export`?), and under what name (`.symbol("main")`, `asm::main`).
+- **`.export`:** if object files ever need it, a way for the source to choose which symbols a script sees. Today it sees them all.
 
 ### 4.22 Apple IIgs: OMF output (S16)
 

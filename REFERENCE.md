@@ -232,7 +232,7 @@ Its labels, `*` and `.PC` in it are relocatable values: a segment and an offset 
 - `<label`, `>label`, `^label`, and `.lobyte()`, `.hibyte()`, `.bankbyte()`, are one byte of it, still relocatable (`>CODE+$0012`);
 - anything else is an error, as its address is only known when it's loaded: `label * 2`, `label & $FF`, a comparison, `-label`, `.hex(label)`, and a relocatable value where a number is needed (`.if`, `.assert`, `.repeat`, `.fill`, `.align`, `.org`, a segment's bounds).
 
-A variable or a constant can hold one (`next = label + 2`), an array too, and `.iif()` can give one.
+A variable or a constant can hold one (`next = label + 2`), an array too, and `.iif()` can give one. Its fields are numbers and strings, known before it's loaded: `label.segment` is its segment's name (`"CODE"`), `label.offset` its offset there (`$12`). Any other field is an error, and so is a field of one byte of it (`x = >label` / `x.offset`).
 
 Written in the code or the data, a relocatable value is its offset, and a fixup is recorded where it goes: the loader adds its segment's address there. Each segment keeps its fixups in `relocs`, which the linker script reads as `seg.relocs`: `{ offset, size, shift, segment, targetOffset }`, where its bytes are in the segment, how many, how many bits the address is shifted right (0, 8 for `>`, 16 for `^`), and the segment and offset of the value.
 

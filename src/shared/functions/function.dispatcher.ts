@@ -23,6 +23,7 @@ import { roundFunction } from "./round.function";
 import { segmentFunction } from "./segment.function";
 import { splitFunction } from "./split.function";
 import { strFunction } from "./str.function";
+import { symbolFunction } from "./symbol.function";
 import { typeFunction } from "./type.function";
 import type { EvaluationStack, IFunctionDef, SymbolResolver } from "./types";
 
@@ -86,6 +87,8 @@ export class FunctionDispatcher {
 			"SEGMENT",
 			segmentFunction((name) => this.host.findSegment(name)),
 		);
+		const findSourceSymbol = this.host.findSourceSymbol?.bind(this.host);
+		if (findSourceSymbol) this.register("SYMBOL", symbolFunction(findSourceSymbol));
 	}
 
 	public dispatch(
