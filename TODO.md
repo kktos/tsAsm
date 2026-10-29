@@ -130,6 +130,10 @@ Symbols ignore case, properties don't: with `{ Id: 5 }`, `d[0].Id` works but `d[
 
 An operand starting with `(` is an indirect mode on the 6502 and 65C02, or an error: `lda (2+3)*4`, `lda (2+3)*4,x` → `Invalid addressing mode for instruction LDA`, where `lda 0+(2+3)*4` works. Until #175 the 6502 read them as expressions, and `lda ($12),x` as `lda $12,x`. To decide: keep it (as now), or read an operand that isn't an indirect shape as an expression, `(e),x` and `(e),y` without a `(zp),Y` form staying errors (they look like a typo for an indirect mode).
 
+### 3.11 A bracketed operand on the 65816
+
+A `[` that doesn't follow an operand starts an array literal (`expression.ts`): `lda [$12]` and `lda [$12],y`, the 65816's indirect long (4.24), would be read as an expression holding an array, not as an addressing mode. The 65xx operand reader has to recognise the bracket shapes before calling the expression parser, as it does for `(` (3.10). To decide, with 3.10: what `lda [1,2]` or `lda [$12]+1` give (recommended: errors, as `(e),x` is). Indexing after a name (`lda tbl[2]`) isn't affected. Found while listing what the 65816 needs.
+
 ## 4. Features (ideas)
 
 ### 4.1 Default values for macro parameters
@@ -191,7 +195,7 @@ After 4.13: change any project file setting for one run, e.g. turn the listing o
 
 ### 4.16 65C816: accumulator and index widths
 
-The size of an immediate depends on the M and X flags: `lda #$10` is `A9 10` with an 8-bit accumulator, `A9 10 00` with a 16-bit one. The CPU handler tracks them.
+After 4.24. The size of an immediate depends on the M and X flags: `lda #$10` is `A9 10` with an 8-bit accumulator, `A9 10 00` with a 16-bit one. The CPU handler tracks them.
 
 - **State:** M (A and memory) and X (X / Y) are each 8, 16 or unknown. Both start at 8, as after reset. Reset at each pass, kept across `.cpu` switches (4.15).
 - **Directives** (4.15), the ca65 names: `.a8`, `.a16`, `.i8`, `.i16`.
@@ -224,9 +228,9 @@ D (direct page) and DBR (data bank) only get their values at run time: the assem
 - **Forward references:** absolute in pass 1, as on the 6502; an error in pass 2 if the value needs long, saying to write `.l` or define the symbol earlier.
 - **Hints, never encoding** (4.15 directives): `.dp <expr>` and `.dbank <expr>` say what D and DBR hold. They only let the assembler point out a shorter form: "`$2012` is in the direct page declared at …: `lda.b $12` is one byte shorter"; "`$7E2000` is in the data bank declared at …: `lda.w $7E2000` is one byte shorter". Without them, no hint.
 - **Hints are reported** at a level of their own, not as warnings. On by default: there are none without `.dp` / `.dbank`, so writing one is already asking for them. `.option hints off` turns them off.
-- **In `Mos65xxHandler`** (#175): a `P65816` profile, with the opcode sets `[NMOS, CMOS_ADDITIONS, WDC_ADDITIONS, W65816_ADDITIONS]` (#176: `STP`, `WAI`) and no `ROCKWELL_BITOPS` (`$07` is `RMB0 zp` on the 65C02, `ORA [dp]` on the 65816), the suffix `L: 3`, a long width next to zero page and absolute in `selectAddressMode`, the bracket and stack-relative operands, the immediate size from M / X (4.16), and `MVN` / `MVP` and 16-bit relative in the encoder.
+- **In `Mos65xxHandler`**, on the profile of 4.24: the suffix `L: 3` and a long width next to zero page and absolute in `selectAddressMode`.
 
-To check first: 24-bit addresses through the PC, `.org`, segments, the listing and the linker. `.org` takes any number today and nothing checks the PC's range. Relocatable labels (4.19) change how the mode is chosen: decide them first.
+Before it: 24-bit addresses (4.23). Relocatable labels (4.19) change how the mode is chosen: decide them first.
 
 ### 4.19 Relocatable values and fixups
 
@@ -268,7 +272,36 @@ The script library `lib/omf.linker.asm` is done in #185: version 2.0 segments, L
 - **Fixed segments:** an error in an OMF file. An absolute segment (its `start` as ORG) can come if needed.
 - **Later:** the compact cRELOC (`$F5`) / cINTERSEG (`$F6`) and SUPER (`$F7`) records; DS (`$F1`) for a segment's trailing zeros; ExpressLoad.
 - **File type:** S16 is ProDOS type `$B3`, a directory entry's field, not in the file: a disk image written by the script (as conan's), or an external tool (Cadius, AppleCommander).
-- **To check:** a 65816 segment's code can't cross a bank (4.18's PC range; the library only checks a segment's size against its `banksize`); the library's output against a known-good file (Merlin 16+ or ORCA/M output) and in an emulator: #185 checks it against the specification only.
+- **To check:** a 65816 segment's code can't cross a bank (4.23's PC range; the library only checks a segment's size against its `banksize`); the library's output against a known-good file (Merlin 16+ or ORCA/M output) and in an emulator: #185 checks it against the specification only.
+
+### 4.23 Addresses over 16 bits: the PC's range
+
+Before 4.18: the 65816 addresses 16 MB. Nothing checks the PC's range today: `.org` takes any number, and the PC goes past $FFFF without a word.
+
+- **PC and `.org`:** to decide, a range per CPU (16 bits for the 6502, 65C02 and 6809; 24 for the 65816; 32 for the RV32I) and what leaving it does (recommended: an error, never a wrap).
+- **Segments:** `start` and `size` over $FFFF; on the 65816, code crossing a bank (4.22).
+- **Listing:** `getHex` writes an address over $FFFF on 8 digits, and the lister's columns assume 4 (`LABEL_START_COL`).
+- **`.sym` file:** the maintainer's debugger reads it; the form of an address over $FFFF there is the maintainer's call.
+- **Linker and output:** `.WRITE`, the output image and `hexdump.util.ts` (4 digits) with addresses over $FFFF.
+
+### 4.24 65C816: the CPU
+
+The first step, before 4.16: `.cpu 65816` (and `65C816`) with its opcodes and operand shapes. 4.16 to 4.18 then add widths, emulation mode and long addressing to it.
+
+**Plan for the 65816,** decisions first, then one PR per step:
+
+- Decisions: 3.10 and 3.11 (operands starting with `(` or `[`), and whether a whole-program `relocatable` project setting is wanted (4.19).
+
+1. 4.23: the PC's range, addresses over 16 bits.
+2. 4.24: the CPU, its opcodes and operands (below).
+3. 4.16: accumulator and index widths.
+4. 4.17: emulation mode.
+5. 4.18: direct page, absolute and long addressing.
+
+- **In `Mos65xxHandler`** (#175): a `P65816` profile, with the opcode sets `[NMOS, CMOS_ADDITIONS, WDC_ADDITIONS, W65816_ADDITIONS]` (#176: `STP`, `WAI`) and no `ROCKWELL_BITOPS` (`$07` is `RMB0 zp` on the 65C02, `ORA [dp]` on the 65816).
+- **Operands:** the bracket ones (`[dp]`, `[dp],y`, `[abs]`; 3.11 first), stack relative (`sr,s`, `(sr,s),y`), `MVN` / `MVP` (two banks), 16-bit relative (`BRL`, `PER`). The long-only instructions, `JML` and `JSL`, with a 24-bit operand.
+- **Until 4.16, the widths stay 8:** a `REP` clearing bit 4 or 5 is an error saying the 16-bit widths come with 4.16. Without it, `rep #$20` / `lda #$12` would give `A9 12`, which the CPU reads with a 16-bit accumulator: wrong bytes, silently.
+- **Until 4.18:** an address over $FFFF on an instruction with a short form is an error, as now on the 6502; choosing long from the value, and `.l`, come with 4.18.
 
 ## 5. Documentation (REFERENCE.md)
 
