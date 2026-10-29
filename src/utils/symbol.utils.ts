@@ -1,4 +1,4 @@
-import type { PASymbolTable } from "../assembler/symbol.class";
+import type { PASymbolTable, SymbolValue } from "../assembler/symbol.class";
 import type { DirectiveContext } from "../directives/directive.interface";
 import type { Token } from "../shared/lexer/lexer.class";
 
@@ -17,4 +17,9 @@ export function findUndefinedSymbol(tokens: Token[], context: DirectiveContext, 
 export function undefinedSymbolName(tokens: Token[], context: DirectiveContext, symbolTable: PASymbolTable): string {
 	const name = findUndefinedSymbol(tokens, context, symbolTable);
 	return name ? `'${name}'` : "Its symbol";
+}
+
+/** A field or an element read in an expression: a boolean (a segment's `relocatable`, `true` in JSON data) is 1 or 0, the assembler has no boolean. */
+export function fieldValue(value: unknown): SymbolValue {
+	return typeof value === "boolean" ? Number(value) : (value as SymbolValue);
 }

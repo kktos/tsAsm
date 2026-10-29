@@ -8,6 +8,7 @@ import type { PASymbolTable, SymbolValue } from "../assembler/symbol.class";
 import { FunctionDispatcher } from "../shared/functions/function.dispatcher";
 import type { FunctionToken, OperatorStackToken, OperatorToken, ScalarToken, Token } from "../shared/lexer/lexer.class";
 import { AsmError, type AsmNote } from "../utils/error.utils";
+import { fieldValue } from "../utils/symbol.utils";
 import { nestingDelta } from "../utils/token.utils";
 import { type EvaluationContext, type EvaluatorHost, PRECEDENCE } from "./expression.types";
 import { DEFAULT_OPTIONS } from "./options";
@@ -567,7 +568,7 @@ export class ExpressionEvaluator {
 
 					const property = token.value;
 					if (property && property in obj) {
-						stack.push(obj[property] as SymbolValue);
+						stack.push(fieldValue(obj[property]));
 						break;
 					}
 
@@ -678,7 +679,7 @@ export class ExpressionEvaluator {
 			// A macro's rest parameter holds each argument as its tokens: evaluated like a macro argument, without the macro's own.
 			const element = array[arrIdx];
 			stack.push(
-				Array.isArray(element) && element[0]?.type ? this.evaluate(element as Token[], { ...context, macroArgs: undefined }) : (element as SymbolValue),
+				Array.isArray(element) && element[0]?.type ? this.evaluate(element as Token[], { ...context, macroArgs: undefined }) : fieldValue(element),
 			);
 			return true;
 		}

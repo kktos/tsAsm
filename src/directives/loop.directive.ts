@@ -3,7 +3,7 @@ import type { SymbolValue } from "../assembler/symbol.class";
 import { tokensText } from "../helpers/lister.class";
 import type { IdentifierToken, ScalarToken, Token } from "../shared/lexer/lexer.class";
 import { AsmError } from "../utils/error.utils";
-import { undefinedSymbolName } from "../utils/symbol.utils";
+import { fieldValue, undefinedSymbolName } from "../utils/symbol.utils";
 import type { DirectiveContext, DirectiveRuntime, IDirective } from "./directive.interface";
 
 interface LoopState {
@@ -216,8 +216,7 @@ export class LoopDirective implements IDirective {
 
 			// Handle .FOR specific item value
 			if (state.items && state.itemIterator) {
-				const currentItem = state.items[currentIndex] as SymbolValue;
-				this.runtime.symbolTable.assignVariable(state.itemIterator.value, currentItem);
+				this.runtime.symbolTable.assignVariable(state.itemIterator.value, fieldValue(state.items[currentIndex]));
 			}
 
 			this.runtime.parser.pushTokenStream({

@@ -91,7 +91,6 @@ In a relocatable segment, the instruction's PC is its offset there: a branch to 
 - `.segment("CODE").size` → `Unknown system variable: SIZE`: a field of a function's result can't be read directly. `seg = .segment("CODE")` then `seg.size` works. Check if the assembler's `.segment()` does the same.
 - The assembler's `.module` (`module.directive.ts`; it groups segments for the linker's `.WRITE MODULE`) always fails when the project file defines segments → `Segments were used before any module was defined.` The first project segment is selected before the source starts (`polyasm.ts:191`), which puts it in the implicit `__MAIN__` module. Modules only work with segments defined in the source.
 - `.segments_list[0]` → `Invalid expression format.`: a system variable can't be indexed directly. `segments = .segments_list` then `segments[0]` works. Found with 4.22.
-- A segment's `relocatable` and `resizable` are booleans: `.IF seg.relocatable` takes them, `!seg.relocatable` → `Unary operator '!' requires a numeric operand.`, and `.iif(seg.resizable, …)` → `First argument to .IIF() must be a number.` Found with 4.22.
 - One skipped linker test: the hybrid `SEGMENTS` variable (the maintainer didn't remember what it held).
 
 ### 2.4 Build
