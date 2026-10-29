@@ -40,9 +40,7 @@
 
 # One segment, its number `segnum`, the program starting at `segEntry` in it.
 .macro OMF_SEGMENT seg, segnum, segEntry
-	# `relocatable` is a boolean: `.IF` takes it, `!` doesn't
-	.IF seg.relocatable
-	.ELSE
+	.IF !seg.relocatable
 		.ERROR "Segment '" + seg.name + "' has a start address: an OMF load file takes relocatable segments."
 	.END
 
