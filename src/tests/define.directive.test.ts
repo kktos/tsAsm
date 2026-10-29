@@ -219,6 +219,28 @@ describe(".DEFINE Directive", () => {
 			expect(machineCode).toEqual([16]);
 		});
 
+		it("should read JSON booleans as 1 or 0", () => {
+			const jsonHandler = vi.fn((blockContent: string, _context: DirectiveContext) => JSON.parse(blockContent));
+			const handlers = { default: "JSON", map: new Map([["JSON", jsonHandler]]) };
+			const { assembler } = createAssembler(handlers);
+
+			const source = `
+			.DEFINE cfg AS JSON
+			{
+				"debug": true,
+				"flags": [false, true]
+			}
+			.END
+			.db cfg.debug, !cfg.debug, .iif(cfg.debug, 7, 9), cfg.flags[0]
+			.FOR flag OF cfg.flags
+				.db flag
+			.END
+		`;
+			assembler.assemble(source);
+			const machineCode = assembler.link();
+			expect(machineCode).toEqual([1, 0, 7, 0, 0, 1]);
+		});
+
 		it("should return a plain text", () => {
 			const textHandler = vi.fn((blockContent: string, _context: DirectiveContext) => blockContent);
 			const handlers = { default: "TEXT", map: new Map([["TEXT", textHandler]]) };

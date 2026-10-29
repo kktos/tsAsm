@@ -315,6 +315,36 @@ describe("Linker", () => {
 		});
 	});
 
+	describe("Segment flags", () => {
+		const logger = {
+			log: () => {},
+			warn: () => {},
+			error: (m: unknown) => {
+				throw new Error(String(m));
+			},
+		} as unknown as Logger;
+
+		it.each([
+			["!", "!s.relocatable", [1]],
+			[".iif", ".iif(s.resizable, 7, 9)", [7]],
+			["==", "s.relocatable == 0", [1]],
+			["arithmetic", "s.resizable + 1", [2]],
+			["a written value", "s.emitted", [0]],
+		])("should read a segment's flags as 1 or 0: %s", (_label, expression, expected) => {
+			linker.addSegment("CODE", { start: 0, resizable: true });
+
+			const script = `
+				.OUTPUT "test.bin"
+				.FOR s OF .SEGMENTS_LIST
+					.WRITE BYTE ${expression}
+				.END
+			`;
+			const result = linker.link(script, undefined, logger);
+
+			expect(result.data).toEqual(expected);
+		});
+	});
+
 	describe(".WRITE values", () => {
 		const logger = {
 			log: () => {},
