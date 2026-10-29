@@ -119,6 +119,13 @@ describe("Segments", () => {
 			{ line: 5, column: 3 },
 		],
 		[".SEGMENT CODE { start: $1000, 5 }", "Expected 'key: value' in the .SEGMENT definition, got '5'.", { line: 1, column: 31 }],
+		[".SEGMENT X { start: $1000, start: $2000, size: 4 }", "The .SEGMENT definition gives 'start' twice.", { line: 1, column: 28 }],
+		[".SEGMENT X { start: $1000, end: $10FF, END: $11FF }", "The .SEGMENT definition gives 'end' twice.", { line: 1, column: 40 }],
+		[".SEGMENT X { start: $1000, size: 4, Size: 8 }", "The .SEGMENT definition gives 'size' twice.", { line: 1, column: 37 }],
+		[".SEGMENT X { start: $1000, size: 4, pad: 1, pad: 2 }", "The .SEGMENT definition gives 'pad' twice.", { line: 1, column: 45 }],
+		[".SEGMENT X { start: $1000, end: $1003, size: 8 }", "The .SEGMENT definition gives both 'end' and 'size': give one of them.", { line: 1, column: 40 }],
+		[".SEGMENT X { size: 8, start: $1000, end: $1003 }", "The .SEGMENT definition gives both 'end' and 'size': give one of them.", { line: 1, column: 37 }],
+		[".SEGMENT X { reloc: true, size: 4, size: 8 }", "The .SEGMENT definition gives 'size' twice.", { line: 1, column: 36 }],
 	])("should report a .SEGMENT definition error at its token: %j", (source, message, location) => {
 		const assembler = new Assembler(new Cpu6502Handler(), new MockFileHandler());
 		expect(() => assembler.assemble(source)).toThrow(expect.objectContaining({ message, location: expect.objectContaining(location) }));

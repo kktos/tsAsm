@@ -6,6 +6,12 @@ The problem is described as it was before the fix, then the fix in _italics_.
 
 ## Assembler
 
+### #193 — A `.segment` property given twice (TODO 1.65)
+
+`.segment X { start: $1000, start: $2000, size: 4 }` put `X` at `$2000`: the last value won, silently, for `start`, `end`, `size` and `pad`. Only an attribute or `reloc` / `relocatable` given twice was an error. And `.segment X { start: $1000, end: $1003, size: 8 }` ignored the `size`, silently: `X` was 4 bytes.
+
+_Decided: an error, at the second key. `.segment X { start: $1000, start: $2000, size: 4 }` → `The .SEGMENT definition gives 'start' twice.`, in any case (`size` then `Size`); `end` with `size` → `The .SEGMENT definition gives both 'end' and 'size': give one of them.`_
+
 ### #192 — `.define` keeps its name (TODO 3.7)
 
 `.define` is a text macro in ca65 and C; here it loads data. A reader coming from them could expect `.define X 5` to replace `X` with `5`.
