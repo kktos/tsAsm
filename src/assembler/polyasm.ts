@@ -265,9 +265,13 @@ export class Assembler {
 		};
 	}
 
-	/** Each pass starts with the CPU the assembler was given: pass 2 doesn't start with the one pass 1 ended with. */
+	/**
+	 * Each pass starts with the CPU the assembler was given: pass 2 doesn't start with the one pass 1 ended with. Every
+	 * CPU's state starts as after reset: the handlers are the same each pass, and each assemble().
+	 */
 	private resetCPU() {
 		this.cpuHandler = this.initialCpuHandler;
+		for (const cpu of this.cpuHandlers) cpu.resetState?.();
 	}
 
 	/** Each pass starts with the options the assembler was given: the passes read the `.option`s in the same order. */
@@ -281,6 +285,11 @@ export class Assembler {
 
 	public getCPUHandler(): CPUHandler {
 		return this.cpuHandler;
+	}
+
+	/** The CPUs given to the constructor. */
+	public get cpus(): readonly CPUHandler[] {
+		return this.cpuHandlers;
 	}
 
 	/** The CPU given to the constructor with this name, in any case. */

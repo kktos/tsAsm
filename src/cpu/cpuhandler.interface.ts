@@ -1,4 +1,5 @@
 import type { RelocValue } from "../assembler/reloc-value.class";
+import type { IDirective } from "../directives/directive.interface";
 import type { OperatorStackToken } from "../shared/lexer/lexer.class";
 
 /** * Defines the standard addressing modes recognizable by the assembler.
@@ -55,6 +56,18 @@ export interface CPUHandler<TModeInfo extends ModeInfo = ModeInfo> {
 	 * `lda.b` / `lda.w` force a zero page / absolute operand. A CPU without suffixes leaves it out.
 	 */
 	mnemonicSuffixes?: readonly string[];
+
+	/**
+	 * The CPU's own directives, by upper-case name: the 65816's `.a16`. They are known whatever the CPU, and run only
+	 * while this one is the current CPU. A name can't be a general directive's.
+	 */
+	directives?: Readonly<Record<string, IDirective>>;
+
+	/**
+	 * For a CPU keeping state (the 65816's M / X): puts it back as after reset. Called at the start of each pass, for
+	 * every CPU given to the assembler; the state is kept across `.cpu` switches.
+	 */
+	resetState?(): void;
 
 	/** * Core method to determine the specific addressing mode, opcode, and size
 	 * based on the mnemonic and the structure of the operand tokens.

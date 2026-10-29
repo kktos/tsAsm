@@ -746,6 +746,8 @@ C02 = 1
 .cpu .iif(C02, "65C02", "6502")
 ```
 
+A CPU can have directives of its own, as the 65816 will have `.a16`. They are known whatever the CPU, so a block not assembled can hold them, and they run only while their CPU is the current one: under another, `.a16` is an error, `'.a16' is a 65816 directive: the current CPU is 6502.` What a CPU keeps (the 65816's accumulator width) starts as after reset at each pass, and is kept across `.cpu`: `.cpu 6502` then `.cpu 65816` finds it as it was left.
+
 ## System variables
 
 Read-only values, prefixed with a dot glued to the name: `.pc`, not `. pc`.

@@ -189,15 +189,6 @@ Follow-ups: a function as the value, with 4.8 (`.function apple2(c) = c | $80`, 
 
 After 4.13: change any project file setting for one run, e.g. turn the listing on (`output.listing.enabled`) or a pass's listing (`output.listing.passes.pass1`), or pick another `input.cpu`. To decide: the syntax (`--output.listing.enabled true`, with the setting's path?), how a value gets its type (from the schema in `conf.ts`), how these names stay apart from the `.option` ones and their short names, and short forms for the usual ones (listing on).
 
-### 4.15 CPU-specific directives
-
-A CPU can bring its own directives: the 65C816's width directives (4.16), later the 6809's `.setdp`.
-
-- **Declared by the CPU:** `CPUHandler` gets an optional list of directives.
-- **Registered at startup, every CPU's:** the parser needs all directive names up front (`parser.registerDirective`). The dispatcher then rejects one the current CPU doesn't have: "`.a16` is a 65816 directive; the current CPU is 6502".
-- **No shadowing:** a CPU directive can't take the name of a general one; a test checks it.
-- **CPU state:** a CPU keeping state (the 65C816's M / X) gets an optional `resetState()` on `CPUHandler`, called with `resetOptions()` at the start of each pass. `findCPUHandler` gives the same instance each time, so without it the state would carry from pass 1 into pass 2 and into a reused assembler. The state is kept across `.cpu` switches: `.cpu 6502` then `.cpu 65816` finds it as it was left.
-
 ### 4.16 65C816: accumulator and index widths
 
 The size of an immediate depends on the M and X flags: `lda #$10` is `A9 10` with an 8-bit accumulator, `A9 10 00` with a 16-bit one. The CPU handler tracks them.
