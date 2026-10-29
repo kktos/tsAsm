@@ -8,6 +8,7 @@ import { bankbyteFunction } from "./bankbyte.function";
 import { ceilFunction } from "./ceil.function";
 import { defFunctions } from "./def.function";
 import { floorFunction } from "./floor.function";
+import { hasFunction } from "./has.function";
 import { hexFunction } from "./hex.function";
 import { hibyteFunction } from "./hibyte.function";
 import { iifFunction } from "./iif.function";
@@ -72,6 +73,7 @@ export class FunctionDispatcher {
 		});
 		this.register("POP", { handler: popFunction, minArgs: 1, maxArgs: 1, relocatable: true });
 		this.register("TYPE", { handler: typeFunction, minArgs: 1, maxArgs: 1 });
+		this.register("HAS", { handler: hasFunction, minArgs: 2, maxArgs: 2 });
 		this.register("JSON", { handler: jsonFunction, minArgs: 1, maxArgs: 1 });
 		this.register("IIF", { handler: iifFunction, minArgs: 3, maxArgs: 3, knownArgs: 1, relocatable: true });
 		this.register("JOIN", { handler: joinFunction, minArgs: 2, maxArgs: 2 });
