@@ -22,6 +22,7 @@ Without a script, the segments are written directly to `output.object.path`, eac
 - [Modules](#modules)
 - [System variables](#system-variables)
 - [Other directives](#other-directives)
+- [Apple IIgs OMF output](#apple-iigs-omf-output)
 - [Limitations](#limitations)
 
 ## Example
@@ -265,6 +266,35 @@ output:
         enabled: true
         linker: true
 ```
+
+## Apple IIgs OMF output
+
+[`lib/omf.linker.asm`](../../lib/omf.linker.asm) is a script library writing an Apple IIgs OMF load file, an S16. Copy it next to your script and include it:
+
+```as
+.include "omf.linker.asm"
+.OUTPUT "game.s16"
+OMF_FILE "main"
+```
+
+`OMF_FILE "<entry>"` writes every segment, in their order, numbered from 1, as an OMF version 2.0 segment (GS/OS Reference, appendix F): its header, its bytes in one LCONST record, a RELOC record for each [fixup](../../REFERENCE.md#segments) to its own segment, an INTERSEG for each fixup to another one, and END. The program starts at the symbol `entry`, which must be in the first segment, where GS/OS starts it.
+
+The segments must be relocatable: a segment with a `start` is an error. Their [attributes](../../REFERENCE.md#segments) give the header's fields, with defaults:
+
+| Attribute  | Field    | Default                                           |
+| ---------- | -------- | ------------------------------------------------- |
+| `kind`     | KIND     | `$0000`, static code; `$0001` is data             |
+| `segname`  | SEGNAME  | The segment's name                                |
+| `loadname` | LOADNAME | 10 spaces; up to 10 characters                    |
+| `banksize` | BANKSIZE | `$10000`: it can't cross a bank; `0` for anywhere |
+| `align`    | ALIGN    | `0`                                               |
+
+```as
+.segment CODE { reloc: true }
+.segment DATA { reloc: true, kind: $0001, loadname: "MAIN" }
+```
+
+A segment larger than its `banksize`, or a `loadname` over 10 characters, is an error. Not written yet: the compact records (cRELOC, cINTERSEG, SUPER), DS for trailing zeros, ExpressLoad. The file's ProDOS type, `$B3`, is in its directory entry, not in the file.
 
 ## Limitations
 
