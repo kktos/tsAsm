@@ -70,6 +70,8 @@ const confSchema = {
 				optional: true,
 				items: {
 					type: "object",
+					// Any other key is an attribute, a number or a string: checked by the assembler
+					allowUnknown: true,
 					schema: {
 						name: { type: "string" },
 						// Required unless relocatable: checked by the assembler

@@ -17,7 +17,7 @@ describe("Linker", () => {
 
 	describe("addSegment", () => {
 		it("should add a new segment", () => {
-			linker.addSegment("CODE", 0x100, 0x10);
+			linker.addSegment("CODE", { start: 0x100, size: 0x10 });
 			expect(linker.segments.length).toBe(1);
 			expect(linker.segments[0]?.name).toBe("CODE");
 			expect(linker.segments[0]?.start).toBe(0x100);
@@ -27,7 +27,7 @@ describe("Linker", () => {
 		});
 
 		it("should add a segment with a pad value", () => {
-			linker.addSegment("DATA", 0x200, 0x8, 0xff);
+			linker.addSegment("DATA", { start: 0x200, size: 0x8, padValue: 0xff });
 			expect(linker.segments.length).toBe(1);
 			expect(linker.segments[0]?.name).toBe("DATA");
 			expect(linker.segments[0]?.padValue).toBe(0xff);
@@ -35,7 +35,7 @@ describe("Linker", () => {
 		});
 
 		it("should add a resizable segment with zero size", () => {
-			linker.addSegment("BSS", 0x300, 0, 0, true);
+			linker.addSegment("BSS", { start: 0x300, resizable: true });
 			expect(linker.segments.length).toBe(1);
 			const seg = linker.segments[0];
 			expect(seg?.name).toBe("BSS");
@@ -47,7 +47,7 @@ describe("Linker", () => {
 
 	describe("useSegment", () => {
 		it("should select an existing segment", () => {
-			linker.addSegment("CODE", 0x100, 0x10);
+			linker.addSegment("CODE", { start: 0x100, size: 0x10 });
 			linker.addModule("MAIN");
 			linker.useSegment("CODE");
 			expect(linker.currentSegment).toBeDefined();
@@ -61,8 +61,8 @@ describe("Linker", () => {
 
 	describe("writeByte", () => {
 		beforeEach(() => {
-			linker.addSegment("CODE", 0x100, 0x10);
-			linker.addSegment("BSS", 0x200, 0, 0, true);
+			linker.addSegment("CODE", { start: 0x100, size: 0x10 });
+			linker.addSegment("BSS", { start: 0x200, resizable: true });
 		});
 
 		it("should throw if no segment is active", () => {
@@ -135,7 +135,7 @@ describe("Linker", () => {
 
 		it("should link a single segment", () => {
 			linker.addModule("MAIN");
-			linker.addSegment("CODE", 0x100, 4, 0);
+			linker.addSegment("CODE", { start: 0x100, size: 4, padValue: 0 });
 			linker.useSegment("CODE");
 			linker.writeBytes(0x100, [1]);
 			linker.writeBytes(0x101, [2]);
@@ -146,12 +146,12 @@ describe("Linker", () => {
 
 		it("should link multiple segments, filling gaps with zeros", () => {
 			linker.addModule("MAIN");
-			linker.addSegment("SEG1", 0x10, 2);
+			linker.addSegment("SEG1", { start: 0x10, size: 2 });
 			linker.useSegment("SEG1");
 			linker.writeBytes(0x10, [0xaa]);
 			linker.writeBytes(0x11, [0xbb]);
 
-			linker.addSegment("SEG2", 0x14, 2);
+			linker.addSegment("SEG2", { start: 0x14, size: 2 });
 			linker.useSegment("SEG2");
 			linker.writeBytes(0x14, [0xcc]);
 			linker.writeBytes(0x15, [0xdd]);
@@ -165,14 +165,14 @@ describe("Linker", () => {
 
 		it("should handle overlapping segments, last segment wins", () => {
 			linker.addModule("MAIN");
-			linker.addSegment("SEG1", 0x10, 4);
+			linker.addSegment("SEG1", { start: 0x10, size: 4 });
 			linker.useSegment("SEG1");
 			linker.writeBytes(0x10, [1]);
 			linker.writeBytes(0x11, [2]);
 			linker.writeBytes(0x12, [3]);
 			linker.writeBytes(0x13, [4]);
 
-			linker.addSegment("SEG2", 0x12, 4);
+			linker.addSegment("SEG2", { start: 0x12, size: 4 });
 			linker.useSegment("SEG2");
 			linker.writeBytes(0x12, [5]);
 			linker.writeBytes(0x13, [6]);
@@ -184,7 +184,7 @@ describe("Linker", () => {
 
 		it("should use padValue for unfilled parts of segments", () => {
 			linker.addModule("MAIN");
-			linker.addSegment("DATA", 0x100, 5, 0xff);
+			linker.addSegment("DATA", { start: 0x100, size: 5, padValue: 0xff });
 			linker.useSegment("DATA");
 			linker.writeBytes(0x100, [0xda]);
 			linker.writeBytes(0x101, [0xdb]);
@@ -193,8 +193,8 @@ describe("Linker", () => {
 
 		it("should log each segment's place in the binary to the logger given, and print nothing without one", () => {
 			linker.addModule("MAIN");
-			linker.addSegment("CODE", 0x1000, 2);
-			linker.addSegment("DATA", 0x1004, 1);
+			linker.addSegment("CODE", { start: 0x1000, size: 2 });
+			linker.addSegment("DATA", { start: 0x1004, size: 1 });
 			const consoleLog = vi.spyOn(console, "log").mockImplementation(() => {});
 			try {
 				linker.rawBinaryLink();
@@ -216,11 +216,11 @@ describe("Linker", () => {
 	describe("Inline Sections", () => {
 		it("should append data correctly between segments", () => {
 			linker.addModule("MAIN");
-			linker.addSegment("SEG1", 0x100, 2);
+			linker.addSegment("SEG1", { start: 0x100, size: 2 });
 			linker.useSegment("SEG1");
 			linker.writeBytes(0x100, [0xaa, 0xbb]);
 
-			linker.addSegment("SEG2", 0x200, 2);
+			linker.addSegment("SEG2", { start: 0x200, size: 2 });
 			linker.useSegment("SEG2");
 			linker.writeBytes(0x200, [0xcc, 0xdd]);
 
@@ -244,11 +244,11 @@ describe("Linker", () => {
 	describe("Script Execution", () => {
 		it("should handle .SECTION directives correctly in a script", () => {
 			linker.addModule("MAIN");
-			linker.addSegment("CODE", 0, 2);
+			linker.addSegment("CODE", { start: 0, size: 2 });
 			linker.useSegment("CODE");
 			linker.writeBytes(0, [0xaa, 0xbb]);
 
-			linker.addSegment("DATA", 0, 2);
+			linker.addSegment("DATA", { start: 0, size: 2 });
 			linker.useSegment("DATA");
 			linker.writeBytes(0, [0xcc, 0xdd]);
 
@@ -283,15 +283,15 @@ describe("Linker", () => {
 	describe("Stateful Segments", () => {
 		it("should track emitted status and expose UNWRITTEN_SEGMENTS", () => {
 			linker.addModule("MAIN");
-			linker.addSegment("BOOT", 0, 1);
+			linker.addSegment("BOOT", { start: 0, size: 1 });
 			linker.useSegment("BOOT");
 			linker.writeBytes(0, [0xaa]);
 
-			linker.addSegment("CODE", 0, 1);
+			linker.addSegment("CODE", { start: 0, size: 1 });
 			linker.useSegment("CODE");
 			linker.writeBytes(0, [0xbb]);
 
-			linker.addSegment("DATA", 0, 1);
+			linker.addSegment("DATA", { start: 0, size: 1 });
 			linker.useSegment("DATA");
 			linker.writeBytes(0, [0xcc]);
 
@@ -347,10 +347,10 @@ describe("Linker", () => {
 
 		it("should parse a field access, with or without parentheses", () => {
 			linker.addModule("MAIN");
-			linker.addSegment("CODE", 0, 1);
+			linker.addSegment("CODE", { start: 0, size: 1 });
 			linker.useSegment("CODE");
 			linker.writeBytes(0, [0xaa]);
-			linker.addSegment("DATA", 0, 1);
+			linker.addSegment("DATA", { start: 0, size: 1 });
 			linker.useSegment("DATA");
 			linker.writeBytes(0, [0xbb]);
 
@@ -387,8 +387,8 @@ describe("Linker", () => {
 		// Skipped until the SEGMENTS variable's intended API (array and/or map) is decided.
 		it.skip("should behave as both an array and a map", () => {
 			linker.addModule("MAIN");
-			linker.addSegment("SEG_A", 0x10, 1);
-			linker.addSegment("SEG_B", 0x20, 1);
+			linker.addSegment("SEG_A", { start: 0x10, size: 1 });
+			linker.addSegment("SEG_B", { start: 0x20, size: 1 });
 
 			const script = `
 				.OUTPUT "test.bin"
@@ -447,11 +447,11 @@ describe("Linker", () => {
 		it("should process an .INCLUDE directive in a linker script", () => {
 			// 1. Setup assembler output (segments)
 			linker.addModule("MAIN");
-			linker.addSegment("CODE", 0, 2);
+			linker.addSegment("CODE", { start: 0, size: 2 });
 			linker.useSegment("CODE");
 			linker.writeBytes(0, [0xaa, 0xbb]);
 
-			linker.addSegment("DATA", 0, 2);
+			linker.addSegment("DATA", { start: 0, size: 2 });
 			linker.useSegment("DATA");
 			linker.writeBytes(0, [0xcc, 0xdd]);
 
@@ -592,9 +592,9 @@ describe("Linker", () => {
 	describe("Linker Scripting with Modules", () => {
 		it("should handle .WRITE MODULE directive", () => {
 			// Setup segments for two modules
-			linker.addSegment("MOD1_CODE", 0, 2);
-			linker.addSegment("MOD1_DATA", 0, 2);
-			linker.addSegment("MOD2_CODE", 0, 2);
+			linker.addSegment("MOD1_CODE", { start: 0, size: 2 });
+			linker.addSegment("MOD1_DATA", { start: 0, size: 2 });
+			linker.addSegment("MOD2_CODE", { start: 0, size: 2 });
 
 			linker.addModule("MODULE1");
 			linker.useSegment("MOD1_CODE");
@@ -626,8 +626,8 @@ describe("Linker", () => {
 
 	describe("Unwritten Modules", () => {
 		it("should track emitted modules and expose UNWRITTEN_MODULES", () => {
-			linker.addSegment("MOD1_CODE", 0, 2);
-			linker.addSegment("MOD2_CODE", 0, 2);
+			linker.addSegment("MOD1_CODE", { start: 0, size: 2 });
+			linker.addSegment("MOD2_CODE", { start: 0, size: 2 });
 
 			linker.addModule("MODULE1");
 			linker.useSegment("MOD1_CODE");

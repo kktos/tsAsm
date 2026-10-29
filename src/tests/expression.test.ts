@@ -550,7 +550,7 @@ describe("ExpressionEvaluator", () => {
 		it("should evaluate property access from sys variables", () => {
 			const { evaluator, tokenize, assembler } = setup();
 
-			assembler.addSegment("main", 0x1000, 0);
+			assembler.addSegment("main", { start: 0x1000 });
 			assembler.useSegment("main");
 
 			const tokens = tokenize(".segment.name");

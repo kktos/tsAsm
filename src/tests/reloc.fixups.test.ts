@@ -146,6 +146,25 @@ describe("Fixups", () => {
 		});
 	});
 
+	it("should be read by the linker script, as seg.relocs", () => {
+		const assembler = newAssembler();
+		assembler.assemble(`${SEGMENTS}\nnop\nmain:\njmp main\nlda #>msg`);
+		const script = `
+			code = .segment("CODE")
+			.FOR r OF code.relocs
+				.WRITE BYTE r.size
+				.WRITE BYTE r.shift
+				.WRITE WORD r.offset
+				.WRITE WORD r.targetOffset
+				.WRITE STRING r.segment
+			.END
+		`;
+		// size, shift, offset, targetOffset, "CODE" / "DATA"
+		const jmp = [0x02, 0x00, 0x02, 0x00, 0x01, 0x00, 0x43, 0x4f, 0x44, 0x45];
+		const lda = [0x01, 0x08, 0x05, 0x00, 0x00, 0x00, 0x44, 0x41, 0x54, 0x41];
+		expect(assembler.linker.link(script, undefined, new Logger({ sink: new MemorySink(), enabled: false })).data).toEqual([...jmp, ...lda]);
+	});
+
 	it("should record the fixups again on each assembly, not add to them", () => {
 		const assembler = newAssembler();
 		assembler.assemble(`${SEGMENTS}\njmp msg`);

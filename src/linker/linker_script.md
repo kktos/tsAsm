@@ -202,7 +202,12 @@ The function `.segment("<name>")` returns a segment by name.
 
 ### Segments and modules
 
-A segment has the fields `name`, `start` (its address, 0 for a relocatable one), `size`, `data` (its bytes), `padValue`, `resizable`, `relocatable` and `emitted` (true once written). A module has `name`, `segments` (an array of segments) and `size` (the sum of their sizes).
+A segment has the fields `name`, `start` (its address, 0 for a relocatable one), `size`, `data` (its bytes), `padValue`, `resizable`, `relocatable`, `emitted` (true once written), `attrs` and `relocs`:
+
+- `attrs`, its [attributes](../../REFERENCE.md#segments): the keys of its definition the assembler doesn't know, in lowercase. `.segment CODE { reloc: true, kind: $1000 }` gives `code.attrs.kind`; reading one the segment doesn't have is an error (`Property 'kind' does not exist on object.`).
+- `relocs`, its [fixups](../../REFERENCE.md#segments), an array of `{ offset, size, shift, segment, targetOffset }`: where the bytes of a relocatable value are in the segment, how many, how many bits its address is shifted right (0, 8 or 16), and the segment and offset of the value. The names are read as written: `r.targetOffset`.
+
+A module has `name`, `segments` (an array of segments) and `size` (the sum of their sizes).
 
 ```as
 .FOR s OF .segments_list
@@ -214,6 +219,19 @@ code = .segment("CODE")
 ```
 
 Read the fields from a variable: `.segment("CODE").size` doesn't work.
+
+A relocation record for each fixup, after the segment's kind:
+
+```as
+code = .segment("CODE")
+.WRITE WORD code.attrs.kind
+.FOR r OF code.relocs
+	.WRITE BYTE r.size
+	.WRITE BYTE r.shift
+	.WRITE LONG r.offset
+	.WRITE LONG r.targetOffset
+.END
+```
 
 ## Other directives
 

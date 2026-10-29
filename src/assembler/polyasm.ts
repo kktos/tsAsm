@@ -9,7 +9,7 @@ import { ErrorLocator } from "../helpers/error-locator.class";
 import { Lister } from "../helpers/lister.class";
 import { Logger } from "../helpers/logger.class";
 import { StreamManager } from "../helpers/stream-manager.class";
-import { Linker, type Segment } from "../linker/linker.class";
+import { Linker, type Segment, type SegmentAttributes, type SegmentParams } from "../linker/linker.class";
 import type { OperatorStackToken, ScalarToken, Token } from "../shared/lexer/lexer.class";
 import { AsmError } from "../utils/error.utils";
 import { getHex } from "../utils/hex.util";
@@ -212,8 +212,8 @@ export class Assembler {
 	}
 
 	/** Convenience: add a segment via the embedded linker. */
-	public addSegment(name: string, start: number, size: number, padValue = 0, resizable = false): void {
-		this.linker.addSegment(name, start, size, padValue, resizable);
+	public addSegment(name: string, params: SegmentParams = {}): void {
+		this.linker.addSegment(name, params);
 	}
 
 	/** Convenience: link segments via the linker. */
@@ -295,18 +295,25 @@ export class Assembler {
 		for (const seg of this.segmentDefinitions) {
 			if (seg.reloc !== undefined && seg.relocatable !== undefined)
 				throw new Error(`Segment '${seg.name}' gives 'relocatable' twice ('reloc' is the same property).`);
+			const attrs = segmentAttributes(seg);
 
 			// A relocatable segment has no address until it's loaded: it starts at 0, and grows without a size.
 			if (seg.relocatable ?? seg.reloc) {
 				if (seg.start !== undefined)
 					throw new Error(`Segment '${seg.name}' is relocatable: it has no 'start', its address is only known when it's loaded.`);
-				this.linker.addSegment(seg.name, 0, seg.size ?? 0, seg.padValue, seg.size === undefined || seg.resizable, true);
+				this.linker.addSegment(seg.name, {
+					size: seg.size,
+					padValue: seg.padValue,
+					resizable: seg.size === undefined || seg.resizable,
+					relocatable: true,
+					attrs,
+				});
 				continue;
 			}
 
 			if (seg.start === undefined) throw new Error(`Segment '${seg.name}' needs a 'start' address, or 'relocatable: true'.`);
 			if (seg.size === undefined) throw new Error(`Segment '${seg.name}' needs a 'size'.`);
-			this.linker.addSegment(seg.name, seg.start, seg.size, seg.padValue, seg.resizable);
+			this.linker.addSegment(seg.name, { start: seg.start, size: seg.size, padValue: seg.padValue, resizable: seg.resizable, attrs });
 		}
 		if (this.segmentDefinitions[0]) this.linker.useSegment(this.segmentDefinitions[0].name);
 	}
@@ -338,7 +345,7 @@ export class Assembler {
 
 			// Ensure there's at least one segment: if none defined, create a default growable segment starting at 0
 			if (!this.linker.segments || this.linker.segments.length === 0) {
-				this.linker.addSegment("CODE", DEFAULT_PC, 0, 0, true);
+				this.linker.addSegment("CODE", { start: DEFAULT_PC, resizable: true });
 				this.linker.useSegment("CODE");
 				// Pass 1 started at DEFAULT_PC with no segment: this one stands for it.
 				this.passStart.segment = this.linker.currentSegment;
@@ -1010,4 +1017,23 @@ export class Assembler {
 		}
 		return result;
 	}
+}
+
+/** The keys of a `SegmentDefinition` the assembler reads: any other is an attribute. */
+const SEGMENT_DEFINITION_KEYS = ["name", "start", "size", "padValue", "resizable", "relocatable", "reloc"];
+
+/** A segment definition's attributes: its other keys, in lowercase, each a number or a string. */
+function segmentAttributes(seg: SegmentDefinition): SegmentAttributes {
+	const attrs: SegmentAttributes = {};
+	for (const [key, value] of Object.entries(seg)) {
+		if (SEGMENT_DEFINITION_KEYS.includes(key)) continue;
+
+		const name = key.toLowerCase();
+		const known = SEGMENT_DEFINITION_KEYS.find((k) => k.toLowerCase() === name);
+		if (known) throw new Error(`Segment '${seg.name}': '${key}' is written '${known}'.`);
+		if (name in attrs) throw new Error(`Segment '${seg.name}' gives the attribute '${name}' twice.`);
+		if (typeof value !== "number" && typeof value !== "string") throw new Error(`Segment '${seg.name}': attribute '${name}' must be a number or a string.`);
+		attrs[name] = value;
+	}
+	return attrs;
 }
