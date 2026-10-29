@@ -210,7 +210,7 @@ Code is assembled into segments. The command line tool defines them in the proje
 .segment DATA { start: $2000, size: $100, pad: $FF }
 ```
 
-A segment needs a `start`, and an `end` or a `size`: a `size` of `0` makes one that grows as code is written to it.
+A segment needs a `start`, and an `end` or a `size`, not both: a `size` of `0` makes one that grows as code is written to it. Each key is given once, in any case: `start` and `START` are the same key.
 
 A relocatable segment has no address until it's loaded: it's declared with `relocatable: true` (or `reloc: true`), and has no `start` nor `end`, which are errors. Its `size` is optional: without one, it grows. `.org` and `* =` are errors in it. Only a [linker script](src/linker/linker_script.md) can place it: linking without one is an error (`Segment 'CODE' is relocatable: it needs a linker script to place it.`).
 

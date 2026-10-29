@@ -58,10 +58,6 @@ Without a linker script, `output.listing: { enabled: true }` writes a `.lst` hol
 
 `.function f(x) = x +* 2` or a body with `.retrun x` is an error only where `f` is called: a function never called, in a library, keeps its typo. The one-line form's expression could be parsed at the definition, without evaluating it, and a block's statements checked as a branch not taken is (`Parser.checkDirectives`). Found with 4.8.
 
-### 1.65 A `.segment` property given twice
-
-`.segment X { start: $1000, start: $2000, size: 4 }` puts `X` at `$2000`: the last value wins, silently. Only `reloc` / `relocatable` given twice is an error. Found with 4.19.
-
 ### 1.66 A 6809 or RV32I branch to a fixed address in a relocatable segment
 
 In a relocatable segment, the instruction's PC is its offset there: a branch to a fixed address is computed from it, silently. `.segment CODE { reloc: true }` / `nop` / `bra $10` → `12 20 0D` on the 6809; `beq x0, x0, $10` the same on the RV32I. The 65xx reads its branch targets with `OperandReader.branchTarget` since #181, which rejects them (`A branch from relocatable segment 'CODE' can't reach $10: …`); the other CPUs should too. Their operands don't take relocatable values (`the 6809's operands can't take one`): fixups for them would follow, RV32I's with `%hi` / `%lo` (2.1). Found with 4.19.

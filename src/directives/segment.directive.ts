@@ -130,10 +130,16 @@ export class SegmentDirective implements IDirective {
 				continue;
 			}
 
-			if (key === "relocatable") {
-				if (keys.relocatable) throw AsmError.at("The .SEGMENT definition gives 'relocatable' twice ('reloc' is the same property).", token);
-				params.relocatable = this.parseBoolean(token, valueTokens);
-			} else params[key] = this.runtime.evaluator.evaluateAsNumber(valueTokens, context);
+			if (keys[key]) {
+				const alias = key === "relocatable" ? " ('reloc' is the same property)" : "";
+				throw AsmError.at(`The .SEGMENT definition gives '${key}' twice${alias}.`, token);
+			}
+			// `end` and `size` both give where the segment ends: only one can.
+			if ((key === "end" && keys.size) || (key === "size" && keys.end))
+				throw AsmError.at("The .SEGMENT definition gives both 'end' and 'size': give one of them.", token);
+
+			if (key === "relocatable") params.relocatable = this.parseBoolean(token, valueTokens);
+			else params[key] = this.runtime.evaluator.evaluateAsNumber(valueTokens, context);
 			keys[key] = token;
 
 			if (this.runtime.parser.peek()?.type === "COMMA") this.runtime.parser.advance();
