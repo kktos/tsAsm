@@ -9,7 +9,7 @@ import { ErrorLocator } from "../helpers/error-locator.class";
 import { Lister } from "../helpers/lister.class";
 import { Logger } from "../helpers/logger.class";
 import { StreamManager } from "../helpers/stream-manager.class";
-import { Linker, type Segment, type SegmentAttributes } from "../linker/linker.class";
+import { Linker, type Segment, type SegmentAttributes, type SegmentParams } from "../linker/linker.class";
 import type { OperatorStackToken, ScalarToken, Token } from "../shared/lexer/lexer.class";
 import { AsmError } from "../utils/error.utils";
 import { getHex } from "../utils/hex.util";
@@ -212,8 +212,8 @@ export class Assembler {
 	}
 
 	/** Convenience: add a segment via the embedded linker. */
-	public addSegment(name: string, start: number, size: number, padValue = 0, resizable = false): void {
-		this.linker.addSegment(name, { start, size, padValue, resizable });
+	public addSegment(name: string, params: SegmentParams = {}): void {
+		this.linker.addSegment(name, params);
 	}
 
 	/** Convenience: link segments via the linker. */
