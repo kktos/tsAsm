@@ -6,6 +6,7 @@
 
 import type { PASymbolTable, SymbolValue } from "../assembler/symbol.class";
 import { FunctionDispatcher } from "../shared/functions/function.dispatcher";
+import { FunctionRef, type SymbolResolver } from "../shared/functions/types";
 import type { FunctionToken, OperatorStackToken, OperatorToken, ScalarToken, Token } from "../shared/lexer/lexer.class";
 import { AsmError, type AsmNote } from "../utils/error.utils";
 import { fieldValue } from "../utils/symbol.utils";
@@ -296,18 +297,34 @@ export class ExpressionEvaluator {
 	}
 
 	/**
-	 * Whether the identifier between `previous` and `next` is a whole argument that its function takes as a name,
-	 * `X` in `.def(X)`: see `IFunctionDef.nameArgs`. Not in `.def((X))`, whose `(` isn't the function's.
+	 * The system function and the index of the argument that what's between `previous` and `next` is the whole of: `X`
+	 * in `.def(X)`. None in `.def((X))`, whose `(` isn't the function's.
 	 */
-	private isNameArgument(next: Token | undefined, previous: Token | undefined, operatorStack: OperatorStackToken[]): boolean {
+	private wholeArgument(
+		next: Token | undefined,
+		previous: Token | undefined,
+		operatorStack: OperatorStackToken[],
+	): { name: string; index: number } | undefined {
 		const endsArgument = next?.type === "COMMA" || (next?.type === "OPERATOR" && next.value === ")");
 		const startsArgument = previous?.type === "COMMA" || (previous?.type === "OPERATOR" && previous.value === "(");
-		if (!endsArgument || !startsArgument || operatorStack.at(-1)?.value !== "(") return false;
+		if (!endsArgument || !startsArgument || operatorStack.at(-1)?.value !== "(") return undefined;
 
 		const funcToken = operatorStack.at(-2);
-		if (funcToken?.type !== "FUNCTION") return false;
+		if (funcToken?.type !== "FUNCTION") return undefined;
 		// A comma already counted the argument it starts.
-		return this.functionDispatcher.isNameArgument(funcToken.value, (funcToken.argCount ?? 1) - 1);
+		return { name: funcToken.value, index: (funcToken.argCount ?? 1) - 1 };
+	}
+
+	/** Whether the identifier between `previous` and `next` is an argument its function takes as a name: see `IFunctionDef.nameArgs`. */
+	private isNameArgument(next: Token | undefined, previous: Token | undefined, operatorStack: OperatorStackToken[]): boolean {
+		const argument = this.wholeArgument(next, previous, operatorStack);
+		return argument !== undefined && this.functionDispatcher.isNameArgument(argument.name, argument.index);
+	}
+
+	/** Whether the name between `previous` and `next` is a function given to a function: see `IFunctionDef.functionArg`. */
+	private isFunctionArgument(next: Token | undefined, previous: Token | undefined, operatorStack: OperatorStackToken[]): boolean {
+		const argument = this.wholeArgument(next, previous, operatorStack);
+		return argument !== undefined && this.functionDispatcher.isFunctionArgument(argument.name, argument.index);
 	}
 
 	/** Converts an infix token stream to Reverse Polish Notation (RPN). */
@@ -372,6 +389,12 @@ export class ExpressionEvaluator {
 						break;
 					}
 
+					if (this.isFunctionArgument(tokens[index + 1], lastToken, operatorStack)) {
+						processedToken = { ...processedToken, type: "FUNCTION_NAME" };
+						outputQueue.push(processedToken);
+						break;
+					}
+
 					if (opensCall(processedToken, tokens[index + 1])) {
 						const callToken: FunctionToken = { ...processedToken, type: "USER_FUNCTION", argCount: 1 };
 						operatorStack.push(callToken);
@@ -415,6 +438,15 @@ export class ExpressionEvaluator {
 						if (paren?.value === "(" && !isGlued(nextToken, paren) && this.functionDispatcher.has(nextToken.value as string)) {
 							const name = `.${tokenText(nextToken)}`;
 							throw AsmError.at(`No space allowed between the function '${name}' and its '(': call it as ${name}(…).`, paren);
+						}
+
+						// A system function given to a function, not called: `.lobyte` in `.map(list, .lobyte)`
+						if (this.isFunctionArgument(paren, lastToken, operatorStack)) {
+							const nameToken: Token = { ...nextToken, type: "FUNCTION_NAME", value: `.${nextToken.value}`, raw: `.${tokenText(nextToken)}` };
+							outputQueue.push(nameToken);
+							lastToken = nameToken;
+							index++;
+							continue;
 						}
 
 						// Check for function call, e.g., IDENTIFIER followed by '('.
@@ -521,6 +553,10 @@ export class ExpressionEvaluator {
 					break;
 				}
 
+				case "FUNCTION_NAME":
+					stack.push(this.functionRef(token, context));
+					break;
+
 				case "FUNCTION": {
 					const resolver = (name: string) => {
 						if (name === "*") return this.addressValue(context.PC.value);
@@ -553,6 +589,7 @@ export class ExpressionEvaluator {
 						token.argCount,
 						resolver,
 						context.allowForwardRef,
+						(fn, args) => this.callFunctionRef(fn, args, context, resolver),
 					);
 					break;
 				}
@@ -688,11 +725,7 @@ export class ExpressionEvaluator {
 
 			if (arrIdx < 0 || arrIdx >= array.length) throw AsmError.at(`Array index ${arrIdx} out of bounds for array of length ${array.length}.`, token);
 
-			// A macro's rest parameter holds each argument as its tokens: evaluated like a macro argument, without the macro's own.
-			const element = array[arrIdx];
-			stack.push(
-				Array.isArray(element) && element[0]?.type ? this.evaluate(element as Token[], { ...context, macroArgs: undefined }) : fieldValue(element),
-			);
+			stack.push(this.elementValue(array[arrIdx] as SymbolValue, context));
 			return true;
 		}
 		return false;
@@ -830,6 +863,49 @@ export class ExpressionEvaluator {
 		}
 		const relocatable = (left instanceof RelocValue ? left : right) as RelocValue;
 		throw AsmError.at(relocatableArgumentMessage(`Operator '${token.value}'`, relocatable), token);
+	}
+
+	/** An array's element. A macro's rest parameter holds each argument as its tokens: evaluated like a macro argument, without the macro's own. */
+	private elementValue(element: SymbolValue, context: EvaluationContext): SymbolValue {
+		return Array.isArray(element) && element[0]?.type ? this.evaluate(element as Token[], { ...context, macroArgs: undefined }) : fieldValue(element);
+	}
+
+	/**
+	 * The function `token` names, given to a function (`f` or `.lobyte` in `.map(list, f)`): defined at this point, as
+	 * for a call. A macro parameter stands for its argument, a function's name.
+	 */
+	private functionRef(token: ScalarToken, context: EvaluationContext): FunctionRef {
+		let named: ScalarToken = token;
+		const argTokens = context.macroArgs?.get(token.value);
+		if (argTokens) {
+			const [first, second] = argTokens;
+			if (argTokens.length === 1 && first?.type === "IDENTIFIER") named = { ...first, line: token.line, column: token.column };
+			else if (argTokens.length === 2 && first?.type === "DOT" && second?.type === "IDENTIFIER")
+				named = { ...second, value: `.${second.value}`, raw: `.${tokenText(second)}`, line: token.line, column: token.column };
+			else throw AsmError.at(`'${token.raw ?? token.value}' must be a function's name: f or .lobyte.`, token);
+		}
+
+		const written = named.raw ?? named.value;
+		if (named.value.startsWith(".")) {
+			const arity = this.functionDispatcher.arity(named.value.slice(1));
+			if (!arity) throw AsmError.at(`Unknown function '${named.value.slice(1).toUpperCase()}'.`, named);
+			return new FunctionRef(written.slice(1), true, named, arity);
+		}
+
+		const fn = this.symbolTable.isDefined(named.value) ? this.symbolTable.lookupSymbol(named.value) : undefined;
+		if (fn === undefined) throw AsmError.at(`Unknown function '${written}'.`, named);
+		if (!(fn instanceof UserFunction)) throw AsmError.at(`'${written}' isn't a function.`, named);
+		return new FunctionRef(written, false, named, [fn.parameters.length, fn.parameters.length]);
+	}
+
+	/** Calls `fn` with the values of `args`, elements of an array: see `FunctionCaller`. */
+	private callFunctionRef(fn: FunctionRef, args: SymbolValue[], context: EvaluationContext, resolver: SymbolResolver): SymbolValue | null {
+		const values = args.map((arg) => this.elementValue(arg, context));
+		if (!fn.isSystem) return this.callFunction(fn.token as ScalarToken, values, context);
+
+		const stack: (SymbolValue | null)[] = values;
+		this.functionDispatcher.dispatch(fn.name.toUpperCase(), stack, fn.token, this.symbolTable, values.length, resolver, context.allowForwardRef);
+		return stack[0] as SymbolValue | null;
 	}
 
 	/**

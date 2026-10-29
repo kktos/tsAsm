@@ -91,6 +91,8 @@ Arrays and objects also come from [`.define`](#structured-data-define) blocks, w
 
 Data directives only emit numbers and strings: `.db list` is an error. Index the array (`list[1]`), read the object's field, or spread the array to emit every element (`.db ...list`, see [Data](#data)).
 
+`.range()` and `.map()` build an array in one expression, without a loop: see [Building an array](#building-an-array).
+
 ### Operators
 
 | Operators           | Meaning                                                                                                                                                                                               |
@@ -315,7 +317,11 @@ table = [2, 3]
 .macro bytes ...values  ; a macro's rest parameter can be spread too
     .db ...values
 .end
+
+.db ... .map(.range(0, 4), .lobyte)    ; an array built in the directive, see .map()
 ```
+
+`... .map(…)` is easier to read with its space: `....map(…)` is the same, `...` then `.map`.
 
 ## Strings
 
@@ -394,7 +400,7 @@ A branch not taken isn't assembled, but it's checked: an unknown character is an
 .end
 ```
 
-`.for <item> of <array> [AS <index> [FROM <start>]]` repeats a block for each element of an array. The index counts from `0`, or from `start`: the items always start at the array's first.
+`.for <item> of <array> [AS <index> [FROM <start>]]` repeats a block for each element of an array. The index counts from `0`, or from `start`: the items always start at the array's first. Over numbers, [`.range()`](#building-an-array) gives the array: `.for x of .range(0, 8, 2)` runs with `x` at 0, 2, 4 and 6.
 
 ```as
 colours = ["red", "green", "blue"]
@@ -518,7 +524,7 @@ A last parameter written `...name` collects the remaining arguments into an arra
     .db reverse($0F)    ; F0
 ```
 
-- **A call** is the name with its `(` glued to it, as a macro's `m(1, 2)`: `screen (10, 5)` is the name followed by an expression, and a function's name without a call is an error (`'screen' is a function: call it, screen(…).`). From another namespace: `gfx::line(2)`. The system functions keep their dot, `.len()`, so they never have the same name.
+- **A call** is the name with its `(` glued to it, as a macro's `m(1, 2)`: `screen (10, 5)` is the name followed by an expression, and a function's name without a call is an error (`'screen' is a function: call it, screen(…).`), except as the function [`.map()`](#building-an-array) calls. From another namespace: `gfx::line(2)`. The system functions keep their dot, `.len()`, so they never have the same name.
 - **The arguments are values**, evaluated at the call, unlike a macro's: with `.function double(x) = x * 2`, `double(1 + 2)` is 6. There must be as many as there are parameters; `f()` is a call without arguments.
 - **A scope per call:** the parameters are local to it, and hide a symbol of the same name. The expression reads the symbols of where the function is defined, with the values they have at the call, and `*` is the address of the call. It doesn't see the parameters and variables of the macro it's called from, nor those of the macro it's defined in.
 - **Defined before its call:** a call above the `.function` line is `Unknown function 'f'.`, in both passes, as `.def()` says.
@@ -774,8 +780,27 @@ A call is the dot, the name and the `(` glued: `.len("AB")`. `.len ("AB")` and `
 | `.array(<item>, …)`                        | A new array                                                                                                                                                                                                                                                                                                                                                              |
 | `.push(<array>, <item>, …)`                | The array, with the items added at the end                                                                                                                                                                                                                                                                                                                               |
 | `.pop(<array>)`                            | The last item, removed from the array                                                                                                                                                                                                                                                                                                                                    |
+| `.range(<start>, <count> [, <step>])`      | An array of `count` numbers from `start`, `step` apart (1 by default): see [Building an array](#building-an-array)                                                                                                                                                                                                                                                       |
+| `.map(<array>, <function>)`                | A new array, of the function's value for each element: see [Building an array](#building-an-array)                                                                                                                                                                                                                                                                       |
 | `.split(<string> [, <separator>])`         | An array of the parts (separator: space by default)                                                                                                                                                                                                                                                                                                                      |
 | `.join(<array>, <separator>)`              | A string of the items joined by the separator                                                                                                                                                                                                                                                                                                                            |
+
+### Building an array
+
+`.range(<start>, <count> [, <step>])` gives `count` numbers from `start`, `step` apart: `.range(0, 4)` is `[0, 1, 2, 3]`, `.range(1, 3)` is `[1, 2, 3]`, `.range(0, 4, 2)` is `[0, 2, 4, 6]`, `.range(5, 3, -1)` is `[5, 4, 3]`. The second argument is a count, as `.repeat`'s, not an end: the array has that many elements. All three are whole numbers, the count `0` or more (`0` gives `[]`), the step not `0`.
+
+`.map(<array>, <function>)` calls the function with each element and gives the array of its values. The function is written by its name, not called: a [user function](#functions) defined before (`row`), or a system function with its dot (`.lobyte`). It must take one argument.
+
+```as
+.fn row(c) = c * 16
+.db ... .map(.range(0, 16), row)   ; 00 10 20 … F0
+
+addrs = [reset, nmi, irq]
+lo: .db ... .map(addrs, .lobyte)   ; a table of addresses, split
+hi: .db ... .map(addrs, .hibyte)
+```
+
+In a macro, a parameter can give the function, by its name: `table [1, 2], double` or `table list, .hibyte` with `.db ... .map(list, fn)` in the body. An unknown name, a symbol that isn't a function or one that doesn't take one argument is an error, even for an empty array: `.MAP() calls its function with one argument, each element: 'f' takes 2.`
 
 ## CPU
 
