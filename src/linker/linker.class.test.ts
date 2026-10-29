@@ -365,6 +365,23 @@ describe("Linker", () => {
 			expect(result.data).toEqual([0xaa, 0xaa, 0xbb, 0xbb]);
 		});
 
+		it("should index a system variable", () => {
+			linker.addSegment("CODE", { start: 0, size: 1 });
+			linker.useSegment("CODE");
+			linker.writeBytes(0, [0xaa]);
+			linker.addSegment("DATA", { start: 0, size: 1 });
+			linker.useSegment("DATA");
+			linker.writeBytes(0, [0xbb]);
+
+			const script = `
+				.OUTPUT "test.bin"
+				.WRITE SEGMENT .SEGMENTS_LIST[1].name
+				.WRITE BYTE .LEN(.SEGMENTS_LIST[0].name)
+			`;
+			const result = linker.link(script, undefined, logger);
+			expect(result.data).toEqual([0xbb, 4]);
+		});
+
 		it("should stop the value at AT, with or without parentheses", () => {
 			const script = `
 				.OUTPUT "test.bin"

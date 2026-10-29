@@ -325,6 +325,12 @@ describe("ExpressionEvaluator", () => {
 			expect(() => evaluator.evaluateAsNumber(tokens, { PC: { value: 0 } })).toThrow("Attempted to index a non-array value.");
 		});
 
+		it("should index a system variable", () => {
+			const { evaluator, tokenize } = setup();
+			const tokens = tokenize(".NS[0]"); // a string
+			expect(() => evaluator.evaluateAsNumber(tokens, { PC: { value: 0 } })).toThrow("Attempted to index a non-array value.");
+		});
+
 		it("should throw error for out-of-bounds index", () => {
 			const { evaluator, tokenize } = setup();
 			const tokens = tokenize("[1,2,3][3]");
