@@ -56,6 +56,9 @@ export interface Segment {
 	attrs?: SegmentAttributes;
 }
 
+/** What a segment is defined with: any field left out is 0, false or no attributes. */
+export type SegmentParams = Partial<Pick<Segment, "start" | "size" | "padValue" | "resizable" | "relocatable" | "attrs">>;
+
 export class Linker {
 	public segments: Segment[] = [];
 	/** What the script writes at an offset (a .SECTION … AT, a .WRITE … AT): applied in order over the complete output. */
@@ -102,7 +105,8 @@ export class Linker {
 		return this.segments.find((s) => s.name === name);
 	}
 
-	public addSegment(name: string, start: number, size: number, padValue = 0, resizable = false, relocatable = false, attrs: SegmentAttributes = {}) {
+	/** A segment: from `start`, `size` bytes of `padValue`, growing on writes when `resizable`. */
+	public addSegment(name: string, { start = 0, size = 0, padValue = 0, resizable = false, relocatable = false, attrs = {} }: SegmentParams = {}) {
 		const seg = this.findSegment(name);
 		if (seg) throw new Error(`Segment already defined : ${name}`);
 

@@ -213,7 +213,7 @@ export class Assembler {
 
 	/** Convenience: add a segment via the embedded linker. */
 	public addSegment(name: string, start: number, size: number, padValue = 0, resizable = false): void {
-		this.linker.addSegment(name, start, size, padValue, resizable);
+		this.linker.addSegment(name, { start, size, padValue, resizable });
 	}
 
 	/** Convenience: link segments via the linker. */
@@ -301,13 +301,19 @@ export class Assembler {
 			if (seg.relocatable ?? seg.reloc) {
 				if (seg.start !== undefined)
 					throw new Error(`Segment '${seg.name}' is relocatable: it has no 'start', its address is only known when it's loaded.`);
-				this.linker.addSegment(seg.name, 0, seg.size ?? 0, seg.padValue, seg.size === undefined || seg.resizable, true, attrs);
+				this.linker.addSegment(seg.name, {
+					size: seg.size,
+					padValue: seg.padValue,
+					resizable: seg.size === undefined || seg.resizable,
+					relocatable: true,
+					attrs,
+				});
 				continue;
 			}
 
 			if (seg.start === undefined) throw new Error(`Segment '${seg.name}' needs a 'start' address, or 'relocatable: true'.`);
 			if (seg.size === undefined) throw new Error(`Segment '${seg.name}' needs a 'size'.`);
-			this.linker.addSegment(seg.name, seg.start, seg.size, seg.padValue, seg.resizable, false, attrs);
+			this.linker.addSegment(seg.name, { start: seg.start, size: seg.size, padValue: seg.padValue, resizable: seg.resizable, attrs });
 		}
 		if (this.segmentDefinitions[0]) this.linker.useSegment(this.segmentDefinitions[0].name);
 	}
@@ -339,7 +345,7 @@ export class Assembler {
 
 			// Ensure there's at least one segment: if none defined, create a default growable segment starting at 0
 			if (!this.linker.segments || this.linker.segments.length === 0) {
-				this.linker.addSegment("CODE", DEFAULT_PC, 0, 0, true);
+				this.linker.addSegment("CODE", { start: DEFAULT_PC, resizable: true });
 				this.linker.useSegment("CODE");
 				// Pass 1 started at DEFAULT_PC with no segment: this one stands for it.
 				this.passStart.segment = this.linker.currentSegment;

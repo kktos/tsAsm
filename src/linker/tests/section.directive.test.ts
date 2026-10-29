@@ -100,11 +100,11 @@ describe("Linker Script: .SECTION and .WRITE … AT", () => {
 	describe("segments and modules", () => {
 		beforeEach(() => {
 			linker.addModule("M");
-			linker.addSegment("CODE", 0x1000, 2);
+			linker.addSegment("CODE", { start: 0x1000, size: 2 });
 			linker.useSegment("CODE");
 			linker.writeBytes(0x1000, [1, 2]);
 			// fixed, 1 byte of 3 written: padded with its pad value
-			linker.addSegment("DATA", 0x2000, 3, 0xee);
+			linker.addSegment("DATA", { start: 0x2000, size: 3, padValue: 0xee });
 			linker.useSegment("DATA");
 			linker.writeBytes(0x2000, [9]);
 		});

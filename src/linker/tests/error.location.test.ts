@@ -18,7 +18,7 @@ describe("Linker Script: error locations", () => {
 		readBinaryFile: () => [],
 	});
 	const link = (script: string, sink = new MemorySink(), linker = new Linker(0, fileHandler())) => {
-		linker.addSegment("CODE", 0, 2);
+		linker.addSegment("CODE", { start: 0, size: 2 });
 		try {
 			linker.link(script, "out.bin", new Logger({ sink, enabled: true }));
 		} catch (e) {
@@ -104,7 +104,7 @@ M`;
 	it("should locate a warning like an error", () => {
 		const sink = new MemorySink();
 		const linker = new Linker(0, fileHandler());
-		linker.addSegment("CODE", 0, 2);
+		linker.addSegment("CODE", { start: 0, size: 2 });
 		linker.link('.OUTPUT "x"\n  .WARNING "careful"', "out.bin", new Logger({ sink, enabled: true }));
 		expect(sink.warnings).toEqual([["link.ld:2:3: warning: careful", '    2 |   .WARNING "careful"', "      |   ^"].join("\n")]);
 	});
