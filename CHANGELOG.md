@@ -6,6 +6,12 @@ The problem is described as it was before the fix, then the fix in _italics_.
 
 ## Assembler
 
+### #192 — `.define` keeps its name (TODO 3.7)
+
+`.define` is a text macro in ca65 and C; here it loads data. A reader coming from them could expect `.define X 5` to replace `X` with `5`.
+
+_Decided: it keeps its name, and the reference says it isn't ca65's `.define` nor C's `#define`, pointing to macros and functions for that._
+
 ### #191 — A function call read as a directive (TODO 3.7)
 
 `.str` and `.hex` are directives and functions, `.segment` and `.namespace` directives and variables. At the start of a statement, a `.` and a name were always a directive, whatever followed: `.str("A")` emitted `41`, as `.str "A"`, and `.hex(41)` → `Invalid hexadecimal character sequence: "(4"`. The spaces didn't count: `. str "A"`, `.str"A"` and `.db$41` were read as directives, and `.len ("AB")` and `. len("AB")` called `.len()`, where a user function's `(` must be glued (`f (1)` → `'f' is a function: call it, f(…).`).

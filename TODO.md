@@ -126,16 +126,6 @@ Symbols ignore case, properties don't: with `{ Id: 5 }`, `d[0].Id` works but `d[
 
 `/` gives fractions, but `1.5` → `Invalid syntax: '.' must be followed by an identifier.` Options: an integer `/`, as ca65; or keep fractions in expressions and reject them where they land (1.37). Recommended: the second.
 
-### 3.7 Names
-
-- `.define` is a text macro in ca65 and C; here it loads data.
-
-Rename (keeping aliases), or document.
-
-`.str` and `.hex` being directives and functions, `.segment` and `.namespace` directives and variables: done in #191, a directive's name is followed by a space and a function's `(` is glued to it, so `.str("A")` can't start a statement (see `CHANGELOG.md`).
-
-`.function` was a label scope, not a function usable in expressions: done in #142, it's `.proc` (see `CHANGELOG.md`).
-
 ### 3.9 A function defined in a macro body doesn't see the macro's parameters
 
 `.macro m base` / `.function f(x) = base + x` / `.db f(1)` / `.end` → `Undefined symbol 'BASE'.`: a function's expression is evaluated without macro parameters, as it's called from anywhere. To decide: substitute them at the definition, as a nested macro call's arguments are (`substituteArgument`), or keep it an error and say so. Found with 4.8.
