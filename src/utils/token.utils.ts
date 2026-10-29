@@ -17,3 +17,15 @@ export function findTopLevelComma(tokens: Token[]): number {
 	}
 	return -1;
 }
+
+/** The token as written: its raw text, else its value. */
+export function tokenText(token: Token): string {
+	if (token.type === "STRING") return `"${token.value}"`;
+	return String(token.raw ?? token.value);
+}
+
+/** True when `right` starts right where `left` ends, on the same line: `.db`, `.len(`, not `. db` or `.len (`. */
+export function isGlued(left: Token | null | undefined, right: Token | null | undefined): boolean {
+	if (!left || !right || left.line !== right.line) return false;
+	return right.column === left.column + String(left.raw ?? left.value).length;
+}

@@ -4,7 +4,7 @@ import type { SymbolValue } from "../assembler/symbol.class";
 import type { IDirective } from "../directives/directive.interface";
 import { AssemblyLexer, type IdentifierToken, type LabelSyntax, type NumberToken, type StringToken, type Token } from "../shared/lexer/lexer.class";
 import { AsmError } from "../utils/error.utils";
-import { nestingDelta } from "../utils/token.utils";
+import { isGlued, nestingDelta, tokenText } from "../utils/token.utils";
 
 /** Called right after a raw directive's name: returns the rest of the directive's tokens, raw text included. */
 type GetRawBlock = (parser: Parser, directive: Token) => Token[];
@@ -59,7 +59,7 @@ export class Parser {
 			const dot = tokens[i] as Token;
 			const name = tokens[i + 1] as Token;
 			if (dot.type !== "DOT" || name.type !== "IDENTIFIER") continue;
-			if (tokens[i + 2]?.type === "OPERATOR" && tokens[i + 2]?.value === "(") continue;
+			if (tokens[i + 2]?.type === "OPERATOR" && tokens[i + 2]?.value === "(" && isGlued(name, tokens[i + 2])) continue;
 
 			const previous = tokens[i - 1];
 			const startsStatement = !previous || previous.line !== dot.line || ["LBRACE", "RBRACE", "LABEL", "LOCAL_LABEL"].includes(previous.type);
@@ -247,14 +247,44 @@ export class Parser {
 	}
 
 	/**
-	 * True when the token at `index` is '(' (a function call like `.hex(10)`, not a directive).
+	 * True when the token at `index` is a '(' glued to the name before it (a function call like `.hex(10)`, not a directive).
 	 * A token not lexed yet is checked on the source instead, so a raw directive's data isn't lexed as tokens.
 	 */
 	private opensCall(index: number): boolean {
-		const lexerBuffer = this.lexer.getBufferedTokens();
-		if (this.activeTokens === lexerBuffer && index >= lexerBuffer.length) return this.lexer.nextCharOnLine() === "(";
+		if (this.isUnlexed(index)) return this.lexer.charAtPosition() === "(";
 		const token = this.ensureToken(index);
-		return token?.type === "OPERATOR" && token.value === "(";
+		return token?.type === "OPERATOR" && token.value === "(" && isGlued(this.ensureToken(index - 1), token);
+	}
+
+	/** True when the token at `index` would come from the lexer: the source right after the last token read is checked instead. */
+	private isUnlexed(index: number): boolean {
+		const lexerBuffer = this.lexer.getBufferedTokens();
+		return this.activeTokens === lexerBuffer && index >= lexerBuffer.length;
+	}
+
+	/**
+	 * A statement's directive is `.` glued to its name, then a space, the end of the line or a comment: `.db $41`.
+	 * `. db $41` and `.db$41` are errors, and so is `.str("A")`, a function call: it can't start a statement.
+	 * `dot` and `name` were just read: the token after `name` is at the current position.
+	 */
+	public checkDirectiveSpacing(dot: Token, name: Token) {
+		if (!isGlued(dot, name)) throw AsmError.at(`Expected a directive name right after '.', not a space: '.${tokenText(name)}'.`, dot);
+
+		const index = this.getPosition();
+		let next: string;
+		if (this.isUnlexed(index)) {
+			if (this.lexer.isAtSeparator()) return;
+			next = this.lexer.charAtPosition();
+		} else {
+			const token = this.ensureToken(index);
+			if (!token || token.type === "EOF" || !isGlued(name, token)) return;
+			next = tokenText(token);
+		}
+
+		const directive = `.${tokenText(name)}`;
+		if (next.startsWith("("))
+			throw AsmError.at(`'${directive}(' is a function call, it can't start a statement: a directive is followed by a space, '${directive} ('.`, name);
+		throw AsmError.at(`Expected a space after the directive name '${directive}', got '${next[0]}'.`, name);
 	}
 
 	public directive(expectedValue?: SymbolValue | SymbolValue[]) {

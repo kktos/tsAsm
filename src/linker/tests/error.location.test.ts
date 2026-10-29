@@ -59,6 +59,7 @@ describe("Linker Script: error locations", () => {
 		['.OUTPUT "x"\n  s = .SEGMENT("NOPE")', "Segment 'NOPE' not found."],
 		['.OUTPUT "x"\n  .WRITE BYTE .NOPE', "Unknown system variable: NOPE."],
 		['.OUTPUT "x"\n  .INCLUDE 1', ".INCLUDE requires a string argument."],
+		['.OUTPUT"x"', `Expected a space after the directive name '.OUTPUT', got '"'.`],
 	])("should not repeat the line in the message: %j", (script, message) => {
 		expect((link(script) as AsmError).message).toBe(message);
 	});

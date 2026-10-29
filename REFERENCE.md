@@ -31,7 +31,7 @@ start:  lda #$00    ; load 0
         sta $D020
 ```
 
-- Directives start with a dot: `.db`, `.macro`, … Their names are case-insensitive.
+- Directives start with a dot: `.db`, `.macro`, … Their names are case-insensitive. The dot is glued to the name, and the name is followed by a space, the end of the line or a comment: `.db $41`, not `. db $41` or `.db$41`. A [system function](#system-functions) is written with its `(` glued, `.str("A")`, so it's never read as a directive: `.str("A")` can't start a statement, but `.str ("A")` is the `.str` directive.
 - Symbol names are case-insensitive: `Loop` and `LOOP` are the same symbol.
 - Outside comments and strings, a character the assembler doesn't recognise is an error, even in code that isn't assembled (a false `.if`). A byte order mark at the start of a file is ignored.
 - Blocks (`.if`, `.repeat`, `.for`, `.macro`, `.proc`, `.define`, …) end with `.end`, or can be written with braces:
@@ -740,7 +740,7 @@ C02 = 1
 
 ## System variables
 
-Read-only values, prefixed with a dot.
+Read-only values, prefixed with a dot glued to the name: `.pc`, not `. pc`.
 
 | Variable                 | Value                                                                       |
 | ------------------------ | --------------------------------------------------------------------------- |
@@ -751,6 +751,8 @@ Read-only values, prefixed with a dot.
 | `.pass`                  | Current assembler pass (`1` or `2`)                                         |
 
 ## System functions
+
+A call is the dot, the name and the `(` glued: `.len("AB")`. `.len ("AB")` and `. len("AB")` are errors.
 
 | Function                                   | Returns                                                                                                                                                                                                                                                                                                                                                                  |
 | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |

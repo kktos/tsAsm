@@ -9,7 +9,7 @@ import { FunctionDispatcher } from "../shared/functions/function.dispatcher";
 import type { FunctionToken, OperatorStackToken, OperatorToken, ScalarToken, Token } from "../shared/lexer/lexer.class";
 import { AsmError, type AsmNote } from "../utils/error.utils";
 import { fieldValue } from "../utils/symbol.utils";
-import { nestingDelta } from "../utils/token.utils";
+import { isGlued, nestingDelta, tokenText } from "../utils/token.utils";
 import { type EvaluationContext, type EvaluatorHost, PRECEDENCE } from "./expression.types";
 import { DEFAULT_OPTIONS } from "./options";
 import { type ByteShift, notRelocatable, RelocValue, relocatableArgumentMessage, relocatableByte } from "./reloc-value.class";
@@ -408,8 +408,17 @@ export class ExpressionEvaluator {
 					if (nextToken?.type !== "IDENTIFIER") throw AsmError.at(`Invalid syntax: '.' must be followed by an identifier.`, processedToken);
 
 					if (isUnary) {
+						// `.len("AB")`, `.pc`: the '.' glued to the name, and a call's '(' glued to it too.
+						if (!isGlued(processedToken, nextToken))
+							throw AsmError.at(`Expected a name right after '.', not a space: '.${tokenText(nextToken)}'.`, processedToken);
+						const paren = tokens[index + 2];
+						if (paren?.value === "(" && !isGlued(nextToken, paren) && this.functionDispatcher.has(nextToken.value as string)) {
+							const name = `.${tokenText(nextToken)}`;
+							throw AsmError.at(`No space allowed between the function '${name}' and its '(': call it as ${name}(…).`, paren);
+						}
+
 						// Check for function call, e.g., IDENTIFIER followed by '('.
-						if (tokens[index + 2]?.value === "(") {
+						if (paren?.value === "(" && isGlued(nextToken, paren)) {
 							// Known before its arguments are read: `.min(1,,2)` is an unknown function, not an empty argument.
 							if (!this.functionDispatcher.has(nextToken.value as string))
 								throw AsmError.at(`Unknown function '${(nextToken.value as string).toUpperCase()}'.`, nextToken);

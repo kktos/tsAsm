@@ -129,9 +129,10 @@ Symbols ignore case, properties don't: with `{ Id: 5 }`, `d[0].Id` works but `d[
 ### 3.7 Names
 
 - `.define` is a text macro in ca65 and C; here it loads data.
-- `.str` and `.hex` are directives and functions, `.segment` and `.namespace` directives and variables: `.str("A")` at the start of a line emits `41`.
 
 Rename (keeping aliases), or document.
+
+`.str` and `.hex` being directives and functions, `.segment` and `.namespace` directives and variables: done in #191, a directive's name is followed by a space and a function's `(` is glued to it, so `.str("A")` can't start a statement (see `CHANGELOG.md`).
 
 `.function` was a label scope, not a function usable in expressions: done in #142, it's `.proc` (see `CHANGELOG.md`).
 

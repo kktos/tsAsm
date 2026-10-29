@@ -420,6 +420,7 @@ export class Linker {
 						const directiveToken = parser.next() as ScalarToken;
 						if (directiveToken?.type !== "IDENTIFIER")
 							throw AsmError.at(`Expected a directive name after '.', got '${directiveToken.value}'.`, directiveToken);
+						parser.checkDirectiveSpacing(token, directiveToken);
 
 						const directiveContext: DirectiveContext = {
 							filename: this.streamManager?.currentFilepath ?? "linker",

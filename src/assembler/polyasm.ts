@@ -418,6 +418,7 @@ export class Assembler {
 					const directiveToken = this.parser.next() as ScalarToken;
 					if (directiveToken?.type !== "IDENTIFIER")
 						throw new ParserError(`Expected a directive name after '.', got '${directiveToken.value}'.`, directiveToken);
+					this.parser.checkDirectiveSpacing(token, directiveToken);
 
 					const directiveContext: DirectiveContext = {
 						filename: this.streamManager.currentFilepath,
@@ -747,6 +748,7 @@ export class Assembler {
 			case "DOT": {
 				const directive = this.parser.next() as ScalarToken;
 				if (directive?.type !== "IDENTIFIER") throw new ParserError(`Expected a directive name after '.', got '${directive.value}'.`, directive);
+				this.parser.checkDirectiveSpacing(token, directive);
 				if (!this.parser.isKnownDirective(directive.value))
 					throw new ParserError(`Syntax error - Unexpected directive '${directive.value}'`, directive);
 				if (!FUNCTION_DIRECTIVES.has(directive.value)) throw AsmError.at(`.${directive.value} can't be in a function: ${FUNCTION_ONLY}.`, directive);
