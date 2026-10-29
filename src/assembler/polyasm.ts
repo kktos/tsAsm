@@ -115,7 +115,7 @@ export class Assembler {
 		this.emitter = new EventEmitter();
 		this.lister = new Lister(this.logger, this.emitter);
 
-		this.linker = new Linker(DEFAULT_PC, this.fileHandler);
+		this.linker = new Linker(DEFAULT_PC, this.fileHandler, (name) => this.symbolTable.lookupGlobalSymbol(name));
 		this.PC = this.linker.PC;
 
 		if (options?.rawDataProcessors) {

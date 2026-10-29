@@ -5,7 +5,7 @@ import { DEFAULT_OPTIONS } from "../assembler/options";
 import { Parser } from "../assembler/parser.class";
 import type { FileHandler, StreamState } from "../assembler/polyasm.types";
 import type { RelocValue } from "../assembler/reloc-value.class";
-import { PASymbolTable } from "../assembler/symbol.class";
+import { PASymbolTable, type SymbolValue } from "../assembler/symbol.class";
 import type { Endianness } from "../cpu/cpuhandler.interface";
 import type { DirectiveContext, DirectiveRuntime } from "../directives/directive.interface";
 import { MacroHandler } from "../directives/macro/handler";
@@ -82,6 +82,8 @@ export class Linker {
 	constructor(
 		private readonly startPC: number,
 		private fileHandler?: FileHandler,
+		/** The assembled source's symbols, global or `ns::name`, that the script reads with `.symbol()`. */
+		private readonly findSourceSymbol?: (name: string) => SymbolValue | undefined,
 	) {
 		this.PC = { value: startPC };
 		this.modules.set("__MAIN__", this.currentModule);
@@ -359,6 +361,7 @@ export class Linker {
 		const evaluator = new ExpressionEvaluator(symbolTable, {
 			resolveSysValue: (nameToken) => this.resolveSysValue(nameToken),
 			findSegment: (name) => this.findSegment(name),
+			findSourceSymbol: (name) => this.findSourceSymbol?.(name),
 			isMacroDefined: (name) => macroHandler.isDefined(name),
 		});
 

@@ -559,7 +559,11 @@ export class ExpressionEvaluator {
 						break;
 					}
 					// Arrays too: the linker's SEGMENTS is meant to be both an array and a map (its skipped test, "Hybrid SEGMENTS Variable").
-					if (typeof obj !== "object" || obj === null || obj instanceof RelocValue) throw new Error("Invalid property access on a non-object value.");
+					if (obj instanceof RelocValue) {
+						stack.push(obj.field(token.value));
+						break;
+					}
+					if (typeof obj !== "object" || obj === null) throw new Error("Invalid property access on a non-object value.");
 
 					const property = token.value;
 					if (property && property in obj) {

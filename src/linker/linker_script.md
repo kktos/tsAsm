@@ -200,6 +200,20 @@ Read-only values, prefixed with a dot.
 
 The function `.segment("<name>")` returns a segment by name.
 
+### The source's symbols
+
+The function `.symbol("<name>")` gives the value of a symbol of the assembled source: an entry point, a version number, a size computed in the source. The name is a string, so it can be computed (`.symbol(s.name + "_END")`), in any case. A symbol of a namespace is `.symbol("gfx::TILES")`, of the global one `.symbol("main")` or `.symbol("global::main")`, whatever namespace the source ends in. A variable gives its last value.
+
+```as
+.WRITE WORD .symbol("VERSION")
+
+entry = .symbol("main")       # CODE+$0012, in a relocatable segment
+.WRITE LONG entry.offset      # $12
+.WRITE STRING entry.segment   # "CODE"
+```
+
+A label in a relocatable segment stays a [relocatable value](../../REFERENCE.md#segments): writing it is an error (`CODE+$0012 is relocatable: its address is only known when it's loaded, and a number is needed here.`); its `.offset` and `.segment` are a number and a string. A symbol that isn't defined is an error (`Symbol 'mian' isn't defined in the source.`), and so is a function. A `.proc`'s labels and a macro's are local to it, so they can't be read. In a source, `.symbol()` doesn't exist.
+
 ### Segments and modules
 
 A segment has the fields `name`, `start` (its address, 0 for a relocatable one), `size`, `data` (its bytes), `padValue`, `resizable`, `relocatable`, `emitted` (true once written), `attrs` and `relocs`:

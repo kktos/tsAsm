@@ -69,6 +69,8 @@ export interface EvaluatorHost {
 	resolveSysValue(nameToken: Token): SymbolValue | undefined;
 	/** A segment by name, for `.segment(name)`. */
 	findSegment(name: string): Segment | undefined;
+	/** A symbol of the assembled source, for a linker script's `.symbol(name)`. Without it, `.symbol()` doesn't exist. */
+	findSourceSymbol?(name: string): SymbolValue | undefined;
 	/** An address in the current segment, `*` or an anonymous label: relocatable in a relocatable segment. Without it, the address. */
 	addressValue?(address: number): SymbolValue;
 	/** The anonymous label `distance` labels away from `address`. Without it, there are none. */

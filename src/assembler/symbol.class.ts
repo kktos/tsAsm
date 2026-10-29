@@ -467,6 +467,19 @@ export class PASymbolTable {
 		return this.pass === 2 && symbol !== undefined && !symbol.isConstant && symbol.definedInPass !== 2 && symbol.assignments > 1;
 	}
 
+	/**
+	 * The value of a symbol of the global namespace, or of `ns` for `ns::name`, whatever the current scope: what a
+	 * linker script reads with `.symbol()`. A `.proc`'s or a macro's locals aren't there.
+	 */
+	lookupGlobalSymbol(symbolName: string): SymbolValue | undefined {
+		const path = symbolName.toUpperCase().split("::");
+		if (path.length > 2) return undefined;
+
+		const [ns, name] = path.length === 2 ? (path as [string, string]) : ["GLOBAL", path[0] as string];
+		const scope = this.symbols.get(ns === "GLOBAL" ? INTERNAL_GLOBAL : ns);
+		return name === "*" ? undefined : scope?.get(name)?.value;
+	}
+
 	lookupSymbol(symbolName: string) {
 		return this.lookup(symbolName)?.value;
 	}
