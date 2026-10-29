@@ -339,7 +339,7 @@ Each directive accepts several strings separated by commas, and `...` spreads an
 
 `.define` loads structured data into a symbol, from a block or from a file. The block is parsed by a data processor: the command-line tool provides `YAML` (the default), `JSON` and `TEXT`. A library user registers their own (see the [README](README.md#library)).
 
-Inside a YAML or JSON block, numbers follow that format's syntax: write `0xAA`, not `$AA`.
+Inside a YAML or JSON block, numbers follow that format's syntax: write `0xAA`, not `$AA`. A boolean is read as 1 or 0, the assembler has no boolean: `true` is 1, `!cfg.debug` with `debug: true` is 0.
 
 ```as
 .define sprites
