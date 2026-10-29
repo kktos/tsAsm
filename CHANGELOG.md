@@ -6,6 +6,12 @@ The problem is described as it was before the fix, then the fix in _italics_.
 
 ## Assembler
 
+### #191 — A function call read as a directive (TODO 3.7)
+
+`.str` and `.hex` are directives and functions, `.segment` and `.namespace` directives and variables. At the start of a statement, a `.` and a name were always a directive, whatever followed: `.str("A")` emitted `41`, as `.str "A"`, and `.hex(41)` → `Invalid hexadecimal character sequence: "(4"`. The spaces didn't count: `. str "A"`, `.str"A"` and `.db$41` were read as directives, and `.len ("AB")` and `. len("AB")` called `.len()`, where a user function's `(` must be glued (`f (1)` → `'f' is a function: call it, f(…).`).
+
+_Decided: a directive is `.` glued to its name, then a space, the end of the line or a comment; a system function is `.`, its name and `(` glued. `.str("A")` at the start of a statement → `'.str(' is a function call, it can't start a statement: a directive is followed by a space, '.str ('.`; `.str ("A")` is the directive. `.str"A"`, `.db$41` → `Expected a space after the directive name '.db', got '$'.`; `. str "A"` → `Expected a directive name right after '.', not a space: '.str'.`; `.len ("AB")` → `No space allowed between the function '.len' and its '(': call it as .len(…).`; `. len("AB")` and `. pc` → `Expected a name right after '.', not a space: '.len'.` The same in the linker script. Breaking for sources written that way._
+
 ### #170 — `.repeat`'s header not listed (TODO 1.60)
 
 The listing showed `.for x of list` before the loop's lines, but nothing for a `.repeat`: its lines came without a word. With `listing.data "fold"`, only a folded `.repeat` showed its header. `.repeat 0` listed nothing, where an empty `.for` lists its header.

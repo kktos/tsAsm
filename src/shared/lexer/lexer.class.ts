@@ -155,6 +155,17 @@ export class AssemblyLexer {
 		return ch === "\n" ? "" : ch;
 	}
 
+	/** The character right at the current position, spaces not skipped: "" at the end of the source. Never lexes. */
+	public charAtPosition(): string {
+		return this.currentStream.source[this.currentStream.pos] ?? "";
+	}
+
+	/** True when the current position is at a space, the end of a line or of the source, or a comment. Never lexes. */
+	public isAtSeparator(): boolean {
+		const ch = this.charAtPosition();
+		return ch === "" || ch === " " || ch === "\t" || ch === "\r" || ch === "\n" || this.isCommentStart(this.currentStream.pos);
+	}
+
 	/** The text left on the current line, as `rawInline` would read it: up to the end of the line, a '}' or a comment. Never lexes. */
 	public restOfLine(): string {
 		const start = this.currentStream.pos;
