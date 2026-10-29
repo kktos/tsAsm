@@ -39,8 +39,10 @@ export interface FileHandler {
 	/** Reads raw file content and returns the byte array for .INCBIN. */
 	readBinaryFile(filename: string, from?: string): number[];
 }
-/** Defines a segment for the linker: a fixed one has a `start` and a `size`, a relocatable one no `start`, and grows without a `size`. */
-
+/**
+ * Defines a segment for the linker: a fixed one has a `start` and a `size`, a relocatable one no `start`, and grows without a `size`.
+ * Any other key is an attribute, a number or a string, for the linker script (`seg.attrs.kind`).
+ */
 export interface SegmentDefinition {
 	name: string;
 	start?: number;
@@ -50,6 +52,7 @@ export interface SegmentDefinition {
 	relocatable?: boolean;
 	/** Short for `relocatable`. */
 	reloc?: boolean;
+	[attribute: string]: string | number | boolean | undefined;
 }
 
 export type DataProcessor = (rawData: string, context: DirectiveContext) => SymbolValue;

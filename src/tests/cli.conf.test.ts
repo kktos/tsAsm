@@ -49,6 +49,17 @@ input:
 		]);
 	});
 
+	it("accepts a segment's attributes, its other keys", () => {
+		const { conf, errors } = readConfFrom(`
+input:
+  source: main.asm
+  segments:
+    - { name: CODE, reloc: true, kind: 0x1000, loadname: MAIN }
+`);
+		expect(errors).toBeUndefined();
+		expect(conf.input.segments).toEqual([{ name: "CODE", reloc: true, kind: 0x1000, loadname: "MAIN" }]);
+	});
+
 	it("reports a relocatable flag that isn't a boolean", () => {
 		const { errors } = readConfFrom(`
 input:

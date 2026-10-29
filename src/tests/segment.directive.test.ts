@@ -114,9 +114,9 @@ describe("Segments", () => {
 	it.each([
 		// a property spread over lines: the error is at the property, not at the .SEGMENT
 		[
-			".SEGMENT CODE {\n  start: $1000,\n  foo: 1\n}",
-			"Unknown .SEGMENT property 'foo': expected start, end, size, pad or relocatable.",
-			{ line: 3, column: 3 },
+			".SEGMENT CODE {\n  start: $1000,\n  size: 1,\n  foo: 1,\n  FOO: 2\n}",
+			"The .SEGMENT definition gives the attribute 'foo' twice.",
+			{ line: 5, column: 3 },
 		],
 		[".SEGMENT CODE { start: $1000, 5 }", "Expected 'key: value' in the .SEGMENT definition, got '5'.", { line: 1, column: 31 }],
 	])("should report a .SEGMENT definition error at its token: %j", (source, message, location) => {

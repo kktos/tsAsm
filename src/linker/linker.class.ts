@@ -34,6 +34,9 @@ export interface Fixup {
 	targetOffset: number;
 }
 
+/** A segment's attributes: the keys of its definition the assembler doesn't know, in lowercase, for the linker script. */
+export type SegmentAttributes = Record<string, number | string>;
+
 export interface Segment {
 	name: string;
 	start: number;
@@ -49,6 +52,8 @@ export interface Segment {
 	emitted?: boolean;
 	/** The relocatable values written in it, recorded in pass 2. */
 	relocs?: Fixup[];
+	/** Its attributes, which only the linker script reads (`seg.attrs.kind`). */
+	attrs?: SegmentAttributes;
 }
 
 export class Linker {
@@ -97,7 +102,7 @@ export class Linker {
 		return this.segments.find((s) => s.name === name);
 	}
 
-	public addSegment(name: string, start: number, size: number, padValue = 0, resizable = false, relocatable = false) {
+	public addSegment(name: string, start: number, size: number, padValue = 0, resizable = false, relocatable = false, attrs: SegmentAttributes = {}) {
 		const seg = this.findSegment(name);
 		if (seg) throw new Error(`Segment already defined : ${name}`);
 
@@ -112,6 +117,7 @@ export class Linker {
 			relocatable,
 			emitted: false,
 			relocs: [],
+			attrs,
 		};
 		this.segments.push(newSeg);
 	}

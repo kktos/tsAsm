@@ -219,6 +219,12 @@ A relocatable segment has no address until it's loaded: it's declared with `relo
 .segment TABLES { reloc: true, size: $100 }
 ```
 
+Any other key is an attribute: the assembler doesn't read it, it keeps it for the [linker script](src/linker/linker_script.md), which reads it as `seg.attrs.<key>` (an output format's segment kind, its load name…). Its key is in lowercase, `KIND` and `kind` being the same, given once; its value is a number or a string, an expression of symbols defined before the `.segment`. A misspelled key, `sise: 4`, is an attribute too, not an error. The project file's `input.segments` take them the same way.
+
+```as
+.segment CODE { reloc: true, kind: $1000, loadname: "MAIN" }
+```
+
 Its labels, `*` and `.PC` in it are relocatable values: a segment and an offset from its start, `CODE+$0012`, not a number. In expressions:
 
 - `label + n`, `n + label` and `label - n` are relocatable;
@@ -228,7 +234,7 @@ Its labels, `*` and `.PC` in it are relocatable values: a segment and an offset 
 
 A variable or a constant can hold one (`next = label + 2`), an array too, and `.iif()` can give one.
 
-Written in the code or the data, a relocatable value is its offset, and a fixup is recorded where it goes: the loader adds its segment's address there. Each segment keeps its fixups in `relocs`, for the linker script: `{ offset, size, shift, segment, targetOffset }`, where its bytes are in the segment, how many, how many bits the address is shifted right (0, 8 for `>`, 16 for `^`), and the segment and offset of the value.
+Written in the code or the data, a relocatable value is its offset, and a fixup is recorded where it goes: the loader adds its segment's address there. Each segment keeps its fixups in `relocs`, which the linker script reads as `seg.relocs`: `{ offset, size, shift, segment, targetOffset }`, where its bytes are in the segment, how many, how many bits the address is shifted right (0, 8 for `>`, 16 for `^`), and the segment and offset of the value.
 
 - **Data:** `.dw label` and `.dl label` record the element's 2 or 4 bytes. `<`, `>` and `^` give one byte: `.db >label`, and `.dw <label`, the byte then 0, its fixup on that byte. A whole address in a `.db` is an error: `.DB value: CODE+$0012 is a whole address: take one byte of it with <, > or ^.`
 - **6502 and 65C02 operands:** a relocatable address is absolute, never zero page whatever its offset, with a fixup of 2 bytes: `jmp label`, `lda label,x`, `jmp (label)`. An immediate takes one byte: `lda #<label`, `lda #>label`; `lda #label` is an error. A relocatable address can't be in zero page: `lda (label),y`, `lda.b label`, `stx label,y` are errors.
