@@ -90,6 +90,8 @@ In a relocatable segment, the instruction's PC is its offset there: a branch to 
 - `link()` isn't idempotent.
 - `.segment("CODE").size` → `Unknown system variable: SIZE`: a field of a function's result can't be read directly. `seg = .segment("CODE")` then `seg.size` works. Check if the assembler's `.segment()` does the same.
 - The assembler's `.module` (`module.directive.ts`; it groups segments for the linker's `.WRITE MODULE`) always fails when the project file defines segments → `Segments were used before any module was defined.` The first project segment is selected before the source starts (`polyasm.ts:191`), which puts it in the implicit `__MAIN__` module. Modules only work with segments defined in the source.
+- `.segments_list[0]` → `Invalid expression format.`: a system variable can't be indexed directly. `segments = .segments_list` then `segments[0]` works. Found with 4.22.
+- A segment's `relocatable` and `resizable` are booleans: `.IF seg.relocatable` takes them, `!seg.relocatable` → `Unary operator '!' requires a numeric operand.`, and `.iif(seg.resizable, …)` → `First argument to .IIF() must be a number.` Found with 4.22.
 - One skipped linker test: the hybrid `SEGMENTS` variable (the maintainer didn't remember what it held).
 
 ### 2.4 Build
@@ -267,7 +269,7 @@ For relocatable outputs (Apple IIgs OMF, 4.22; later o65 or another object forma
 3. Fixups: recorded in pass 2, for data then operands, with the shift of `<`, `>`, `^`. Done in #181, for the 65xx's operands; the other CPUs' are 1.66.
 4. The linker script reads `seg.relocs` and `seg.attrs` (4.21). Done in #182.
 5. The linker script reads the assembler's symbols (4.21). Done in #183.
-6. OMF output: the `omf.linker.asm` script library (4.22).
+6. OMF output: the `omf.linker.asm` script library (4.22). Done in #185.
 
 Addressing modes go with 4.18, after step 2.
 
@@ -290,12 +292,13 @@ Steps 4 and 5 of the plan in 4.19: `seg.attrs` and `seg.relocs` are done in #182
 
 ### 4.22 Apple IIgs: OMF output (S16)
 
-After 4.19–4.21. The linker script language already writes an OMF segment's structure: little-endian header fields, the LCONST record (`$F2`, the length, `.WRITE SEGMENT`), the END record, and BYTECNT patched with `.WRITE LONG .PC - hdr AT hdr`. What's missing is the relocation dictionary.
+The script library `lib/omf.linker.asm` is done in #185: version 2.0 segments, LCONST, RELOC, INTERSEG, END.
 
-- **An includable script library,** `omf.linker.asm`, not a built-in: macros writing a segment's header, its LCONST, its RELOC (`$E2`) / INTERSEG (`$E3`) records from `seg.relocs`, and END. The linker stays generic, as conan's ProDOS image is a script.
+- **Shipping the library:** today the user copies it next to their script. Once the package is publishable (2.4), it could ship with tsasm: embedded and included by a reserved name, or found on a search path.
+- **Fixed segments:** an error in an OMF file. An absolute segment (its `start` as ORG) can come if needed.
 - **Later:** the compact cRELOC (`$F5`) / cINTERSEG (`$F6`) and SUPER (`$F7`) records; DS (`$F1`) for a segment's trailing zeros; ExpressLoad.
 - **File type:** S16 is ProDOS type `$B3`, a directory entry's field, not in the file: a disk image written by the script (as conan's), or an external tool (Cadius, AppleCommander).
-- **To check:** a 65816 segment can't cross a bank (`BANKSIZE`, 4.18's PC range); a test assembling a small S16 and checking it against a known-good file (Merlin 16+ or ORCA/M output) and in an emulator.
+- **To check:** a 65816 segment's code can't cross a bank (4.18's PC range; the library only checks a segment's size against its `banksize`); the library's output against a known-good file (Merlin 16+ or ORCA/M output) and in an emulator: #185 checks it against the specification only.
 
 ## 5. Documentation (REFERENCE.md)
 
