@@ -219,7 +219,7 @@ A relocatable segment has no address until it's loaded: it's declared with `relo
 .segment TABLES { reloc: true, size: $100 }
 ```
 
-Any other key is an attribute: the assembler doesn't read it, it keeps it for the [linker script](src/linker/linker_script.md), which reads it as `seg.attrs.<key>` (an output format's segment kind, its load name…). Its key is in lowercase, `KIND` and `kind` being the same, given once; its value is a number or a string, an expression of symbols defined before the `.segment`. A misspelled key, `sise: 4`, is an attribute too, not an error. The project file's `input.segments` take them the same way.
+Any other key is an attribute: the assembler doesn't read it, it keeps it for the [linker script](src/linker/linker_script.md), which reads it as `seg.attrs.<key>` (an output format's segment kind, its load name…: see the [OMF library](src/linker/linker_script.md#apple-iigs-omf-output)). Its key is in lowercase, `KIND` and `kind` being the same, given once; its value is a number or a string, an expression of symbols defined before the `.segment`. A misspelled key, `sise: 4`, is an attribute too, not an error. The project file's `input.segments` take them the same way.
 
 ```as
 .segment CODE { reloc: true, kind: $1000, loadname: "MAIN" }
