@@ -242,9 +242,9 @@ The script library `lib/omf.linker.asm` is done in #185: version 2.0 segments, L
 
 ### 4.23 Addresses over 16 bits: the PC's range
 
-Before 4.18: the 65816 addresses 16 MB. The PC's range is done in #200: `CPUHandler.addressBits`, and leaving it is an error; a segment's range in #201, checked when it's selected; an instruction crossing a bank in #202, `CPUHandler.bankBits`; a segment's `banksize` in #203. What's left:
+Before 4.18: the 65816 addresses 16 MB. The PC's range is done in #200: `CPUHandler.addressBits`, and leaving it is an error; a segment's range in #201, checked when it's selected; an instruction crossing a bank in #202, `CPUHandler.bankBits`; a segment's `banksize` in #203; the listing's addresses in #204. What's left:
 
-- **Listing:** `getHex` writes an address over $FFFF on 8 digits, and the lister's columns assume 4 (`LABEL_START_COL`).
+- **Listing, operands:** a number over $FFFF in the text of an instruction or a directive is written on 8 digits (`.dl $00010000`): `getHex`'s default, also used by the messages and the symbol dump.
 - **`.sym` file:** the maintainer's debugger reads it; the form of an address over $FFFF there is the maintainer's call.
 - **Linker and output:** `.WRITE`, the output image and `hexdump.util.ts` (4 digits) with addresses over $FFFF.
 
