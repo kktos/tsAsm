@@ -54,10 +54,15 @@ export interface Segment {
 	relocs?: Fixup[];
 	/** Its attributes, which only the linker script reads (`seg.attrs.kind`). */
 	attrs?: SegmentAttributes;
+	/** The size of its bank, only when the definition gives one: a fixed segment stays in one bank, a relocatable one is no bigger. 0 is no bank. */
+	banksize?: number;
 }
 
 /** What a segment is defined with: any field left out is 0, false or no attributes. */
-export type SegmentParams = Partial<Pick<Segment, "start" | "size" | "padValue" | "resizable" | "relocatable" | "attrs">>;
+export type SegmentParams = Partial<Pick<Segment, "start" | "size" | "padValue" | "resizable" | "relocatable" | "attrs" | "banksize">>;
+
+/** A number in a message: `$10000`; a negative one in decimal. */
+const hex = (value: number) => (value < 0 ? String(value) : `$${value.toString(16).toUpperCase()}`);
 
 export class Linker {
 	public segments: Segment[] = [];
@@ -108,9 +113,11 @@ export class Linker {
 	}
 
 	/** A segment: from `start`, `size` bytes of `padValue`, growing on writes when `resizable`. */
-	public addSegment(name: string, { start = 0, size = 0, padValue = 0, resizable = false, relocatable = false, attrs = {} }: SegmentParams = {}) {
+	public addSegment(name: string, { start = 0, size = 0, padValue = 0, resizable = false, relocatable = false, attrs = {}, banksize }: SegmentParams = {}) {
 		const seg = this.findSegment(name);
 		if (seg) throw new Error(`Segment already defined : ${name}`);
+		if (banksize !== undefined && banksize !== 0 && !(banksize >= 1 && Number.isInteger(Math.log2(banksize))))
+			throw new Error(`Segment '${name}': its banksize, ${hex(banksize)}, isn't 0 (no bank) or a power of two.`);
 
 		// If size is zero, create an empty data array. If resizable is true, the segment will grow on writes.
 		const newSeg: Segment = {
@@ -124,8 +131,24 @@ export class Linker {
 			emitted: false,
 			relocs: [],
 			attrs,
+			// Only when given: a linker script tells a banksize of 0, anywhere, from none with `.has(seg, "banksize")`.
+			...(banksize !== undefined && { banksize }),
 		};
+		this.checkBank(newSeg, size);
 		this.segments.push(newSeg);
+	}
+
+	/** A segment of `size` bytes in its bank: a fixed one doesn't cross one, a relocatable one is no bigger. */
+	private checkBank(segment: Segment, size: number) {
+		const { banksize } = segment;
+		if (!banksize || size === 0) return;
+		if (segment.relocatable) {
+			if (size > banksize) throw new Error(`Segment '${segment.name}' is ${hex(size)} bytes, more than its banksize, ${hex(banksize)}.`);
+			return;
+		}
+		const end = segment.start + size - 1;
+		if (Math.floor(segment.start / banksize) !== Math.floor(end / banksize))
+			throw new Error(`Segment '${segment.name}' (${hex(segment.start)}..${hex(end)}) crosses a bank: its banksize is ${hex(banksize)}.`);
 	}
 
 	/** What follows is written at `offset` of the output: `.PC` is the offset where the next byte goes. */
@@ -227,6 +250,9 @@ export class Linker {
 				`Write out of bounds: address $${outside.toString(16).toUpperCase()} outside fixed segment '${active.name}' (start $${active.start.toString(16).toUpperCase()}, size ${active.size}).`,
 			);
 		}
+
+		// A segment that grows stays in its bank: checked at the write taking it past.
+		if (active.resizable) this.checkBank(active, Math.max(active.size, offset + values.length));
 
 		if (offset >= active.data.length) {
 			if (!active.resizable) throw new Error(`Internal error: segment '${active.name}' data shorter than declared size and not resizable.`);

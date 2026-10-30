@@ -14,12 +14,21 @@ type SegmentDef = {
 	size?: number;
 	pad?: number;
 	relocatable?: boolean;
+	banksize?: number;
 };
 
 type SegmentKey = keyof SegmentDef;
 
 /** `reloc` is short for `relocatable`. */
-const SEGMENT_KEYS: Record<string, SegmentKey> = { start: "start", end: "end", size: "size", pad: "pad", reloc: "relocatable", relocatable: "relocatable" };
+const SEGMENT_KEYS: Record<string, SegmentKey> = {
+	start: "start",
+	end: "end",
+	size: "size",
+	pad: "pad",
+	reloc: "relocatable",
+	relocatable: "relocatable",
+	banksize: "banksize",
+};
 
 export class SegmentDirective implements IDirective {
 	public isBlockDirective = true;
@@ -79,7 +88,8 @@ export class SegmentDirective implements IDirective {
 
 	private defineSegment(name: string, directive: ScalarToken, context: DirectiveContext) {
 		const { params, keys, attrs } = this.parseBlockParameters(context);
-		const pad = params.pad;
+		const { pad, banksize } = params;
+		const listBanksize = banksize === undefined ? "" : `, banksize: $${getHex(banksize)}`;
 
 		// A relocatable segment has no address until it's loaded: it starts at 0, and grows without a size.
 		if (params.relocatable) {
@@ -87,11 +97,11 @@ export class SegmentDirective implements IDirective {
 			if (keys.end) throw AsmError.at("A relocatable segment has no 'end': give its 'size', or none for a segment that grows.", keys.end);
 
 			const size = params.size ?? 0;
-			this.runtime.linker.addSegment(name, { size, padValue: pad, resizable: size === 0, relocatable: true, attrs });
+			this.runtime.linker.addSegment(name, { size, padValue: pad, resizable: size === 0, relocatable: true, attrs, banksize });
 
 			this.runtime.lister.directive(
 				directive,
-				`${name.padEnd(16)} { relocatable, size: $${getHex(size)}, pad: $${getHex(pad ?? 0)}${listAttributes(attrs)} }`,
+				`${name.padEnd(16)} { relocatable, size: $${getHex(size)}, pad: $${getHex(pad ?? 0)}${listBanksize}${listAttributes(attrs)} }`,
 			);
 			return;
 		}
@@ -105,11 +115,11 @@ export class SegmentDirective implements IDirective {
 		const size = end - start + 1;
 		if (size < 0) throw new Error(".SEGMENT 'end' address must be greater than or equal to 'start' address.");
 
-		this.runtime.linker.addSegment(name, { start, size, padValue: pad, resizable: size === 0, attrs });
+		this.runtime.linker.addSegment(name, { start, size, padValue: pad, resizable: size === 0, attrs, banksize });
 
 		this.runtime.lister.directive(
 			directive,
-			`${name.padEnd(16)} { start: $${getHex(start)}, end: $${getHex(end)}, pad: $${getHex(pad ?? 0)}${listAttributes(attrs)} }`,
+			`${name.padEnd(16)} { start: $${getHex(start)}, end: $${getHex(end)}, pad: $${getHex(pad ?? 0)}${listBanksize}${listAttributes(attrs)} }`,
 		);
 	}
 

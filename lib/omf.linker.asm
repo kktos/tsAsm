@@ -16,7 +16,7 @@
 #	kind      KIND, $0000 (static code); $0001 is data          .segment DATA { reloc: true, kind: $0001 }
 #	segname   SEGNAME, the segment's name
 #	loadname  LOADNAME, up to 10 characters, spaces by default
-#	banksize  BANKSIZE, $10000: the segment can't cross a bank; 0 for anywhere
+#	banksize  BANKSIZE, $10000: the segment can't cross a bank; 0 for anywhere. A key the assembler checks, seg.banksize
 #	align     ALIGN, 0
 
 # The whole file: every segment, the program starting at the symbol `entryName`.
@@ -57,8 +57,8 @@
 		loadname = seg.attrs.loadname
 	.END
 	banksize = $10000
-	.IF .has(seg.attrs, "banksize")
-		banksize = seg.attrs.banksize
+	.IF .has(seg, "banksize")
+		banksize = seg.banksize
 	.END
 	align = 0
 	.IF .has(seg.attrs, "align")

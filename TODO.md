@@ -238,13 +238,12 @@ The script library `lib/omf.linker.asm` is done in #185: version 2.0 segments, L
 - **Fixed segments:** an error in an OMF file. An absolute segment (its `start` as ORG) can come if needed.
 - **Later:** the compact cRELOC (`$F5`) / cINTERSEG (`$F6`) and SUPER (`$F7`) records; DS (`$F1`) for a segment's trailing zeros; ExpressLoad.
 - **File type:** S16 is ProDOS type `$B3`, a directory entry's field, not in the file: a disk image written by the script (as conan's), or an external tool (Cadius, AppleCommander).
-- **To check:** a 65816 segment's code can't cross a bank (4.23's PC range; the library only checks a segment's size against its `banksize`); the library's output against a known-good file (Merlin 16+ or ORCA/M output) and in an emulator: #185 checks it against the specification only.
+- **To check:** the library's output against a known-good file (Merlin 16+ or ORCA/M output) and in an emulator: #185 checks it against the specification only.
 
 ### 4.23 Addresses over 16 bits: the PC's range
 
-Before 4.18: the 65816 addresses 16 MB. The PC's range is done in #200: `CPUHandler.addressBits`, and leaving it is an error; a segment's range in #201, checked when it's selected; an instruction crossing a bank in #202, `CPUHandler.bankBits`. What's left:
+Before 4.18: the 65816 addresses 16 MB. The PC's range is done in #200: `CPUHandler.addressBits`, and leaving it is an error; a segment's range in #201, checked when it's selected; an instruction crossing a bank in #202, `CPUHandler.bankBits`; a segment's `banksize` in #203. What's left:
 
-- **Banks, segments:** a known `banksize` key on a segment (today an attribute the OMF library reads, 4.22): a fixed segment's `start..end` stays in one bank, a relocatable one is no bigger than its bank. Also for 6502 bank-switched cartridges.
 - **Listing:** `getHex` writes an address over $FFFF on 8 digits, and the lister's columns assume 4 (`LABEL_START_COL`).
 - **`.sym` file:** the maintainer's debugger reads it; the form of an address over $FFFF there is the maintainer's call.
 - **Linker and output:** `.WRITE`, the output image and `hexdump.util.ts` (4 digits) with addresses over $FFFF.

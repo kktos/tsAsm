@@ -366,13 +366,21 @@ export class Assembler {
 					resizable: seg.size === undefined || seg.resizable,
 					relocatable: true,
 					attrs,
+					banksize: seg.banksize,
 				});
 				continue;
 			}
 
 			if (seg.start === undefined) throw new Error(`Segment '${seg.name}' needs a 'start' address, or 'relocatable: true'.`);
 			if (seg.size === undefined) throw new Error(`Segment '${seg.name}' needs a 'size'.`);
-			this.linker.addSegment(seg.name, { start: seg.start, size: seg.size, padValue: seg.padValue, resizable: seg.resizable, attrs });
+			this.linker.addSegment(seg.name, {
+				start: seg.start,
+				size: seg.size,
+				padValue: seg.padValue,
+				resizable: seg.resizable,
+				attrs,
+				banksize: seg.banksize,
+			});
 		}
 		if (this.segmentDefinitions[0]) this.linker.useSegment(this.segmentDefinitions[0].name);
 	}
@@ -1088,7 +1096,7 @@ export class Assembler {
 }
 
 /** The keys of a `SegmentDefinition` the assembler reads: any other is an attribute. */
-const SEGMENT_DEFINITION_KEYS = ["name", "start", "size", "padValue", "resizable", "relocatable", "reloc"];
+const SEGMENT_DEFINITION_KEYS = ["name", "start", "size", "padValue", "resizable", "relocatable", "reloc", "banksize"];
 
 /** A segment definition's attributes: its other keys, in lowercase, each a number or a string. */
 function segmentAttributes(seg: SegmentDefinition): SegmentAttributes {

@@ -52,6 +52,8 @@ export interface SegmentDefinition {
 	relocatable?: boolean;
 	/** Short for `relocatable`. */
 	reloc?: boolean;
+	/** The size of its bank: 0 (no bank) or a power of two. */
+	banksize?: number;
 	[attribute: string]: string | number | boolean | undefined;
 }
 
