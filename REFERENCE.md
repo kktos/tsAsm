@@ -203,7 +203,7 @@ A constant, or a variable assigned once, can be used before it's defined. A vari
     jmp * + 3
 ```
 
-At the start of a statement, `*` is only for `* =`: `*` alone, `* nop` or `*:` are errors (`Syntax error - Expected '=' after '*': '* = $1000' sets the PC.`), and so is `*` after a word that isn't an instruction, read as a label, `brl *` on the 6502 (`Syntax error - (Unknown opcode?) Unexpected '*' after BRL`). `*` isn't a symbol: `* .equ $1000` is `Syntax error - '*' is the PC, not a symbol .EQU can define: set it with '.org $1000'.`
+At the start of a statement, `*` is only for `* =`: `*` alone, `* nop` or `*:` are errors (`Syntax error - Expected '=' after '*': set the PC with '.org $1000'.`), and so is `*` after a word that isn't an instruction, read as a label, `brl *` on the 6502 (`Syntax error - (Unknown opcode?) Unexpected '*' after BRL`). `*` isn't a symbol: `* .equ $1000` is `Syntax error - '*' is the PC, not a symbol .EQU can define: set it with '.org $1000'.`
 
 The program counter stays in the CPU's address space: 16 bits on the 6502, 65C02 and 6809, 24 on the 65816, 32 on the RV32I. An address outside it is an error, never wrapped: `.org $10000` on the 6502 is `Address $10000 is outside the 6502's address space ($0..$FFFF).`, and so is a negative one. Code can end at the top of it, with its last byte at `$FFFF`, but not go past it: a statement whose bytes do, an instruction, data, `.fill`, is an error (`The PC goes past $FFFF, the top of the 6502's address space, to $10001.`). So is `.cpu` switching to a CPU the PC is past the top of.
 

@@ -10,7 +10,7 @@ The problem is described as it was before the fix, then the fix in _italics_.
 
 At the start of a statement, `*` waited for an `=` (`* = $1000`) and ignored anything else: `*` alone and `*:` assembled to nothing, `* nop` to the `nop`. A word that isn't an instruction is read as a label, so `foo *` defined `foo` and dropped the `*`, and so did `brl *` on the 6502, without a word.
 
-_Fixed: a `*` starting a statement must be followed by `=` on its line. Otherwise → `Syntax error - Expected '=' after '*': '* = $1000' sets the PC.` (`*`, `*:`, `* nop`, `* $10`, the `=` on the next line). `* .EQU 456`, which said `Missing symbol name before .EQU.`, points to `.org`: `Syntax error - '*' is the PC, not a symbol .EQU can define: set it with '.org $1000'.` After a label on its line → `Syntax error - (Unknown opcode?) Unexpected '*' after BRL`, as an unknown mnemonic followed by a word already was. `* = $1000`, `*=$1000` and `label * = $1000` are unchanged._
+_Fixed: a `*` starting a statement must be followed by `=` on its line. Otherwise → `Syntax error - Expected '=' after '*': set the PC with '.org $1000'.` (`*`, `*:`, `* nop`, `* $10`, the `=` on the next line). `* .EQU 456`, which said `Missing symbol name before .EQU.`, points to `.org`: `Syntax error - '*' is the PC, not a symbol .EQU can define: set it with '.org $1000'.` After a label on its line → `Syntax error - (Unknown opcode?) Unexpected '*' after BRL`, as an unknown mnemonic followed by a word already was. `* = $1000`, `*=$1000` and `label * = $1000` are unchanged._
 
 ### #199 — A function defined in a macro body doesn't see the macro's parameters (TODO 3.9)
 

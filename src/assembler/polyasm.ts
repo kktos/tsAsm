@@ -346,7 +346,7 @@ export class Assembler {
 			throw new ParserError("Syntax error - '*' is the PC, not a symbol .EQU can define: set it with '.org $1000'.", star);
 		if (this.lastGlobalLabel && this.lastGlobalLabelLine === star.line)
 			throw new ParserError(`Syntax error - (Unknown opcode?) Unexpected '*' after ${this.lastGlobalLabel}`, star);
-		throw new ParserError("Syntax error - Expected '=' after '*': '* = $1000' sets the PC.", star);
+		throw new ParserError("Syntax error - Expected '=' after '*': set the PC with '.org $1000'.", star);
 	}
 
 	/** The CPUs given to the constructor. */

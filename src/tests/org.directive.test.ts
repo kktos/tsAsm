@@ -107,7 +107,7 @@ describe("Directive: .ORG / *", () => {
 
 		it.each(["*", "* nop", "*:", "* $10"])("should refuse '%s': only '* =' starts a statement with it", (statement) => {
 			const error = () => createAssembler().assemble(statement);
-			expect(error).toThrow("Syntax error - Expected '=' after '*': '* = $1000' sets the PC.");
+			expect(error).toThrow("Syntax error - Expected '=' after '*': set the PC with '.org $1000'.");
 		});
 
 		it("should refuse the '=' on the next line", () => {
@@ -115,7 +115,7 @@ describe("Directive: .ORG / *", () => {
             *
             = $2000
         `;
-			expect(() => createAssembler().assemble(source)).toThrow("Syntax error - Expected '=' after '*': '* = $1000' sets the PC.");
+			expect(() => createAssembler().assemble(source)).toThrow("Syntax error - Expected '=' after '*': set the PC with '.org $1000'.");
 		});
 
 		it("should refuse it after an unknown mnemonic, read as a label", () => {
