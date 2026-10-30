@@ -1,3 +1,4 @@
+import type { Assembler } from "../assembler/polyasm";
 import { RelocValue } from "../assembler/reloc-value.class";
 import type { SymbolValue } from "../assembler/symbol.class";
 import type { SegmentAttributes } from "../linker/linker.class";
@@ -24,7 +25,10 @@ export class SegmentDirective implements IDirective {
 	public isBlockDirective = true;
 	public isRawDirective = false;
 
-	constructor(private readonly runtime: DirectiveRuntime) {}
+	constructor(
+		private readonly runtime: DirectiveRuntime,
+		private readonly assembler: Assembler,
+	) {}
 
 	public handlePassOne(directive: ScalarToken, context: DirectiveContext) {
 		let name: SymbolValue;
@@ -45,7 +49,7 @@ export class SegmentDirective implements IDirective {
 			return;
 		}
 
-		this.runtime.linker.useSegment(name);
+		this.assembler.useSegment(name);
 		this.runtime.lister.directive(directive, name, `ORG $${getHex(context.PC.value)}`);
 	}
 
@@ -69,7 +73,7 @@ export class SegmentDirective implements IDirective {
 			return;
 		}
 
-		this.runtime.linker.useSegment(name);
+		this.assembler.useSegment(name);
 		this.runtime.lister.directive(directive, name);
 	}
 

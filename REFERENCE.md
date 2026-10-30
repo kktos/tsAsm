@@ -216,6 +216,8 @@ Code is assembled into segments. The command line tool defines them in the proje
 
 A segment needs a `start`, and an `end` or a `size`, not both: a `size` of `0` makes one that grows as code is written to it. Each key is given once, in any case: `start` and `START` are the same key.
 
+A segment is in the address space of the CPU it's selected with, checked when it's selected, even before anything is written: on the 6502, `.segment HIGH` with `{ start: $FFF0, size: $100 }` is `Segment 'HIGH' ($FFF0..$100EF) doesn't fit in the 6502's address space ($0..$FFFF).`, one that grows is checked from its `start` (`Segment 'HIGH' starts at $10000, outside …`), a relocatable one by its `size` (`Segment 'HIGH' is $10001 bytes, more than …`). So `.cpu` comes before the `.segment` selecting a segment over `$FFFF`. The project file's first segment, selected before the source starts, is checked against the CPU the source starts with, the project file's `cpu`.
+
 A relocatable segment has no address until it's loaded: it's declared with `relocatable: true` (or `reloc: true`), and has no `start` nor `end`, which are errors. Its `size` is optional: without one, it grows. `.org` and `* =` are errors in it. Only a [linker script](src/linker/linker_script.md) can place it: linking without one is an error (`Segment 'CODE' is relocatable: it needs a linker script to place it.`).
 
 ```as
