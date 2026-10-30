@@ -97,7 +97,7 @@ describe("A segment's banksize", () => {
 			newAssembler(undefined, sink).assemble(`
 				.segment CODE { reloc: true, banksize: $10000, kind: $1000 }
 			`);
-			expect(sink.logs.some((line) => String(line).includes("{ relocatable, size: $00, pad: $00, banksize: $00010000, kind: $1000 }"))).toBe(true);
+			expect(sink.logs.some((line) => String(line).includes("{ relocatable, size: $00, pad: $00, banksize: $010000, kind: $1000 }"))).toBe(true);
 		});
 	});
 

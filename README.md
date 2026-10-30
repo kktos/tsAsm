@@ -120,7 +120,7 @@ Paths are relative to the project file. Missing output directories are created.
 
 ### Symbol file
 
-The symbols by namespace: `global` for the default one, a namespace's metadata after its name. A symbol's line gives its kind (`var` for `=`, `.let` and `.define`, `const` for `.equ`, `label`), its type (`number`, `string`, `array` or `object`; a label is a `number`, or `reloc` in a relocatable segment, its value its segment and offset: `CODE+$0012`), its value and where it's defined, at its name:
+The symbols by namespace: `global` for the default one, a namespace's metadata after its name. A symbol's line gives its kind (`var` for `=`, `.let` and `.define`, `const` for `.equ`, `label`), its type (`number`, `string`, `array` or `object`; a label is a `number`, or `reloc` in a relocatable segment, its value its segment and offset: `CODE+$0012`), its value (in hex on as many digits as the bytes holding it: `$28`, `$0400`, `$010000`) and where it's defined, at its name:
 
 ```yaml
 GFX [BASE=8192]:

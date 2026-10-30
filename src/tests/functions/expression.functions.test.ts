@@ -64,12 +64,25 @@ describe("ExpressionEvaluator", () => {
 		});
 
 		it.each([
+			["$FFFF", "$FFFF"],
+			["$10000", "$010000"],
+			["$123456", "$123456"],
+			["$1000000", "$01000000"],
+		])("should evaluate .HEX() on as many digits as the bytes holding it: .HEX(%s)", (args, expected) => {
+			const { evaluator, tokenize } = setup();
+			const result = evaluator.evaluate(tokenize(`.HEX(${args})`), { PC: { value: 0 } });
+			expect(result).toBe(expected);
+		});
+
+		it.each([
 			["-1", "$FF"],
 			["-128", "$80"],
 			["-129", "$FF7F"],
 			["-200", "$FF38"],
 			["-32768", "$8000"],
-			["-70000", "$FFFEEE90"],
+			["-70000", "$FEEE90"],
+			["-8388608", "$800000"],
+			["-8388609", "$FF7FFFFF"],
 			["-1, 4", "$FFFF"],
 			["-129, 2", "$F7F"],
 		])("should evaluate .HEX() of a negative value as two's complement: .HEX(%s)", (args, expected) => {

@@ -24,6 +24,15 @@ SCREEN .equ $0400
 		expect(dict.global?.SCREEN).toBe("const number = $0400 ;:2:1");
 	});
 
+	it("should write a number over $FFFF on as many digits as the bytes holding it", () => {
+		const dict = symbolsOf(`
+BANK2 .equ $20000
+FAR .equ $123456
+`);
+		expect(dict.global?.BANK2).toBe("const number = $020000 ;:2:1");
+		expect(dict.global?.FAR).toBe("const number = $123456 ;:3:1");
+	});
+
 	it("should escape a string's value", () => {
 		const dict = symbolsOf(`
 msg = "he said \\"hi\\"\\n"
