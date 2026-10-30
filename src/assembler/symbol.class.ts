@@ -282,8 +282,12 @@ export class PASymbolTable {
 		return undefined;
 	}
 
+	/** How many labels `defineLabel` has defined: a label between two instructions changes it. */
+	labelsDefined = 0;
+
 	/** Defines a label: a constant, kept as a label for the symbol file. */
 	defineLabel(labelName: string, value: number | RelocValue, source: SymbolSource) {
+		this.labelsDefined++;
 		this.defineConstant(labelName, value, source, true);
 	}
 

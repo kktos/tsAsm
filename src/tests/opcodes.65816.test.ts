@@ -6,7 +6,14 @@ import { Cpu65816Handler, P65816 } from "../cpu/cpu65816.class";
 import { Mos65xxHandler } from "../cpu/mos65xx.class";
 import { Logger } from "../helpers/logger.class";
 import { MemorySink } from "../helpers/memorysink.class";
+import type { AsmError } from "../utils/error.utils";
 import { MockFileHandler } from "./mockfilehandler.class";
+
+const NATIVE_REP = "REP #$30 makes the accumulator and the index registers 16-bit: the 65816's widths stay 8 bits for now.";
+const EMULATION_REP =
+	"REP #$30 can't make the accumulator and the index registers 16-bit in emulation mode: switch to native mode with clc / xce, or say the code runs in it with .native.";
+const UNKNOWN_REP =
+	"REP #$30 needs the 65816's mode, unknown since an XCE without clc or sec right before it: set it with clc / xce, sec / xce, .native or .emulation.";
 
 const newAssembler = (start = 0x8000) =>
 	new Assembler([new Cpu65816Handler(), new Cpu65C02Handler(), new Cpu6502Handler()], new MockFileHandler(), {
@@ -174,14 +181,15 @@ describe("65816", () => {
 			expect(assemble(source)).toEqual([0xe2, 0x30, 0xc2, 0xcf]);
 		});
 
-		it("should refuse a REP making the accumulator or the index registers 16-bit, also known in pass 2 only", () => {
-			expect(() => assemble("rep #$20")).toThrow("REP #$20 makes the accumulator 16-bit: the 65816's widths stay 8 bits for now.");
-			expect(() => assemble("rep #$10")).toThrow("REP #$10 makes the index registers 16-bit: the 65816's widths stay 8 bits for now.");
-			const forward = `
-				rep #FLAGS
+		it("should refuse a REP making the accumulator or the index registers 16-bit in native mode, also known in pass 2 only", () => {
+			const rep = (operand: string) => `
+				.native
+				rep ${operand}
 				FLAGS = $30
 			`;
-			expect(() => assemble(forward)).toThrow("REP #$30 makes the accumulator and the index registers 16-bit: the 65816's widths stay 8 bits for now.");
+			expect(() => assemble(rep("#$20"))).toThrow("REP #$20 makes the accumulator 16-bit: the 65816's widths stay 8 bits for now.");
+			expect(() => assemble(rep("#$10"))).toThrow("REP #$10 makes the index registers 16-bit: the 65816's widths stay 8 bits for now.");
+			expect(() => assemble(rep("#FLAGS"))).toThrow(NATIVE_REP);
 		});
 
 		it("should refuse an address over $FFFF on an instruction with a short form, until long addressing is chosen", () => {
@@ -195,6 +203,183 @@ describe("65816", () => {
 			expect(() => assemble("lda ($12,x),y")).toThrow("Invalid addressing mode for instruction LDA");
 			expect(() => assemble("ldx $12,s")).toThrow("Invalid addressing mode for instruction LDX");
 			expect(() => assemble("lda $100,s")).toThrow("LDA: the stack offset 256 is out of range ($0..$FF).");
+		});
+	});
+
+	describe("its mode, E", () => {
+		const errorOf = (source: string) => {
+			try {
+				assemble(source);
+			} catch (e) {
+				return e as AsmError;
+			}
+			throw new Error("expected the assembly to fail");
+		};
+
+		it("should start in emulation mode, where a REP can't make a width 16-bit", () => {
+			expect(() => assemble("rep #$30")).toThrow(EMULATION_REP);
+		});
+
+		it("should follow clc / xce to native mode, and sec / xce back to emulation", () => {
+			const toNative = `
+				clc
+				xce
+				sep #$30
+			`;
+			expect(assemble(toNative)).toEqual([0x18, 0xfb, 0xe2, 0x30]);
+			expect(() =>
+				assemble(`
+					${toNative}
+					rep #$30
+				`),
+			).toThrow(NATIVE_REP);
+			const back = `
+				clc
+				xce
+				sec
+				xce
+				rep #$30
+			`;
+			expect(() => assemble(back)).toThrow(EMULATION_REP);
+		});
+
+		it("should be set by .native and .emulation", () => {
+			const native = `
+				.native
+				rep #$30
+			`;
+			expect(() => assemble(native)).toThrow(NATIVE_REP);
+			const emulation = `
+				.native
+				.emulation
+				rep #$30
+			`;
+			expect(() => assemble(emulation)).toThrow(EMULATION_REP);
+		});
+
+		it.each([
+			["nothing", ""],
+			["another instruction", "nop"],
+			["rep #$01, clearing the carry too", "rep #$01"],
+			[
+				"a label",
+				`clc
+				label:`,
+			],
+			[
+				"a label without colon",
+				`clc
+				label`,
+			],
+			[
+				"a local label",
+				`start:
+				clc
+				:here`,
+			],
+			[
+				"an anonymous label",
+				`clc
+				:`,
+			],
+			[
+				"data",
+				`clc
+				.db 0`,
+			],
+			[
+				"a PC move",
+				`clc
+				.org $9000`,
+			],
+		])("should make it unknown after an xce with %s before it, with a note at that xce", (_, before) => {
+			const source = `
+				.native
+				${before}
+				xce
+				rep #$30
+			`;
+			const error = errorOf(source);
+			const xceLine = source.split("\n").findIndex((line) => line.trim() === "xce") + 1;
+			expect(error.message).toBe(UNKNOWN_REP);
+			expect(error.location.line).toBe(xceLine + 1);
+			expect(error.notes).toEqual([
+				expect.objectContaining({ message: "the mode is unknown after this XCE", location: expect.objectContaining({ line: xceLine }) }),
+			]);
+		});
+
+		it("should follow the idiom across a comment, a branch not taken or a macro", () => {
+			const source = `
+				.native
+				sec ; comment
+				.if 0
+				nop
+				.end
+				xce
+				rep #$30
+			`;
+			expect(() => assemble(source)).toThrow(EMULATION_REP);
+			const macro = `
+				.macro to_native
+				clc
+				xce
+				.end
+				to_native
+				rep #$30
+			`;
+			expect(() => assemble(macro)).toThrow(NATIVE_REP);
+		});
+
+		it("should be known again after the idiom or a directive", () => {
+			const idiom = `
+				xce
+				clc
+				xce
+				rep #$30
+			`;
+			expect(() => assemble(idiom)).toThrow(NATIVE_REP);
+			const directive = `
+				xce
+				.emulation
+				rep #$30
+			`;
+			expect(() => assemble(directive)).toThrow(EMULATION_REP);
+		});
+
+		it("should start each pass in emulation mode, and follow it in pass 2 as in pass 1", () => {
+			const reset = `
+				rep #FLAGS
+				FLAGS = $30
+				.native
+			`;
+			expect(() => assemble(reset)).toThrow(EMULATION_REP);
+			const unknown = `
+				xce
+				rep #FLAGS
+				FLAGS = $30
+			`;
+			expect(() => assemble(unknown)).toThrow(UNKNOWN_REP);
+		});
+
+		it("should be kept across .cpu switches", () => {
+			const source = `
+				.native
+				.cpu 6502
+				nop
+				.cpu 65816
+				rep #$30
+			`;
+			expect(() => assemble(source)).toThrow(NATIVE_REP);
+		});
+
+		it("should refuse an operand after .native or .emulation, and both under another CPU", () => {
+			expect(() => assemble(".native foo")).toThrow("Unexpected 'foo' after '.native': it takes no operand.");
+			expect(() => assemble(".EMULATION 1")).toThrow("Unexpected '1' after '.EMULATION': it takes no operand.");
+			const other = `
+				.cpu 65C02
+				.native
+			`;
+			expect(() => assemble(other)).toThrow("'.native' is a 65816 directive: the current CPU is 65C02.");
 		});
 	});
 

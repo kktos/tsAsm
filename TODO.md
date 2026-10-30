@@ -187,29 +187,19 @@ After 4.13: change any project file setting for one run, e.g. turn the listing o
 
 ### 4.16 65C816: accumulator and index widths
 
-After 4.24. The size of an immediate depends on the M and X flags: `lda #$10` is `A9 10` with an 8-bit accumulator, `A9 10 00` with a 16-bit one. The CPU handler tracks them.
+After 4.24 and 4.17. The size of an immediate depends on the M and X flags: `lda #$10` is `A9 10` with an 8-bit accumulator, `A9 10 00` with a 16-bit one. The CPU handler tracks them.
 
 - **State:** M (A and memory) and X (X / Y) are each 8, 16 or unknown. Both start at 8, as after reset. Reset at each pass, kept across `.cpu` switches (4.15).
 - **Directives** (4.15), the ca65 names: `.a8`, `.a16`, `.i8`, `.i16`.
 - **`SEP` / `REP`, always tracked:** `rep #n` makes the flags in `n` 16-bit (bit 5 is M, bit 4 is X), `sep #n` 8-bit. An operand not known in pass 1 is an error: it must be defined before it is used (the sizes after it depend on it).
-- **Unknown widths:** `PLP` and `RTI` make M and X unknown. `XCE` changes them as 4.17 says. A directive, or a `SEP` / `REP` covering the flag, makes it known again.
+- **Unknown widths:** `PLP` and `RTI` make M and X unknown. A directive, or a `SEP` / `REP` covering the flag, makes it known again.
+- **`XCE` and the mode** (4.17): `sec` / `xce` and `.emulation` make M and X 8; `clc` / `xce` leaves them; an `xce` the assembler can't follow makes them unknown unless both are 8. In emulation mode `.a16` and `.i16` are errors (4.17), as a `REP` making a width 16-bit is. The note of an unknown width points at the `PLP` / `RTI` as 4.17's points at the `XCE` (`InstructionContext.site`).
 - **Width-dependent immediates:** M: `LDA ADC SBC AND ORA EOR CMP BIT`; X: `LDX LDY CPX CPY`. 16 bits gives two bytes, little-endian. An unknown width is an error saying which flag and what made it unknown ("the accumulator width is unknown since the `PLP` at …; set it with `.a8` / `.a16`"). A value too large for 8 bits is an error, never truncated.
 - **One instruction:** `lda.b #imm` / `lda.w #imm` force the immediate's width without changing the state. On an address `.b` / `.w` keep their 6502 meaning (direct page / absolute); `.l` is added for long.
 - **Listing:** a line whose size depends on M or X shows the width it was assembled with.
-- **4.24's REP error:** `Cpu65816Handler` refuses a `REP` clearing bit 4 or 5 until then: it goes.
+- **4.24's REP error:** in native mode, `Cpu65816Handler.checkRep` refuses a `REP` clearing bit 4 or 5 until then: it goes. In emulation mode and while the mode is unknown, it stays (4.17).
 
-Follow-ups: emulation mode (4.17); direct page / absolute / long addressing (4.18); saving and restoring the widths per `.proc`.
-
-### 4.17 65C816: emulation mode
-
-After 4.16. In emulation mode (E=1) M and X are forced to 8 bits and `REP` can't change them. Without tracking E, `rep #$30` right after reset (which starts in emulation) would make the tracker assemble 16-bit immediates the CPU reads as 8-bit: wrong bytes, silently.
-
-- **State:** E is emulation, native or unknown. It starts in emulation, as after reset. Reset at each pass, kept across `.cpu` switches (4.15).
-- **Directives** (4.15): `.native` and `.emulation` say which mode the code runs in. `.emulation` makes M and X 8.
-- **`XCE`** swaps the carry and E. Only the idiom is followed: `clc` right before `xce` gives native, M and X unchanged; `sec` right before gives emulation, M and X 8. Any other instruction before it, or a label between them (a branch could reach the `XCE` with another carry), makes E unknown, and M and X with it unless both are 8.
-- **In emulation:** a `REP` clearing bit 4 or 5, `.a16` and `.i16` are errors: they have no effect there.
-- **E unknown:** a `REP` clearing bit 4 or 5 is an error until E is known again, by `clc` / `sec` + `xce` or a directive.
-- **Cost:** a file of native-mode routines (a library, an included file) needs `.native` before its first `rep #$30`. One line, and it states the assumption.
+Follow-ups: direct page / absolute / long addressing (4.18); saving and restoring the widths per `.proc`.
 
 ### 4.18 65C816: direct page, absolute and long addressing
 

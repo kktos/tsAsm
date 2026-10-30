@@ -759,7 +759,7 @@ C02 = 1
 .cpu .iif(C02, "65C02", "6502")
 ```
 
-A CPU can have directives of its own, as the 65816 will have `.a16`. They are known whatever the CPU, so a block not assembled can hold them, and they run only while their CPU is the current one: under another, `.a16` is an error, `'.a16' is a 65816 directive: the current CPU is 6502.` What a CPU keeps (the 65816's accumulator width) starts as after reset at each pass, and is kept across `.cpu`: `.cpu 6502` then `.cpu 65816` finds it as it was left.
+A CPU can have directives of its own, as the 65816 has `.native`. They are known whatever the CPU, so a block not assembled can hold them, and they run only while their CPU is the current one: under another, `.native` is an error, `'.native' is a 65816 directive: the current CPU is 6502.` They take no operand: `.native foo` is `Unexpected 'foo' after '.native': it takes no operand.` What a CPU keeps (the 65816's mode) starts as after reset at each pass, and is kept across `.cpu`: `.cpu 6502` then `.cpu 65816` finds it as it was left.
 
 ## System variables
 
@@ -865,5 +865,22 @@ Suffixes work on the 6502, the 65C02 and the 65816; other CPUs have none.
 - `pea $1234` pushes its operand (`f4 34 12`), and `pei ($12)` the word at `$12`.
 - A stack offset, a bank and a signature are bytes: `lda $100,s` → `LDA: the stack offset 256 is out of range ($0..$FF).`
 - `brl` and `per` reach any address in their bank: the 65816 adds their 16-bit offset in it, wrapping, so `brl $0000` at `$FF00` is `82 fd 00`. A target in another bank is an error: `Branch target $020000 is in another bank than the instruction at $01FFF0: a 16-bit offset stays in its bank.`
-- For now, the accumulator and the index registers are 8 bits: an immediate is one byte, and a `rep` making one of them 16-bit is an error, `REP #$20 makes the accumulator 16-bit: the 65816's widths stay 8 bits for now.`, also with a symbol defined after it. `sep` and the other `rep`s are taken.
+- For now, the accumulator and the index registers are 8 bits: an immediate is one byte, and in native mode a `rep` making one of them 16-bit is an error, `REP #$20 makes the accumulator 16-bit: the 65816's widths stay 8 bits for now.`, also with a symbol defined after it. `sep` and the other `rep`s are taken.
 - For now, an address takes a long form only on an instruction that has no other, `jml` and `jsl`: on the others, an address over `$FFFF` is an error, as on the 6502 (`lda $123456`, `jmp $123456`).
+
+#### Emulation and native mode
+
+The 65816 starts in emulation mode, as after reset, and the assembler follows which mode the code runs in (E):
+
+- **`clc` / `xce`** switches to native mode, **`sec` / `xce`** back to emulation: only this idiom is followed. The `clc` or `sec` must come right before the `xce`, with nothing between them: no label (the CPU could reach the `xce` another way), no data, no `.org` or `.segment`. A comment, a branch not taken, a macro call are fine.
+- **Any other `xce`** makes the mode unknown: one with another instruction before it (`rep #$01` too), or nothing, or something between.
+- **`.native`** and **`.emulation`** say which mode the code after them runs in: a routine called in native mode starts with `.native`. They set it, whatever it was.
+- **In emulation mode**, a `rep` making the accumulator or the index registers 16-bit is an error, as they stay 8 bits there: `REP #$30 can't make the accumulator and the index registers 16-bit in emulation mode: switch to native mode with clc / xce, or say the code runs in it with .native.`
+- **While the mode is unknown**, the same `rep` is an error, with a note at the `xce` that made it unknown:
+
+```
+main.asm:7:2: error: REP #$30 needs the 65816's mode, unknown since an XCE without clc or sec right before it: set it with clc / xce, sec / xce, .native or .emulation.
+main.asm:6:2: note: the mode is unknown after this XCE
+```
+
+Each pass starts in emulation mode, and the mode is kept across `.cpu`.

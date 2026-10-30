@@ -1,5 +1,5 @@
 import { EventEmitter } from "node:events";
-import type { CPUHandler, OperandReader } from "../cpu/cpuhandler.interface";
+import type { CPUHandler, InstructionContext, OperandReader } from "../cpu/cpuhandler.interface";
 import type { DirectiveContext, DirectiveRuntime } from "../directives/directive.interface";
 import { DirectiveHandler } from "../directives/handler";
 import { MacroHandler } from "../directives/macro/handler";
@@ -77,6 +77,10 @@ export class Assembler {
 	/** The first token of the statement being assembled: where an error is reported when it doesn't say better. */
 	private statementToken: Token | undefined;
 	public namelessLabels: NamelessLabels = new NamelessLabels();
+	/** How many anonymous labels were defined: with the symbol table's `labelsDefined`, tells a label between two instructions. */
+	private anonymousLabelsDefined = 0;
+	/** The last instruction, where its bytes end and how many labels there were then: see `instructionContext`. */
+	private lastInstruction: { mnemonic: string; end: number; segment: Segment | undefined; labels: number } | undefined;
 
 	public pass: number;
 
@@ -278,6 +282,27 @@ export class Assembler {
 	private resetCPU() {
 		this.cpuHandler = this.initialCpuHandler;
 		for (const cpu of this.cpuHandlers) cpu.resetState?.();
+		this.lastInstruction = undefined;
+	}
+
+	private labelCount() {
+		return this.symbolTable.labelsDefined + this.anonymousLabelsDefined;
+	}
+
+	/**
+	 * What the CPU is told about the instruction at `mnemonicToken`: the instruction before it, when nothing came
+	 * between them, no label, no byte written, no PC moved, no segment switched (the PC would be elsewhere).
+	 */
+	private instructionContext(mnemonicToken: ScalarToken): InstructionContext {
+		const last = this.lastInstruction;
+		const follows = last && last.end === this.PC.value && last.segment === this.linker.currentSegment && last.labels === this.labelCount();
+		return { previous: follows ? last.mnemonic : undefined, site: () => this.errorLocator.definitionSite(mnemonicToken) };
+	}
+
+	/** Records the instruction at `mnemonicToken`, assembled: the next one's `previous`, if nothing comes between. */
+	private recordInstruction(mnemonicToken: ScalarToken) {
+		const mnemonic = mnemonicToken.value.toUpperCase().split(".")[0] as string;
+		this.lastInstruction = { mnemonic, end: this.PC.value, segment: this.linker.currentSegment, labels: this.labelCount() };
 	}
 
 	/** Each pass starts with the options the assembler was given: the passes read the `.option`s in the same order. */
@@ -606,6 +631,7 @@ export class Assembler {
 				}
 
 				case "ANONYMOUS_LABEL_DEF": {
+					this.anonymousLabelsDefined++;
 					this.namelessLabels.add(this.PC.value);
 					this.lister.label(token.value, this.addressValue(this.PC.value));
 					break;
@@ -772,6 +798,7 @@ export class Assembler {
 				}
 
 				case "ANONYMOUS_LABEL_DEF": {
+					this.anonymousLabelsDefined++;
 					const pass1Address = this.namelessLabels.update(this.PC.value);
 					if (pass1Address !== undefined && pass1Address !== this.PC.value) throw this.phaseError("anonymous label", pass1Address);
 					this.lister.label(token.value, this.addressValue(this.PC.value));
@@ -948,9 +975,11 @@ export class Assembler {
 
 		// It's an instruction. Resolve its size and advance the PC.
 		const { resolveValue, operands } = this.operandReaders(currentStream.macroArgs, true);
-		const sizeInfo = this.cpuHandler.resolveAddressingMode(mnemonicToken.value, operandTokens, resolveValue, operands);
+		const context = this.instructionContext(mnemonicToken);
+		const sizeInfo = this.cpuHandler.resolveAddressingMode(mnemonicToken.value, operandTokens, resolveValue, operands, context);
 		this.checkBank(instructionPC, sizeInfo.bytes);
 		this.PC.value += sizeInfo.bytes;
+		this.recordInstruction(mnemonicToken);
 
 		this.lister.bytes({
 			addr: instructionPC,
@@ -971,7 +1000,8 @@ export class Assembler {
 
 			// 1. Resolve Mode & Address
 			const { resolveValue, operands } = this.operandReaders(currentStream.macroArgs, false);
-			const modeInfo = this.cpuHandler.resolveAddressingMode(mnemonicToken.value, operandTokens, resolveValue, operands);
+			const context = this.instructionContext(mnemonicToken);
+			const modeInfo = this.cpuHandler.resolveAddressingMode(mnemonicToken.value, operandTokens, resolveValue, operands, context);
 
 			// 2. Encode Bytes using resolved info. Every symbol is known in pass 2, so is the operand.
 			const { resolvedAddress } = modeInfo;
@@ -994,6 +1024,7 @@ export class Assembler {
 			this.linker.writeBytes(this.PC.value, encodedBytes);
 			if (modeInfo.fixup) this.linker.addFixup(instructionPC + modeInfo.fixup.at, modeInfo.fixup.size, modeInfo.fixup.value);
 			this.PC.value += encodedBytes.length;
+			this.recordInstruction(mnemonicToken);
 		}
 	}
 
