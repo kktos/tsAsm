@@ -6,6 +6,12 @@ The problem is described as it was before the fix, then the fix in _italics_.
 
 ## Assembler
 
+### #209 — `*` starting a statement followed by anything but `=` (TODO 1.68)
+
+At the start of a statement, `*` waited for an `=` (`* = $1000`) and ignored anything else: `*` alone and `*:` assembled to nothing, `* nop` to the `nop`. A word that isn't an instruction is read as a label, so `foo *` defined `foo` and dropped the `*`, and so did `brl *` on the 6502, without a word.
+
+_Fixed: a `*` starting a statement must be followed by `=` on its line. Otherwise → `Syntax error - Expected '=' after '*': '* = $1000' sets the PC.` (`*`, `*:`, `* nop`, `* $10`, the `=` on the next line, `* .EQU 456`, which said `Missing symbol name before .EQU.`), or after a label on its line → `Syntax error - (Unknown opcode?) Unexpected '*' after BRL`, as an unknown mnemonic followed by a word already was. `* = $1000`, `*=$1000` and `label * = $1000` are unchanged._
+
 ### #199 — A function defined in a macro body doesn't see the macro's parameters (TODO 3.9)
 
 `.macro m base` / `.function f(x) = base + x` / `.db f(1)` / `.end` / `m 5` → `Undefined symbol 'BASE'.`: a function's expression and body were evaluated without macro parameters, as it's called from anywhere. The same for a block function (`.if x > limit` → `Undefined symbol 'LIMIT'.`) and for a rest parameter (`.function f(i) = p[i]` → `Undefined symbol 'P'.`).
