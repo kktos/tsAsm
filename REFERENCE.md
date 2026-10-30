@@ -205,6 +205,8 @@ A constant, or a variable assigned once, can be used before it's defined. A vari
 
 The program counter stays in the CPU's address space: 16 bits on the 6502, 65C02 and 6809, 32 on the RV32I. An address outside it is an error, never wrapped: `.org $10000` on the 6502 is `Address $10000 is outside the 6502's address space ($0..$FFFF).`, and so is a negative one. Code can end at the top of it, with its last byte at `$FFFF`, but not go past it: a statement whose bytes do, an instruction, data, `.fill`, is an error (`The PC goes past $FFFF, the top of the 6502's address space, to $10001.`). So is `.cpu` switching to a CPU the PC is past the top of.
 
+On a CPU whose PC stays in its bank, the 65816 (its PC is 16 bits, the bank doesn't follow it), an instruction can't cross a bank: one at `$01FFFE` taking 3 bytes is `The instruction at $1FFFE crosses into bank $02: the 65816's PC stays in its bank.` One whose last byte is at `$01FFFF` is fine, and data can cross a bank, as long addressing and indexing reach the next one. In a relocatable segment, the bank is only known when it's loaded: it isn't checked.
+
 ### Segments
 
 Code is assembled into segments. The command line tool defines them in the project file (`input.segments`). They can also be defined in the source:

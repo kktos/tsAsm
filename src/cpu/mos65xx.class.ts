@@ -11,6 +11,8 @@ export interface Mos65xxProfile {
 	cpuType: string;
 	/** Width of the address bus: 16, 24 for the 65816. */
 	addressBits: number;
+	/** Width of the PC in its bank, 16 for the 65816: see `CPUHandler.bankBits`. */
+	bankBits?: number;
 	/** Merged per mnemonic when the handler is built: a mnemonic and mode given by two sets is an error. */
 	opcodeSets: readonly OpcodeSet[];
 	/** The address width, in bytes, each suffix forces: `lda.b` zero page, `lda.w` absolute. */
@@ -54,6 +56,7 @@ export class Mos65xxHandler implements CPUHandler<Mos65xxModeInfo> {
 	readonly cpuType: string;
 	readonly endianness = "little" as const;
 	readonly addressBits: number;
+	readonly bankBits?: number;
 	readonly mnemonicSuffixes: readonly string[];
 
 	private readonly instructionMap: ReadonlyMap<string, ReadonlyMap<Mos65xxMode, number>>;
@@ -61,6 +64,7 @@ export class Mos65xxHandler implements CPUHandler<Mos65xxModeInfo> {
 	constructor(private readonly profile: Mos65xxProfile) {
 		this.cpuType = profile.cpuType;
 		this.addressBits = profile.addressBits;
+		this.bankBits = profile.bankBits;
 		this.mnemonicSuffixes = Object.keys(profile.suffixes);
 		this.instructionMap = this.mergeOpcodeSets(profile.opcodeSets);
 	}
