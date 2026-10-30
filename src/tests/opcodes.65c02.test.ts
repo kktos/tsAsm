@@ -100,6 +100,10 @@ describe("65C02 Opcodes", () => {
 		expect(assembleAndGetCode(source)).toEqual(expected);
 	});
 
+	it.each(["LDA [$12]", "LDA [$12],Y"])("should take %s as a bracket mode the 65C02 doesn't have (TODO 3.11)", (source) => {
+		expect(() => assembleAndGetCode(source)).toThrow("Invalid addressing mode for instruction LDA");
+	});
+
 	it("should assemble Zero Page Indirect Indexed X addressing mode (zp,X)", () => {
 		const source = `
             ADC ($66,x)

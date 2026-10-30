@@ -2,7 +2,7 @@ import { RelocValue } from "../assembler/reloc-value.class";
 import type { OperatorStackToken } from "../shared/lexer/lexer.class";
 import { getHex } from "../utils/hex.util";
 import { assertFitsInBytes } from "../utils/number.utils";
-import { findClosingParen, findTopLevelComma } from "../utils/token.utils";
+import { findClosingBracket, findTopLevelComma } from "../utils/token.utils";
 import type { CPUHandler, ModeInfo, OperandReader, ResolvedModeInfo } from "./cpuhandler.interface";
 import type { Mos65xxMode, OpcodeSet } from "./mos65xx.opcodes";
 
@@ -224,11 +224,14 @@ export class Mos65xxHandler implements CPUHandler<Mos65xxModeInfo> {
 		}
 
 		// 4. Indirect modes: the operand's first `(` closes at its end, `(e)` or `(e,X)`, or right before `,Y`: `(e),Y`.
-		// Otherwise its parentheses only group an expression: `lda (2+3)*4,x` (TODO 3.10).
+		// Otherwise its parentheses only group an expression: `lda (2+3)*4,x` (TODO 3.10). Same for `[`: `lda [1,2][1]` (TODO 3.11).
 		// The instruction's modes tell (abs) from (zp), and (abs,X) from (zp,X).
-		const close = tokenIs(0, "(") ? findClosingParen(operandTokens, 0) : -1;
+		const close = tokenIs(0, "(") || tokenIs(0, "[") ? findClosingBracket(operandTokens, 0) : -1;
 		const isIndexedAfter = (index: string) => close !== -1 && close === numTokens - 3 && tokenIs(close + 1, ",") && tokenIs(close + 2, index);
-		if (close === numTokens - 1 || isIndexedAfter("Y")) {
+		const isIndirect = close === numTokens - 1 || isIndexedAfter("Y");
+		// `[e]` and `[e],Y` are the 65816's indirect long (TODO 4.24), `[e],X` no mode: none of these CPUs has them.
+		if (tokenIs(0, "[") && (isIndirect || isIndexedAfter("X"))) throw new Error(`Invalid addressing mode for instruction ${mnemonic}`);
+		if (isIndirect) {
 			rejectSuffix();
 			const inner = operandTokens.slice(1, close);
 
