@@ -217,7 +217,7 @@ A label in a relocatable segment stays a [relocatable value](../../REFERENCE.md#
 
 ### Segments and modules
 
-A segment has the fields `name`, `start` (its address, 0 for a relocatable one), `size`, `data` (its bytes), `padValue`, `resizable`, `relocatable`, `emitted` (once written), `attrs` and `relocs`. `resizable`, `relocatable` and `emitted` are 1 or 0: `!seg.relocatable`, `.iif(seg.resizable, …)`.
+A segment has the fields `name`, `start` (its address, 0 for a relocatable one), `size`, `data` (its bytes), `padValue`, `resizable`, `relocatable`, `emitted` (once written), `banksize` (only when [the segment gives one](../../REFERENCE.md#segments): test it with `.has(seg, "banksize")`), `attrs` and `relocs`. `resizable`, `relocatable` and `emitted` are 1 or 0: `!seg.relocatable`, `.iif(seg.resizable, …)`.
 
 - `attrs`, its [attributes](../../REFERENCE.md#segments): the keys of its definition the assembler doesn't know, in lowercase. `.segment CODE { reloc: true, kind: $1000 }` gives `code.attrs.kind`; reading one the segment doesn't have is an error (`Property 'kind' does not exist on object.`): test it first with `.has(code.attrs, "kind")`.
 - `relocs`, its [fixups](../../REFERENCE.md#segments), an array of `{ offset, size, shift, segment, targetOffset }`: where the bytes of a relocatable value are in the segment, how many, how many bits its address is shifted right (0, 8 or 16), and the segment and offset of the value. The names are read as written: `r.targetOffset`.
@@ -279,9 +279,9 @@ OMF_FILE "main"
 
 `OMF_FILE "<entry>"` writes every segment, in their order, numbered from 1, as an OMF version 2.0 segment (GS/OS Reference, appendix F): its header, its bytes in one LCONST record, a RELOC record for each [fixup](../../REFERENCE.md#segments) to its own segment, an INTERSEG for each fixup to another one, and END. The program starts at the symbol `entry`, which must be in the first segment, where GS/OS starts it.
 
-The segments must be relocatable: a segment with a `start` is an error. Their [attributes](../../REFERENCE.md#segments) give the header's fields, with defaults:
+The segments must be relocatable: a segment with a `start` is an error. Their [attributes](../../REFERENCE.md#segments), and their `banksize`, give the header's fields, with defaults:
 
-| Attribute  | Field    | Default                                           |
+| Key        | Field    | Default                                           |
 | ---------- | -------- | ------------------------------------------------- |
 | `kind`     | KIND     | `$0000`, static code; `$0001` is data             |
 | `segname`  | SEGNAME  | The segment's name                                |
@@ -294,7 +294,7 @@ The segments must be relocatable: a segment with a `start` is an error. Their [a
 .segment DATA { reloc: true, kind: $0001, loadname: "MAIN" }
 ```
 
-A segment larger than its `banksize`, or a `loadname` over 10 characters, is an error. Not written yet: the compact records (cRELOC, cINTERSEG, SUPER), DS for trailing zeros, ExpressLoad. The file's ProDOS type, `$B3`, is in its directory entry, not in the file.
+A segment larger than its `banksize` is an error, from the assembler when the segment gives one, from the library for its default, `$10000`; so is a `loadname` over 10 characters. Not written yet: the compact records (cRELOC, cINTERSEG, SUPER), DS for trailing zeros, ExpressLoad. The file's ProDOS type, `$B3`, is in its directory entry, not in the file.
 
 ## Limitations
 

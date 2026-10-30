@@ -49,13 +49,13 @@ describe("Function .HAS()", () => {
 		const script = `
 			code = .segment("CODE")
 			.WRITE BYTE .has(code.attrs, "kind")
-			.WRITE BYTE .has(code.attrs, "banksize")
-			banksize = $10000
-			.IF .has(code.attrs, "banksize")
-				banksize = code.attrs.banksize
+			.WRITE BYTE .has(code.attrs, "align")
+			align = $100
+			.IF .has(code.attrs, "align")
+				align = code.attrs.align
 			.END
-			.WRITE LONG banksize
+			.WRITE LONG align
 		`;
-		expect(assembler.linker.link(script, undefined, new Logger({ sink: new MemorySink(), enabled: false })).data).toEqual([1, 0, 0, 0, 1, 0]);
+		expect(assembler.linker.link(script, undefined, new Logger({ sink: new MemorySink(), enabled: false })).data).toEqual([1, 0, 0, 1, 0, 0]);
 	});
 });

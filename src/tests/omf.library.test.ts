@@ -195,7 +195,7 @@ describe("The OMF library, omf.linker.asm", () => {
 		[
 			"a segment larger than its bank",
 			`.segment CODE { reloc: true, banksize: 2 }\n.segment CODE\nmain: nop\nnop\nrts`,
-			"Segment 'CODE' is $03 bytes: it can't fit in its bank, $02 bytes.",
+			"Segment 'CODE' is $3 bytes, more than its banksize, $2.",
 		],
 	])("should reject %s", (_, source, message) => {
 		expect(() => link(source)).toThrow(message);

@@ -81,6 +81,7 @@ const confSchema = {
 						resizable: { type: "boolean", optional: true },
 						relocatable: { type: "boolean", optional: true },
 						reloc: { type: "boolean", optional: true },
+						banksize: { type: "number", optional: true },
 					},
 				},
 			},
