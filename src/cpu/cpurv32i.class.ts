@@ -26,6 +26,7 @@ export interface RV32IModeInfo extends ModeInfo {
 export class CpuRV32IHandler implements CPUHandler<RV32IModeInfo> {
 	cpuType = "RV32I" as const;
 	endianness = "little" as const;
+	addressBits = 32;
 
 	private registerMap: Map<string, number> = new Map([
 		["zero", 0],

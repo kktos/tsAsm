@@ -3,6 +3,7 @@ import { NMOS } from "./mos65xx.opcodes";
 
 export const P6502: Mos65xxProfile = {
 	cpuType: "6502",
+	addressBits: 16,
 	opcodeSets: [NMOS],
 	suffixes: { B: 1, W: 2 },
 };

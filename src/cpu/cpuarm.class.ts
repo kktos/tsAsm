@@ -3,6 +3,7 @@ import type { AddressingMode, CPUHandler, ModeInfo, ResolvedModeInfo } from "./c
 export class CpuArmRiscHandler implements CPUHandler {
 	cpuType = "ARM_RISC" as const;
 	endianness = "little" as const;
+	addressBits = 32;
 
 	// ARM instructions are 32-bit (4 bytes) and fixed size in this implementation.
 	private readonly INSTRUCTION_SIZE = 4;

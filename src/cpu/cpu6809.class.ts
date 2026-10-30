@@ -21,6 +21,7 @@ export interface Cpu6809ModeInfo extends ModeInfo {
 export class Cpu6809Handler implements CPUHandler<Cpu6809ModeInfo> {
 	cpuType = "6809" as const;
 	endianness = "big" as const;
+	addressBits = 16;
 
 	private M6809_MODES = {
 		INHERENT: "M6809_INHERENT",

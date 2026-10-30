@@ -203,6 +203,8 @@ A constant, or a variable assigned once, can be used before it's defined. A vari
     jmp * + 3
 ```
 
+The program counter stays in the CPU's address space: 16 bits on the 6502, 65C02 and 6809, 32 on the RV32I. An address outside it is an error, never wrapped: `.org $10000` on the 6502 is `Address $10000 is outside the 6502's address space ($0..$FFFF).`, and so is a negative one. Code can end at the top of it, with its last byte at `$FFFF`, but not go past it: a statement whose bytes do, an instruction, data, `.fill`, is an error (`The PC goes past $FFFF, the top of the 6502's address space, to $10001.`). So is `.cpu` switching to a CPU the PC is past the top of.
+
 ### Segments
 
 Code is assembled into segments. The command line tool defines them in the project file (`input.segments`). They can also be defined in the source:

@@ -18,11 +18,13 @@ export class OrgDirective implements IDirective {
 			this.assembler.warn(`Could not evaluate the .ORG address, assuming $0000: ${e instanceof Error ? e.message : e}`);
 			context.PC.value = 0x0000;
 		}
+		this.assembler.checkAddress(context.PC.value);
 	}
 
 	public handlePassTwo(_directive: ScalarToken, context: DirectiveContext) {
 		this.assembler.linker.checkOrg();
 		const orgExpressionTokens = this.assembler.parser.getInstructionTokens();
 		context.PC.value = this.assembler.expressionEvaluator.evaluateAsNumber(orgExpressionTokens, context);
+		this.assembler.checkAddress(context.PC.value);
 	}
 }
