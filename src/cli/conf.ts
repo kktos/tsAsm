@@ -13,6 +13,7 @@ import {
 } from "../assembler/options";
 import type { FileHandler } from "../assembler/polyasm.types";
 import handlers from "../cpu";
+import { isMaxSize, MAX_SIZE_TEXT } from "../linker/linker.class";
 import { AsmError } from "../utils/error.utils";
 import { yamlparse } from "./asm-yaml";
 import { type InferObject, validate } from "./schema";
@@ -97,6 +98,18 @@ const confSchema = {
 					"repeat.start": loopStart,
 					"for.start": loopStart,
 					"function.recursion": functionRecursion,
+				},
+			},
+			linker: {
+				type: "object",
+				optional: true,
+				schema: {
+					maxSize: {
+						type: "number",
+						optional: true,
+						validate: isMaxSize,
+						errorMessage: `Must be a whole number from ${MAX_SIZE_TEXT}`,
+					},
 				},
 			},
 		},

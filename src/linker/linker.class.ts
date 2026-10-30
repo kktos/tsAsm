@@ -64,6 +64,13 @@ export type SegmentParams = Partial<Pick<Segment, "start" | "size" | "padValue" 
 /** A number in a message: `$10000`; a negative one in decimal. */
 const hex = (value: number) => (value < 0 ? String(value) : `$${value.toString(16).toUpperCase()}`);
 
+/** The largest output the linker makes, by default: 1 MB. */
+export const DEFAULT_MAX_SIZE = 0x100000;
+/** The most `maxSize` can be: 16 MB, the 65816's whole space. Past it, the output's bytes could take Node's memory. */
+export const MAX_SIZE_LIMIT = 0x1000000;
+export const MAX_SIZE_TEXT = "1 to $1000000 (16 MB)";
+export const isMaxSize = (value: unknown): value is number => Number.isInteger(value) && (value as number) >= 1 && (value as number) <= MAX_SIZE_LIMIT;
+
 export class Linker {
 	public segments: Segment[] = [];
 	/** What the script writes at an offset (a .SECTION … AT, a .WRITE … AT): applied in order over the complete output. */
@@ -81,6 +88,7 @@ export class Linker {
 	private resumePC = new Map<Segment, number>();
 
 	private isLittleEndian = true;
+	private _maxSize = DEFAULT_MAX_SIZE;
 
 	public PC: ValueHolder;
 
@@ -106,6 +114,16 @@ export class Linker {
 		this.resumePC.clear();
 		this.isLittleEndian = true;
 		this.PC.value = this.startPC;
+	}
+
+	/** The largest output, with or without a linker script: past it, linking is an error. */
+	public get maxSize(): number {
+		return this._maxSize;
+	}
+
+	public set maxSize(size: number) {
+		if (!isMaxSize(size)) throw new Error(`The linker's maxSize, ${hex(size)}, isn't ${MAX_SIZE_TEXT}.`);
+		this._maxSize = size;
 	}
 
 	public findSegment(name: string): Segment | undefined {
@@ -155,7 +173,7 @@ export class Linker {
 	public addLinkerSection(name: string, offset: number) {
 		const seg = this.findSegment(name);
 		if (seg) throw new Error(`Segment already defined : ${name}`);
-		checkOffset(offset);
+		this.checkOffset(offset, 0);
 
 		const newSeg: Segment = { name, start: offset, size: 0, data: [] };
 		this.linkerSections.push(newSeg);
@@ -280,6 +298,15 @@ export class Linker {
 
 		const minStart = Math.min(...segs.map((s) => s.start));
 		const maxEnd = Math.max(...segs.map((s) => s.start + s.size));
+		if (maxEnd - minStart > this.maxSize) {
+			const first = segs.find((s) => s.start === minStart) as Segment;
+			const last = segs.find((s) => s.start + s.size === maxEnd) as Segment;
+			const what =
+				first === last
+					? `segment '${first.name}'`
+					: `from segment '${first.name}' (${hex(first.start)}) to segment '${last.name}' (${hex(last.start)})`;
+			throw new Error(`The output would be ${hex(maxEnd - minStart)} bytes, ${what}: more than the linker's maxSize, ${hex(this.maxSize)}.`);
+		}
 
 		logger?.log("\n--- Linker ---");
 
@@ -308,6 +335,8 @@ export class Linker {
 	}
 
 	public setOutputFile(filename: string, fixedSize?: number, padValue?: number, maxSize?: number) {
+		const [what, size] = fixedSize !== undefined ? ["FIXED", fixedSize] : ["MAX", maxSize];
+		if (size !== undefined && size > this.maxSize) throw new Error(`.OUTPUT ${what} ${hex(size)} is more than the linker's maxSize, ${hex(this.maxSize)}.`);
 		this.finalSegment.name = filename;
 		if (fixedSize !== undefined) {
 			this.finalSegment.size = fixedSize;
@@ -329,11 +358,13 @@ export class Linker {
 	 */
 	private write(bytes: number[], offset?: number) {
 		if (offset !== undefined) {
-			checkOffset(offset);
+			this.checkOffset(offset, bytes.length);
 			this.linkerSections.push({ name: "", start: offset, size: 0, data: bytes });
 			return;
 		}
-		this.activeSegment().data.push(...bytes);
+		const segment = this.activeSegment();
+		this.checkOffset(segment.start + segment.data.length, bytes.length);
+		segment.data.push(...bytes);
 		this.PC.value += bytes.length;
 	}
 
@@ -341,6 +372,15 @@ export class Linker {
 		const bytes: number[] = [];
 		pushNumber(bytes, value, bits, this.isLittleEndian);
 		this.write(bytes, offset);
+	}
+
+	/** `length` bytes written at `offset` of the output: not before its start, nor past its `maxSize`. */
+	private checkOffset(offset: number, length: number) {
+		if (offset < 0) throw new Error(`Invalid offset ${offset}: it can't be negative.`);
+		if (offset + length <= this.maxSize) return;
+		const max = hex(this.maxSize);
+		if (length === 0) throw new Error(`Offset ${hex(offset)} is past the linker's maxSize, ${max}.`);
+		throw new Error(`Writing ${hex(length)} byte${length === 1 ? "" : "s"} at ${hex(offset)} takes the output past the linker's maxSize, ${max}.`);
 	}
 
 	public emitString(value: string, offset?: number) {
@@ -565,10 +605,6 @@ function segmentBytes(segment: Segment): number[] {
 	const bytes = [...segment.data];
 	if (!segment.resizable) padTo(bytes, segment.size, segment.padValue ?? 0);
 	return bytes;
-}
-
-function checkOffset(offset: number) {
-	if (offset < 0) throw new Error(`Invalid offset ${offset}: it can't be negative.`);
 }
 
 /** Pads `data` with `value` up to `length`, if it's shorter. */

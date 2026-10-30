@@ -130,6 +130,15 @@ input:
 		expect(tooDeep).toEqual([{ path: "input.options.function.recursion", message: "Must be a whole number from 0 to 256" }]);
 	});
 
+	it("accepts an input.linker.maxSize from 1 to 16 MB, and reports another", () => {
+		const { conf, errors } = readConfFrom(`${confWithCpu("6502")}  linker:\n    maxSize: 0x1000000\n`);
+		expect(errors).toBeUndefined();
+		expect(conf.input.linker).toEqual({ maxSize: 0x1000000 });
+
+		const { errors: tooBig } = readConfFrom(`${confWithCpu("6502")}  linker:\n    maxSize: 0x1000001\n`);
+		expect(tooBig).toEqual([{ path: "input.linker.maxSize", message: "Must be a whole number from 1 to $1000000 (16 MB)" }]);
+	});
+
 	it("reports a cpu of the wrong type instead of crashing", () => {
 		const { errors } = readConfFrom(confWithCpu("true"));
 		expect(errors).toEqual([{ path: "input.cpu", message: "Expected string, got boolean" }]);
