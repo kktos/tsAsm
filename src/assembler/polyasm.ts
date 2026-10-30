@@ -338,6 +338,15 @@ export class Assembler {
 			);
 	}
 
+	/** `*` starts a statement only to set the PC, `* = $1000`: followed by anything else, it's an error, never ignored. */
+	private checkPCAssignment(star: Token) {
+		const next = this.parser.peek();
+		if (next?.type === "OPERATOR" && next.value === "=" && next.line === star.line) return;
+		if (this.lastGlobalLabel && this.lastGlobalLabelLine === star.line)
+			throw new ParserError(`Syntax error - (Unknown opcode?) Unexpected '*' after ${this.lastGlobalLabel}`, star);
+		throw new ParserError("Syntax error - Expected '=' after '*': '* = $1000' sets the PC.", star);
+	}
+
 	/** The CPUs given to the constructor. */
 	public get cpus(): readonly CPUHandler[] {
 		return this.cpuHandlers;
@@ -511,6 +520,7 @@ export class Assembler {
 
 				case "OPERATOR": {
 					if (token.value === "*") {
+						this.checkPCAssignment(token);
 						this.lastGlobalLabel = "*";
 						break;
 					}
@@ -646,6 +656,7 @@ export class Assembler {
 			switch (token.type) {
 				case "OPERATOR": {
 					if (token.value === "*") {
+						this.checkPCAssignment(token);
 						this.lastGlobalLabel = "*";
 						break;
 					}

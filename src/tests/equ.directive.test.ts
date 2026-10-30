@@ -91,6 +91,6 @@ describe(".EQU - constant assignment", () => {
 		const src = `
 				*	.EQU 456
 			`;
-		expect(() => asm.assemble(src)).toThrow(/Missing symbol name before .EQU/);
+		expect(() => asm.assemble(src)).toThrow("Syntax error - Expected '=' after '*': '* = $1000' sets the PC.");
 	});
 });
