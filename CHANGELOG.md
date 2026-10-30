@@ -6,6 +6,12 @@ The problem is described as it was before the fix, then the fix in _italics_.
 
 ## Assembler
 
+### #199 — A function defined in a macro body doesn't see the macro's parameters (TODO 3.9)
+
+`.macro m base` / `.function f(x) = base + x` / `.db f(1)` / `.end` / `m 5` → `Undefined symbol 'BASE'.`: a function's expression and body were evaluated without macro parameters, as it's called from anywhere. The same for a block function (`.if x > limit` → `Undefined symbol 'LIMIT'.`) and for a rest parameter (`.function f(i) = p[i]` → `Undefined symbol 'P'.`).
+
+_Decided: they are taken at the definition. A function defined in a macro's body keeps that macro's parameters with the arguments of the call that defined it (`UserFunction.macroArgs`), and its expression or body reads them as the macro's body does: `m 5` / `m 7` give `f(1)` 6 then 8. Called from another macro, it still reads its own, not the caller's. A parameter of the function hides a macro parameter of the same name; a rest parameter's element can be chosen by one, `p[i]`, read at the call. Text arguments are as in the macro's directives._
+
 ### #193 — A `.segment` property given twice (TODO 1.65)
 
 `.segment X { start: $1000, start: $2000, size: 4 }` put `X` at `$2000`: the last value won, silently, for `start`, `end`, `size` and `pad`. Only an attribute or `reloc` / `relocatable` given twice was an error. And `.segment X { start: $1000, end: $1003, size: 8 }` ignored the `size`, silently: `X` was 4 bytes.

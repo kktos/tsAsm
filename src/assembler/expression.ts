@@ -944,7 +944,7 @@ export class ExpressionEvaluator {
 				parameters.forEach((parameter, index) => {
 					this.symbolTable.defineVariable(parameter.value, args[index] as SymbolValue, { filename: file, line, column });
 				});
-				if (!fn.isBlock) return this.evaluate([...fn.body], { ...context, macroArgs: undefined });
+				if (!fn.isBlock) return this.evaluate([...fn.body], { ...context, macroArgs: fn.macroArgs });
 				if (!this.host.runFunction) throw AsmError.at(`Function '${fn.name}' can't be called here: its body has statements.`, token);
 				return this.host.runFunction(fn);
 			});

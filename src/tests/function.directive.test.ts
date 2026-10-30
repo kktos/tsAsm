@@ -146,6 +146,54 @@ describe("Directive: .function, the one-line form", () => {
 			expect(bytes).toEqual([1, 1]);
 		});
 
+		it("should read the parameters of the macro whose body defines it, with the arguments of that call", () => {
+			const bytes = assemble(`
+				.macro m base
+					.function f(x) = base + x
+					.db f(1)
+				.end
+				m 5
+				m 7
+			`);
+			expect(bytes).toEqual([6, 8]);
+		});
+
+		it("should hide a macro parameter of the same name by its own", () => {
+			const bytes = assemble(`
+				.macro m x
+					.function f(x) = x * 2
+					.db f(1), x
+				.end
+				m 5
+			`);
+			expect(bytes).toEqual([2, 5]);
+		});
+
+		it("should index the macro's rest parameter with its own", () => {
+			const bytes = assemble(`
+				.macro m ...p
+					.function f(i) = p[i]
+					.db f(0), f(2)
+				.end
+				m 1, 2, 3
+			`);
+			expect(bytes).toEqual([1, 3]);
+		});
+
+		it("should read the macro parameters of where it's defined, called from a nested macro with its own", () => {
+			const bytes = assemble(`
+				.macro inner base
+					.db f(1)
+				.end
+				.macro m base
+					.function f(x) = base + x
+					inner 100
+				.end
+				m 5
+			`);
+			expect(bytes).toEqual([6]);
+		});
+
 		it("should read the symbols of its namespace, and be called with it from another", () => {
 			const bytes = assemble(`
 				.namespace gfx
@@ -519,6 +567,23 @@ describe("Directive: .function, the block form", () => {
 				m
 			`);
 			expect(bytes).toEqual([2]);
+		});
+
+		it("should read the parameters of the macro whose body defines it, in its statements", () => {
+			const bytes = assemble(`
+				.macro m limit
+					.function clamp(x) {
+						.if x > limit
+							.return limit
+						.end
+						y = x + limit
+						.return y - limit
+					}
+					.db clamp(3), clamp(20)
+				.end
+				m 10
+			`);
+			expect(bytes).toEqual([3, 10]);
 		});
 	});
 

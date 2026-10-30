@@ -122,10 +122,6 @@ Symbols ignore case, properties don't: with `{ Id: 5 }`, `d[0].Id` works but `d[
 
 `/` gives fractions, but `1.5` → `Invalid syntax: '.' must be followed by an identifier.` Options: an integer `/`, as ca65; or keep fractions in expressions and reject them where they land (1.37). Recommended: the second.
 
-### 3.9 A function defined in a macro body doesn't see the macro's parameters
-
-`.macro m base` / `.function f(x) = base + x` / `.db f(1)` / `.end` → `Undefined symbol 'BASE'.`: a function's expression is evaluated without macro parameters, as it's called from anywhere. To decide: substitute them at the definition, as a nested macro call's arguments are (`substituteArgument`), or keep it an error and say so. Found with 4.8.
-
 ## 4. Features (ideas)
 
 ### 4.1 Default values for macro parameters

@@ -717,7 +717,7 @@ export class Assembler {
 		const restoreOptions = this.useLocalOptions(fn.options);
 		const unmute = this.lister.mute();
 		this.lastGlobalLabel = null;
-		parser.pushTokenStream({ newTokens: [...fn.body], functionCall });
+		parser.pushTokenStream({ newTokens: [...fn.body], macroArgs: fn.macroArgs, functionCall });
 
 		try {
 			while (parser.tokenStreamStack.length > depth) {
@@ -803,6 +803,7 @@ export class Assembler {
 			PC: this.PC,
 			allowForwardRef: this.pass === 1,
 			currentLabel: this.lastGlobalLabel,
+			macroArgs: this.parser.tokenStreamStack.at(-1)?.macroArgs,
 			emitbytes: () => {
 				throw new Error(`Internal error: a function's body emitted bytes.`);
 			},
