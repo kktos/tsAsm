@@ -55,6 +55,12 @@ export interface CPUHandler<TModeInfo extends ModeInfo = ModeInfo> {
 	addressBits: number;
 
 	/**
+	 * Width of the PC in its bank, on a CPU whose PC doesn't carry into the next bank: 16 on the 65816. An instruction
+	 * whose bytes cross a bank is an error; data can. Left out, there are no banks.
+	 */
+	bankBits?: number;
+
+	/**
 	 * Suffixes a mnemonic can take after a dot, given to resolveAddressingMode as part of the mnemonic: the 6502's
 	 * `lda.b` / `lda.w` force a zero page / absolute operand. A CPU without suffixes leaves it out.
 	 */

@@ -326,6 +326,17 @@ export class Assembler {
 			throw new Error(`Segment '${segment.name}' (${formatAddress(segment.start)}..${formatAddress(end)}) doesn't fit in ${space}.`);
 	}
 
+	/** An instruction's bytes in one bank, on a CPU whose PC stays in its bank. A relocatable segment's bank is only known when it's loaded. */
+	private checkBank(address: number, size: number) {
+		const { bankBits, cpuType } = this.cpuHandler;
+		if (bankBits === undefined || size === 0 || this.linker.currentSegment?.relocatable) return;
+		const lastBank = Math.floor((address + size - 1) / 2 ** bankBits);
+		if (lastBank !== Math.floor(address / 2 ** bankBits))
+			throw new Error(
+				`The instruction at ${formatAddress(address)} crosses into bank $${lastBank.toString(16).toUpperCase().padStart(2, "0")}: the ${cpuType}'s PC stays in its bank.`,
+			);
+	}
+
 	/** The CPUs given to the constructor. */
 	public get cpus(): readonly CPUHandler[] {
 		return this.cpuHandlers;
@@ -913,6 +924,7 @@ export class Assembler {
 		// It's an instruction. Resolve its size and advance the PC.
 		const { resolveValue, operands } = this.operandReaders(currentStream.macroArgs, true);
 		const sizeInfo = this.cpuHandler.resolveAddressingMode(mnemonicToken.value, operandTokens, resolveValue, operands);
+		this.checkBank(instructionPC, sizeInfo.bytes);
 		this.PC.value += sizeInfo.bytes;
 
 		this.lister.bytes({
@@ -953,6 +965,7 @@ export class Assembler {
 				isCode: true,
 			});
 
+			this.checkBank(instructionPC, encodedBytes.length);
 			this.linker.writeBytes(this.PC.value, encodedBytes);
 			if (modeInfo.fixup) this.linker.addFixup(instructionPC + modeInfo.fixup.at, modeInfo.fixup.size, modeInfo.fixup.value);
 			this.PC.value += encodedBytes.length;
