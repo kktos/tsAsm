@@ -674,6 +674,8 @@ The char is one of `:` `@` `!` `?` `_` `~`, and the two options can have differe
 
 `listing.case` applies to the mnemonics, registers and symbols of the listed instructions: `Sta Screen,x` is listed `STA SCREEN,X`, `sta screen,x`, or with `source` as written. Numbers are listed in hex.
 
+An address is listed on 4 hex digits (`0080`), 6 over $FFFF (`123456`) and 8 over $FFFFFF: the columns are set for 4, and a longer address pushes the rest of its line to the right.
+
 ### Listing data
 
 `listing.data` is about the data: `.db`, `.dw`, `.dl` and the other data directives, `.hex`, `.text` and the string directives, `.fill`, `.align` and `.incbin`. With `expand`, every byte is listed, 8 per line, the statement's text on the first line. With `fold`, only the first line is listed, a `…` after its bytes when more follow, and a text longer than 48 chars is cut with a `…`:
