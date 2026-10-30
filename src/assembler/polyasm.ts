@@ -230,8 +230,10 @@ export class Assembler {
 		}
 	}
 
-	/** Select the active segment for subsequent writes. */
+	/** Select the active segment for subsequent writes: it must be in the current CPU's address space. */
 	public useSegment(name: string) {
+		const segment = this.linker.findSegment(name);
+		if (segment) this.checkSegment(segment);
 		this.PC.value = this.linker.useSegment(name);
 	}
 
@@ -304,6 +306,24 @@ export class Assembler {
 			throw new Error(
 				`The PC goes past $${getHex(end - 1)}, the top of the ${this.cpuHandler.cpuType}'s address space, to ${formatAddress(this.PC.value)}.`,
 			);
+	}
+
+	/** A segment selected: its addresses in the current CPU's address space, a growing one's start; a relocatable one's offsets. */
+	private checkSegment(segment: Segment) {
+		const max = 2 ** this.cpuHandler.addressBits - 1;
+		const space = `the ${this.cpuHandler.cpuType}'s address space ($0..$${getHex(max)})`;
+		if (segment.relocatable) {
+			if (segment.size > max + 1) throw new Error(`Segment '${segment.name}' is ${formatAddress(segment.size)} bytes, more than ${space}.`);
+			return;
+		}
+		if (segment.size === 0) {
+			if (segment.start < 0 || segment.start > max)
+				throw new Error(`Segment '${segment.name}' starts at ${formatAddress(segment.start)}, outside ${space}.`);
+			return;
+		}
+		const end = segment.start + segment.size - 1;
+		if (segment.start < 0 || end > max)
+			throw new Error(`Segment '${segment.name}' (${formatAddress(segment.start)}..${formatAddress(end)}) doesn't fit in ${space}.`);
 	}
 
 	/** The CPUs given to the constructor. */
@@ -428,6 +448,8 @@ export class Assembler {
 		if (this.linker.segments.length) this.PC.value = this.linker.segments[0] ? this.linker.segments[0].start : DEFAULT_PC;
 		this.passStart = { segment: this.linker.currentSegment, PC: this.PC.value };
 		this.linker.resetSegmentPositions();
+		// The project file's first segment is selected before the source starts: checked against the CPU it starts with.
+		if (this.linker.currentSegment) this.checkSegment(this.linker.currentSegment);
 
 		while (this.parser.tokenStreamStack.length > 0) {
 			const token = this.parser.next();

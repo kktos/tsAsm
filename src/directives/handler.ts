@@ -131,7 +131,7 @@ export class DirectiveHandler {
 
 		this.register("ALIGN", new AlignDirective(runtime));
 
-		this.register("SEGMENT", new SegmentDirective(runtime));
+		this.register("SEGMENT", new SegmentDirective(runtime, assembler));
 		this.register("MODULE", new ModuleDirective(runtime));
 
 		const cpuDirective = new CpuDirective(assembler, runtime.lister);

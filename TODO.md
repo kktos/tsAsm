@@ -242,9 +242,10 @@ The script library `lib/omf.linker.asm` is done in #185: version 2.0 segments, L
 
 ### 4.23 Addresses over 16 bits: the PC's range
 
-Before 4.18: the 65816 addresses 16 MB. The PC's range is done in #200: `CPUHandler.addressBits`, and leaving it is an error. What's left:
+Before 4.18: the 65816 addresses 16 MB. The PC's range is done in #200: `CPUHandler.addressBits`, and leaving it is an error; a segment's range in #201, checked when it's selected. What's left:
 
-- **Segments:** `start` and `size` over $FFFF; on the 65816, code crossing a bank (4.22).
+- **Banks, code:** on the 65816, the PC is 16 bits in its bank, so an instruction can't cross one; data can. Decided: `CPUHandler.bankBits` (16 on the 65816, none elsewhere), and an instruction whose bytes cross a bank is an error.
+- **Banks, segments:** a known `banksize` key on a segment (today an attribute the OMF library reads, 4.22): a fixed segment's `start..end` stays in one bank, a relocatable one is no bigger than its bank. Also for 6502 bank-switched cartridges.
 - **Listing:** `getHex` writes an address over $FFFF on 8 digits, and the lister's columns assume 4 (`LABEL_START_COL`).
 - **`.sym` file:** the maintainer's debugger reads it; the form of an address over $FFFF there is the maintainer's call.
 - **Linker and output:** `.WRITE`, the output image and `hexdump.util.ts` (4 digits) with addresses over $FFFF.
