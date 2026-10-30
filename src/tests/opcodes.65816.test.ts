@@ -9,7 +9,8 @@ import { MemorySink } from "../helpers/memorysink.class";
 import type { AsmError } from "../utils/error.utils";
 import { MockFileHandler } from "./mockfilehandler.class";
 
-const NATIVE_REP = "REP #$30 makes the accumulator and the index registers 16-bit: the 65816's widths stay 8 bits for now.";
+/** `rep #$30`'s bytes: assembled, in native mode. */
+const REP_30 = [0xc2, 0x30];
 const EMULATION_REP =
 	"REP #$30 can't make the accumulator and the index registers 16-bit in emulation mode: switch to native mode with clc / xce, or say the code runs in it with .native.";
 const UNKNOWN_REP =
@@ -181,17 +182,6 @@ describe("65816", () => {
 			expect(assemble(source)).toEqual([0xe2, 0x30, 0xc2, 0xcf]);
 		});
 
-		it("should refuse a REP making the accumulator or the index registers 16-bit in native mode, also known in pass 2 only", () => {
-			const rep = (operand: string) => `
-				.native
-				rep ${operand}
-				FLAGS = $30
-			`;
-			expect(() => assemble(rep("#$20"))).toThrow("REP #$20 makes the accumulator 16-bit: the 65816's widths stay 8 bits for now.");
-			expect(() => assemble(rep("#$10"))).toThrow("REP #$10 makes the index registers 16-bit: the 65816's widths stay 8 bits for now.");
-			expect(() => assemble(rep("#FLAGS"))).toThrow(NATIVE_REP);
-		});
-
 		it("should refuse an address over $FFFF on an instruction with a short form, until long addressing is chosen", () => {
 			expect(() => assemble("lda $123456")).toThrow("Address 1193046 is out of range ($0..$FFFF).");
 			expect(() => assemble("jmp $123456")).toThrow("Address 1193046 is out of range ($0..$FFFF).");
@@ -227,12 +217,12 @@ describe("65816", () => {
 				sep #$30
 			`;
 			expect(assemble(toNative)).toEqual([0x18, 0xfb, 0xe2, 0x30]);
-			expect(() =>
+			expect(
 				assemble(`
 					${toNative}
 					rep #$30
-				`),
-			).toThrow(NATIVE_REP);
+				`).slice(-2),
+			).toEqual(REP_30);
 			const back = `
 				clc
 				xce
@@ -248,7 +238,7 @@ describe("65816", () => {
 				.native
 				rep #$30
 			`;
-			expect(() => assemble(native)).toThrow(NATIVE_REP);
+			expect(assemble(native).slice(-2)).toEqual(REP_30);
 			const emulation = `
 				.native
 				.emulation
@@ -327,7 +317,7 @@ describe("65816", () => {
 				to_native
 				rep #$30
 			`;
-			expect(() => assemble(macro)).toThrow(NATIVE_REP);
+			expect(assemble(macro).slice(-2)).toEqual(REP_30);
 		});
 
 		it("should be known again after the idiom or a directive", () => {
@@ -337,7 +327,7 @@ describe("65816", () => {
 				xce
 				rep #$30
 			`;
-			expect(() => assemble(idiom)).toThrow(NATIVE_REP);
+			expect(assemble(idiom).slice(-2)).toEqual(REP_30);
 			const directive = `
 				xce
 				.emulation
@@ -346,19 +336,13 @@ describe("65816", () => {
 			expect(() => assemble(directive)).toThrow(EMULATION_REP);
 		});
 
-		it("should start each pass in emulation mode, and follow it in pass 2 as in pass 1", () => {
-			const reset = `
-				rep #FLAGS
-				FLAGS = $30
+		it("should start each pass in emulation mode, the widths 8 bits", () => {
+			const source = `
+				lda #$12
 				.native
+				.a16
 			`;
-			expect(() => assemble(reset)).toThrow(EMULATION_REP);
-			const unknown = `
-				xce
-				rep #FLAGS
-				FLAGS = $30
-			`;
-			expect(() => assemble(unknown)).toThrow(UNKNOWN_REP);
+			expect(assemble(source)).toEqual([0xa9, 0x12]);
 		});
 
 		it("should be kept across .cpu switches", () => {
@@ -369,7 +353,7 @@ describe("65816", () => {
 				.cpu 65816
 				rep #$30
 			`;
-			expect(() => assemble(source)).toThrow(NATIVE_REP);
+			expect(assemble(source).slice(-2)).toEqual(REP_30);
 		});
 
 		it("should refuse an operand after .native or .emulation, and both under another CPU", () => {
@@ -380,6 +364,311 @@ describe("65816", () => {
 				.native
 			`;
 			expect(() => assemble(other)).toThrow("'.native' is a 65816 directive: the current CPU is 65C02.");
+		});
+	});
+
+	describe("its widths, M and X", () => {
+		const errorOf = (source: string) => {
+			try {
+				assemble(source);
+			} catch (e) {
+				return e as AsmError;
+			}
+			throw new Error("expected the assembly to fail");
+		};
+
+		/** The pass 2 listing's instructions, after their address and bytes. */
+		const listing = (source: string) => {
+			const sink = new MemorySink();
+			const assembler = new Assembler(new Cpu65816Handler(), new MockFileHandler(), {
+				logger: new Logger({ sink, enabled: true }),
+				segments: [{ name: "CODE", start: 0x8000, size: 0, resizable: true }],
+				log: { pass2Enabled: true },
+			});
+			assembler.assemble(source);
+			return sink.logs.filter((line) => /^[0-9A-F]{4}: [0-9A-F]{2} /.test(line)).map((line) => line.slice(50).trimEnd());
+		};
+
+		it("should start at 8 bits", () => {
+			const source = `
+				lda #$12
+				ldx #$34
+			`;
+			expect(assemble(source)).toEqual([0xa9, 0x12, 0xa2, 0x34]);
+		});
+
+		it("should follow REP and SEP in native mode", () => {
+			const source = `
+				.native
+				rep #$20
+				lda #$1234
+				ldx #$12
+				rep #$10
+				ldy #$1234
+				sep #$20
+				lda #$12
+				sep #$30
+				cpx #$12
+			`;
+			expect(assemble(source)).toEqual([
+				0xc2, 0x20, 0xa9, 0x34, 0x12, 0xa2, 0x12, 0xc2, 0x10, 0xa0, 0x34, 0x12, 0xe2, 0x20, 0xa9, 0x12, 0xe2, 0x30, 0xe0, 0x12,
+			]);
+		});
+
+		it("should be set by .a8, .a16, .i8 and .i16", () => {
+			const source = `
+				.native
+				.a16
+				lda #$1234
+				.a8
+				lda #$12
+				.i16
+				cpx #$1234
+				.i8
+				cpy #$12
+			`;
+			expect(assemble(source)).toEqual([0xa9, 0x34, 0x12, 0xa9, 0x12, 0xe0, 0x34, 0x12, 0xc0, 0x12]);
+		});
+
+		it.each([
+			["LDA", 0xa9],
+			["ADC", 0x69],
+			["SBC", 0xe9],
+			["AND", 0x29],
+			["ORA", 0x09],
+			["EOR", 0x49],
+			["CMP", 0xc9],
+			["BIT", 0x89],
+		])("should take the accumulator's width for %s", (mnemonic, opcode) => {
+			const source = `
+				.native
+				.a16
+				${mnemonic} #$1234
+				.i16
+			`;
+			expect(assemble(source)).toEqual([opcode, 0x34, 0x12]);
+		});
+
+		it.each([
+			["LDX", 0xa2],
+			["LDY", 0xa0],
+			["CPX", 0xe0],
+			["CPY", 0xc0],
+		])("should take the index registers' width for %s", (mnemonic, opcode) => {
+			const source = `
+				.native
+				.i16
+				${mnemonic} #$1234
+				.a16
+			`;
+			expect(assemble(source)).toEqual([opcode, 0x34, 0x12]);
+		});
+
+		it("should keep the other immediates one byte", () => {
+			const source = `
+				.native
+				.a16
+				.i16
+				cop #$12
+				sep #$00
+			`;
+			expect(assemble(source)).toEqual([0x02, 0x12, 0xe2, 0x00]);
+		});
+
+		it("should refuse a value that doesn't fit the width, never truncated", () => {
+			const wide = `
+				.native
+				.a16
+				lda #$10000
+			`;
+			expect(() => assemble(wide)).toThrow("Immediate value 65536 doesn't fit in 2 bytes (-32768..65535).");
+			expect(() => assemble("lda #$100")).toThrow("Immediate value 256 doesn't fit in a byte (-128..255).");
+			const negative = `
+				.native
+				.a16
+				lda #-1
+			`;
+			expect(assemble(negative)).toEqual([0xa9, 0xff, 0xff]);
+		});
+
+		it("should force one immediate's width with .b or .w, the state unchanged", () => {
+			const source = `
+				lda.w #$12
+				lda #$12
+				.native
+				.i16
+				ldx.b #$12
+				ldx #$12
+			`;
+			expect(assemble(source)).toEqual([0xa9, 0x12, 0x00, 0xa9, 0x12, 0xa2, 0x12, 0xa2, 0x12, 0x00]);
+			expect(() => assemble("rep.w #$30")).toThrow("'REP.W': .W only applies to an address that can be zero page or absolute.");
+			const c02 = `
+				.cpu 65C02
+				lda.w #$12
+			`;
+			expect(() => assemble(c02)).toThrow("'LDA.W': .W only applies to an address that can be zero page or absolute.");
+		});
+
+		it("should need REP's and SEP's operand known in pass 1", () => {
+			const rep = `
+				.native
+				rep #FLAGS
+				FLAGS = $30
+			`;
+			expect(() => assemble(rep)).toThrow("REP's operand must be known here: define its symbols before the REP, as the widths after it depend on it.");
+			const sep = `
+				sep #FLAGS
+				FLAGS = $30
+			`;
+			expect(() => assemble(sep)).toThrow("SEP's operand must be known here: define its symbols before the SEP, as the widths after it depend on it.");
+			const before = `
+				FLAGS = $30
+				.native
+				rep #FLAGS
+				lda #$1234
+			`;
+			expect(assemble(before)).toEqual([0xc2, 0x30, 0xa9, 0x34, 0x12]);
+		});
+
+		it.each([
+			["PLP", "a PLP", 0x28],
+			["RTI", "an RTI", 0x40],
+		])("should make both unknown after %s in native mode, with a note at it", (mnemonic, named) => {
+			const source = `
+				.native
+				${mnemonic}
+				lda #1
+			`;
+			const error = errorOf(source);
+			expect(error.message).toBe(`LDA's immediate needs the accumulator's width, unknown since ${named}: set it with .a8 / .a16, or sep / rep.`);
+			expect(error.location.line).toBe(4);
+			expect(error.notes).toEqual([
+				expect.objectContaining({
+					message: `the accumulator's width is unknown after this ${mnemonic}`,
+					location: expect.objectContaining({ line: 3 }),
+				}),
+			]);
+			const index = `
+				.native
+				${mnemonic}
+				ldx #1
+			`;
+			expect(() => assemble(index)).toThrow(
+				`LDX's immediate needs the index registers' width, unknown since ${named}: set it with .i8 / .i16, or sep / rep.`,
+			);
+		});
+
+		it("should keep them 8 bits after PLP in emulation mode", () => {
+			const source = `
+				plp
+				lda #$12
+			`;
+			expect(assemble(source)).toEqual([0x28, 0xa9, 0x12]);
+		});
+
+		it("should know a width again after a directive, or a SEP / REP covering its flag", () => {
+			const sep = `
+				.native
+				plp
+				sep #$20
+				lda #$12
+			`;
+			expect(assemble(sep)).toEqual([0x28, 0xe2, 0x20, 0xa9, 0x12]);
+			expect(() =>
+				assemble(`
+					${sep}
+					ldx #$12
+				`),
+			).toThrow("LDX's immediate needs the index registers' width, unknown since a PLP");
+			const directive = `
+				.native
+				plp
+				.i16
+				ldx #$1234
+			`;
+			expect(assemble(directive)).toEqual([0x28, 0xa2, 0x34, 0x12]);
+		});
+
+		it("should make them 8 bits with sec / xce or .emulation, and keep them with clc / xce", () => {
+			const sec = `
+				.native
+				rep #$30
+				sec
+				xce
+				lda #$12
+				ldx #$12
+			`;
+			expect(assemble(sec).slice(-4)).toEqual([0xa9, 0x12, 0xa2, 0x12]);
+			const emulation = `
+				.native
+				.a16
+				.emulation
+				lda #$12
+			`;
+			expect(assemble(emulation)).toEqual([0xa9, 0x12]);
+			const clc = `
+				.native
+				.a16
+				clc
+				xce
+				lda #$1234
+			`;
+			expect(assemble(clc)).toEqual([0x18, 0xfb, 0xa9, 0x34, 0x12]);
+		});
+
+		it("should make a width that isn't 8 unknown after an xce it can't follow, with a note at it", () => {
+			const source = `
+				.native
+				.a16
+				nop
+				xce
+				ldx #$12
+				lda #1
+			`;
+			const error = errorOf(source);
+			expect(error.message).toBe("LDA's immediate needs the accumulator's width, unknown since an XCE: set it with .a8 / .a16, or sep / rep.");
+			expect(error.notes).toEqual([
+				expect.objectContaining({ message: "the accumulator's width is unknown after this XCE", location: expect.objectContaining({ line: 5 }) }),
+			]);
+		});
+
+		it("should refuse .a16 and .i16 in emulation mode, and while the mode is unknown", () => {
+			expect(() => assemble(".a16")).toThrow(
+				".a16 can't make the accumulator 16-bit in emulation mode: switch to native mode with clc / xce, or say the code runs in it with .native.",
+			);
+			const unknown = `
+				xce
+				.i16
+			`;
+			const error = errorOf(unknown);
+			expect(error.message).toBe(
+				".i16 needs the 65816's mode, unknown since an XCE without clc or sec right before it: set it with clc / xce, sec / xce, .native or .emulation.",
+			);
+			expect(error.notes).toEqual([expect.objectContaining({ message: "the mode is unknown after this XCE" })]);
+		});
+
+		it("should be kept across .cpu switches", () => {
+			const source = `
+				.native
+				.a16
+				.cpu 6502
+				nop
+				.cpu 65816
+				lda #$1234
+			`;
+			expect(assemble(source)).toEqual([0xea, 0xa9, 0x34, 0x12]);
+		});
+
+		it("should list the width an immediate was assembled with", () => {
+			const source = `
+				lda #$12
+				.native
+				rep #$30
+				lda #$1234
+				ldx.b #$12
+				sep #$30
+			`;
+			expect(listing(source)).toEqual(["LDA #$12 ; A8", "REP #$30", "LDA #$1234 ; A16", "LDX.B #$12 ; I8", "SEP #$30"]);
 		});
 	});
 
@@ -402,6 +691,20 @@ describe("65816", () => {
 				relocs: [{ offset: 1, size: 3, shift: 0, segment: "DATA", targetOffset: 1 }],
 			});
 			expect(relocatable("jml [msg]")).toMatchObject({ data: [0xdc, 0x00, 0x00], relocs: [{ offset: 1, size: 2, segment: "DATA" }] });
+		});
+
+		it("should take a relocatable immediate with a 16-bit width, as .dw does", () => {
+			const wide = (operand: string) => `
+				.native
+				.a16
+				lda #${operand}
+			`;
+			expect(relocatable(wide("msg+2"))).toMatchObject({
+				data: [0xa9, 0x02, 0x00],
+				relocs: [{ offset: 1, size: 2, shift: 0, segment: "DATA", targetOffset: 2 }],
+			});
+			expect(relocatable(wide(">msg"))).toMatchObject({ data: [0xa9, 0x00, 0x00], relocs: [{ offset: 1, size: 1, shift: 8, segment: "DATA" }] });
+			expect(() => relocatable("lda #msg")).toThrow("LDA #DATA+$0000: an immediate is one byte, take one of the relocatable address with <, > or ^.");
 		});
 
 		it("should refuse a relocatable stack offset, bank or signature", () => {

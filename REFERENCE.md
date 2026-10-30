@@ -865,7 +865,6 @@ Suffixes work on the 6502, the 65C02 and the 65816; other CPUs have none.
 - `pea $1234` pushes its operand (`f4 34 12`), and `pei ($12)` the word at `$12`.
 - A stack offset, a bank and a signature are bytes: `lda $100,s` → `LDA: the stack offset 256 is out of range ($0..$FF).`
 - `brl` and `per` reach any address in their bank: the 65816 adds their 16-bit offset in it, wrapping, so `brl $0000` at `$FF00` is `82 fd 00`. A target in another bank is an error: `Branch target $020000 is in another bank than the instruction at $01FFF0: a 16-bit offset stays in its bank.`
-- For now, the accumulator and the index registers are 8 bits: an immediate is one byte, and in native mode a `rep` making one of them 16-bit is an error, `REP #$20 makes the accumulator 16-bit: the 65816's widths stay 8 bits for now.`, also with a symbol defined after it. `sep` and the other `rep`s are taken.
 - For now, an address takes a long form only on an instruction that has no other, `jml` and `jsl`: on the others, an address over `$FFFF` is an error, as on the 6502 (`lda $123456`, `jmp $123456`).
 
 #### Emulation and native mode
@@ -875,8 +874,8 @@ The 65816 starts in emulation mode, as after reset, and the assembler follows wh
 - **`clc` / `xce`** switches to native mode, **`sec` / `xce`** back to emulation: only this idiom is followed. The `clc` or `sec` must come right before the `xce`, with nothing between them: no label (the CPU could reach the `xce` another way), no data, no `.org` or `.segment`. A comment, a branch not taken, a macro call are fine.
 - **Any other `xce`** makes the mode unknown: one with another instruction before it (`rep #$01` too), or nothing, or something between.
 - **`.native`** and **`.emulation`** say which mode the code after them runs in: a routine called in native mode starts with `.native`. They set it, whatever it was.
-- **In emulation mode**, a `rep` making the accumulator or the index registers 16-bit is an error, as they stay 8 bits there: `REP #$30 can't make the accumulator and the index registers 16-bit in emulation mode: switch to native mode with clc / xce, or say the code runs in it with .native.`
-- **While the mode is unknown**, the same `rep` is an error, with a note at the `xce` that made it unknown:
+- **In emulation mode**, a `rep` making the accumulator or the index registers 16-bit is an error, as they stay 8 bits there, and so are `.a16` and `.i16`: `REP #$30 can't make the accumulator and the index registers 16-bit in emulation mode: switch to native mode with clc / xce, or say the code runs in it with .native.`
+- **While the mode is unknown**, the same `rep`, `.a16` or `.i16` is an error, with a note at the `xce` that made it unknown:
 
 ```
 main.asm:7:2: error: REP #$30 needs the 65816's mode, unknown since an XCE without clc or sec right before it: set it with clc / xce, sec / xce, .native or .emulation.
@@ -884,3 +883,25 @@ main.asm:6:2: note: the mode is unknown after this XCE
 ```
 
 Each pass starts in emulation mode, and the mode is kept across `.cpu`.
+
+#### Accumulator and index widths
+
+The size of an immediate depends on the width of its register: `lda #$12` is `a9 12` with an 8-bit accumulator, `lda #$1234` is `a9 34 12` with a 16-bit one. The assembler follows both widths, the accumulator's (M) and the index registers' (X):
+
+- **Which immediates:** the accumulator's width for `lda`, `adc`, `sbc`, `and`, `ora`, `eor`, `cmp` and `bit`; the index registers' for `ldx`, `ldy`, `cpx` and `cpy`. The others (`rep`, `sep`, `cop`…) are one byte. A value that doesn't fit is an error, never truncated: `Immediate value 65536 doesn't fit in 2 bytes (-32768..65535).`
+- **8 bits** at the start of each pass, as after reset, kept across `.cpu`.
+- **`rep #n`** makes the registers whose bit is set 16-bit (`$20` the accumulator, `$10` the index registers), in native mode only (see above); **`sep #n`** makes them 8-bit. Their operand must be known where they are, as the widths after them depend on it: `REP's operand must be known here: define its symbols before the REP, as the widths after it depend on it.`
+- **`.a8`, `.a16`, `.i8`, `.i16`** say the width the code after them runs with: a routine called with a 16-bit accumulator starts with `.native` and `.a16`.
+- **`sec` / `xce`** and **`.emulation`** make both 8 bits; `clc` / `xce` keeps them; an `xce` the assembler can't follow makes a width that isn't 8 unknown.
+- **`plp` and `rti`** pull the flags: in native mode, or while the mode is unknown, both widths are then unknown. In emulation mode they stay 8 bits. An immediate needing an unknown width is an error, with a note at what made it unknown, until a directive or a `sep` / `rep` covering its bit sets it again:
+
+```
+main.asm:10:2: error: LDY's immediate needs the index registers' width, unknown since a PLP: set it with .i8 / .i16, or sep / rep.
+main.asm:9:2: note: the index registers' width is unknown after this PLP
+```
+
+- **`.b` / `.w`** force one immediate's width without changing the state: `lda.w #$12` is `a9 12 00` with an 8-bit accumulator. On an address they keep their meaning, zero page / absolute; on another immediate (`rep.w #$30`) they're an error.
+- **Relocatable immediates:** with a 16-bit width, `lda #label` takes the address's offset with a fixup of 2 bytes, and `lda #<label` (`>`, `^`) its byte then `00`, a fixup of 1, as `.dw` does. With 8 bits, `lda #label` is an error, as on the 65C02.
+- **The listing** writes the width after each of these immediates: `LDA #$1234 ; A16`, `LDX #$12 ; I8`.
+
+The assembler reads the code in order: a label doesn't change the widths, nor does a `jsr` or a `jsl`. Code reached with other widths says so with the directives.
