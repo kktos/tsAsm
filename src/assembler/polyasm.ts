@@ -119,6 +119,7 @@ export class Assembler {
 		this.lister = new Lister(this.logger, this.emitter);
 
 		this.linker = new Linker(DEFAULT_PC, this.fileHandler, (name) => this.symbolTable.lookupGlobalSymbol(name));
+		if (options?.linker?.maxSize !== undefined) this.linker.maxSize = options.linker.maxSize;
 		this.PC = this.linker.PC;
 
 		if (options?.rawDataProcessors) {

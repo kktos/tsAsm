@@ -78,6 +78,8 @@ Sets the name of the output file, relative to the project file. Without `.OUTPUT
 - `FIXED <size>`: the file is exactly `size` bytes. What the script doesn't write is filled with `PAD` (default `0`). Writing more is an error.
 - `MAX <size>`: the file grows with what is written, up to `size` bytes. Writing more is an error.
 
+Whatever the script asks, the file is at most the project file's `input.linker.maxSize` bytes (default 1 MB, at most 16 MB): a `FIXED` or `MAX` size over it, or a write going past it (`AT` an offset included), is an error.
+
 ## Writing data
 
 The script writes to the output file, one item after the other. `.PC` is the offset where the next item goes.

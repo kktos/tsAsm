@@ -89,4 +89,6 @@ export interface AssemblerOptions {
 	maxMacroDepth?: number;
 	/** The `.option` values each pass starts with, instead of their default: `{ "local.prefix": "@" }`. */
 	options?: Options;
+	/** `maxSize`: the largest output, with or without a linker script, 1 to $1000000 (16 MB). Default: $100000 (1 MB). */
+	linker?: { maxSize?: number };
 }

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FileHandler } from "../assembler/polyasm.types";
 import { Logger } from "../helpers/logger.class";
 import { MemorySink } from "../helpers/memorysink.class";
-import { Linker } from "./linker.class";
+import { DEFAULT_MAX_SIZE, Linker } from "./linker.class";
 
 describe("Linker", () => {
 	let linker: Linker;
@@ -712,6 +712,74 @@ describe("Linker", () => {
 
 			// Expected: MODULE1 (0x11, 0x11) then MODULE2 (0x22, 0x22) via loop
 			expect(result.data).toEqual([0x11, 0x11, 0x22, 0x22]);
+		});
+	});
+
+	describe("maxSize", () => {
+		const logger = {
+			log: () => {},
+			warn: () => {},
+			error: (m: unknown) => {
+				throw new Error(String(m));
+			},
+		} as unknown as Logger;
+		const link = (script: string) => linker.link(script, undefined, logger);
+
+		it("should be 1 MB by default, and 1 to 16 MB", () => {
+			expect(linker.maxSize).toBe(DEFAULT_MAX_SIZE);
+			linker.maxSize = 0x1000000;
+			expect(linker.maxSize).toBe(0x1000000);
+			for (const size of [0, 0x1000001, 1.5])
+				expect(() => {
+					linker.maxSize = size;
+				}).toThrow(`The linker's maxSize, $${size.toString(16).toUpperCase()}, isn't 1 to $1000000 (16 MB).`);
+		});
+
+		it("should stop a raw image over it, naming its first and last segments", () => {
+			linker.maxSize = 0x10;
+			linker.addSegment("LOW", { start: 0xfff0, size: 4 });
+			linker.addSegment("HIGH", { start: 0x12345678, size: 4 });
+			expect(() => linker.rawBinaryLink()).toThrow(
+				"The output would be $1233568C bytes, from segment 'LOW' ($FFF0) to segment 'HIGH' ($12345678): more than the linker's maxSize, $10.",
+			);
+		});
+
+		it("should stop a raw image of one segment over it, and take one up to it", () => {
+			linker.maxSize = 0x10;
+			linker.addSegment("CODE", { start: 0x10000, size: 0x10 });
+			expect(linker.rawBinaryLink()).toHaveLength(0x10);
+			linker.reset();
+			linker.addSegment("CODE", { start: 0x10000, size: 0x11 });
+			expect(() => linker.rawBinaryLink()).toThrow("The output would be $11 bytes, segment 'CODE': more than the linker's maxSize, $10.");
+		});
+
+		it("should stop a script writing past it, in order or at an offset", () => {
+			linker.maxSize = 0x10;
+			expect(link(`.WRITE BYTES [1, 2, 3, 4] AT $C`).data).toHaveLength(0x10);
+			linker.reset();
+			expect(() => link(`.WRITE BYTES [1, 2] AT $F`)).toThrow("Writing $2 bytes at $F takes the output past the linker's maxSize, $10.");
+			linker.reset();
+			expect(() => link(`.WRITE BYTE 0 AT $12345678`)).toThrow("Writing $1 byte at $12345678 takes the output past the linker's maxSize, $10.");
+			linker.reset();
+			expect(() => link(`.WRITE BYTES [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]\n.WRITE WORD 1`)).toThrow(
+				"Writing $2 bytes at $F takes the output past the linker's maxSize, $10.",
+			);
+		});
+
+		it("should stop a section starting past it, or growing past it", () => {
+			linker.maxSize = 0x10;
+			expect(() => link(`.SECTION S AT $11`)).toThrow("Offset $11 is past the linker's maxSize, $10.");
+			linker.reset();
+			expect(() => link(`.SECTION S AT $E\n.WRITE BYTES [1, 2, 3]`)).toThrow("Writing $3 bytes at $E takes the output past the linker's maxSize, $10.");
+		});
+
+		it("should stop an .OUTPUT FIXED or MAX over it", () => {
+			linker.maxSize = 0x10;
+			expect(link(`.OUTPUT "f.bin" FIXED $10`).data).toHaveLength(0x10);
+			linker.reset();
+			expect(() => link(`.OUTPUT "f.bin" FIXED $2000000`)).toThrow(".OUTPUT FIXED $2000000 is more than the linker's maxSize, $10.");
+			linker.reset();
+			expect(() => link(`.OUTPUT "f.bin" MAX $11`)).toThrow(".OUTPUT MAX $11 is more than the linker's maxSize, $10.");
 		});
 	});
 });

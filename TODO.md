@@ -62,6 +62,10 @@ Without a linker script, `output.listing: { enabled: true }` writes a `.lst` hol
 
 In a relocatable segment, the instruction's PC is its offset there: a branch to a fixed address is computed from it, silently. `.segment CODE { reloc: true }` / `nop` / `bra $10` → `12 20 0D` on the 6809; `beq x0, x0, $10` the same on the RV32I. The 65xx reads its branch targets with `OperandReader.branchTarget` since #181, which rejects them (`A branch from relocatable segment 'CODE' can't reach $10: …`); the other CPUs should too. Their operands don't take relocatable values (`the 6809's operands can't take one`): fixups for them would follow, RV32I's with `%hi` / `%lo` (2.1). Found with 4.19.
 
+### 1.67 A segment growing by megabytes crashes Node
+
+On a 32-bit CPU, `.org $12345678` in a resizable segment, or `.fill $12345678, 0`, builds an array of that many bytes in the assembler, before linking: Node runs out of memory (`FATAL ERROR: … JavaScript heap out of memory`), with no assembler error. The linker's `maxSize` (#206) only checks the output. To decide: a limit on a segment's size (the same `maxSize`, or another) and on `.fill`'s count. Found with 4.23.
+
 ## 2. Code review, items left
 
 ### 2.1 CPU back-ends
@@ -242,9 +246,10 @@ The script library `lib/omf.linker.asm` is done in #185: version 2.0 segments, L
 
 ### 4.23 Addresses over 16 bits: the PC's range
 
-Before 4.18: the 65816 addresses 16 MB. The PC's range is done in #200: `CPUHandler.addressBits`, and leaving it is an error; a segment's range in #201, checked when it's selected; an instruction crossing a bank in #202, `CPUHandler.bankBits`; a segment's `banksize` in #203; the listing's addresses in #204; numbers over $FFFF in hex in #205. What's left:
+Before 4.18: the 65816 addresses 16 MB. The PC's range is done in #200: `CPUHandler.addressBits`, and leaving it is an error; a segment's range in #201, checked when it's selected; an instruction crossing a bank in #202, `CPUHandler.bankBits`; a segment's `banksize` in #203; the listing's addresses in #204; numbers over $FFFF in hex in #205; the output's size, `input.linker.maxSize`, in #206. What's left:
 
-- **Linker and output:** `.WRITE`, the output image and `hexdump.util.ts` (4 digits) with addresses over $FFFF.
+- **`hexdump.util.ts`:** pads an address to 4 digits, so one over $FFFF takes 5. Only a test uses it.
+- **A segment growing by megabytes:** see 1.67.
 
 ### 4.24 65C816: the CPU
 
