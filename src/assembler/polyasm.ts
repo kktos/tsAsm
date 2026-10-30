@@ -98,9 +98,9 @@ export class Assembler {
 		const [firstCpu] = this.cpuHandlers;
 		if (!firstCpu) throw new Error("The assembler needs a CPU.");
 		const names = new Set<string>();
-		for (const { cpuType } of this.cpuHandlers) {
-			if (names.has(cpuType.toUpperCase())) throw new Error(`Two CPUs are named '${cpuType}'.`);
-			names.add(cpuType.toUpperCase());
+		for (const name of this.cpuHandlers.flatMap((cpu) => [cpu.cpuType, ...(cpu.aliases ?? [])])) {
+			if (names.has(name.toUpperCase())) throw new Error(`Two CPUs are named '${name}'.`);
+			names.add(name.toUpperCase());
 		}
 		this.initialCpuHandler = options?.cpu === undefined ? firstCpu : this.findCPUHandler(options.cpu);
 		this.cpuHandler = this.initialCpuHandler;
@@ -343,11 +343,14 @@ export class Assembler {
 		return this.cpuHandlers;
 	}
 
-	/** The CPU given to the constructor with this name, in any case. */
+	/** The CPU given to the constructor with this name or one of its aliases, in any case. */
 	public findCPUHandler(name: string): CPUHandler {
 		const upperName = name.toUpperCase();
-		const handler = this.cpuHandlers.find((cpu) => cpu.cpuType.toUpperCase() === upperName);
-		if (!handler) throw new Error(`Unknown CPU name '${name}': the CPUs are ${this.cpuHandlers.map((cpu) => cpu.cpuType).join(", ")}.`);
+		const handler = this.cpuHandlers.find((cpu) => [cpu.cpuType, ...(cpu.aliases ?? [])].some((cpuName) => cpuName.toUpperCase() === upperName));
+		if (!handler) {
+			const names = this.cpuHandlers.map((cpu) => (cpu.aliases?.length ? `${cpu.cpuType} (${cpu.aliases.join(", ")})` : cpu.cpuType));
+			throw new Error(`Unknown CPU name '${name}': the CPUs are ${names.join(", ")}.`);
+		}
 		return handler;
 	}
 

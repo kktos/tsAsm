@@ -18,7 +18,8 @@ import { AsmError } from "../utils/error.utils";
 import { yamlparse } from "./asm-yaml";
 import { type InferObject, validate } from "./schema";
 
-const availableCpus = Object.keys(handlers);
+// A CPU's aliases are names of it too: `65C816` for the 65816.
+const availableCpus = Object.entries(handlers).flatMap(([name, Handler]) => [name, ...(new Handler().aliases ?? [])]);
 
 const labelChar = {
 	type: "string",

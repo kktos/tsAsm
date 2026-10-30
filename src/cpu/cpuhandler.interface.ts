@@ -48,6 +48,9 @@ export type ResolvedModeInfo<TModeInfo extends ModeInfo = ModeInfo> = TModeInfo 
 export interface CPUHandler<TModeInfo extends ModeInfo = ModeInfo> {
 	cpuType: string;
 
+	/** Other names `.cpu` and the `cpu` option take for it, in any case: the 65816's `65C816`. */
+	aliases?: readonly string[];
+
 	/** Byte order of the CPU: data directives (.dw, .dl, the .pstrl length) write their values in it too. */
 	endianness: Endianness;
 
