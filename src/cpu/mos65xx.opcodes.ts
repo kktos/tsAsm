@@ -15,7 +15,17 @@ export type Mos65xxMode =
 	| "INDIRECT_Y" // lda ($12),y
 	| "ZEROPAGE_INDIRECT" // lda ($12)
 	| "INDIRECT" // jmp ($1234)
-	| "ABSOLUTE_INDIRECT_X"; // jmp ($1234,x)
+	| "ABSOLUTE_INDIRECT_X" // jmp ($1234,x)
+	| "ZEROPAGE_INDIRECT_LONG" // lda [$12]
+	| "ZEROPAGE_INDIRECT_LONG_Y" // lda [$12],y
+	| "ABSOLUTE_INDIRECT_LONG" // jml [$1234]
+	| "ABSOLUTE_LONG" // jsl $123456
+	| "ABSOLUTE_LONG_X" // lda $123456,x
+	| "STACK_RELATIVE" // lda $12,s
+	| "STACK_RELATIVE_INDIRECT_Y" // lda ($12,s),y
+	| "RELATIVE_LONG" // brl label
+	| "BLOCK_MOVE" // mvn $01,$02
+	| "SIGNATURE"; // cop #$12
 
 /** Mnemonic → mode → opcode. Read-only: a handler copies the sets it merges, so building one CPU can't change another. */
 export type OpcodeSet = Readonly<Record<string, Readonly<Partial<Record<Mos65xxMode, number>>>>>;
@@ -118,4 +128,105 @@ export const ROCKWELL_BITOPS: OpcodeSet = Object.fromEntries(
 export const WDC_ADDITIONS: OpcodeSet = {
 	STP: { IMPLIED: 0xdb },
 	WAI: { IMPLIED: 0xcb },
+};
+
+/**
+ * What the 65816 adds to the WDC 65C02, without Rockwell's bit instructions: its opcodes are the 65816's. The long
+ * addresses of LDA, JMP… are only chosen with 4.18: until then, an instruction takes one only when it has no other.
+ * Its BRK takes a signature byte, as COP: the profile leaves NMOS's one-byte BRK out.
+ */
+export const W65816_ADDITIONS: OpcodeSet = {
+	ADC: {
+		STACK_RELATIVE: 0x63,
+		ZEROPAGE_INDIRECT_LONG: 0x67,
+		ABSOLUTE_LONG: 0x6f,
+		STACK_RELATIVE_INDIRECT_Y: 0x73,
+		ZEROPAGE_INDIRECT_LONG_Y: 0x77,
+		ABSOLUTE_LONG_X: 0x7f,
+	},
+	AND: {
+		STACK_RELATIVE: 0x23,
+		ZEROPAGE_INDIRECT_LONG: 0x27,
+		ABSOLUTE_LONG: 0x2f,
+		STACK_RELATIVE_INDIRECT_Y: 0x33,
+		ZEROPAGE_INDIRECT_LONG_Y: 0x37,
+		ABSOLUTE_LONG_X: 0x3f,
+	},
+	BRK: { SIGNATURE: 0x00 },
+	BRL: { RELATIVE_LONG: 0x82 },
+	CMP: {
+		STACK_RELATIVE: 0xc3,
+		ZEROPAGE_INDIRECT_LONG: 0xc7,
+		ABSOLUTE_LONG: 0xcf,
+		STACK_RELATIVE_INDIRECT_Y: 0xd3,
+		ZEROPAGE_INDIRECT_LONG_Y: 0xd7,
+		ABSOLUTE_LONG_X: 0xdf,
+	},
+	COP: { SIGNATURE: 0x02 },
+	EOR: {
+		STACK_RELATIVE: 0x43,
+		ZEROPAGE_INDIRECT_LONG: 0x47,
+		ABSOLUTE_LONG: 0x4f,
+		STACK_RELATIVE_INDIRECT_Y: 0x53,
+		ZEROPAGE_INDIRECT_LONG_Y: 0x57,
+		ABSOLUTE_LONG_X: 0x5f,
+	},
+	JML: { ABSOLUTE_LONG: 0x5c, ABSOLUTE_INDIRECT_LONG: 0xdc },
+	JMP: { ABSOLUTE_LONG: 0x5c, ABSOLUTE_INDIRECT_LONG: 0xdc },
+	JSL: { ABSOLUTE_LONG: 0x22 },
+	JSR: { ABSOLUTE_LONG: 0x22, ABSOLUTE_INDIRECT_X: 0xfc },
+	LDA: {
+		STACK_RELATIVE: 0xa3,
+		ZEROPAGE_INDIRECT_LONG: 0xa7,
+		ABSOLUTE_LONG: 0xaf,
+		STACK_RELATIVE_INDIRECT_Y: 0xb3,
+		ZEROPAGE_INDIRECT_LONG_Y: 0xb7,
+		ABSOLUTE_LONG_X: 0xbf,
+	},
+	MVN: { BLOCK_MOVE: 0x54 },
+	MVP: { BLOCK_MOVE: 0x44 },
+	ORA: {
+		STACK_RELATIVE: 0x03,
+		ZEROPAGE_INDIRECT_LONG: 0x07,
+		ABSOLUTE_LONG: 0x0f,
+		STACK_RELATIVE_INDIRECT_Y: 0x13,
+		ZEROPAGE_INDIRECT_LONG_Y: 0x17,
+		ABSOLUTE_LONG_X: 0x1f,
+	},
+	PEA: { ABSOLUTE: 0xf4 },
+	PEI: { ZEROPAGE_INDIRECT: 0xd4 },
+	PER: { RELATIVE_LONG: 0x62 },
+	PHB: { IMPLIED: 0x8b },
+	PHD: { IMPLIED: 0x0b },
+	PHK: { IMPLIED: 0x4b },
+	PLB: { IMPLIED: 0xab },
+	PLD: { IMPLIED: 0x2b },
+	REP: { IMMEDIATE: 0xc2 },
+	RTL: { IMPLIED: 0x6b },
+	SBC: {
+		STACK_RELATIVE: 0xe3,
+		ZEROPAGE_INDIRECT_LONG: 0xe7,
+		ABSOLUTE_LONG: 0xef,
+		STACK_RELATIVE_INDIRECT_Y: 0xf3,
+		ZEROPAGE_INDIRECT_LONG_Y: 0xf7,
+		ABSOLUTE_LONG_X: 0xff,
+	},
+	SEP: { IMMEDIATE: 0xe2 },
+	STA: {
+		STACK_RELATIVE: 0x83,
+		ZEROPAGE_INDIRECT_LONG: 0x87,
+		ABSOLUTE_LONG: 0x8f,
+		STACK_RELATIVE_INDIRECT_Y: 0x93,
+		ZEROPAGE_INDIRECT_LONG_Y: 0x97,
+		ABSOLUTE_LONG_X: 0x9f,
+	},
+	TCD: { IMPLIED: 0x5b },
+	TCS: { IMPLIED: 0x1b },
+	TDC: { IMPLIED: 0x7b },
+	TSC: { IMPLIED: 0x3b },
+	TXY: { IMPLIED: 0x9b },
+	TYX: { IMPLIED: 0xbb },
+	WDM: { SIGNATURE: 0x42 },
+	XBA: { IMPLIED: 0xeb },
+	XCE: { IMPLIED: 0xfb },
 };

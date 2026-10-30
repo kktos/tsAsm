@@ -66,6 +66,10 @@ In a relocatable segment, the instruction's PC is its offset there: a branch to 
 
 On a 32-bit CPU, `.org $12345678` in a resizable segment, or `.fill $12345678, 0`, builds an array of that many bytes in the assembler, before linking: Node runs out of memory (`FATAL ERROR: … JavaScript heap out of memory`), with no assembler error. The linker's `maxSize` (#206) only checks the output. To decide: a limit on a segment's size (the same `maxSize`, or another) and on `.fill`'s count. Found with 4.23.
 
+### 1.68 A name followed by `*` is a label, the `*` dropped
+
+A word that isn't an instruction, followed by `*`, defines the word as a label and drops the `*`, silently: `foo *` assembles to nothing, and `brl *` on the 6502 too, where `foo +` or `foo $12` are syntax errors and `nop *` an invalid mode. Found with 4.24.
+
 ## 2. Code review, items left
 
 ### 2.1 CPU back-ends
@@ -196,6 +200,7 @@ After 4.24. The size of an immediate depends on the M and X flags: `lda #$10` is
 - **Width-dependent immediates:** M: `LDA ADC SBC AND ORA EOR CMP BIT`; X: `LDX LDY CPX CPY`. 16 bits gives two bytes, little-endian. An unknown width is an error saying which flag and what made it unknown ("the accumulator width is unknown since the `PLP` at …; set it with `.a8` / `.a16`"). A value too large for 8 bits is an error, never truncated.
 - **One instruction:** `lda.b #imm` / `lda.w #imm` force the immediate's width without changing the state. On an address `.b` / `.w` keep their 6502 meaning (direct page / absolute); `.l` is added for long.
 - **Listing:** a line whose size depends on M or X shows the width it was assembled with.
+- **4.24's REP error:** `Cpu65816Handler` refuses a `REP` clearing bit 4 or 5 until then: it goes.
 
 Follow-ups: emulation mode (4.17); direct page / absolute / long addressing (4.18); saving and restoring the widths per `.proc`.
 
@@ -220,7 +225,7 @@ D (direct page) and DBR (data bank) only get their values at run time: the assem
 - **Forward references:** absolute in pass 1, as on the 6502; an error in pass 2 if the value needs long, saying to write `.l` or define the symbol earlier.
 - **Hints, never encoding** (4.15 directives): `.dp <expr>` and `.dbank <expr>` say what D and DBR hold. They only let the assembler point out a shorter form: "`$2012` is in the direct page declared at …: `lda.b $12` is one byte shorter"; "`$7E2000` is in the data bank declared at …: `lda.w $7E2000` is one byte shorter". Without them, no hint.
 - **Hints are reported** at a level of their own, not as warnings. On by default: there are none without `.dp` / `.dbank`, so writing one is already asking for them. `.option hints off` turns them off.
-- **In `Mos65xxHandler`**, on the profile of 4.24: the suffix `L: 3` and a long width next to zero page and absolute in `selectAddressMode`.
+- **In `Mos65xxHandler`**, on the profile of 4.24: the suffix `L: 3` and a long width next to zero page and absolute in `selectAddressMode`. The long modes' opcodes are in `W65816_ADDITIONS` (`ABSOLUTE_LONG`, `ABSOLUTE_LONG_X`, `JMP` / `JSR` long too): only an instruction with no other address takes one so far (`JML`, `JSL`, step 6b of `resolveAddressingMode`).
 
 - **Relocatable values** (4.19): a relocatable label is never direct page, whatever its offset (the 6502 / 65C02 since #181): absolute in its own segment, long elsewhere unless `.w`. "The size comes from the value" only applies to plain numbers. `jmp` / `jsr` to another relocatable segment are errors suggesting `jml` / `jsl`: its bank isn't known. A forward reference to a label of another relocatable segment is absolute in pass 1 and needs long in pass 2: the forward-reference error above, `.l` or define it earlier. A relocatable value where a width is needed is an error, as where a number is (#180).
 - **No whole-program `relocatable` setting:** the mode comes from each value, so a project-wide flag adds nothing to it, nor tells pass 1 which segment a forward reference is in. `.segment CODE { reloc: true }` says it in one line.
@@ -249,23 +254,6 @@ The script library `lib/omf.linker.asm` is done in #185: version 2.0 segments, L
 Before 4.18: the 65816 addresses 16 MB. The PC's range is done in #200: `CPUHandler.addressBits`, and leaving it is an error; a segment's range in #201, checked when it's selected; an instruction crossing a bank in #202, `CPUHandler.bankBits`; a segment's `banksize` in #203; the listing's addresses in #204; numbers over $FFFF in hex in #205; the output's size, `input.linker.maxSize`, in #206; `hexDump`'s addresses in #207. What's left:
 
 - **A segment growing by megabytes:** see 1.67.
-
-### 4.24 65C816: the CPU
-
-The first step, before 4.16: `.cpu 65816` (and `65C816`) with its opcodes and operand shapes. 4.16 to 4.18 then add widths, emulation mode and long addressing to it.
-
-**Plan for the 65816,** one PR per step:
-
-1. 4.23: the PC's range, addresses over 16 bits.
-2. 4.24: the CPU, its opcodes and operands (below).
-3. 4.16: accumulator and index widths.
-4. 4.17: emulation mode.
-5. 4.18: direct page, absolute and long addressing.
-
-- **In `Mos65xxHandler`** (#175): a `P65816` profile, with the opcode sets `[NMOS, CMOS_ADDITIONS, WDC_ADDITIONS, W65816_ADDITIONS]` (#176: `STP`, `WAI`) and no `ROCKWELL_BITOPS` (`$07` is `RMB0 zp` on the 65C02, `ORA [dp]` on the 65816).
-- **Operands:** the bracket ones (`[dp]`, `[dp],y`, `[abs]`), where #198 throws today (3.11), stack relative (`sr,s`, `(sr,s),y`), `MVN` / `MVP` (two banks), 16-bit relative (`BRL`, `PER`). The long-only instructions, `JML` and `JSL`, with a 24-bit operand.
-- **Until 4.16, the widths stay 8:** a `REP` clearing bit 4 or 5 is an error saying the 16-bit widths come with 4.16. Without it, `rep #$20` / `lda #$12` would give `A9 12`, which the CPU reads with a 16-bit accumulator: wrong bytes, silently.
-- **Until 4.18:** an address over $FFFF on an instruction with a short form is an error, as now on the 6502; choosing long from the value, and `.l`, come with 4.18.
 
 ## 5. Documentation (REFERENCE.md)
 

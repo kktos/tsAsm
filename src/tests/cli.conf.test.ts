@@ -29,6 +29,11 @@ describe("CLI conf", () => {
 		expect(errors).toBeUndefined();
 	});
 
+	it("accepts a cpu's alias", () => {
+		const { errors } = readConfFrom(confWithCpu("65c816"));
+		expect(errors).toBeUndefined();
+	});
+
 	it("reports an unknown cpu", () => {
 		const { errors } = readConfFrom(confWithCpu("Z80"));
 		expect(errors).toEqual([{ path: "input.cpu", message: expect.stringContaining("Invalid cpu") }]);

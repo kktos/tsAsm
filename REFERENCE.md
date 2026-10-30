@@ -203,7 +203,7 @@ A constant, or a variable assigned once, can be used before it's defined. A vari
     jmp * + 3
 ```
 
-The program counter stays in the CPU's address space: 16 bits on the 6502, 65C02 and 6809, 32 on the RV32I. An address outside it is an error, never wrapped: `.org $10000` on the 6502 is `Address $10000 is outside the 6502's address space ($0..$FFFF).`, and so is a negative one. Code can end at the top of it, with its last byte at `$FFFF`, but not go past it: a statement whose bytes do, an instruction, data, `.fill`, is an error (`The PC goes past $FFFF, the top of the 6502's address space, to $10001.`). So is `.cpu` switching to a CPU the PC is past the top of.
+The program counter stays in the CPU's address space: 16 bits on the 6502, 65C02 and 6809, 24 on the 65816, 32 on the RV32I. An address outside it is an error, never wrapped: `.org $10000` on the 6502 is `Address $10000 is outside the 6502's address space ($0..$FFFF).`, and so is a negative one. Code can end at the top of it, with its last byte at `$FFFF`, but not go past it: a statement whose bytes do, an instruction, data, `.fill`, is an error (`The PC goes past $FFFF, the top of the 6502's address space, to $10001.`). So is `.cpu` switching to a CPU the PC is past the top of.
 
 On a CPU whose PC stays in its bank, the 65816 (its PC is 16 bits, the bank doesn't follow it), an instruction can't cross a bank: one at `$01FFFE` taking 3 bytes is `The instruction at $1FFFE crosses into bank $02: the 65816's PC stays in its bank.` One whose last byte is at `$01FFFF` is fine, and data can cross a bank, as long addressing and indexing reach the next one. In a relocatable segment, the bank is only known when it's loaded: it isn't checked.
 
@@ -248,6 +248,7 @@ Written in the code or the data, a relocatable value is its offset, and a fixup 
 
 - **Data:** `.dw label` and `.dl label` record the element's 2 or 4 bytes. `<`, `>` and `^` give one byte: `.db >label`, and `.dw <label`, the byte then 0, its fixup on that byte. A whole address in a `.db` is an error: `.DB value: CODE+$0012 is a whole address: take one byte of it with <, > or ^.`
 - **6502 and 65C02 operands:** a relocatable address is absolute, never zero page whatever its offset, with a fixup of 2 bytes: `jmp label`, `lda label,x`, `jmp (label)`. An immediate takes one byte: `lda #<label`, `lda #>label`; `lda #label` is an error. A relocatable address can't be in zero page: `lda (label),y`, `lda.b label`, `stx label,y` are errors.
+- **65816 operands:** the same, and a long address takes a fixup of 3 bytes: `jsl label`, `jml label`; `jml [label]` 2. A stack offset, a bank or a signature can't be relocatable: `lda label,s`, `mvn ^label,$01`, `cop #<label` are errors.
 - **Branches:** a branch target is an address in the branch's own segment. In a relocatable one, `bne loop` is the distance between their offsets, without a fixup. A branch to another segment, or from a relocatable segment to a fixed address, is an error: `A branch from relocatable segment 'CODE' can't reach $1000: the distance is only known when it's loaded.`
 - **Other CPUs:** their operands can't take a relocatable value yet: `CODE+$0012 is relocatable, and the 6809's operands can't take one: their fixups aren't recorded.`
 
@@ -739,7 +740,7 @@ To set a local option for the whole project, give it in the project file.
 
 ### Selecting the CPU
 
-The CLI has the CPUs `6502`, `65C02`, `6809` and `RV32I`; a program using the library gives the assembler its own (see [README](README.md#library)). The project file's `input.cpu` selects the one the source starts with (`6502` by default), and `.cpu` changes it for the lines after it. The names are in any case, and an unknown one is an error that lists them: `Unknown CPU name '65816': the CPUs are 6502, 6809, 65C02, ARM_RISC, RV32I.` (the CLI's)
+The CLI has the CPUs `6502`, `65C02`, `65816` (also named `65C816`), `6809` and `RV32I`; a program using the library gives the assembler its own (see [README](README.md#library)). The project file's `input.cpu` selects the one the source starts with (`6502` by default), and `.cpu` changes it for the lines after it. The names are in any case, and an unknown one is an error that lists them: `Unknown CPU name '65802': the CPUs are 6502, 6809, 65816 (65C816), 65C02, ARM_RISC, RV32I.` (the CLI's)
 
 A word alone after `.cpu` is the CPU's name: `.cpu 65C02`, `.cpu rv32i`. Anything else is a string expression giving it: `.cpu "65C02"`, or a symbol in parentheses.
 
@@ -842,4 +843,25 @@ A `.b` or `.w` suffix forces the addressing mode of an address, whatever its val
 - `.w` uses absolute: with `X = $10`, `lda.w X` is `lda $0010` (`ad 10 00`).
 - A suffix only applies to an address that can be zero page or absolute: `nop.b`, `lda.w #1` or `lda.b ($10),y` are errors, and so is a form the instruction doesn't have (`jmp.b`, `lda.b $10,y`).
 
-Suffixes work on the 6502 and the 65C02; other CPUs have none.
+Suffixes work on the 6502, the 65C02 and the 65816; other CPUs have none.
+
+### 65816
+
+`.cpu 65816` (or `65C816`) selects WDC's W65C816S: the 65C02's instructions and modes, without Rockwell's bit instructions (`rmb0`, `bbr0`…: the 65816 uses their opcodes), and its own:
+
+| Addressing mode                 | Example                                     |
+| ------------------------------- | ------------------------------------------- |
+| Stack relative                  | `lda $03,s`, `lda ($03,s),y`                |
+| Direct indirect long            | `lda [$12]`, `lda [$12],y`                  |
+| Absolute long (`jml`, `jsl`)    | `jsl $123456`                               |
+| Absolute indirect long          | `jml [$1234]`, also written `jmp [$1234]`   |
+| Block move: source, destination | `mvn $01,$02` (`54 02 01`), `mvp #$01,#$02` |
+| 16-bit relative                 | `brl label`, `per label`                    |
+| Signature byte                  | `cop #$12`, `cop $12`, `wdm #$12`           |
+
+- `brk` takes a signature byte too, as the 65816 skips one: `brk` alone is `00 00`, `brk #$12` is `00 12`. The same for `cop` and `wdm` without one. On the 6502 and the 65C02, `brk` stays one byte.
+- `pea $1234` pushes its operand (`f4 34 12`), and `pei ($12)` the word at `$12`.
+- A stack offset, a bank and a signature are bytes: `lda $100,s` → `LDA: the stack offset 256 is out of range ($0..$FF).`
+- `brl` and `per` reach any address in their bank: the 65816 adds their 16-bit offset in it, wrapping, so `brl $0000` at `$FF00` is `82 fd 00`. A target in another bank is an error: `Branch target $020000 is in another bank than the instruction at $01FFF0: a 16-bit offset stays in its bank.`
+- For now, the accumulator and the index registers are 8 bits: an immediate is one byte, and a `rep` making one of them 16-bit is an error, `REP #$20 makes the accumulator 16-bit: the 65816's widths stay 8 bits for now.`, also with a symbol defined after it. `sep` and the other `rep`s are taken.
+- For now, an address takes a long form only on an instruction that has no other, `jml` and `jsl`: on the others, an address over `$FFFF` is an error, as on the 6502 (`lda $123456`, `jmp $123456`).
