@@ -84,7 +84,16 @@ export class FunctionDirective implements IDirective {
 		const site = this.runtime.definitionSite(statement);
 		site.location.file ??= context.filename;
 		const options = Object.fromEntries(LOCAL_OPTIONS.map((option) => [option, this.runtime.option(option)])) as LocalOptions;
-		return new UserFunction(name, parameters, body, !assign, this.runtime.symbolTable.captureScopes(), site, options);
+		const macroArgs = this.macroArgs(context, parameters);
+		return new UserFunction(name, parameters, body, !assign, this.runtime.symbolTable.captureScopes(), site, options, macroArgs);
+	}
+
+	/** The macro parameters where it's defined, with their arguments: those of the call expanding the body. Its own hide them. */
+	private macroArgs(context: DirectiveContext, parameters: IdentifierToken[]): Map<string, Token[]> | undefined {
+		if (!context.macroArgs) return undefined;
+		const macroArgs = new Map(context.macroArgs);
+		for (const parameter of parameters) macroArgs.delete(parameter.value);
+		return macroArgs.size ? macroArgs : undefined;
 	}
 
 	/** The names between the parentheses, `tokens` starting with the function's name, and where the `)` is. */

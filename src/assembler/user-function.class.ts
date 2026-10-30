@@ -17,5 +17,7 @@ export class UserFunction {
 		public readonly site: DefinitionSite,
 		/** The local options where it's defined: a block runs with them, as a macro body does. */
 		public readonly options: LocalOptions,
+		/** The parameters of the macro whose body defines it, but its own: its body reads them with that call's arguments. */
+		public readonly macroArgs?: Map<string, Token[]>,
 	) {}
 }
