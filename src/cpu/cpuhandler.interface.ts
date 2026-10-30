@@ -51,6 +51,9 @@ export interface CPUHandler<TModeInfo extends ModeInfo = ModeInfo> {
 	/** Byte order of the CPU: data directives (.dw, .dl, the .pstrl length) write their values in it too. */
 	endianness: Endianness;
 
+	/** Width of the address bus: the PC's range is 0 to 2 ** addressBits - 1. Leaving it is an error. */
+	addressBits: number;
+
 	/**
 	 * Suffixes a mnemonic can take after a dot, given to resolveAddressingMode as part of the mnemonic: the 6502's
 	 * `lda.b` / `lda.w` force a zero page / absolute operand. A CPU without suffixes leaves it out.

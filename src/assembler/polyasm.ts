@@ -25,6 +25,9 @@ import type { UserFunction } from "./user-function.class";
 
 const DEFAULT_PC = 0x1000;
 
+/** An address in a message: `$10000`, not getHex's `00010000`; a negative one in decimal. */
+const formatAddress = (address: number) => (address < 0 ? String(address) : `$${address.toString(16).toUpperCase()}`);
+
 /** The directives a function's body can run: it only computes a value, so none that emits, defines a label or a scope, or changes a setting. */
 const FUNCTION_DIRECTIVES = new Set([
 	"IF",
@@ -287,6 +290,22 @@ export class Assembler {
 		return this.cpuHandler;
 	}
 
+	/** `.org` and `* =`: an address in the current CPU's address space. */
+	public checkAddress(address: number) {
+		const max = 2 ** this.cpuHandler.addressBits - 1;
+		if (address < 0 || address > max)
+			throw new Error(`Address ${formatAddress(address)} is outside the ${this.cpuHandler.cpuType}'s address space ($0..$${getHex(max)}).`);
+	}
+
+	/** After each statement: its bytes end at the top of the CPU's address space at most. */
+	private checkPCRange() {
+		const end = 2 ** this.cpuHandler.addressBits;
+		if (this.PC.value > end)
+			throw new Error(
+				`The PC goes past $${getHex(end - 1)}, the top of the ${this.cpuHandler.cpuType}'s address space, to ${formatAddress(this.PC.value)}.`,
+			);
+	}
+
 	/** The CPUs given to the constructor. */
 	public get cpus(): readonly CPUHandler[] {
 		return this.cpuHandlers;
@@ -545,6 +564,7 @@ export class Assembler {
 				default:
 					throw new ParserError(`Syntax error : ${token.type} ${token.value}`, token);
 			}
+			this.checkPCRange();
 		}
 		if (blockDepth !== 0) throw new ParserError(`Syntax error : Unbalanced braces. Depth: ${blockDepth}`);
 	}
@@ -700,6 +720,7 @@ export class Assembler {
 					break;
 				}
 			}
+			this.checkPCRange();
 		}
 	}
 

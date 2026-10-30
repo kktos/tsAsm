@@ -18,7 +18,7 @@ describe("Mos65xxHandler", () => {
 	});
 
 	it("should throw when two opcode sets give the same mnemonic and mode", () => {
-		const profile = { cpuType: "test", opcodeSets: [NMOS, CMOS_ADDITIONS, { LDA: { IMMEDIATE: 0x00 } }], suffixes: {} };
+		const profile = { cpuType: "test", addressBits: 16, opcodeSets: [NMOS, CMOS_ADDITIONS, { LDA: { IMMEDIATE: 0x00 } }], suffixes: {} };
 		expect(() => new Mos65xxHandler(profile)).toThrow("The test's opcode sets give LDA IMMEDIATE twice.");
 	});
 

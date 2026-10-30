@@ -38,6 +38,7 @@ export class AssignDirective implements IDirective {
 		if (label === "*") {
 			this.assembler.linker.checkOrg();
 			if (typeof value !== "number") throw new Error(`Invalid value for */ORG: ${value}.`);
+			this.assembler.checkAddress(value);
 			context.PC.value = value;
 			return;
 		}
@@ -66,6 +67,7 @@ export class AssignDirective implements IDirective {
 		if (label === "*") {
 			this.assembler.linker.checkOrg();
 			if (typeof value !== "number") throw new Error(`Invalid value for */ORG: ${value}.`);
+			this.assembler.checkAddress(value);
 			context.PC.value = value;
 			return;
 		}

@@ -9,6 +9,8 @@ import type { Mos65xxMode, OpcodeSet } from "./mos65xx.opcodes";
 /** What makes one 65xx CPU: its name, the opcode sets it's made of, and its mnemonic suffixes. */
 export interface Mos65xxProfile {
 	cpuType: string;
+	/** Width of the address bus: 16, 24 for the 65816. */
+	addressBits: number;
 	/** Merged per mnemonic when the handler is built: a mnemonic and mode given by two sets is an error. */
 	opcodeSets: readonly OpcodeSet[];
 	/** The address width, in bytes, each suffix forces: `lda.b` zero page, `lda.w` absolute. */
@@ -51,12 +53,14 @@ const ADDRESS_MODES = {
 export class Mos65xxHandler implements CPUHandler<Mos65xxModeInfo> {
 	readonly cpuType: string;
 	readonly endianness = "little" as const;
+	readonly addressBits: number;
 	readonly mnemonicSuffixes: readonly string[];
 
 	private readonly instructionMap: ReadonlyMap<string, ReadonlyMap<Mos65xxMode, number>>;
 
 	constructor(private readonly profile: Mos65xxProfile) {
 		this.cpuType = profile.cpuType;
+		this.addressBits = profile.addressBits;
 		this.mnemonicSuffixes = Object.keys(profile.suffixes);
 		this.instructionMap = this.mergeOpcodeSets(profile.opcodeSets);
 	}

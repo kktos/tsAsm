@@ -15,6 +15,7 @@ const fakeCPU = {
 	}),
 	encodeInstruction: () => [],
 	endianness: "little" as const,
+	addressBits: 16,
 };
 
 const DEFAULT_SEGMENTS: SegmentDefinition[] = [{ name: "CODE", start: 0x1000, size: 0, resizable: true }];

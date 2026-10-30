@@ -15,6 +15,7 @@ const fakeCPU = {
 	}),
 	encodeInstruction: () => [],
 	endianness: "little" as const,
+	addressBits: 16,
 };
 
 const createAssembler = (options?: AssemblerOptions["options"], files: Record<string, string> = {}) => {

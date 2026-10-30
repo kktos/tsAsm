@@ -14,6 +14,7 @@ const fakeCPU = {
 	}),
 	encodeInstruction: () => [],
 	endianness: "little" as const,
+	addressBits: 16,
 };
 
 const assemble = (source: string) => {

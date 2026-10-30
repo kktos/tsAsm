@@ -242,9 +242,8 @@ The script library `lib/omf.linker.asm` is done in #185: version 2.0 segments, L
 
 ### 4.23 Addresses over 16 bits: the PC's range
 
-Before 4.18: the 65816 addresses 16 MB. Nothing checks the PC's range today: `.org` takes any number, and the PC goes past $FFFF without a word.
+Before 4.18: the 65816 addresses 16 MB. The PC's range is done in #200: `CPUHandler.addressBits`, and leaving it is an error. What's left:
 
-- **PC and `.org`:** to decide, a range per CPU (16 bits for the 6502, 65C02 and 6809; 24 for the 65816; 32 for the RV32I) and what leaving it does (recommended: an error, never a wrap).
 - **Segments:** `start` and `size` over $FFFF; on the 65816, code crossing a bank (4.22).
 - **Listing:** `getHex` writes an address over $FFFF on 8 digits, and the lister's columns assume 4 (`LABEL_START_COL`).
 - **`.sym` file:** the maintainer's debugger reads it; the form of an address over $FFFF there is the maintainer's call.
