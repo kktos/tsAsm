@@ -131,8 +131,8 @@ export const WDC_ADDITIONS: OpcodeSet = {
 };
 
 /**
- * What the 65816 adds to the WDC 65C02, without Rockwell's bit instructions: its opcodes are the 65816's. The long
- * addresses of LDA, JMP… are only chosen with 4.18: until then, an instruction takes one only when it has no other.
+ * What the 65816 adds to the WDC 65C02, without Rockwell's bit instructions: its opcodes are the 65816's.
+ * JMP and JSR long are JML and JSL, chosen with `.l`.
  * Its BRK takes a signature byte, as COP: the profile leaves NMOS's one-byte BRK out.
  */
 export const W65816_ADDITIONS: OpcodeSet = {

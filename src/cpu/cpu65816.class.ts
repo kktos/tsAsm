@@ -16,7 +16,7 @@ export const P65816: Mos65xxProfile = {
 	addressBits: 24,
 	bankBits: 16,
 	opcodeSets: [NMOS_WITHOUT_BRK, CMOS_ADDITIONS, WDC_ADDITIONS, W65816_ADDITIONS],
-	suffixes: { B: 1, W: 2 },
+	suffixes: { B: 1, W: 2, L: 3 },
 };
 
 /** The accumulator (M) and the index registers (X): their bit in REP / SEP, and their names in messages. */
@@ -182,7 +182,7 @@ export class Cpu65816Handler extends Mos65xxHandler {
 		operands: OperandReader,
 		context?: InstructionContext,
 	): Mos65xxModeInfo {
-		const info = super.resolveAddressingMode(mnemonic, operandTokens, resolveValue, operands);
+		const info = super.resolveAddressingMode(mnemonic, operandTokens, resolveValue, operands, context);
 		const base = mnemonic.toUpperCase().split(".")[0] as string;
 		switch (base) {
 			case "XCE":

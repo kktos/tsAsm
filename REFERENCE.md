@@ -250,7 +250,7 @@ Written in the code or the data, a relocatable value is its offset, and a fixup 
 
 - **Data:** `.dw label` and `.dl label` record the element's 2 or 4 bytes. `<`, `>` and `^` give one byte: `.db >label`, and `.dw <label`, the byte then 0, its fixup on that byte. A whole address in a `.db` is an error: `.DB value: CODE+$0012 is a whole address: take one byte of it with <, > or ^.`
 - **6502 and 65C02 operands:** a relocatable address is absolute, never zero page whatever its offset, with a fixup of 2 bytes: `jmp label`, `lda label,x`, `jmp (label)`. An immediate takes one byte: `lda #<label`, `lda #>label`; `lda #label` is an error. A relocatable address can't be in zero page: `lda (label),y`, `lda.b label`, `stx label,y` are errors.
-- **65816 operands:** the same, and a long address takes a fixup of 3 bytes: `jsl label`, `jml label`; `jml [label]` 2. A stack offset, a bank or a signature can't be relocatable: `lda label,s`, `mvn ^label,$01`, `cop #<label` are errors.
+- **65816 operands:** a relocatable address is never direct page either. It's absolute in the instruction's own segment, and long in another, whose bank is only known when it's loaded, with a fixup of 3 bytes: `lda msg` from another segment is `af 00 00 00`, as are `jsl label`, `jml label`, `lda.l label`; `.w` makes it absolute (`lda.w msg`), a fixup of 2, as `jml [label]` is. An instruction without a long form needs `.w` (`ldx msg` is an error), and `jmp` / `jsr` to another segment are errors: `JSR can't reach DATA+$0000 with an absolute address, as segment 'DATA' is relocatable, its bank only known when it's loaded: jsl reaches it.` A label of another segment defined after the instruction is the error of a symbol defined later: write `.l`, or define it earlier. A stack offset, a bank or a signature can't be relocatable: `lda label,s`, `mvn ^label,$01`, `cop #<label` are errors.
 - **Branches:** a branch target is an address in the branch's own segment. In a relocatable one, `bne loop` is the distance between their offsets, without a fixup. A branch to another segment, or from a relocatable segment to a fixed address, is an error: `A branch from relocatable segment 'CODE' can't reach $1000: the distance is only known when it's loaded.`
 - **Other CPUs:** their operands can't take a relocatable value yet: `CODE+$0012 is relocatable, and the 6809's operands can't take one: their fixups aren't recorded.`
 
@@ -845,27 +845,37 @@ A `.b` or `.w` suffix forces the addressing mode of an address, whatever its val
 - `.w` uses absolute: with `X = $10`, `lda.w X` is `lda $0010` (`ad 10 00`).
 - A suffix only applies to an address that can be zero page or absolute: `nop.b`, `lda.w #1` or `lda.b ($10),y` are errors, and so is a form the instruction doesn't have (`jmp.b`, `lda.b $10,y`).
 
-Suffixes work on the 6502, the 65C02 and the 65816; other CPUs have none.
+Suffixes work on the 6502, the 65C02 and the 65816, which also has `.l` (see [its addresses](#direct-page-absolute-and-long-addresses)); other CPUs have none.
 
 ### 65816
 
 `.cpu 65816` (or `65C816`) selects WDC's W65C816S: the 65C02's instructions and modes, without Rockwell's bit instructions (`rmb0`, `bbr0`…: the 65816 uses their opcodes), and its own:
 
-| Addressing mode                 | Example                                     |
-| ------------------------------- | ------------------------------------------- |
-| Stack relative                  | `lda $03,s`, `lda ($03,s),y`                |
-| Direct indirect long            | `lda [$12]`, `lda [$12],y`                  |
-| Absolute long (`jml`, `jsl`)    | `jsl $123456`                               |
-| Absolute indirect long          | `jml [$1234]`, also written `jmp [$1234]`   |
-| Block move: source, destination | `mvn $01,$02` (`54 02 01`), `mvp #$01,#$02` |
-| 16-bit relative                 | `brl label`, `per label`                    |
-| Signature byte                  | `cop #$12`, `cop $12`, `wdm #$12`           |
+| Addressing mode                 | Example                                       |
+| ------------------------------- | --------------------------------------------- |
+| Stack relative                  | `lda $03,s`, `lda ($03,s),y`                  |
+| Direct indirect long            | `lda [$12]`, `lda [$12],y`                    |
+| Absolute long                   | `lda $123456`, `lda $123456,x`, `jsl $123456` |
+| Absolute indirect long          | `jml [$1234]`, also written `jmp [$1234]`     |
+| Block move: source, destination | `mvn $01,$02` (`54 02 01`), `mvp #$01,#$02`   |
+| 16-bit relative                 | `brl label`, `per label`                      |
+| Signature byte                  | `cop #$12`, `cop $12`, `wdm #$12`             |
 
 - `brk` takes a signature byte too, as the 65816 skips one: `brk` alone is `00 00`, `brk #$12` is `00 12`. The same for `cop` and `wdm` without one. On the 6502 and the 65C02, `brk` stays one byte.
 - `pea $1234` pushes its operand (`f4 34 12`), and `pei ($12)` the word at `$12`.
 - A stack offset, a bank and a signature are bytes: `lda $100,s` → `LDA: the stack offset 256 is out of range ($0..$FF).`
 - `brl` and `per` reach any address in their bank: the 65816 adds their 16-bit offset in it, wrapping, so `brl $0000` at `$FF00` is `82 fd 00`. A target in another bank is an error: `Branch target $020000 is in another bank than the instruction at $01FFF0: a 16-bit offset stays in its bank.`
-- For now, an address takes a long form only on an instruction that has no other, `jml` and `jsl`: on the others, an address over `$FFFF` is an error, as on the 6502 (`lda $123456`, `jmp $123456`).
+
+#### Direct page, absolute and long addresses
+
+D (the direct page) and DBR (the data bank) only get their values when the code runs: the assembler never chooses an encoding from them. The size of an address comes from the value written, as on the 6502:
+
+- **`$00`–`$FF`** is direct page (zero page), **`$0100`–`$FFFF`** absolute, **above `$FFFF`** long: `lda $12` is `a5 12`, `lda $1234` `ad 34 12`, `lda $123456` `af 56 34 12`, `sta $7E0000,x` `9f 00 00 7e`. A variable in bank `$7E` read through the data bank is written as its address in the bank (`counter = $2000`), or with `.w`.
+- **An instruction without a long form** can't take a long address: `ldx $123456` is `LDX has no long form, and $123456 is over $FFFF: ldx.w takes its low 16 bits, in the data bank.`, and so is `lda $123456,y` (no long `,y`). Over 24 bits is an error: `Address 16777216 is out of range ($0..$FFFFFF).`
+- **`.b`** forces direct page and **`.w`** absolute, with the address's low byte or low 16 bits: the writer says it's in the direct page or the data bank. `lda.b $1234` is `a5 34`, `lda.w $7E2000` `ad 00 20`. **`.l`** forces long: `lda.l $12` is `af 12 00 00`. `.l` on an instruction without a long form, or on an operand that isn't an address (`lda.l #$12`), is an error.
+- **`jmp` and `jsr`** are absolute, as their target is in the program bank, the one the PC is in: `jmp $8000` is `4c 00 80`. A target in another bank is an error: `JMP $123456 is in another bank than the instruction at $8000: jml reaches it, and jmp.w takes its low 16 bits, in the program bank.` `jml` / `jsl`, or `jmp.l` / `jsr.l`, are long. In a relocatable segment the program bank is only known when it's loaded: `jmp $123456` takes the low 16 bits, `4c 56 34`.
+- **A branch** stays in its bank: one whose target is in another is an error, `Branch target $010002 is in another bank than the instruction at $FFFC: a branch stays in its bank.`
+- **A symbol defined later** is absolute in pass 1, as on the 6502. If it needs a long address once known, it's an error rather than an instruction growing between the passes: `LDA $123456 needs a long address, but pass 1 made it absolute: a symbol in it is defined after the LDA. Write lda.l, or define the symbol earlier.`
 
 #### Emulation and native mode
 

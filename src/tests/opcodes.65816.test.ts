@@ -103,7 +103,7 @@ describe("65816", () => {
 
 		it("should refuse a signature that isn't a byte", () => {
 			expect(() => assemble("cop #$100")).toThrow("COP: the signature 256 is out of range ($0..$FF).");
-			expect(() => assemble("brk.b #1")).toThrow("'BRK.B': .B only applies to an address that can be zero page or absolute.");
+			expect(() => assemble("brk.b #1")).toThrow("'BRK.B': .B only applies to an address that can be zero page, absolute or long.");
 		});
 
 		it("should assemble the stack relative modes", () => {
@@ -182,17 +182,107 @@ describe("65816", () => {
 			expect(assemble(source)).toEqual([0xe2, 0x30, 0xc2, 0xcf]);
 		});
 
-		it("should refuse an address over $FFFF on an instruction with a short form, until long addressing is chosen", () => {
-			expect(() => assemble("lda $123456")).toThrow("Address 1193046 is out of range ($0..$FFFF).");
-			expect(() => assemble("jmp $123456")).toThrow("Address 1193046 is out of range ($0..$FFFF).");
-			expect(() => assemble("jml $1000000")).toThrow("Address 16777216 is out of range ($0..$FFFFFF).");
-		});
-
 		it("should refuse the modes no 65xx has", () => {
 			expect(() => assemble("lda [$12],x")).toThrow("Invalid addressing mode for instruction LDA");
 			expect(() => assemble("lda ($12,x),y")).toThrow("Invalid addressing mode for instruction LDA");
 			expect(() => assemble("ldx $12,s")).toThrow("Invalid addressing mode for instruction LDX");
 			expect(() => assemble("lda $100,s")).toThrow("LDA: the stack offset 256 is out of range ($0..$FF).");
+		});
+	});
+
+	describe("its addresses: direct page, absolute and long", () => {
+		it("should take the size of the value written", () => {
+			const source = `
+				lda $12
+				lda $1234
+				lda $123456
+				lda $12,x
+				lda $1234,x
+				lda $123456,x
+				sta $7E0000
+			`;
+			expect(assemble(source)).toEqual([
+				0xa5, 0x12, 0xad, 0x34, 0x12, 0xaf, 0x56, 0x34, 0x12, 0xb5, 0x12, 0xbd, 0x34, 0x12, 0xbf, 0x56, 0x34, 0x12, 0x8f, 0x00, 0x00, 0x7e,
+			]);
+		});
+
+		it("should refuse a long address on an instruction without a long form, or over 24 bits", () => {
+			expect(() => assemble("ldx $123456")).toThrow("LDX has no long form, and $123456 is over $FFFF: ldx.w takes its low 16 bits, in the data bank.");
+			expect(() => assemble("lda $123456,y")).toThrow(
+				"LDA has no long,Y form, and $123456 is over $FFFF: lda.w takes its low 16 bits, in the data bank.",
+			);
+			expect(() => assemble("pea $123456")).toThrow("PEA has no long form, and $123456 is over $FFFF: pea.w takes its low 16 bits.");
+			expect(() => assemble("lda $1000000")).toThrow("Address 16777216 is out of range ($0..$FFFFFF).");
+			expect(() => assemble("jml $1000000")).toThrow("Address 16777216 is out of range ($0..$FFFFFF).");
+		});
+
+		it("should force direct page with .b and absolute with .w, keeping the low byte or 16 bits, and long with .l", () => {
+			const source = `
+				lda.b $1234
+				lda.w $7E2000
+				lda.w $12,x
+				lda.l $12
+				lda.l $1234,x
+			`;
+			expect(assemble(source)).toEqual([0xa5, 0x34, 0xad, 0x00, 0x20, 0xbd, 0x12, 0x00, 0xaf, 0x12, 0x00, 0x00, 0xbf, 0x34, 0x12, 0x00]);
+		});
+
+		it("should refuse .l on an instruction without a long form, or an operand that isn't an address", () => {
+			expect(() => assemble("ldx.l $12")).toThrow("'LDX.L': LDX has no long form.");
+			expect(() => assemble("lda.l $12,y")).toThrow("'LDA.L': LDA has no long,Y form.");
+			expect(() => assemble("lda.l #$12")).toThrow("'LDA.L': .L only applies to an address that can be zero page, absolute or long.");
+			expect(() => assemble("lda.l ($12),y")).toThrow("'LDA.L': .L only applies to an address that can be zero page, absolute or long.");
+		});
+
+		it("should keep JMP and JSR absolute, in the program bank, or long with .l", () => {
+			const source = `
+				jmp $8000
+				jsr $9000
+				jmp.l $1234
+				jsr.l $123456
+				jmp.w $123456
+			`;
+			expect(assemble(source)).toEqual([0x4c, 0x00, 0x80, 0x20, 0x00, 0x90, 0x5c, 0x34, 0x12, 0x00, 0x22, 0x56, 0x34, 0x12, 0x4c, 0x56, 0x34]);
+			expect(assemble("jmp $018000", 0x018000)).toEqual([0x4c, 0x00, 0x80]);
+		});
+
+		it("should refuse JMP or JSR to another bank than the instruction's", () => {
+			expect(() => assemble("jmp $123456")).toThrow(
+				"JMP $123456 is in another bank than the instruction at $8000: jml reaches it, and jmp.w takes its low 16 bits, in the program bank.",
+			);
+			expect(() => assemble("jsr $1234", 0x018000)).toThrow(
+				"JSR $1234 is in another bank than the instruction at $018000: jsl reaches it, and jsr.w takes its low 16 bits, in the program bank.",
+			);
+		});
+
+		it("should refuse a branch to another bank", () => {
+			expect(() => assemble("bne $010002", 0x00fffc)).toThrow(
+				"Branch target $010002 is in another bank than the instruction at $FFFC: a branch stays in its bank.",
+			);
+		});
+
+		it("should make a symbol defined later absolute, and refuse it in pass 2 if it needs long", () => {
+			const later = (mnemonic: string, value: string) => `
+				${mnemonic} far
+				far = ${value}
+			`;
+			expect(assemble(later("lda", "$1234"))).toEqual([0xad, 0x34, 0x12]);
+			expect(assemble(later("lda.l", "$123456"))).toEqual([0xaf, 0x56, 0x34, 0x12]);
+			expect(() => assemble(later("lda", "$123456"))).toThrow(
+				"LDA $123456 needs a long address, but pass 1 made it absolute: a symbol in it is defined after the LDA. Write lda.l, or define the symbol earlier.",
+			);
+		});
+
+		it("should not take another instruction's pass-1 size, when the passes read other code", () => {
+			const source = `
+				.if FLAG
+				lda far
+				.end
+				nop
+				FLAG = 1
+				far = $123456
+			`;
+			expect(assemble(source)).toEqual([0xaf, 0x56, 0x34, 0x12, 0xea]);
 		});
 	});
 
@@ -501,7 +591,7 @@ describe("65816", () => {
 				ldx #$12
 			`;
 			expect(assemble(source)).toEqual([0xa9, 0x12, 0x00, 0xa9, 0x12, 0xa2, 0x12, 0xa2, 0x12, 0x00]);
-			expect(() => assemble("rep.w #$30")).toThrow("'REP.W': .W only applies to an address that can be zero page or absolute.");
+			expect(() => assemble("rep.w #$30")).toThrow("'REP.W': .W only applies to an address that can be zero page, absolute or long.");
 			const c02 = `
 				.cpu 65C02
 				lda.w #$12
@@ -707,6 +797,47 @@ describe("65816", () => {
 			expect(() => relocatable("lda #msg")).toThrow("LDA #DATA+$0000: an immediate is one byte, take one of the relocatable address with <, > or ^.");
 		});
 
+		it("should make a relocatable address absolute in its own segment, never direct page", () => {
+			expect(relocatable("start: lda start")).toMatchObject({ data: [0xad, 0x00, 0x00], relocs: [{ offset: 1, size: 2, segment: "RCODE" }] });
+			expect(relocatable("start: jmp start")).toMatchObject({ data: [0x4c, 0x00, 0x00], relocs: [{ offset: 1, size: 2, segment: "RCODE" }] });
+			expect(() => relocatable("start: lda.b start")).toThrow("'LDA.B' needs a zero page address here, and RCODE+$0000 is relocatable");
+		});
+
+		it("should make it long in another segment, or absolute with .w", () => {
+			expect(relocatable("lda msg+1")).toMatchObject({
+				data: [0xaf, 0x01, 0x00, 0x00],
+				relocs: [{ offset: 1, size: 3, segment: "DATA", targetOffset: 1 }],
+			});
+			expect(relocatable("lda.w msg,x")).toMatchObject({ data: [0xbd, 0x00, 0x00], relocs: [{ offset: 1, size: 2, segment: "DATA" }] });
+			expect(relocatable("start: lda.l start")).toMatchObject({ data: [0xaf, 0x00, 0x00, 0x00], relocs: [{ offset: 1, size: 3, segment: "RCODE" }] });
+			expect(() => relocatable("ldx msg")).toThrow(
+				"LDX has no long form, and DATA+$0000 is in another segment, whose bank is only known when it's loaded: ldx.w takes its low 16 bits, in the data bank.",
+			);
+		});
+
+		it("should refuse JMP and JSR to another segment, its bank unknown", () => {
+			expect(() => relocatable("jsr msg")).toThrow(
+				"JSR can't reach DATA+$0000 with an absolute address, as segment 'DATA' is relocatable, its bank only known when it's loaded: jsl reaches it.",
+			);
+			expect(relocatable("jmp.w msg")).toMatchObject({ data: [0x4c, 0x00, 0x00], relocs: [{ offset: 1, size: 2, segment: "DATA" }] });
+		});
+
+		it("should keep JMP to a fixed address absolute, its low 16 bits", () => {
+			expect(relocatable("jmp $123456")).toMatchObject({ data: [0x4c, 0x56, 0x34], relocs: [] });
+		});
+
+		it("should refuse a label of another segment defined later, which needs long", () => {
+			expect(() =>
+				relocatable(`
+					lda later
+					.segment DATA
+					later:
+				`),
+			).toThrow(
+				"LDA DATA+$0000 needs a long address, but pass 1 made it absolute: a symbol in it is defined after the LDA. Write lda.l, or define the symbol earlier.",
+			);
+		});
+
 		it("should refuse a relocatable stack offset, bank or signature", () => {
 			expect(() => relocatable("lda msg,s")).toThrow("LDA needs a stack offset here, and DATA+$0000 is relocatable");
 			expect(() => relocatable("mvn ^msg,$01")).toThrow("MVN needs a bank here, and ^DATA+$0000 is relocatable");
@@ -723,6 +854,30 @@ describe("65816", () => {
 					`);
 			expect(run("65C02")).toThrow(/Invalid addressing mode|Unknown instruction|Syntax/);
 			expect(run("6502")).toThrow(/Invalid addressing mode|Unknown instruction|Syntax/);
+		});
+
+		it("should keep a relocatable address of another segment absolute, and have no .l", () => {
+			const source = `
+				.cpu 6502
+				.segment RCODE { reloc: true }
+				.segment DATA { reloc: true }
+				.segment DATA
+				msg:
+				.segment RCODE
+				lda msg
+				jmp msg
+			`;
+			expect(
+				newAssembler()
+					.assemble(source)
+					.find((s) => s.name === "RCODE"),
+			).toMatchObject({ data: [0xad, 0x00, 0x00, 0x4c, 0x00, 0x00] });
+			expect(() =>
+				assemble(`
+					.cpu 65C02
+					lda.l $12
+				`),
+			).toThrow("'LDA.L': the 65C02 has no '.L' suffix (it has .B, .W).");
 		});
 
 		it("should keep BRK one byte", () => {

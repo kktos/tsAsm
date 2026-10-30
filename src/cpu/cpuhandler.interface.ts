@@ -52,6 +52,13 @@ export interface InstructionContext {
 	previous: string | undefined;
 	/** Where this instruction is: for a note pointing back to it in a later error. */
 	site(): DefinitionSite;
+	/** The segment the instruction is in, when it's relocatable: its PC is an offset there, its bank only known when it's loaded. */
+	relocatableSegment: string | undefined;
+	/**
+	 * In pass 2, the size pass 1 gave this instruction, when it was given one: a CPU whose operand would grow now that a
+	 * symbol defined after it is known (the 65816's long addresses) can refuse it. Undefined in pass 1.
+	 */
+	pass1Bytes: number | undefined;
 }
 
 /** What encodeInstruction gets, in pass 2: the operand's value is known, and the PC is added. */
