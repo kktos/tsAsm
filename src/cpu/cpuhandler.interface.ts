@@ -24,6 +24,8 @@ export interface ModeInfo {
 	resolvedAddress: number | null;
 	/** A relocatable operand, written in `size` bytes at `at` of the instruction: the fixup the assembler records. */
 	fixup?: { at: number; size: number; value: RelocValue };
+	/** What the listing writes after the instruction, as a comment: the width the 65816 assembled an immediate with, `A16`. */
+	listing?: string;
 }
 
 /**

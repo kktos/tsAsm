@@ -185,22 +185,6 @@ Follow-ups: a function as the value, with 4.8 (`.function apple2(c) = c | $80`, 
 
 After 4.13: change any project file setting for one run, e.g. turn the listing on (`output.listing.enabled`) or a pass's listing (`output.listing.passes.pass1`), or pick another `input.cpu`. To decide: the syntax (`--output.listing.enabled true`, with the setting's path?), how a value gets its type (from the schema in `conf.ts`), how these names stay apart from the `.option` ones and their short names, and short forms for the usual ones (listing on).
 
-### 4.16 65C816: accumulator and index widths
-
-After 4.24 and 4.17. The size of an immediate depends on the M and X flags: `lda #$10` is `A9 10` with an 8-bit accumulator, `A9 10 00` with a 16-bit one. The CPU handler tracks them.
-
-- **State:** M (A and memory) and X (X / Y) are each 8, 16 or unknown. Both start at 8, as after reset. Reset at each pass, kept across `.cpu` switches (4.15).
-- **Directives** (4.15), the ca65 names: `.a8`, `.a16`, `.i8`, `.i16`.
-- **`SEP` / `REP`, always tracked:** `rep #n` makes the flags in `n` 16-bit (bit 5 is M, bit 4 is X), `sep #n` 8-bit. An operand not known in pass 1 is an error: it must be defined before it is used (the sizes after it depend on it).
-- **Unknown widths:** `PLP` and `RTI` make M and X unknown. A directive, or a `SEP` / `REP` covering the flag, makes it known again.
-- **`XCE` and the mode** (4.17): `sec` / `xce` and `.emulation` make M and X 8; `clc` / `xce` leaves them; an `xce` the assembler can't follow makes them unknown unless both are 8. In emulation mode `.a16` and `.i16` are errors (4.17), as a `REP` making a width 16-bit is. The note of an unknown width points at the `PLP` / `RTI` as 4.17's points at the `XCE` (`InstructionContext.site`).
-- **Width-dependent immediates:** M: `LDA ADC SBC AND ORA EOR CMP BIT`; X: `LDX LDY CPX CPY`. 16 bits gives two bytes, little-endian. An unknown width is an error saying which flag and what made it unknown ("the accumulator width is unknown since the `PLP` at …; set it with `.a8` / `.a16`"). A value too large for 8 bits is an error, never truncated.
-- **One instruction:** `lda.b #imm` / `lda.w #imm` force the immediate's width without changing the state. On an address `.b` / `.w` keep their 6502 meaning (direct page / absolute); `.l` is added for long.
-- **Listing:** a line whose size depends on M or X shows the width it was assembled with.
-- **4.24's REP error:** in native mode, `Cpu65816Handler.checkRep` refuses a `REP` clearing bit 4 or 5 until then: it goes. In emulation mode and while the mode is unknown, it stays (4.17).
-
-Follow-ups: direct page / absolute / long addressing (4.18); saving and restoring the widths per `.proc`.
-
 ### 4.18 65C816: direct page, absolute and long addressing
 
 D (direct page) and DBR (data bank) only get their values at run time: the assembler never chooses an encoding from them. The writer knows what they hold; the assembler can point out a shorter form.
@@ -240,6 +224,10 @@ The script library `lib/omf.linker.asm` is done in #185: version 2.0 segments, L
 Before 4.18: the 65816 addresses 16 MB. The PC's range is done in #200: `CPUHandler.addressBits`, and leaving it is an error; a segment's range in #201, checked when it's selected; an instruction crossing a bank in #202, `CPUHandler.bankBits`; a segment's `banksize` in #203; the listing's addresses in #204; numbers over $FFFF in hex in #205; the output's size, `input.linker.maxSize`, in #206; `hexDump`'s addresses in #207. What's left:
 
 - **A segment growing by megabytes:** see 1.67.
+
+### 4.25 65816: the widths per `.proc`
+
+After 4.16: the assembler reads the code in order, so a routine called with other widths than the code before it says so with `.a16`, `.i8`. To decide: whether a `.proc` saves the widths (and the mode) at its start and puts them back at its end, or declares them (`.proc f { a: 16 }`), or neither.
 
 ## 5. Documentation (REFERENCE.md)
 

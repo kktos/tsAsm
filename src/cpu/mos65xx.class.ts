@@ -30,6 +30,12 @@ export interface Mos65xxModeInfo extends ModeInfo {
 	sourceBank?: number | null;
 }
 
+/** An immediate's size, and what the listing writes after it: see `Mos65xxHandler.immediateWidth`. */
+export interface ImmediateWidth {
+	bytes: 1 | 2;
+	listing?: string;
+}
+
 /** An instruction's size follows from its mode. */
 const MODE_BYTES: Record<Mos65xxMode, number> = {
 	IMPLIED: 1,
@@ -269,18 +275,23 @@ export class Mos65xxHandler implements CPUHandler<Mos65xxModeInfo> {
 			return { ...modeInfo("BLOCK_MOVE", bank(operandTokens.slice(comma + 1))), sourceBank };
 		}
 
-		// 3. Immediate Mode (e.g., LDA #$42), or one byte of a relocatable address (LDA #<label)
+		// 3. Immediate Mode (e.g., LDA #$42), or one byte of a relocatable address (LDA #<label). On two bytes, the
+		// 65816's 16-bit widths: a relocatable address in its bank, or one byte of it then 0, as `.dw <label`.
 		if (tokenIs(0, "#")) {
-			rejectSuffix();
+			const width = this.immediateWidth(baseMnemonic, forcedWidth);
+			if (!width) rejectSuffix();
+			const size = width?.bytes ?? 1;
+			const info = { ...modeInfo("IMMEDIATE"), bytes: 1 + size, ...(width?.listing && { listing: width.listing }) };
 			const value = operands.value(operandTokens.slice(1));
 			if (value instanceof RelocValue) {
 				const { byteShift } = value;
-				if (byteShift === undefined)
-					throw new Error(`${baseMnemonic} #${value}: an immediate is one byte, take one of the relocatable address with <, > or ^.`);
-				return { ...modeInfo("IMMEDIATE", (value.offset >> byteShift) & 0xff), fixup: { at: 1, size: 1, value } };
+				if (byteShift !== undefined) return { ...info, resolvedAddress: (value.offset >> byteShift) & 0xff, fixup: { at: 1, size: 1, value } };
+				if (size === 1) throw new Error(`${baseMnemonic} #${value}: an immediate is one byte, take one of the relocatable address with <, > or ^.`);
+				this.checkAddress(value.offset, 0xffff);
+				return { ...info, resolvedAddress: value.offset, fixup: { at: 1, size: 2, value } };
 			}
-			if (value !== null) assertFitsInBytes(value, 1, "Immediate value");
-			return modeInfo("IMMEDIATE", value);
+			if (value !== null) assertFitsInBytes(value, size, "Immediate value");
+			return { ...info, resolvedAddress: value };
 		}
 
 		// 4. Indirect modes: the operand's first `(` closes at its end, `(e)` or `(e,X)`, or right before `,Y`: `(e),Y`.
@@ -374,6 +385,14 @@ export class Mos65xxHandler implements CPUHandler<Mos65xxModeInfo> {
 		// A number forced to zero page (.b) keeps its low byte; a relocatable address is absolute.
 		if (!(value instanceof RelocValue)) return modeInfo(mode, value);
 		return this.addressInfo(mnemonic.split(".")[0] as string, modeInfo(mode), value, 0xffff);
+	}
+
+	/**
+	 * The size of `mnemonic`'s immediate: undefined for one byte, taking no suffix, as on the 6502 and 65C02. The 65816
+	 * gives its M / X immediates their width, or the one a suffix forces (`forcedWidth`).
+	 */
+	protected immediateWidth(_mnemonic: string, _forcedWidth: 1 | 2 | null): ImmediateWidth | undefined {
+		return undefined;
 	}
 
 	/** A branch's offset from the next instruction, as a signed byte (two's complement). */

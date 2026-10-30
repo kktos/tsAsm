@@ -1,5 +1,5 @@
 import { EventEmitter } from "node:events";
-import type { CPUHandler, InstructionContext, OperandReader } from "../cpu/cpuhandler.interface";
+import type { CPUHandler, InstructionContext, ModeInfo, OperandReader } from "../cpu/cpuhandler.interface";
 import type { DirectiveContext, DirectiveRuntime } from "../directives/directive.interface";
 import { DirectiveHandler } from "../directives/handler";
 import { MacroHandler } from "../directives/macro/handler";
@@ -297,6 +297,12 @@ export class Assembler {
 		const last = this.lastInstruction;
 		const follows = last && last.end === this.PC.value && last.segment === this.linker.currentSegment && last.labels === this.labelCount();
 		return { previous: follows ? last.mnemonic : undefined, site: () => this.errorLocator.definitionSite(mnemonicToken) };
+	}
+
+	/** An instruction's text in the listing, with what the CPU notes about it as a comment: `LDA #$1234 ; A16`. */
+	private instructionText(mnemonicToken: ScalarToken, operandTokens: OperatorStackToken[], { listing }: ModeInfo) {
+		const text = this.lister.instruction(mnemonicToken, operandTokens);
+		return listing ? `${text} ; ${listing}` : text;
 	}
 
 	/** Records the instruction at `mnemonicToken`, assembled: the next one's `previous`, if nothing comes between. */
@@ -984,7 +990,7 @@ export class Assembler {
 		this.lister.bytes({
 			addr: instructionPC,
 			bytes: Array.from({ length: sizeInfo.bytes }, () => 0),
-			text: this.lister.instruction(mnemonicToken, operandTokens),
+			text: this.instructionText(mnemonicToken, operandTokens, sizeInfo),
 			isCode: true,
 		});
 	}
@@ -1016,7 +1022,7 @@ export class Assembler {
 			this.lister.bytes({
 				addr: instructionPC,
 				bytes: encodedBytes,
-				text: this.lister.instruction(mnemonicToken, operandTokens),
+				text: this.instructionText(mnemonicToken, operandTokens, modeInfo),
 				isCode: true,
 			});
 
