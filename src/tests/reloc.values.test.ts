@@ -51,6 +51,15 @@ describe("Relocatable values", () => {
 			});
 		});
 
+		it("should write an offset over $FFFF on as many digits as the bytes holding it", () => {
+			const source = `
+			main:
+				far = main + $10000
+				back = main - $10000
+			`;
+			expect(symbolsOf(source)).toMatchObject({ FAR: "var reloc = CODE+$010000", BACK: "var reloc = CODE-$010000" });
+		});
+
 		it("should be one for a .proc's name", () => {
 			expect(symbolsOf(`nop\n.proc clear\nnop\n.end proc`)).toMatchObject({ CLEAR: "label reloc = CODE+$0001" });
 		});

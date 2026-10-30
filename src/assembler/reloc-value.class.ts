@@ -19,7 +19,7 @@ export class RelocValue {
 	) {}
 
 	toString(): string {
-		const offset = this.offset < 0 ? `-$${getHex(-this.offset, 4)}` : `+$${getHex(this.offset, 4)}`;
+		const offset = `${this.offset < 0 ? "-" : "+"}$${hexOffset(Math.abs(this.offset))}`;
 		const address = `${this.segment}${offset}`;
 		return this.byteShift === undefined ? address : `${BYTE_OPERATORS[this.byteShift]}${address}`;
 	}
@@ -58,4 +58,9 @@ export function relocatableArgumentMessage(what: string, value: RelocValue): str
 export function relocatableByte(value: RelocValue, shift: ByteShift, what: string, position: { line: number | string; column: number }): RelocValue {
 	if (value.byteShift !== undefined) throw AsmError.at(`${what} can't take ${value}: it's already one byte of a relocatable value.`, position);
 	return new RelocValue(value.segment, value.offset, shift);
+}
+
+/** An offset on at least 4 digits (`$0012`), more as getHex writes it (`$010000`). */
+function hexOffset(offset: number): string {
+	return getHex(offset, offset > 0xffff ? undefined : 4);
 }

@@ -52,6 +52,13 @@ describe("Listing addresses", () => {
 		expect(listing(source, 0x123456, new CpuRV32IHandler())).toEqual(["123456 start:", "123456: 93 00 50 00 ADDI X1,X0,$05"]);
 	});
 
+	it("writes a number over $FFFF in an operand on 6 digits", () => {
+		const source = `
+				.dl $10000
+		`;
+		expect(listing(source, 0x10000, new CpuRV32IHandler())).toEqual(["010000: 00 00 01 00 .dl $010000"]);
+	});
+
 	it("writes an address over $FFFFFF on 8 digits", () => {
 		const source = `
 			start:
