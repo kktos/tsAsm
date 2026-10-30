@@ -246,9 +246,8 @@ The script library `lib/omf.linker.asm` is done in #185: version 2.0 segments, L
 
 ### 4.23 Addresses over 16 bits: the PC's range
 
-Before 4.18: the 65816 addresses 16 MB. The PC's range is done in #200: `CPUHandler.addressBits`, and leaving it is an error; a segment's range in #201, checked when it's selected; an instruction crossing a bank in #202, `CPUHandler.bankBits`; a segment's `banksize` in #203; the listing's addresses in #204; numbers over $FFFF in hex in #205; the output's size, `input.linker.maxSize`, in #206. What's left:
+Before 4.18: the 65816 addresses 16 MB. The PC's range is done in #200: `CPUHandler.addressBits`, and leaving it is an error; a segment's range in #201, checked when it's selected; an instruction crossing a bank in #202, `CPUHandler.bankBits`; a segment's `banksize` in #203; the listing's addresses in #204; numbers over $FFFF in hex in #205; the output's size, `input.linker.maxSize`, in #206; `hexDump`'s addresses in #207. What's left:
 
-- **`hexdump.util.ts`:** pads an address to 4 digits, so one over $FFFF takes 5. Only a test uses it.
 - **A segment growing by megabytes:** see 1.67.
 
 ### 4.24 65C816: the CPU

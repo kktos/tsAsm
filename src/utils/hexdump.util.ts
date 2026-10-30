@@ -1,3 +1,5 @@
+import { getAddressHex } from "./hex.util";
+
 type HexDumpOptions = {
 	hasText?: boolean;
 };
@@ -11,7 +13,7 @@ export function hexDump(address: number, bytes: number[], { hasText = false }: H
 		const lineBytes = bytes.slice(offset, offset + bytesPerLine);
 
 		// Address part
-		const addrHex = currentAddr.toString(16).toUpperCase().padStart(4, "0");
+		const addrHex = getAddressHex(currentAddr);
 
 		// Hex bytes part
 		const hexParts: string[] = [];

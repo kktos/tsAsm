@@ -3,7 +3,7 @@ import type { ListingCase, ListingData } from "../assembler/options";
 import { RelocValue } from "../assembler/reloc-value.class";
 import type { SymbolValue } from "../assembler/symbol.class";
 import type { ScalarToken, Token, TokenType } from "../shared/lexer/lexer.class";
-import { getHex } from "../utils/hex.util";
+import { getAddressHex, getHex } from "../utils/hex.util";
 import type { Logger } from "./logger.class";
 
 const BYTES_PER_LINE = 8;
@@ -120,7 +120,7 @@ export class Lister implements ILister {
 	private bytesLine(addr: number, bytes: number[], hasText: boolean, hasMore: boolean, text: string): string {
 		const hexBytes = bytes.map((b) => getHex(b)).join(" ");
 		const chars = (hasText ? bytes.map((b) => (b >= 32 && b <= 126 ? String.fromCharCode(b) : ".")).join("") : "") + (hasMore ? "…" : "");
-		const header = `${addressHex(addr)}: ${hexBytes.padEnd(BYTES_PAD)} ${chars.padEnd(CHARS_PAD)}`;
+		const header = `${getAddressHex(addr)}: ${hexBytes.padEnd(BYTES_PAD)} ${chars.padEnd(CHARS_PAD)}`;
 		return `${header.padEnd(TEXT_PAD)} ${text}`;
 	}
 
@@ -168,12 +168,12 @@ export class Lister implements ILister {
 		if (this.mutes) return;
 		const name = label.startsWith(":") ? label : `${label}:`;
 		if (address instanceof RelocValue) {
-			const where = `${address.segment}+${addressHex(address.offset)}`;
+			const where = `${address.segment}+${getAddressHex(address.offset)}`;
 			// At least one space before the name, which starts where a 4-digit address puts it.
 			this.logger.log(`${where.padEnd(4 + LABEL_START_COL - 1)} ${name}`);
 			return;
 		}
-		this.logger.log(`${addressHex(address)}${"".padStart(LABEL_START_COL)}${name}`);
+		this.logger.log(`${getAddressHex(address)}${"".padStart(LABEL_START_COL)}${name}`);
 	}
 
 	public symbol(label: string, value: SymbolValue) {
@@ -246,14 +246,6 @@ function asTokenText(token: Token): string {
 		default:
 			return String(token.raw ?? token.value);
 	}
-}
-
-/**
- * An address as the listing writes it: 4 digits up to $FFFF (`0080`), 6 up to $FFFFFF (`123456`), else 8.
- * A longer address pushes the rest of its line to the right; the columns are set for 4.
- */
-function addressHex(address: number): string {
-	return getHex(address, address > 0xffffff ? 8 : address > 0xffff ? 6 : 4);
 }
 
 /** `text`, its end replaced with "…" when it's longer than `width`. */

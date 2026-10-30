@@ -11,3 +11,8 @@ export function getHex(val: number, length?: number) {
 	const pad = length ?? (val < 0x100 ? 2 : val < 0x10000 ? 4 : val < 0x1000000 ? 6 : 8);
 	return val.toString(16).toUpperCase().padStart(pad, "0");
 }
+
+/** An address or an offset: 4 digits up to $FFFF (`0080`), then as getHex writes it, 6 up to $FFFFFF (`123456`), else 8. */
+export function getAddressHex(address: number): string {
+	return getHex(address, address > 0xffff ? undefined : 4);
+}
