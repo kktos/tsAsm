@@ -294,8 +294,28 @@ describe("6502 Opcodes", () => {
 		expect(assembleAndGetCode("ASL")).toEqual([0x0a]);
 	});
 
-	it.each(["LDA (2+3)*4", "LDA (2+3)*4,X", "LDA ($12),X"])("should take an operand starting with ( as an indirect mode: %s", (source) => {
-		expect(() => assembleAndGetCode(source)).toThrow("Invalid addressing mode for instruction LDA");
+	it.each([
+		["LDA (2+3)*4", [0xa5, 0x14]],
+		["LDA (2+3)*4,X", [0xb5, 0x14]],
+		["LDA (2+3)*4,Y", [0xb9, 0x14, 0x00]],
+		["LDA (1)+(2)", [0xa5, 0x03]],
+		["LDA (1)+(2),Y", [0xb9, 0x03, 0x00]],
+		["JMP (1)+(2)", [0x4c, 0x03, 0x00]],
+	])("should read an operand whose first ( closes before its end as an expression: %s (TODO 3.10)", (source, expected) => {
+		expect(assembleAndGetCode(source)).toEqual(expected);
+	});
+
+	it.each([
+		["LDA ((2+3)),Y", [0xb1, 0x05]],
+		["LDA (1+(2)),Y", [0xb1, 0x03]],
+		["LDA ((1)+2,X)", [0xa1, 0x03]],
+		["JMP ((1)+(2))", [0x6c, 0x03, 0x00]],
+	])("should read an indirect operand with parentheses inside it: %s", (source, expected) => {
+		expect(assembleAndGetCode(source)).toEqual(expected);
+	});
+
+	it.each(["LDA ($12),X", "LDA ($12,Y)", "LDX ($12),Y", "LDA (3+3)"])("should be an error: %s", (source) => {
+		expect(() => assembleAndGetCode(source)).toThrow("Invalid addressing mode for instruction LD");
 	});
 
 	describe("operand ranges", () => {

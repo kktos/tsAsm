@@ -90,6 +90,16 @@ describe("65C02 Opcodes", () => {
 		expect(data).toEqual([0xb2, 0x44, 0x92, 0x55, 0x72, 0x66]);
 	});
 
+	it.each([
+		["LDA (3+3)", [0xb2, 0x06]],
+		["LDA ((2+3))", [0xb2, 0x05]],
+		["LDA (2+3)*4", [0xa5, 0x14]],
+		["LDA (1)+(2)", [0xa5, 0x03]],
+		["LDA 0+(3+3)", [0xa5, 0x06]],
+	])("should read %s as (zp) only when its first ( closes at the end (TODO 3.10)", (source, expected) => {
+		expect(assembleAndGetCode(source)).toEqual(expected);
+	});
+
 	it("should assemble Zero Page Indirect Indexed X addressing mode (zp,X)", () => {
 		const source = `
             ADC ($66,x)
