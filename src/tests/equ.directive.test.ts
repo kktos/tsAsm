@@ -91,6 +91,8 @@ describe(".EQU - constant assignment", () => {
 		const src = `
 				*	.EQU 456
 			`;
-		expect(() => asm.assemble(src)).toThrow(/Missing symbol name before .EQU/);
+		const message = "Syntax error - '*' is the PC, not a symbol .EQU can define: set it with '.org $1000'.";
+		expect(() => asm.assemble(src)).toThrow(message);
+		expect(() => asm.assemble("* .equ $2000")).toThrow(message);
 	});
 });

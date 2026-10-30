@@ -203,6 +203,8 @@ A constant, or a variable assigned once, can be used before it's defined. A vari
     jmp * + 3
 ```
 
+At the start of a statement, `*` is only for `* =`: `*` alone, `* nop` or `*:` are errors (`Syntax error - Expected '=' after '*': set the PC with '.org $1000'.`), and so is `*` after a word that isn't an instruction, read as a label, `brl *` on the 6502 (`Syntax error - (Unknown opcode?) Unexpected '*' after BRL`). `*` isn't a symbol: `* .equ $1000` is `Syntax error - '*' is the PC, not a symbol .EQU can define: set it with '.org $1000'.`
+
 The program counter stays in the CPU's address space: 16 bits on the 6502, 65C02 and 6809, 24 on the 65816, 32 on the RV32I. An address outside it is an error, never wrapped: `.org $10000` on the 6502 is `Address $10000 is outside the 6502's address space ($0..$FFFF).`, and so is a negative one. Code can end at the top of it, with its last byte at `$FFFF`, but not go past it: a statement whose bytes do, an instruction, data, `.fill`, is an error (`The PC goes past $FFFF, the top of the 6502's address space, to $10001.`). So is `.cpu` switching to a CPU the PC is past the top of.
 
 On a CPU whose PC stays in its bank, the 65816 (its PC is 16 bits, the bank doesn't follow it), an instruction can't cross a bank: one at `$01FFFE` taking 3 bytes is `The instruction at $1FFFE crosses into bank $02: the 65816's PC stays in its bank.` One whose last byte is at `$01FFFF` is fine, and data can cross a bank, as long addressing and indexing reach the next one. In a relocatable segment, the bank is only known when it's loaded: it isn't checked.

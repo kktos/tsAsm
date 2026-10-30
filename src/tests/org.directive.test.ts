@@ -93,5 +93,34 @@ describe("Directive: .ORG / *", () => {
 				expect(segments[0].data[offset2]).toBe(0xea); // NOP
 			}
 		});
+
+		it("should take '=' glued to it, and a label before it", () => {
+			const source = `
+            *=$1002
+            NOP
+            start * = $1004
+            NOP
+            .dw start
+        `;
+			expect(createAssembler().assemble(source)[0]?.data).toEqual([0, 0, 0xea, 0, 0xea, 0x03, 0x10]);
+		});
+
+		it.each(["*", "* nop", "*:", "* $10"])("should refuse '%s': only '* =' starts a statement with it", (statement) => {
+			const error = () => createAssembler().assemble(statement);
+			expect(error).toThrow("Syntax error - Expected '=' after '*': set the PC with '.org $1000'.");
+		});
+
+		it("should refuse the '=' on the next line", () => {
+			const source = `
+            *
+            = $2000
+        `;
+			expect(() => createAssembler().assemble(source)).toThrow("Syntax error - Expected '=' after '*': set the PC with '.org $1000'.");
+		});
+
+		it("should refuse it after an unknown mnemonic, read as a label", () => {
+			expect(() => createAssembler().assemble("brl *")).toThrow("Syntax error - (Unknown opcode?) Unexpected '*' after BRL");
+			expect(() => createAssembler().assemble("foo *")).toThrow("Syntax error - (Unknown opcode?) Unexpected '*' after FOO");
+		});
 	});
 });
