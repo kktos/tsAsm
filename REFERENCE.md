@@ -823,7 +823,7 @@ The 6502 reads the same syntax, without the 65C02's instructions and modes. On b
 
 - `asl` alone is `asl a`.
 - An operand that doesn't fit is an error, never truncated: an immediate in a byte (`-128..255`), an address in 16 bits, the address in `($12,x)`, `($12),y`, `($12)`, `rmb0 $12` and `bbr0 $12,loop` in the zero page.
-- An operand starting with `(` is an indirect mode: `lda (2+3)*4` is an error. Write `lda 0+(2+3)*4`.
+- An operand is an indirect mode when its first `(` closes at its end, `($12)` or `($12,x)`, or right before `,y`: `($12),y`. Otherwise its parentheses only group an expression: `lda (2+3)*4` is `lda $14`, `lda (1)+(2),y` is `lda $0003,y`. `lda ($12),x` is an error, not `lda $12,x`: it is most likely a typo for `($12,x)`.
 
 A `.b` or `.w` suffix forces the addressing mode of an address, whatever its value. Without one, an address that fits in the zero page uses it.
 

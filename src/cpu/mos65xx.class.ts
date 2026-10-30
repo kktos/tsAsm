@@ -2,7 +2,7 @@ import { RelocValue } from "../assembler/reloc-value.class";
 import type { OperatorStackToken } from "../shared/lexer/lexer.class";
 import { getHex } from "../utils/hex.util";
 import { assertFitsInBytes } from "../utils/number.utils";
-import { findTopLevelComma } from "../utils/token.utils";
+import { findClosingParen, findTopLevelComma } from "../utils/token.utils";
 import type { CPUHandler, ModeInfo, OperandReader, ResolvedModeInfo } from "./cpuhandler.interface";
 import type { Mos65xxMode, OpcodeSet } from "./mos65xx.opcodes";
 
@@ -114,14 +114,6 @@ export class Mos65xxHandler implements CPUHandler<Mos65xxModeInfo> {
 		return { ...info, resolvedAddress: value.offset, fixup: { at: 1, size: 2, value } };
 	}
 
-	/** Extracts tokens between two delimiters (e.g., inside parentheses). */
-	private extractTokensBetween(tokens: OperatorStackToken[], startVal: string, endVal: string) {
-		const start = tokens.findIndex((t) => t.value === startVal);
-		const end = tokens.findIndex((t) => t.value === endVal);
-		if (start === -1 || end === -1 || start >= end) return [];
-		return tokens.slice(start + 1, end);
-	}
-
 	/**
 	 * Zero page or absolute, for a direct or indexed operand (`index` is "", ",X" or ",Y").
 	 * A suffix forces it, if the instruction has that form: .b zero page (with the address's low byte), .w absolute.
@@ -231,31 +223,35 @@ export class Mos65xxHandler implements CPUHandler<Mos65xxModeInfo> {
 			return modeInfo("IMMEDIATE", value);
 		}
 
-		// 4. Indirect, Indirect Indexed Modes: the instruction's modes tell (abs) from (zp), and (abs,X) from (zp,X)
-		if (tokenIs(0, "(")) {
+		// 4. Indirect modes: the operand's first `(` closes at its end, `(e)` or `(e,X)`, or right before `,Y`: `(e),Y`.
+		// Otherwise its parentheses only group an expression: `lda (2+3)*4,x` (TODO 3.10).
+		// The instruction's modes tell (abs) from (zp), and (abs,X) from (zp,X).
+		const close = tokenIs(0, "(") ? findClosingParen(operandTokens, 0) : -1;
+		const isIndexedAfter = (index: string) => close !== -1 && close === numTokens - 3 && tokenIs(close + 1, ",") && tokenIs(close + 2, index);
+		if (close === numTokens - 1 || isIndexedAfter("Y")) {
 			rejectSuffix();
+			const inner = operandTokens.slice(1, close);
 
 			// Indirect Y: (zp),Y
-			if (tokenIs(numTokens - 1, "Y") && tokenIs(numTokens - 2, ",")) {
-				const value = operands.value(this.extractTokensBetween(operandTokens, "(", ")"));
-				return this.addressInfo(baseMnemonic, modeInfo("INDIRECT_Y"), value, 0xff);
+			if (close !== numTokens - 1) return this.addressInfo(baseMnemonic, modeInfo("INDIRECT_Y"), operands.value(inner), 0xff);
+
+			// Indexed: JMP (abs,X), or (zp,X)
+			const comma = findTopLevelComma(inner);
+			if (comma !== -1) {
+				if (comma !== inner.length - 2 || inner[comma + 1]?.value.toUpperCase() !== "X")
+					throw new Error(`Invalid addressing mode for instruction ${mnemonic}`);
+				const value = operands.value(inner.slice(0, comma));
+				const isAbsolute = instructionModes.has("ABSOLUTE_INDIRECT_X");
+				return this.addressInfo(baseMnemonic, modeInfo(isAbsolute ? "ABSOLUTE_INDIRECT_X" : "INDIRECT_X"), value, isAbsolute ? 0xffff : 0xff);
 			}
 
-			if (tokenIs(numTokens - 1, ")")) {
-				// Indexed: JMP (abs,X), or (zp,X)
-				if (tokenIs(numTokens - 2, "X") && tokenIs(numTokens - 3, ",")) {
-					const value = operands.value(this.extractTokensBetween(operandTokens, "(", ","));
-					const isAbsolute = instructionModes.has("ABSOLUTE_INDIRECT_X");
-					return this.addressInfo(baseMnemonic, modeInfo(isAbsolute ? "ABSOLUTE_INDIRECT_X" : "INDIRECT_X"), value, isAbsolute ? 0xffff : 0xff);
-				}
-
-				// JMP (abs), or (zp)
-				const value = operands.value(this.extractTokensBetween(operandTokens, "(", ")"));
-				const isAbsolute = instructionModes.has("INDIRECT");
-				return this.addressInfo(baseMnemonic, modeInfo(isAbsolute ? "INDIRECT" : "ZEROPAGE_INDIRECT"), value, isAbsolute ? 0xffff : 0xff);
-			}
-			throw new Error(`Invalid addressing mode for instruction ${mnemonic}`);
+			// JMP (abs), or (zp)
+			const value = operands.value(inner);
+			const isAbsolute = instructionModes.has("INDIRECT");
+			return this.addressInfo(baseMnemonic, modeInfo(isAbsolute ? "INDIRECT" : "ZEROPAGE_INDIRECT"), value, isAbsolute ? 0xffff : 0xff);
 		}
+		// `(e),X` isn't a 65xx mode: most likely a typo for (e,X), so not read as `e,X`.
+		if (isIndexedAfter("X")) throw new Error(`Invalid addressing mode for instruction ${mnemonic}: did you mean (zp,X)?`);
 
 		// 5. Absolute/Zero Page Indexed Modes (e.g., LDA $1234,X or LDA $40,Y)
 		if ((tokenIs(numTokens - 1, "X") || tokenIs(numTokens - 1, "Y")) && tokenIs(numTokens - 2, ",")) {

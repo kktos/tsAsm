@@ -126,13 +126,9 @@ Symbols ignore case, properties don't: with `{ Id: 5 }`, `d[0].Id` works but `d[
 
 `.macro m base` / `.function f(x) = base + x` / `.db f(1)` / `.end` → `Undefined symbol 'BASE'.`: a function's expression is evaluated without macro parameters, as it's called from anywhere. To decide: substitute them at the definition, as a nested macro call's arguments are (`substituteArgument`), or keep it an error and say so. Found with 4.8.
 
-### 3.10 A parenthesised expression as a 6502 address
-
-An operand starting with `(` is an indirect mode on the 6502 and 65C02, or an error: `lda (2+3)*4`, `lda (2+3)*4,x` → `Invalid addressing mode for instruction LDA`, where `lda 0+(2+3)*4` works. Until #175 the 6502 read them as expressions, and `lda ($12),x` as `lda $12,x`. To decide: keep it (as now), or read an operand that isn't an indirect shape as an expression, `(e),x` and `(e),y` without a `(zp),Y` form staying errors (they look like a typo for an indirect mode).
-
 ### 3.11 A bracketed operand on the 65816
 
-A `[` that doesn't follow an operand starts an array literal (`expression.ts`): `lda [$12]` and `lda [$12],y`, the 65816's indirect long (4.24), would be read as an expression holding an array, not as an addressing mode. The 65xx operand reader has to recognise the bracket shapes before calling the expression parser, as it does for `(` (3.10). To decide, with 3.10: what `lda [1,2]` or `lda [$12]+1` give (recommended: errors, as `(e),x` is). Indexing after a name (`lda tbl[2]`) isn't affected. Found while listing what the 65816 needs.
+A `[` that doesn't follow an operand starts an array literal (`expression.ts`): `lda [$12]` and `lda [$12],y`, the 65816's indirect long (4.24), would be read as an expression holding an array, not as an addressing mode. The 65xx operand reader has to recognise the bracket shapes before calling the expression parser, as it does for `(` (3.10, #197). To decide: what `lda [1,2]` or `lda [$12]+1` give (recommended: errors, as `(e),x` is). Indexing after a name (`lda tbl[2]`) isn't affected. Found while listing what the 65816 needs.
 
 ## 4. Features (ideas)
 
@@ -230,32 +226,10 @@ D (direct page) and DBR (data bank) only get their values at run time: the assem
 - **Hints are reported** at a level of their own, not as warnings. On by default: there are none without `.dp` / `.dbank`, so writing one is already asking for them. `.option hints off` turns them off.
 - **In `Mos65xxHandler`**, on the profile of 4.24: the suffix `L: 3` and a long width next to zero page and absolute in `selectAddressMode`.
 
-Before it: 24-bit addresses (4.23). Relocatable labels (4.19) change how the mode is chosen: decide them first.
+- **Relocatable values** (4.19): a relocatable label is never direct page, whatever its offset (the 6502 / 65C02 since #181): absolute in its own segment, long elsewhere unless `.w`. "The size comes from the value" only applies to plain numbers. `jmp` / `jsr` to another relocatable segment are errors suggesting `jml` / `jsl`: its bank isn't known. A forward reference to a label of another relocatable segment is absolute in pass 1 and needs long in pass 2: the forward-reference error above, `.l` or define it earlier. A relocatable value where a width is needed is an error, as where a number is (#180).
+- **No whole-program `relocatable` setting:** the mode comes from each value, so a project-wide flag adds nothing to it, nor tells pass 1 which segment a forward reference is in. `.segment CODE { reloc: true }` says it in one line.
 
-### 4.19 Relocatable values and fixups
-
-For relocatable outputs (Apple IIgs OMF, 4.22; later o65 or another object format). Today a label is a plain number and the linker only receives bytes: nothing says which bytes hold an address, so no relocation record can be written.
-
-**Plan, one PR per step,** 4.19 to 4.22:
-
-1. The declaration: `relocatable: true` / `reloc: true`, no `start`, `.org` an error. Done in #178.
-2. Relocatable values: a label in a relocatable segment is a segment and an offset, through expressions (below); an error where a plain number is needed; the listing and the `.sym` file show `CODE+$0012`. Done in #180.
-3. Fixups: recorded in pass 2, for data then operands, with the shift of `<`, `>`, `^`. Done in #181, for the 65xx's operands; the other CPUs' are 1.66.
-4. The linker script reads `seg.relocs` and `seg.attrs` (4.21). Done in #182.
-5. The linker script reads the assembler's symbols (4.21). Done in #183.
-6. OMF output: the `omf.linker.asm` script library (4.22). Done in #185.
-
-Addressing modes go with 4.18, after step 2.
-
-- **Relocatable segments:** declared in #178; their labels are a segment and an offset since #180.
-- **Without a linker script:** an error since #180.
-- **Through expressions:** done in #180, see `CHANGELOG.md`.
-- **Fixups:** done in #181: `seg.relocs`, `{ offset, size, shift, segment, targetOffset }`, see `CHANGELOG.md`. Read by the linker script since #182.
-- **Addressing modes (with 4.18):** a relocatable label is never direct page, whatever its offset (the 6502 / 65C02 since #181): absolute in its own segment, long elsewhere unless `.w`. "The size comes from the value" only applies to plain numbers. `jmp` / `jsr` to another relocatable segment are errors suggesting `jml` / `jsl`: its bank isn't known.
-- **Where a plain number is needed:** an error since #180. Left: the CPU's widths, with 4.18.
-- **Listing and symbol file:** done in #180: `CODE+0012     main:`, `label reloc = CODE+$0012`.
-
-To decide before 4.18 is implemented, since it changes how the mode is chosen: whether a whole-program `relocatable` project setting is wanted.
+Before it: 24-bit addresses (4.23).
 
 ### 4.21 Segment attributes and symbols in the linker script
 
@@ -290,7 +264,7 @@ The first step, before 4.16: `.cpu 65816` (and `65C816`) with its opcodes and op
 
 **Plan for the 65816,** decisions first, then one PR per step:
 
-- Decisions: 3.10 and 3.11 (operands starting with `(` or `[`), and whether a whole-program `relocatable` project setting is wanted (4.19).
+- Decisions: 3.11 (operands starting with `[`).
 
 1. 4.23: the PC's range, addresses over 16 bits.
 2. 4.24: the CPU, its opcodes and operands (below).

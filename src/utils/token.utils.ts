@@ -18,6 +18,17 @@ export function findTopLevelComma(tokens: Token[]): number {
 	return -1;
 }
 
+/** Index of the `)` that closes the `(` at `open`, skipping nested `( )` and `[ ]`, or -1 if it's never closed. */
+export function findClosingParen(tokens: Token[], open: number): number {
+	let depth = 0;
+	for (let index = open; index < tokens.length; index++) {
+		const token = tokens[index] as Token;
+		depth += nestingDelta(token);
+		if (depth === 0) return token.value === ")" ? index : -1;
+	}
+	return -1;
+}
+
 /** The token as written: its raw text, else its value. */
 export function tokenText(token: Token): string {
 	if (token.type === "STRING") return `"${token.value}"`;
