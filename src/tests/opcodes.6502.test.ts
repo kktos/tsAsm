@@ -318,6 +318,24 @@ describe("6502 Opcodes", () => {
 		expect(() => assembleAndGetCode(source)).toThrow("Invalid addressing mode for instruction LD");
 	});
 
+	it.each(["LDA [$12]", "LDA [$12],Y", "LDA [$12],X", "LDA [1,2]", "JMP [$1234]"])(
+		"should take an operand whose first [ closes at its end, or before ,Y or ,X, as a bracket mode the 6502 doesn't have: %s (TODO 3.11)",
+		(source) => {
+			expect(() => assembleAndGetCode(source)).toThrow(`Invalid addressing mode for instruction ${source.slice(0, 3)}`);
+		},
+	);
+
+	it.each([
+		["LDA [1,2][1]", [0xa5, 0x02]],
+		["LDA [$12][0],Y", [0xb9, 0x12, 0x00]],
+	])("should read an operand whose first [ closes before its end as an expression: %s", (source, expected) => {
+		expect(assembleAndGetCode(source)).toEqual(expected);
+	});
+
+	it("should keep an array in an expression an error: LDA [$12]+1", () => {
+		expect(() => assembleAndGetCode("LDA [$12]+1")).toThrow("Binary operator '+' requires two numbers.");
+	});
+
 	describe("operand ranges", () => {
 		it("should accept operands at the limits", () => {
 			const source = `

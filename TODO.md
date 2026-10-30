@@ -126,10 +126,6 @@ Symbols ignore case, properties don't: with `{ Id: 5 }`, `d[0].Id` works but `d[
 
 `.macro m base` / `.function f(x) = base + x` / `.db f(1)` / `.end` → `Undefined symbol 'BASE'.`: a function's expression is evaluated without macro parameters, as it's called from anywhere. To decide: substitute them at the definition, as a nested macro call's arguments are (`substituteArgument`), or keep it an error and say so. Found with 4.8.
 
-### 3.11 A bracketed operand on the 65816
-
-A `[` that doesn't follow an operand starts an array literal (`expression.ts`): `lda [$12]` and `lda [$12],y`, the 65816's indirect long (4.24), would be read as an expression holding an array, not as an addressing mode. The 65xx operand reader has to recognise the bracket shapes before calling the expression parser, as it does for `(` (3.10, #197). To decide: what `lda [1,2]` or `lda [$12]+1` give (recommended: errors, as `(e),x` is). Indexing after a name (`lda tbl[2]`) isn't affected. Found while listing what the 65816 needs.
-
 ## 4. Features (ideas)
 
 ### 4.1 Default values for macro parameters
@@ -262,9 +258,7 @@ Before 4.18: the 65816 addresses 16 MB. Nothing checks the PC's range today: `.o
 
 The first step, before 4.16: `.cpu 65816` (and `65C816`) with its opcodes and operand shapes. 4.16 to 4.18 then add widths, emulation mode and long addressing to it.
 
-**Plan for the 65816,** decisions first, then one PR per step:
-
-- Decisions: 3.11 (operands starting with `[`).
+**Plan for the 65816,** one PR per step:
 
 1. 4.23: the PC's range, addresses over 16 bits.
 2. 4.24: the CPU, its opcodes and operands (below).
@@ -273,7 +267,7 @@ The first step, before 4.16: `.cpu 65816` (and `65C816`) with its opcodes and op
 5. 4.18: direct page, absolute and long addressing.
 
 - **In `Mos65xxHandler`** (#175): a `P65816` profile, with the opcode sets `[NMOS, CMOS_ADDITIONS, WDC_ADDITIONS, W65816_ADDITIONS]` (#176: `STP`, `WAI`) and no `ROCKWELL_BITOPS` (`$07` is `RMB0 zp` on the 65C02, `ORA [dp]` on the 65816).
-- **Operands:** the bracket ones (`[dp]`, `[dp],y`, `[abs]`; 3.11 first), stack relative (`sr,s`, `(sr,s),y`), `MVN` / `MVP` (two banks), 16-bit relative (`BRL`, `PER`). The long-only instructions, `JML` and `JSL`, with a 24-bit operand.
+- **Operands:** the bracket ones (`[dp]`, `[dp],y`, `[abs]`), where #198 throws today (3.11), stack relative (`sr,s`, `(sr,s),y`), `MVN` / `MVP` (two banks), 16-bit relative (`BRL`, `PER`). The long-only instructions, `JML` and `JSL`, with a 24-bit operand.
 - **Until 4.16, the widths stay 8:** a `REP` clearing bit 4 or 5 is an error saying the 16-bit widths come with 4.16. Without it, `rep #$20` / `lda #$12` would give `A9 12`, which the CPU reads with a 16-bit accumulator: wrong bytes, silently.
 - **Until 4.18:** an address over $FFFF on an instruction with a short form is an error, as now on the 6502; choosing long from the value, and `.l`, come with 4.18.
 
