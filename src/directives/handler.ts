@@ -161,7 +161,10 @@ export class DirectiveHandler {
 		this.cpuDirectiveMap.set(name, cpus);
 	}
 
-	/** A CPU's directive is an error while another CPU is the current one. */
+	/**
+	 * A CPU's directive is an error while another CPU is the current one. It takes no operand: what follows it on its line
+	 * would be left for the next statement (`.native foo` defining `foo`), so it's an error.
+	 */
 	private find(directive: ScalarToken): IDirective | undefined {
 		const handler = this.directiveMap.get(directive.value);
 		if (handler) return handler;
@@ -170,7 +173,11 @@ export class DirectiveHandler {
 		if (!cpus) return undefined;
 		const current = this.assembler.getCPUHandler();
 		const cpuHandler = cpus.get(current);
-		if (cpuHandler) return cpuHandler;
+		if (cpuHandler) {
+			const [extra] = this.parser.getInstructionTokens(directive);
+			if (extra) throw AsmError.at(`Unexpected '${extra.raw ?? extra.value}' after '.${directive.raw ?? directive.value}': it takes no operand.`, extra);
+			return cpuHandler;
+		}
 		const names = [...cpus.keys()].map((cpu) => cpu.cpuType).join(" / ");
 		throw AsmError.at(`'.${directive.raw ?? directive.value}' is a ${names} directive: the current CPU is ${current.cpuType}.`, directive);
 	}

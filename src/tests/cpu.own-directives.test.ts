@@ -53,6 +53,17 @@ describe("A CPU's own directives", () => {
 		expect(assemble([new WideCpu()], source)).toEqual([0, 1]);
 	});
 
+	it("should take no operand: what follows it on its line is an error, not the next statement", () => {
+		expect(() => assemble([new WideCpu()], ".wide nop")).toThrow("Unexpected 'nop' after '.wide': it takes no operand.");
+		expect(() => assemble([new WideCpu()], ".wide foo")).toThrow("Unexpected 'foo' after '.wide': it takes no operand.");
+		const source = `
+			.wide ; a comment
+			.if 1 { .wide }
+			.emitwide
+		`;
+		expect(assemble([new WideCpu()], source)).toEqual([1]);
+	});
+
 	it("should be an error while another CPU is the current one", () => {
 		const source = `
 			.wide

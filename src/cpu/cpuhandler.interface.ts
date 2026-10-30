@@ -1,6 +1,7 @@
 import type { RelocValue } from "../assembler/reloc-value.class";
 import type { IDirective } from "../directives/directive.interface";
 import type { OperatorStackToken } from "../shared/lexer/lexer.class";
+import type { DefinitionSite } from "../utils/error.utils";
 
 /** * Defines the standard addressing modes recognizable by the assembler.
  * Changed to 'string' to allow CPU Handlers to define their own specific modes
@@ -39,6 +40,18 @@ export interface OperandReader {
 	branchTarget(tokens: OperatorStackToken[]): number | null;
 }
 
+/** What the assembler tells a CPU about an instruction besides its operands: what came before it, and where it is. */
+export interface InstructionContext {
+	/**
+	 * The upper-case mnemonic, without its suffix, of the instruction right before this one with nothing between them:
+	 * no label, no byte written, no PC moved, no segment switched. Undefined otherwise: the CPU could reach this
+	 * instruction another way, or run something else first.
+	 */
+	previous: string | undefined;
+	/** Where this instruction is: for a note pointing back to it in a later error. */
+	site(): DefinitionSite;
+}
+
 /** What encodeInstruction gets, in pass 2: the operand's value is known, and the PC is added. */
 export type ResolvedModeInfo<TModeInfo extends ModeInfo = ModeInfo> = TModeInfo & {
 	resolvedAddress: number;
@@ -70,8 +83,9 @@ export interface CPUHandler<TModeInfo extends ModeInfo = ModeInfo> {
 	mnemonicSuffixes?: readonly string[];
 
 	/**
-	 * The CPU's own directives, by upper-case name: the 65816's `.a16`. They are known whatever the CPU, and run only
-	 * while this one is the current CPU. A name can't be a general directive's.
+	 * The CPU's own directives, by upper-case name: the 65816's `.native`. They are known whatever the CPU, and run only
+	 * while this one is the current CPU. A name can't be a general directive's. They take no operand: anything after
+	 * one on its line is an error.
 	 */
 	directives?: Readonly<Record<string, IDirective>>;
 
@@ -85,12 +99,15 @@ export interface CPUHandler<TModeInfo extends ModeInfo = ModeInfo> {
 	 * based on the mnemonic and the structure of the operand tokens.
 	 * @param resolveValue A function provided by the Assembler to evaluate expressions: a relocatable value is an error.
 	 * @param operands For a CPU that records fixups, in place of `resolveValue`: see `OperandReader`.
+	 * @param context What came before the instruction, and where it is: see `InstructionContext`. Called once per pass for
+	 * each instruction, in order: a CPU keeping state (the 65816's E) changes it here.
 	 */
 	resolveAddressingMode(
 		mnemonic: string,
 		operandTokens: OperatorStackToken[],
 		resolveValue: (tokens: OperatorStackToken[]) => number | null,
 		operands: OperandReader,
+		context?: InstructionContext,
 	): TModeInfo;
 
 	/** Checks if a given mnemonic corresponds to a known instruction for this CPU. */
