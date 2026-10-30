@@ -3,7 +3,7 @@ import type { OperatorStackToken } from "../shared/lexer/lexer.class";
 import { getHex } from "../utils/hex.util";
 import { assertFitsInBytes } from "../utils/number.utils";
 import { findClosingBracket, findTopLevelComma } from "../utils/token.utils";
-import type { CPUHandler, ModeInfo, OperandReader, ResolvedModeInfo } from "./cpuhandler.interface";
+import type { CPUHandler, InstructionContext, ModeInfo, OperandReader, ResolvedModeInfo } from "./cpuhandler.interface";
 import type { Mos65xxMode, OpcodeSet } from "./mos65xx.opcodes";
 
 /** What makes one 65xx CPU: its name, the opcode sets it's made of, and its mnemonic suffixes. */
@@ -17,9 +17,12 @@ export interface Mos65xxProfile {
 	bankBits?: number;
 	/** Merged per mnemonic when the handler is built: a mnemonic and mode given by two sets is an error. */
 	opcodeSets: readonly OpcodeSet[];
-	/** The address width, in bytes, each suffix forces: `lda.b` zero page, `lda.w` absolute. */
-	suffixes: Readonly<Record<string, 1 | 2>>;
+	/** The address width, in bytes, each suffix forces: `lda.b` zero page, `lda.w` absolute, the 65816's `lda.l` long. */
+	suffixes: Readonly<Record<string, AddressWidth>>;
 }
+
+/** An address's width in bytes: zero page, absolute, long. */
+type AddressWidth = 1 | 2 | 3;
 
 /**
  * BBR / BBS have two operands: the branch target is in resolvedAddress, the zero page address here. MVN / MVP too:
@@ -28,6 +31,8 @@ export interface Mos65xxProfile {
 export interface Mos65xxModeInfo extends ModeInfo {
 	zeroPage?: number | null;
 	sourceBank?: number | null;
+	/** JMP's or JSR's absolute target, all of it in resolvedAddress: it must be in the instruction's bank, checked when encoded. */
+	programBank?: boolean;
 }
 
 /** An immediate's size, and what the listing writes after it: see `Mos65xxHandler.immediateWidth`. */
@@ -69,12 +74,17 @@ const MODE_BYTES: Record<Mos65xxMode, number> = {
 /** The largest address of each width: zero page, absolute, long. */
 type AddressMax = 0xff | 0xffff | 0xffffff;
 
-/** The zero page and absolute modes of a direct or indexed operand. */
+/** The zero page, absolute and long modes of a direct or indexed operand, by width: there's no long `,Y`. */
 const ADDRESS_MODES = {
-	"": ["ZEROPAGE", "ABSOLUTE"],
-	",X": ["ZEROPAGE_X", "ABSOLUTE_X"],
-	",Y": ["ZEROPAGE_Y", "ABSOLUTE_Y"],
-} as const satisfies Record<string, readonly [Mos65xxMode, Mos65xxMode]>;
+	"": ["ZEROPAGE", "ABSOLUTE", "ABSOLUTE_LONG"],
+	",X": ["ZEROPAGE_X", "ABSOLUTE_X", "ABSOLUTE_LONG_X"],
+	",Y": ["ZEROPAGE_Y", "ABSOLUTE_Y", undefined],
+} as const satisfies Record<string, readonly [Mos65xxMode, Mos65xxMode, Mos65xxMode | undefined]>;
+
+const WIDTH_NAMES: Record<AddressWidth, string> = { 1: "zero page", 2: "absolute", 3: "long" };
+
+/** JMP and JSR, whose absolute target is in the program bank, and the 65816's instruction reaching another one. */
+const LONG_JUMPS: Readonly<Record<string, string>> = { JMP: "JML", JSR: "JSL" };
 
 /** The 6502 family, one CPU per profile. */
 export class Mos65xxHandler implements CPUHandler<Mos65xxModeInfo> {
@@ -162,55 +172,87 @@ export class Mos65xxHandler implements CPUHandler<Mos65xxModeInfo> {
 		return tokens[0]?.value === "#" ? tokens.slice(1) : tokens;
 	}
 
+	/** The 65816's: an address can be long, over $FFFF. */
+	private get hasLongAddresses() {
+		return this.addressBits > 16;
+	}
+
 	/**
-	 * Zero page or absolute, for a direct or indexed operand (`index` is "", ",X" or ",Y").
-	 * A suffix forces it, if the instruction has that form: .b zero page (with the address's low byte), .w absolute.
-	 * Without one: zero page when the address is known, fits, and the instruction has that form, else absolute
-	 * (the worst case for an address defined later). A relocatable address is absolute: its address is only known when
-	 * it's loaded.
+	 * Zero page, absolute or long, for a direct or indexed operand (`index` is "", ",X" or ",Y").
+	 * A suffix forces it, if the instruction has that form: .b zero page and .w absolute, with the address's low byte or
+	 * low 16 bits (the writer says it's in the direct page, the data or program bank), .l long.
+	 * Without one, the width the address needs (`addressWidth`), or a wider one the instruction has: `jmp $12` is absolute.
 	 */
 	private selectAddressMode(
 		mnemonic: string,
 		modes: ReadonlyMap<Mos65xxMode, number>,
 		index: keyof typeof ADDRESS_MODES,
 		address: number | RelocValue | null,
-		forcedWidth: 1 | 2 | null,
+		forcedWidth: AddressWidth | null,
+		context: InstructionContext | undefined,
 	): Mos65xxMode {
-		const base = mnemonic.split(".")[0];
-		const [zeroPageMode, absoluteMode] = ADDRESS_MODES[index];
-		const hasZeroPage = modes.has(zeroPageMode);
-		const hasAbsolute = modes.has(absoluteMode);
+		const base = mnemonic.split(".")[0] as string;
+		const forms = ADDRESS_MODES[index];
+		const modeOf = (width: AddressWidth) => {
+			const mode = forms[width - 1];
+			return mode && modes.has(mode) ? mode : undefined;
+		};
 
-		if (address instanceof RelocValue) {
-			if (forcedWidth === 1 || !hasAbsolute)
-				throw new Error(`'${mnemonic}' needs a zero page address here, and ${address} is relocatable: it can't be in zero page.`);
-			return absoluteMode;
-		}
+		if (address instanceof RelocValue && (forcedWidth === 1 || (!modeOf(2) && !modeOf(3))))
+			throw new Error(`'${mnemonic}' needs a zero page address here, and ${address} is relocatable: it can't be in zero page.`);
 
-		if (forcedWidth === 1) {
-			if (!hasZeroPage) throw new Error(`'${mnemonic}': ${base} has no zero page${index} form.`);
-			return zeroPageMode;
-		}
-		if (forcedWidth === 2) {
-			if (!hasAbsolute) throw new Error(`'${mnemonic}': ${base} has no absolute${index} form.`);
-			return absoluteMode;
+		if (forcedWidth) {
+			const mode = modeOf(forcedWidth);
+			if (!mode) throw new Error(`'${mnemonic}': ${base} has no ${WIDTH_NAMES[forcedWidth]}${index} form.`);
+			return mode;
 		}
 
-		const fitsZeroPage = address !== null && address >= 0x00 && address <= 0xff;
-		if (hasZeroPage && (fitsZeroPage || !hasAbsolute)) {
-			if (address !== null && !fitsZeroPage) throw new Error(`${base} has no absolute${index} form, and $${getHex(address)} isn't a zero page address.`);
-			return zeroPageMode;
+		const width = this.addressWidth(base, address, context);
+		const mode = modeOf(width) ?? (width === 1 ? modeOf(2) : undefined);
+		if (mode) return mode;
+		if (width === 3) {
+			const what =
+				address instanceof RelocValue
+					? `${address} is in another segment, whose bank is only known when it's loaded`
+					: `$${getHex(address ?? 0)} is over $FFFF`;
+			const bank = base === "PEA" ? "" : ", in the data bank";
+			throw new Error(`${base} has no long${index} form, and ${what}: ${base.toLowerCase()}.w takes its low 16 bits${bank}.`);
 		}
-		if (hasAbsolute) return absoluteMode;
-		throw new Error(`Invalid addressing mode for instruction ${mnemonic}`);
+		// Absolute needed, and only zero page: `stx $12,y`
+		const zeroPageMode = modeOf(1);
+		if (!zeroPageMode) throw new Error(`Invalid addressing mode for instruction ${mnemonic}`);
+		if (address !== null) throw new Error(`${base} has no absolute${index} form, and $${getHex(address as number)} isn't a zero page address.`);
+		return zeroPageMode;
 	}
 
-	/** The operands are read with `operands`: a relocatable address is absolute, its fixup recorded. See `addressInfo`. */
+	/**
+	 * The width an address needs, without a suffix. A number's size: zero page up to $FF, absolute up to $FFFF, long
+	 * above. A symbol defined later is absolute in pass 1 (the worst case on the 6502). JMP's and JSR's is absolute:
+	 * their target is in the program bank. A relocatable address is absolute in its own segment, and long in another on
+	 * the 65816, its bank only known when it's loaded: JMP and JSR can't reach it.
+	 */
+	private addressWidth(base: string, address: number | RelocValue | null, context: InstructionContext | undefined): AddressWidth {
+		const longJump = LONG_JUMPS[base];
+		if (address instanceof RelocValue) {
+			if (!this.hasLongAddresses || address.byteShift !== undefined || address.segment === context?.relocatableSegment) return 2;
+			if (longJump)
+				throw new Error(
+					`${base} can't reach ${address} with an absolute address, as segment '${address.segment}' is relocatable, its bank only known when it's loaded: ${longJump.toLowerCase()} reaches it.`,
+				);
+			return 3;
+		}
+		if (address === null || longJump) return 2;
+		if (address <= 0xff) return 1;
+		return address <= 0xffff ? 2 : 3;
+	}
+
+	/** The operands are read with `operands`: a relocatable address is absolute or long, its fixup recorded. See `addressInfo`. */
 	resolveAddressingMode(
 		mnemonic: string,
 		operandTokens: OperatorStackToken[],
 		_resolveValue: (tokens: OperatorStackToken[]) => number | null,
 		operands: OperandReader,
+		context?: InstructionContext,
 	): Mos65xxModeInfo {
 		// Check if the base mnemonic is supported. If not, THROW to signal a potential label.
 		const parts = mnemonic.split(".");
@@ -227,15 +269,16 @@ export class Mos65xxHandler implements CPUHandler<Mos65xxModeInfo> {
 		};
 
 		const sizeSuffix = parts[1] ?? "";
-		let forcedWidth: 1 | 2 | null = null;
+		let forcedWidth: AddressWidth | null = null;
 		if (sizeSuffix) {
 			if (!Object.hasOwn(this.profile.suffixes, sizeSuffix)) throw new Error(`'${mnemonic}': the ${this.cpuType} has no '.${sizeSuffix}' suffix.`);
 			forcedWidth = this.profile.suffixes[sizeSuffix] ?? null;
 		}
 
-		// A suffix sets the size of an address (zero page or absolute): any other operand can't take one.
+		// A suffix sets the size of an address (zero page, absolute or long): any other operand can't take one.
+		const widths = this.hasLongAddresses ? "zero page, absolute or long" : "zero page or absolute";
 		const rejectSuffix = () => {
-			if (sizeSuffix) throw new Error(`'${mnemonic}': .${sizeSuffix} only applies to an address that can be zero page or absolute.`);
+			if (sizeSuffix) throw new Error(`'${mnemonic}': .${sizeSuffix} only applies to an address that can be ${widths}.`);
 		};
 
 		const numTokens = operandTokens.length;
@@ -278,7 +321,8 @@ export class Mos65xxHandler implements CPUHandler<Mos65xxModeInfo> {
 		// 3. Immediate Mode (e.g., LDA #$42), or one byte of a relocatable address (LDA #<label). On two bytes, the
 		// 65816's 16-bit widths: a relocatable address in its bank, or one byte of it then 0, as `.dw <label`.
 		if (tokenIs(0, "#")) {
-			const width = this.immediateWidth(baseMnemonic, forcedWidth);
+			if (forcedWidth === 3) rejectSuffix();
+			const width = this.immediateWidth(baseMnemonic, forcedWidth === 3 ? null : forcedWidth);
 			if (!width) rejectSuffix();
 			const size = width?.bytes ?? 1;
 			const info = { ...modeInfo("IMMEDIATE"), bytes: 1 + size, ...(width?.listing && { listing: width.listing }) };
@@ -352,7 +396,7 @@ export class Mos65xxHandler implements CPUHandler<Mos65xxModeInfo> {
 		// 5b. Absolute/Zero Page Indexed Modes (e.g., LDA $1234,X or LDA $40,Y)
 		if ((tokenIs(numTokens - 1, "X") || tokenIs(numTokens - 1, "Y")) && tokenIs(numTokens - 2, ",")) {
 			const index = tokenIs(numTokens - 1, "X") ? ",X" : ",Y";
-			return this.directAddress(mnemonic, instructionModes, index, operands.value(operandTokens.slice(0, numTokens - 2)), forcedWidth, modeInfo);
+			return this.directAddress(mnemonic, instructionModes, index, operands.value(operandTokens.slice(0, numTokens - 2)), forcedWidth, modeInfo, context);
 		}
 
 		// 6. Relative Mode (Branches), and the 65816's 16-bit one: BRL, PER
@@ -361,30 +405,45 @@ export class Mos65xxHandler implements CPUHandler<Mos65xxModeInfo> {
 			return modeInfo(instructionModes.has("RELATIVE") ? "RELATIVE" : "RELATIVE_LONG", operands.branchTarget(operandTokens));
 		}
 
-		// 6b. An instruction whose only address is long: JML, JSL. The others choose it with 4.18.
+		// 6b. An instruction whose only address is long: JML, JSL. The others choose it in `selectAddressMode`.
 		if (instructionModes.has("ABSOLUTE_LONG") && !instructionModes.has("ABSOLUTE") && !instructionModes.has("ZEROPAGE")) {
 			rejectSuffix();
 			return this.addressInfo(baseMnemonic, modeInfo("ABSOLUTE_LONG"), operands.value(operandTokens), 0xffffff);
 		}
 
 		// 7. Absolute/Zero Page Direct (e.g., LDA $1234 or LDA MyLabel)
-		return this.directAddress(mnemonic, instructionModes, "", operands.value(operandTokens), forcedWidth, modeInfo);
+		return this.directAddress(mnemonic, instructionModes, "", operands.value(operandTokens), forcedWidth, modeInfo, context);
 	}
 
-	/** A direct or indexed address operand: zero page or absolute, see `selectAddressMode`. */
+	/**
+	 * A direct or indexed address operand: zero page, absolute or long, see `selectAddressMode`. In pass 2, it can't be
+	 * long if pass 1 made it shorter, a symbol defined after it unknown there.
+	 */
 	private directAddress(
 		mnemonic: string,
 		modes: ReadonlyMap<Mos65xxMode, number>,
 		index: keyof typeof ADDRESS_MODES,
 		value: number | RelocValue | null,
-		forcedWidth: 1 | 2 | null,
+		forcedWidth: AddressWidth | null,
 		modeInfo: (mode: Mos65xxMode, resolvedAddress?: number | null) => ModeInfo,
-	): ModeInfo {
-		if (!(value instanceof RelocValue)) this.checkAddress(value, 0xffff);
-		const mode = this.selectAddressMode(mnemonic, modes, index, value, forcedWidth);
-		// A number forced to zero page (.b) keeps its low byte; a relocatable address is absolute.
-		if (!(value instanceof RelocValue)) return modeInfo(mode, value);
-		return this.addressInfo(mnemonic.split(".")[0] as string, modeInfo(mode), value, 0xffff);
+		context: InstructionContext | undefined,
+	): Mos65xxModeInfo {
+		const base = mnemonic.split(".")[0] as string;
+		if (!(value instanceof RelocValue)) this.checkAddress(value, this.hasLongAddresses ? 0xffffff : 0xffff);
+		const mode = this.selectAddressMode(mnemonic, modes, index, value, forcedWidth, context);
+		const pass1Bytes = context?.pass1Bytes;
+		if (pass1Bytes !== undefined && MODE_BYTES[mode] === 4 && pass1Bytes < 4) {
+			const operand = value instanceof RelocValue ? `${value}` : `$${getHex(value ?? 0)}`;
+			throw new Error(
+				`${base} ${operand} needs a long address, but pass 1 made it absolute: a symbol in it is defined after the ${base}. Write ${base.toLowerCase()}.l, or define the symbol earlier.`,
+			);
+		}
+		// A number forced to zero page (.b) or absolute (.w) keeps its low byte or 16 bits, when encoded.
+		if (!(value instanceof RelocValue)) {
+			const programBank = this.bankBits !== undefined && !!LONG_JUMPS[base] && mode === "ABSOLUTE" && !forcedWidth && !context?.relocatableSegment;
+			return { ...modeInfo(mode, value), ...(programBank && { programBank }) };
+		}
+		return this.addressInfo(base, modeInfo(mode), value, MODE_BYTES[mode] === 4 ? 0xffffff : 0xffff);
 	}
 
 	/**
@@ -395,8 +454,23 @@ export class Mos65xxHandler implements CPUHandler<Mos65xxModeInfo> {
 		return undefined;
 	}
 
+	/** Whether `address` is in the bank of the instruction at `pc`: always on a CPU without banks. */
+	private inBankOf(address: number, pc: number) {
+		if (this.bankBits === undefined) return true;
+		const bankSize = 2 ** this.bankBits;
+		return Math.floor(address / bankSize) === Math.floor(pc / bankSize);
+	}
+
+	/** A branch's target, in the instruction's bank: the 65816 adds the offset there, wrapping. `offset` says which one. */
+	private checkBranchBank(modeInfo: ResolvedModeInfo<Mos65xxModeInfo>, offset: string) {
+		const { resolvedAddress: target, pc } = modeInfo;
+		if (!this.inBankOf(target, pc))
+			throw new Error(`Branch target $${getHex(target)} is in another bank than the instruction at $${getHex(pc)}: ${offset} stays in its bank.`);
+	}
+
 	/** A branch's offset from the next instruction, as a signed byte (two's complement). */
 	private branchOffset(modeInfo: ResolvedModeInfo<Mos65xxModeInfo>) {
+		this.checkBranchBank(modeInfo, "a branch");
 		const targetAddress = modeInfo.resolvedAddress;
 		const offset = targetAddress - (modeInfo.pc + modeInfo.bytes);
 		if (offset < -128 || offset > 127)
@@ -409,15 +483,24 @@ export class Mos65xxHandler implements CPUHandler<Mos65xxModeInfo> {
 	 * so any target in the instruction's bank is reached, and one in another bank never.
 	 */
 	private longBranchOffset(modeInfo: ResolvedModeInfo<Mos65xxModeInfo>) {
+		this.checkBranchBank(modeInfo, "a 16-bit offset");
+		return (modeInfo.resolvedAddress - (modeInfo.pc + modeInfo.bytes)) & 0xffff;
+	}
+
+	/** JMP's or JSR's absolute target, in the program bank: one in another bank is JML's or JSL's. */
+	private checkProgramBank(modeInfo: ResolvedModeInfo<Mos65xxModeInfo>, mnemonic: string) {
 		const { resolvedAddress: target, pc } = modeInfo;
-		if (Math.floor(target / 0x10000) !== Math.floor(pc / 0x10000))
-			throw new Error(`Branch target $${getHex(target)} is in another bank than the instruction at $${getHex(pc)}: a 16-bit offset stays in its bank.`);
-		return (target - (pc + modeInfo.bytes)) & 0xffff;
+		if (this.inBankOf(target, pc)) return;
+		const base = mnemonic.toUpperCase().split(".")[0] as string;
+		throw new Error(
+			`${base} $${getHex(target)} is in another bank than the instruction at $${getHex(pc)}: ${LONG_JUMPS[base]?.toLowerCase()} reaches it, and ${base.toLowerCase()}.w takes its low 16 bits, in the program bank.`,
+		);
 	}
 
 	/** Pass 2: Encodes the instruction using the resolved mode and address. */
-	encodeInstruction(_tokens: OperatorStackToken[], modeInfo: ResolvedModeInfo<Mos65xxModeInfo>): number[] {
+	encodeInstruction(tokens: OperatorStackToken[], modeInfo: ResolvedModeInfo<Mos65xxModeInfo>): number[] {
 		if (modeInfo.mode === "RELATIVE") return [modeInfo.opcode, this.branchOffset(modeInfo)];
+		if (modeInfo.programBank) this.checkProgramBank(modeInfo, tokens[0]?.value ?? "");
 
 		if (modeInfo.mode === "ZEROPAGE_RELATIVE") {
 			const { zeroPage } = modeInfo;

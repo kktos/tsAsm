@@ -81,6 +81,10 @@ export class Assembler {
 	private anonymousLabelsDefined = 0;
 	/** The last instruction, where its bytes end and how many labels there were then: see `instructionContext`. */
 	private lastInstruction: { mnemonic: string; end: number; segment: Segment | undefined; labels: number } | undefined;
+	/** Each instruction's size in pass 1, by its rank in the pass, and where it is: see `pass1Size`. */
+	private pass1Sizes: { key: string; bytes: number }[] = [];
+	/** The rank of the next instruction in the pass. */
+	private instructionRank = 0;
 
 	public pass: number;
 
@@ -283,6 +287,8 @@ export class Assembler {
 		this.cpuHandler = this.initialCpuHandler;
 		for (const cpu of this.cpuHandlers) cpu.resetState?.();
 		this.lastInstruction = undefined;
+		this.instructionRank = 0;
+		if (this.pass === 1) this.pass1Sizes = [];
 	}
 
 	private labelCount() {
@@ -295,8 +301,28 @@ export class Assembler {
 	 */
 	private instructionContext(mnemonicToken: ScalarToken): InstructionContext {
 		const last = this.lastInstruction;
-		const follows = last && last.end === this.PC.value && last.segment === this.linker.currentSegment && last.labels === this.labelCount();
-		return { previous: follows ? last.mnemonic : undefined, site: () => this.errorLocator.definitionSite(mnemonicToken) };
+		const segment = this.linker.currentSegment;
+		const follows = last && last.end === this.PC.value && last.segment === segment && last.labels === this.labelCount();
+		return {
+			previous: follows ? last.mnemonic : undefined,
+			site: () => this.errorLocator.definitionSite(mnemonicToken),
+			relocatableSegment: segment?.relocatable ? segment.name : undefined,
+			pass1Bytes: this.pass === 2 ? this.pass1Size(mnemonicToken) : undefined,
+		};
+	}
+
+	/** Where `mnemonicToken` is: the same instruction in both passes, unless they read other code (a `.if` on a symbol defined later). */
+	private instructionKey(mnemonicToken: ScalarToken) {
+		return `${this.streamManager.currentFilepath}:${mnemonicToken.line}:${mnemonicToken.column}`;
+	}
+
+	/**
+	 * The size pass 1 gave the instruction at `mnemonicToken`: the passes read the instructions in the same order, so
+	 * its rank tells it, if pass 1 had the same one there.
+	 */
+	private pass1Size(mnemonicToken: ScalarToken) {
+		const pass1 = this.pass1Sizes[this.instructionRank];
+		return pass1?.key === this.instructionKey(mnemonicToken) ? pass1.bytes : undefined;
 	}
 
 	/** An instruction's text in the listing, with what the CPU notes about it as a comment: `LDA #$1234 ; A16`. */
@@ -306,9 +332,11 @@ export class Assembler {
 	}
 
 	/** Records the instruction at `mnemonicToken`, assembled: the next one's `previous`, if nothing comes between. */
-	private recordInstruction(mnemonicToken: ScalarToken) {
+	private recordInstruction(mnemonicToken: ScalarToken, bytes: number) {
 		const mnemonic = mnemonicToken.value.toUpperCase().split(".")[0] as string;
 		this.lastInstruction = { mnemonic, end: this.PC.value, segment: this.linker.currentSegment, labels: this.labelCount() };
+		if (this.pass === 1) this.pass1Sizes[this.instructionRank] = { key: this.instructionKey(mnemonicToken), bytes };
+		this.instructionRank++;
 	}
 
 	/** Each pass starts with the options the assembler was given: the passes read the `.option`s in the same order. */
@@ -985,7 +1013,7 @@ export class Assembler {
 		const sizeInfo = this.cpuHandler.resolveAddressingMode(mnemonicToken.value, operandTokens, resolveValue, operands, context);
 		this.checkBank(instructionPC, sizeInfo.bytes);
 		this.PC.value += sizeInfo.bytes;
-		this.recordInstruction(mnemonicToken);
+		this.recordInstruction(mnemonicToken, sizeInfo.bytes);
 
 		this.lister.bytes({
 			addr: instructionPC,
@@ -1030,7 +1058,7 @@ export class Assembler {
 			this.linker.writeBytes(this.PC.value, encodedBytes);
 			if (modeInfo.fixup) this.linker.addFixup(instructionPC + modeInfo.fixup.at, modeInfo.fixup.size, modeInfo.fixup.value);
 			this.PC.value += encodedBytes.length;
-			this.recordInstruction(mnemonicToken);
+			this.recordInstruction(mnemonicToken, encodedBytes.length);
 		}
 	}
 

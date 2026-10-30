@@ -187,20 +187,11 @@ After 4.13: change any project file setting for one run, e.g. turn the listing o
 
 ### 4.18 65C816: direct page, absolute and long addressing
 
-D (direct page) and DBR (data bank) only get their values at run time: the assembler never chooses an encoding from them. The writer knows what they hold; the assembler can point out a shorter form.
+Long addressing is done in #212: the size from the value, `.b` / `.w` / `.l`, `jmp` / `jsr` in the program bank, forward references and relocatable values. What's left, the hints:
 
-- **The size comes from the value written:** $00–$FF is direct page, $0100–$FFFF absolute, above $FFFF long, or an error for an instruction without a long form. As the 6502 does. With a variable in bank $7E, write its address in the bank (`counter = $2000`), or `.w`.
-- **Suffixes:** `.b` forces direct page; on a value above $FF it's an error, not a truncation (D needn't be page-aligned: an address's low byte isn't its offset in the direct page). `.w` forces absolute; on a 24-bit address it keeps the low 16 bits (the writer says it's in the data bank). `.l` forces long.
-- **`JMP` / `JSR`** absolute use the program bank, known from the PC: a target in another bank is an error suggesting `jml` / `jsl`. A branch to another bank is an error.
-- **Forward references:** absolute in pass 1, as on the 6502; an error in pass 2 if the value needs long, saying to write `.l` or define the symbol earlier.
-- **Hints, never encoding** (4.15 directives): `.dp <expr>` and `.dbank <expr>` say what D and DBR hold. They only let the assembler point out a shorter form: "`$2012` is in the direct page declared at …: `lda.b $12` is one byte shorter"; "`$7E2000` is in the data bank declared at …: `lda.w $7E2000` is one byte shorter". Without them, no hint.
+- **Hints, never encoding** (4.15 directives): `.dp <expr>` and `.dbank <expr>` say what D and DBR hold. They only let the assembler point out a shorter form: "`$2012` is in the direct page declared at …: `lda.b $12` is one byte shorter"; "`$7E2000` is in the data bank declared at …: `lda.w $7E2000` is one byte shorter". Without them, no hint. Their operand is a number: a relocatable value is an error, as where a number is (#180).
+- **`.b` keeps the address's low byte** (#212), the offset in the direct page only when D is page-aligned: with another D, the hint gives the offset, `lda.b $11` for `$2012` with D at `$2001`.
 - **Hints are reported** at a level of their own, not as warnings. On by default: there are none without `.dp` / `.dbank`, so writing one is already asking for them. `.option hints off` turns them off.
-- **In `Mos65xxHandler`**, on the profile of 4.24: the suffix `L: 3` and a long width next to zero page and absolute in `selectAddressMode`. The long modes' opcodes are in `W65816_ADDITIONS` (`ABSOLUTE_LONG`, `ABSOLUTE_LONG_X`, `JMP` / `JSR` long too): only an instruction with no other address takes one so far (`JML`, `JSL`, step 6b of `resolveAddressingMode`).
-
-- **Relocatable values** (4.19): a relocatable label is never direct page, whatever its offset (the 6502 / 65C02 since #181): absolute in its own segment, long elsewhere unless `.w`. "The size comes from the value" only applies to plain numbers. `jmp` / `jsr` to another relocatable segment are errors suggesting `jml` / `jsl`: its bank isn't known. A forward reference to a label of another relocatable segment is absolute in pass 1 and needs long in pass 2: the forward-reference error above, `.l` or define it earlier. A relocatable value where a width is needed is an error, as where a number is (#180).
-- **No whole-program `relocatable` setting:** the mode comes from each value, so a project-wide flag adds nothing to it, nor tells pass 1 which segment a forward reference is in. `.segment CODE { reloc: true }` says it in one line.
-
-Before it: 24-bit addresses (4.23).
 
 ### 4.21 Segment attributes and symbols in the linker script
 
