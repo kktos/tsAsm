@@ -382,6 +382,10 @@ export class Cpu6809Handler implements CPUHandler<Cpu6809ModeInfo> {
 		return { postByte: 0x8f, extraBytes: 0, resolvedAddress };
 	}
 
+	get mnemonics(): readonly string[] {
+		return [...this.pages.page1.keys(), ...this.pages.page2.keys(), ...this.pages.page3.keys()];
+	}
+
 	isInstruction(mnemonic: string): boolean {
 		const upperMnemonic = mnemonic.toUpperCase();
 		return this.pages.page1.has(upperMnemonic) || this.pages.page2.has(upperMnemonic) || this.pages.page3.has(upperMnemonic);

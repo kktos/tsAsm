@@ -44,6 +44,10 @@ export class CpuArmRiscHandler implements CPUHandler {
 		["PC", 15],
 	]);
 
+	get mnemonics(): readonly string[] {
+		return [...this.instructionBases.keys()];
+	}
+
 	isInstruction(mnemonic: string): boolean {
 		const baseMnemonic = mnemonic.toUpperCase().match(/^[A-Z]+/)?.[0];
 		if (!baseMnemonic) {

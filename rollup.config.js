@@ -6,6 +6,25 @@ import terser from "@rollup/plugin-terser";
 import typescript from "@rollup/plugin-typescript";
 import { defineConfig } from "rollup";
 
+/**
+ * The extension's grammar: grammar.ts is bundled, run, and only the JSON it builds is written. The mnemonics come
+ * from the CPUs, so the grammar is built from the code rather than kept by hand.
+ */
+function vscodeGrammar() {
+	return {
+		name: "vscode-grammar",
+		async generateBundle(_options, bundle) {
+			const [fileName, chunk] = Object.entries(bundle).find(([, file]) => file.type === "chunk");
+			const { buildGrammar } = await import(`data:text/javascript;base64,${Buffer.from(chunk.code).toString("base64")}`);
+			delete bundle[fileName];
+			this.emitFile({ type: "asset", fileName: "tsasm.tmLanguage.json", source: `${JSON.stringify(buildGrammar(), null, "\t")}\n` });
+		},
+	};
+}
+
+// The extension's code, in the extension's dist: the library's declarations aren't written there.
+const vscodeTypescript = () => typescript({ noEmitOnError: true, declaration: false, declarationMap: false, sourceMap: false, outDir: "editors/vscode/dist" });
+
 const configs = {
 	cli: {
 		// Configuration for the 'tsasm' CLI executable
@@ -45,6 +64,20 @@ const configs = {
 			}),
 		],
 	},
+	vscode: [
+		{
+			// The VS Code extension (editors/vscode): VS Code loads it as CommonJS, and gives it the vscode module
+			input: "src/vscode/extension.ts",
+			output: { file: "editors/vscode/dist/extension.js", format: "cjs", sourcemap: false },
+			external: ["vscode"],
+			plugins: [vscodeTypescript()],
+		},
+		{
+			input: "src/vscode/grammar.ts",
+			output: { dir: "editors/vscode/dist", format: "esm" },
+			plugins: [vscodeTypescript(), json(), vscodeGrammar()],
+		},
+	],
 };
 
 const target = process.env.TARGET;
@@ -54,6 +87,6 @@ if (target && !Object.keys(configs).includes(target)) {
 }
 
 // @ts-expect-error - target is a string
-const selectedConfigs = target ? [configs[target]] : Object.values(configs);
+const selectedConfigs = (target ? [configs[target]] : Object.values(configs)).flat();
 
 export default defineConfig(selectedConfigs);

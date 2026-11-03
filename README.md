@@ -202,6 +202,10 @@ const assembler = new Assembler(cpu, fileHandler, {
 });
 ```
 
+## VS Code
+
+[editors/vscode](editors/vscode) is an extension for VS Code: syntax colouring, and Cmd+click on the path of an `.include`, `.incbin` or `.define … from` to open its file. Its README says how to build and install it.
+
 ## Development
 
 ```shell
