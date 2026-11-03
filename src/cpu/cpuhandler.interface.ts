@@ -92,6 +92,12 @@ export interface CPUHandler<TModeInfo extends ModeInfo = ModeInfo> {
 	mnemonicSuffixes?: readonly string[];
 
 	/**
+	 * Every mnemonic isInstruction takes, in upper case and without a suffix. The assembler doesn't read it: tools do,
+	 * as the VS Code grammar, to tell an instruction from a macro call. A CPU without it leaves it out.
+	 */
+	readonly mnemonics?: readonly string[];
+
+	/**
 	 * The CPU's own directives, by upper-case name: the 65816's `.native`. They are known whatever the CPU, and run only
 	 * while this one is the current CPU. A name can't be a general directive's. They take no operand: anything after
 	 * one on its line is an error.

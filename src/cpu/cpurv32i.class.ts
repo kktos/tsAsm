@@ -149,6 +149,10 @@ export class CpuRV32IHandler implements CPUHandler<RV32IModeInfo> {
 		["JAL", new Map([[RV32I_FORMATS.J, { opcode: 0x6f }]])],
 	]);
 
+	get mnemonics(): readonly string[] {
+		return [...this.instructionMap.keys()];
+	}
+
 	isInstruction(mnemonic: string): boolean {
 		return this.instructionMap.has(mnemonic.toUpperCase());
 	}

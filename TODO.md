@@ -220,6 +220,17 @@ Before 4.18: the 65816 addresses 16 MB. The PC's range is done in #200: `CPUHand
 
 After 4.16: the assembler reads the code in order, so a routine called with other widths than the code before it says so with `.a16`, `.i8`. To decide: whether a `.proc` saves the widths (and the mode) at its start and puts them back at its end, or declares them (`.proc f { a: 16 }`), or neither.
 
+### 4.26 VS Code extension
+
+The extension is done in #213, in `editors/vscode`: syntax colouring of `.asm` files, its grammar built from the CPUs' mnemonics (`CPUHandler.mnemonics`), and links on the paths of `.include`, `.incbin` and `.define … from`. What's left:
+
+- **Linker scripts:** their own language (`#` comments, `.OUTPUT`, `.WRITE`), not coloured yet. To decide: their file extension.
+- **Errors in the editor:** assembling the project on save, its errors and warnings in the Problems panel. The project file tells which source is the main one: an included file alone doesn't assemble.
+- **Go to a definition** of a label, a macro or a function, and a hover with its value: from the symbol file, or from the assembler run as a library.
+- **Folding** follows the indentation: a `.macro` … `.end` written flat doesn't fold.
+- **`.option local.prefix` and `anon.marker`:** the grammar knows the chars they take, not which one a file sets: `!x` is coloured as a local label only at a statement's start.
+- **Publishing** on the Marketplace, which needs a publisher account: today it's installed from a `.vsix`.
+
 ## 5. Documentation (REFERENCE.md)
 
 - **Macro scope:** labels and variables in a macro body are local to the call. CLAUDE.md says it, REFERENCE doesn't.

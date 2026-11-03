@@ -1,0 +1,45 @@
+{
+	"name": "tsasm",
+	"displayName": "tsAsm",
+	"version": "0.1.0",
+	"description": "The tsAsm assembler's language: syntax colouring, and links to the files a source includes.",
+	"categories": [
+		"Programming Languages"
+	],
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/kktos/tsAsm.git",
+		"directory": "editors/vscode"
+	},
+	"publisher": "kktos",
+	"main": "./dist/extension.js",
+	"contributes": {
+		"languages": [
+			{
+				"id": "tsasm",
+				"aliases": [
+					"tsAsm"
+				],
+				"extensions": [
+					".asm"
+				],
+				"configuration": "./language-configuration.json"
+			}
+		],
+		"grammars": [
+			{
+				"language": "tsasm",
+				"scopeName": "source.tsasm",
+				"path": "./dist/tsasm.tmLanguage.json",
+				"embeddedLanguages": {
+					"meta.embedded.block.yaml": "yaml",
+					"meta.embedded.block.json": "json"
+				}
+			}
+		]
+	},
+	"engines": {
+		"vscode": "^1.75.0"
+	}
+}

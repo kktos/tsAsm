@@ -1,0 +1,7 @@
+# Only what VS Code loads goes in the .vsix
+**
+!package.json
+!language-configuration.json
+!README.md
+!dist/extension.js
+!dist/tsasm.tmLanguage.json

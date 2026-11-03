@@ -125,6 +125,10 @@ export class Mos65xxHandler implements CPUHandler<Mos65xxModeInfo> {
 		return merged;
 	}
 
+	get mnemonics(): readonly string[] {
+		return [...this.instructionMap.keys()];
+	}
+
 	isInstruction(mnemonic: string): boolean {
 		const baseMnemonic = mnemonic.toUpperCase().split(".")[0];
 		return !!baseMnemonic && this.instructionMap.has(baseMnemonic);
