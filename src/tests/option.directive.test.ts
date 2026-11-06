@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { Assembler } from "../assembler/polyasm";
+import { Logger } from "../helpers/logger.class";
+import { MemorySink } from "../helpers/memorysink.class";
 import { MockFileHandler } from "./mockfilehandler.class";
 
 // Minimal fake CPU handler
@@ -42,6 +44,22 @@ describe(".OPTION Directive", () => {
         `);
 		expect(assembler.symbolTable.lookupSymbol("LOCAL")).toBeUndefined();
 		expect(assembler.symbolTable.lookupSymbol("PREFIX")).toBeUndefined();
+	});
+
+	it("should be listed with its name, its value as any directive's", () => {
+		const sink = new MemorySink();
+		const assembler = new Assembler(fakeCPU, new MockFileHandler(), {
+			logger: new Logger({ sink, enabled: true }),
+			segments: [{ name: "CODE", start: 0x1000, size: 0, resizable: true }],
+			log: { pass2Enabled: true },
+		});
+		assembler.assemble(`
+.option listing.case "lower"
+.option local.prefix "@"
+.option function.recursion 64
+`);
+		const listed = sink.logs.filter((line) => line.includes(".option")).map((line) => line.trim());
+		expect(listed).toEqual(['.option listing.case "lower"', '.option local.prefix "@"', ".option function.recursion $40"]);
 	});
 
 	it("should log a warning for an unknown option", () => {

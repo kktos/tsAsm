@@ -6,6 +6,12 @@ The problem is described as it was before the fix, then the fix in _italics_.
 
 ## Assembler
 
+### #232 — `.option` listed with its quotes inside quotes (TODO 1.58)
+
+`.option listing.case "lower"` was listed `.option "listing.case = "lower""`, and `.option repeat.start 0` `.option "repeat.start = 0"`: `setOption` gave the lister the name and the value as one string, which it quoted.
+
+_Fixed: the name goes with the directive, the value is listed as any directive's: `.option listing.case "lower"`, `.option repeat.start $00`, a number in hex as `.fill`'s. The same cause in `.macro` / `.function` definitions is 1.63._
+
 ### #230 — Unknown escape sequences (TODO 1.38)
 
 An unknown escape gave the char after the backslash: `"\0"` → `30`, `"\q"` → `71`. `\x` without two hex digits gave an `x`: `"\xZ1"` → `78 5A 31`. And a backslash ending the line carried the string on to the next one, a newline in it, though a string ends on its line.

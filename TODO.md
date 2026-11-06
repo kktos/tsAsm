@@ -26,10 +26,6 @@ Since #150, a branch of `.if` not taken rejects an unknown directive starting a 
 
 With `output.listing: { pass2: true }`, the statements after a `.list on` are also listed in pass 1, before the pass 2 header, with pass 1 values (`.db "<1 bytes>"`, `.fill "<4 bytes>"`, `1006: 00  NOP`). `.list on` should only turn back on the passes the project file lists.
 
-### 1.58 `.option` listed with its quotes inside quotes
-
-`.option listing.case "lower"` is listed `.option "listing.case = "lower""`: `setOption` lists the name and the value as one string, and the lister quotes it. Found with 4.9.
-
 ### 1.61 A braced `.if` in a keyword block
 
 `.macro m` / `.if 1 { .db 0 }` / `.db 1` / `.end` → `Missing .END for the .MACRO block.`, same in a `.for` … `.end`. Reading the block, `getKeywordBlock` counts the `.if` as a block that needs its own `.end`, though its `{ }` already ended it. Found with `.exitmacro`.
@@ -40,7 +36,7 @@ With `output.listing: { pass2: true }`, the statements after a `.list on` are al
 
 ### 1.63 A `.macro` / `.function` definition listed in quotes
 
-`.function sq(x) = x * x` is listed `.function "sq(x) = x * x"`, and `.macro m a` as `.macro "m(A)"`: the lister quotes the text it's given, as for 1.58. Found with 4.8.
+`.function sq(x) = x * x` is listed `.function "sq(x) = x * x"`, and `.macro m a` as `.macro "m(A)"`: the lister quotes the text it's given, as `.option`'s was (1.58). Found with 4.8.
 
 ### 1.64 A function's body is only read when it's called
 
