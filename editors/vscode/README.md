@@ -8,6 +8,7 @@ The language of the [tsAsm](https://github.com/kktos/tsAsm) assembler, for `.asm
 - **Go to a definition:** Cmd+click on a name (F12) goes to where it's defined, and its hover tells what it is: a label's or a constant's value, in hex and decimal, a variable's value there, a macro's or a function's parameters.
 - **Find all references:** Shift+F12 lists where a name's symbol is used, in every file of its project, and its definition.
 - **Rename** (F2): a symbol, at its definition and its references, in every file of its project.
+- **Folding** by blocks: `.macro`, `.proc`, each branch of an `.if`, `{ }`, a routine under its label, comments and `; region` … `; endregion`.
 - **Outline and breadcrumbs** (Cmd+Shift+O): a file's macros, procs, functions and namespaces, with the labels, constants and variables in them, a local label under its global one, and its `.segment` selections; **Cmd+T** finds a symbol in the workspace.
 
 Another extension can be mapped to the language in the settings: `"files.associations": { "*.s": "tsasm" }`.
@@ -53,6 +54,17 @@ A file's blocks come from its text: `.macro`, `.proc`, `.function` with a body, 
 
 Cmd+T lists every project's symbols but local and anonymous labels, whose names repeat everywhere, and the namespaces of their files.
 
+## Folding
+
+The folds follow the blocks, read from the text as the outline's, not the indentation, so a block written flat folds too:
+
+- `.macro`, `.proc`, `.function`, `.namespace`, `.repeat`, `.for`, `{ }`, and the raw text of `.define` and `.hex`;
+- each branch of an `.if`;
+- the code under a global label, a routine, up to the next global label, the next block holding code or the end of the block it's in. Its trailing blank and comment lines are left out: a comment above a routine is that routine's. The labels come from the last assembly that succeeded, so a file in no project folds its blocks only;
+- two comment lines or more, and `; region name` … `; endregion` (`#region`, `//` too).
+
+A block's `.end` or `}` stays shown when it's folded. A `.segment` doesn't fold: it's a selection, not a block.
+
 ## Building and installing
 
 From the root of the repository:
@@ -71,4 +83,4 @@ While working on it, link the folder into VS Code's extensions instead, then run
 ln -s "$PWD/editors/vscode" ~/.vscode/extensions/kktos.tsasm
 ```
 
-The grammar is built by `src/vscode/grammar.ts`, the links found by `src/vscode/links.ts`, a project assembled by `src/vscode/analysis.ts`, its names indexed by `src/vscode/symbol-index.ts` and renamed by `src/vscode/rename.ts`, a file's blocks read by `src/vscode/blocks.ts` and its outline built by `src/vscode/outline.ts`, all tested in `src/tests/vscode`. `src/vscode/projects.ts` puts the projects' errors in VS Code, and `src/vscode/navigation.ts` gives the definitions, the hovers, the references, the renames and the outline.
+The grammar is built by `src/vscode/grammar.ts`, the links found by `src/vscode/links.ts`, a project assembled by `src/vscode/analysis.ts`, its names indexed by `src/vscode/symbol-index.ts` and renamed by `src/vscode/rename.ts`, a file's blocks read by `src/vscode/blocks.ts`, its outline built by `src/vscode/outline.ts` and its folds by `src/vscode/folding.ts`, all tested in `src/tests/vscode`. `src/vscode/projects.ts` puts the projects' errors in VS Code, and `src/vscode/navigation.ts` gives the definitions, the hovers, the references, the renames, the folds and the outline.

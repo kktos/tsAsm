@@ -20,7 +20,10 @@ const PROJECT_FILES = "**/*.{yaml,yml}";
 
 export class Projects implements vscode.Disposable {
 	private readonly collection = vscode.languages.createDiagnosticCollection("tsasm");
-	private readonly disposables: vscode.Disposable[] = [this.collection];
+	private readonly assembled = new vscode.EventEmitter<void>();
+	private readonly disposables: vscode.Disposable[] = [this.collection, this.assembled];
+	/** Fired once the projects are assembled again: their indexes changed. */
+	readonly onDidAssemble = this.assembled.event;
 	/** Each project's last assembly, by the project file's path. */
 	private readonly analyses = new Map<string, Analysis>();
 	/** Each project's last index: an assembly stopped by an error keeps the one before, its places moved by the edits since. */
@@ -184,6 +187,7 @@ export class Projects implements vscode.Disposable {
 		}
 		this.pending.clear();
 		this.publish();
+		this.assembled.fire();
 	}
 
 	/** Every project's diagnostics, by file: a file in two projects gets an error both give once. */
