@@ -222,14 +222,51 @@ After 4.16: the assembler reads the code in order, so a routine called with othe
 
 ### 4.26 VS Code extension
 
-The extension is done in #213, in `editors/vscode`: syntax colouring of `.asm` files, its grammar built from the CPUs' mnemonics (`CPUHandler.mnemonics`), and links on the paths of `.include`, `.incbin` and `.define … from`. What's left:
+The extension is done in #213, in `editors/vscode`: syntax colouring of `.asm` files, its grammar built from the CPUs' mnemonics (`CPUHandler.mnemonics`), and links on the paths of `.include`, `.incbin` and `.define … from`. What the editor knows of a source comes in 4.27–4.35. What's left here:
 
 - **Linker scripts:** their own language (`#` comments, `.OUTPUT`, `.WRITE`), not coloured yet. To decide: their file extension.
-- **Errors in the editor:** assembling the project on save, its errors and warnings in the Problems panel. The project file tells which source is the main one: an included file alone doesn't assemble.
-- **Go to a definition** of a label, a macro or a function, and a hover with its value: from the symbol file, or from the assembler run as a library.
-- **Folding** follows the indentation: a `.macro` … `.end` written flat doesn't fold.
-- **`.option local.prefix` and `anon.marker`:** the grammar knows the chars they take, not which one a file sets: `!x` is coloured as a local label only at a statement's start.
 - **Publishing** on the Marketplace, which needs a publisher account: today it's installed from a `.vsix`.
+
+### 4.27 VS Code: the analysis, and errors in the Problems panel
+
+The base of 4.28–4.34. Decided: the extension runs the assembler as a library, in the extension (no language server yet), on the project's main source: an included file alone doesn't assemble. It reads the editor's buffers, saved or not, through its own `FileHandler`, and assembles again a moment (~300 ms) after the typing stops.
+
+- **The project file:** the `tsasm.project` setting, else the workspace's YAML files with an `input.source`. A file in none of them gets a text scan only.
+- **An assembly stops at its first error:** the extension keeps the last good assembly's symbols for 4.28–4.33, until one succeeds again.
+- **Errors and warnings** in the Problems panel, at their file and line, their notes (`first defined here`) as related information, the include stack too.
+- **The analysis without the `vscode` module,** as `links.ts`: tested by `pnpm test`, and movable into a language server, for other editors, if one is wanted.
+
+### 4.28 VS Code: go to a definition, and hover
+
+After 4.27. Cmd+click on a label, a constant, a variable, a macro, a function, a `.proc`, a namespace or a segment goes to where it's defined: a symbol keeps its file, line and column (`PASymbol`), its line in the macro's file when a macro defines it. To check: macros, functions and segments keep their site. Local and anonymous labels too, the assembler resolving them. The hover: its value (hex and decimal, a relocatable one as `CODE+$0012`), its kind, where it's defined; a macro's or a function's parameters.
+
+### 4.29 VS Code: find all references
+
+After 4.28. The assembler doesn't keep where a symbol is used: a hook in the library, telling each lookup resolved to a symbol and the token it's at. To decide: its shape (an `onSymbolReference` option, or an index the assembler fills), as it's public API. A reference in a macro body is listed once, not once per call; one in a `.repeat` body, once.
+
+### 4.30 VS Code: outline and workspace symbols
+
+After 4.28. The outline and breadcrumbs (Cmd+Shift+O): labels, `.proc`, macros, functions, namespaces, segments, nested as in the source. The workspace's symbols (Cmd+T).
+
+### 4.31 VS Code: rename a symbol
+
+After 4.29. Renames a symbol at its definition and its references. Refused, saying why, where a reference isn't written as the name: a name built by an expression, a symbol from `.define … from`.
+
+### 4.32 VS Code: completion and signature help
+
+After 4.28. Completion of the current CPU's mnemonics, the directives, the symbols in scope, the macros, `.option`'s keys, the system functions and variables. Signature help on a macro's or a function's call: its parameters.
+
+### 4.33 VS Code: semantic colouring
+
+After 4.27. Colours from the assembly, not from the grammar alone: a label, a constant, a macro as the assembler saw them, an undefined symbol. Fixes `.option local.prefix` and `anon.marker`: the grammar knows the chars they take, not which one a file sets, so `!x` is coloured as a local label only at a statement's start.
+
+### 4.34 VS Code: the assembly in the editor
+
+After 4.27. Inlay hints with a line's address, or its bytes, the listing beside the source; a command opening the listing at the current line; a hover on a mnemonic with its addressing modes and opcodes on the current CPU.
+
+### 4.35 VS Code: folding by blocks
+
+Folding follows the indentation: a `.macro` … `.end` written flat doesn't fold. Folding ranges from the blocks, `.macro` … `.end`, `.proc`, `.if`, `{ }`. Without 4.27: the blocks are in the text.
 
 ## 5. Documentation (REFERENCE.md)
 
