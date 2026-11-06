@@ -11,6 +11,7 @@ import { RelocValue } from "../assembler/reloc-value.class";
 import type { SymbolValue } from "../assembler/symbol.class";
 import { getHex } from "../utils/hex.util";
 import type { AddressHint } from "./addresses";
+import type { ListingLine } from "./listing";
 import type { Place } from "./places";
 
 /** A name in a file: `place` is where it's written, `target` where what it refers to is defined, the same for a definition. */
@@ -35,6 +36,8 @@ export class SymbolIndex {
 	private readonly keys = new Set<string>();
 	/** The lines' addresses, by file. */
 	private readonly hints = new Map<string, AddressHint[]>();
+	/** The project's listing, its lines tied to their statements. */
+	listing: ListingLine[] = [];
 
 	/** Adds an entry, once: a macro body's names are reported at each call, a loop's at each iteration. */
 	add(entry: IndexEntry): void {
@@ -100,6 +103,13 @@ export class SymbolIndex {
 			}
 			this.byFile.set(entryFile, kept);
 		}
+		// A statement the edit touches loses its listing's lines until the next assembly.
+		const moved = (place: Place) => (place.file === file ? shiftPlace(place, edit) : place);
+		this.listing = this.listing.map((line) => {
+			const place = line.place && moved(line.place);
+			const chain = line.chain.flatMap((call) => moved(call) ?? []);
+			return place ? { ...line, place, chain } : { text: line.text, chain };
+		});
 		const hints = this.hints.get(file);
 		if (!hints) return;
 		// A statement the edit touches loses its address until the next assembly.

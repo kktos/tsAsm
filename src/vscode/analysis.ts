@@ -7,13 +7,13 @@
 
 import { basename, dirname, join } from "node:path";
 import { Assembler } from "../assembler/polyasm";
-import type { Emission, FileHandler, SymbolReference } from "../assembler/polyasm.types";
+import type { Emission, FileHandler, ListedLine, SymbolReference } from "../assembler/polyasm.types";
 import { yamlparse } from "../cli/asm-yaml";
 import { readConf } from "../cli/conf";
 import { projectCpus, projectOptions } from "../cli/project";
 import { Logger } from "../helpers/logger.class";
 import type { LogSink } from "../helpers/logsink.interface";
-import { AsmError, type IncludeSite, type SourceLocation } from "../utils/error.utils";
+import { AsmError, type DefinitionSite, type IncludeSite, type SourceLocation } from "../utils/error.utils";
 import { addressHints } from "./addresses";
 import { nameSpan, type Place, tokenSpan } from "./places";
 import { SymbolIndex } from "./symbol-index";
@@ -41,6 +41,8 @@ export interface Analysis {
 	sources: Set<string>;
 	/** The CPU the source starts with, from the project file. */
 	cpu?: string;
+	/** Where the CLI writes the listing, from the project file: what the listing's tab is named. */
+	listingPath?: string;
 }
 
 /** A YAML file is a project file when it has an `input.source`. */
@@ -76,6 +78,7 @@ export function analyse(projectPath: string, files: Files): Analysis {
 	}
 	const references: SymbolReference[] = [];
 	const emissions: Emission[] = [];
+	const listed: ListedLine[] = [];
 	let index: SymbolIndex | undefined;
 	let cpu: string | undefined;
 	try {
@@ -83,8 +86,9 @@ export function analyse(projectPath: string, files: Files): Analysis {
 		cpu = options.cpu;
 		options.onSymbolReference = (reference) => references.push(reference);
 		options.onEmit = (emission) => emissions.push(emission);
+		options.onListing = (line) => listed.push(line);
 		new Assembler(projectCpus(), handler, options).assemble(source);
-		index = buildIndex(references, emissions, (file) => (file ? join(handler.basedir, file) : sourcePath), reader);
+		index = buildIndex(references, emissions, listed, (file) => (file ? join(handler.basedir, file) : sourcePath), reader);
 	} catch (e) {
 		// An error found before the assembly starts, without a line (a segment of the project file), is the project file's.
 		const error = e instanceof AsmError ? e : new AsmError(e instanceof Error ? e.message : String(e));
@@ -95,11 +99,22 @@ export function analyse(projectPath: string, files: Files): Analysis {
 	const analysis: Analysis = { files: reader.paths, diagnostics: report.diagnostics, sources };
 	if (index) analysis.index = index;
 	if (cpu) analysis.cpu = cpu;
+	// As the CLI names it.
+	analysis.listingPath = join(dirname(projectPath), conf.output?.listing?.path ?? `${conf.input.source}.lst`);
 	return analysis;
 }
 
-/** The index of the references, each at its name, its target at the name of its definition: `path` makes a file absolute. */
-function buildIndex(references: SymbolReference[], emissions: Emission[], path: (file: string | undefined) => string, reader: FileReader): SymbolIndex {
+/**
+ * The index of the references, each at its name, its target at the name of its definition, of the lines' addresses
+ * and of the listing: `path` makes a file absolute.
+ */
+function buildIndex(
+	references: SymbolReference[],
+	emissions: Emission[],
+	listed: ListedLine[],
+	path: (file: string | undefined) => string,
+	reader: FileReader,
+): SymbolIndex {
 	const index = new SymbolIndex();
 	const lineText = (file: string, line: number) => reader.text(file)?.split("\n")[line - 1]?.replace(/\r$/, "") ?? "";
 	const locate = (location: SourceLocation, name?: string): Place => {
@@ -120,13 +135,10 @@ function buildIndex(references: SymbolReference[], emissions: Emission[], path: 
 		if (symbol.parameters) symbol = { ...symbol, parameters: symbol.parameters.map((parameter) => spelling(parameter, text)) };
 		index.add({ place: definition ? target : locate(at), definition, symbol, target, written });
 	}
-	const located = emissions.map(({ site, address, bytes }) => ({
-		place: locate(site.location),
-		chain: site.includeStack.filter(({ line }) => line !== undefined).map((call) => locate(call)),
-		address,
-		bytes,
-	}));
+	const chainOf = ({ includeStack }: DefinitionSite) => includeStack.filter(({ line }) => line !== undefined).map((call) => locate(call));
+	const located = emissions.map(({ site, address, bytes }) => ({ place: locate(site.location), chain: chainOf(site), address, bytes }));
 	for (const hint of addressHints(located, index.definitions())) index.addHint(hint);
+	index.listing = listed.map(({ text, site }) => (site ? { text, place: locate(site.location), chain: chainOf(site) } : { text, chain: [] }));
 	return index;
 }
 

@@ -1,5 +1,19 @@
 import type { LogSink } from "./logsink.interface";
 
+/** Told each message as it's written, enabled or not, with what `site()` gave when it was logged: see `Logger.tap`. */
+export interface LogTap {
+	site(): unknown;
+	write(message: unknown, site: unknown): void;
+}
+
+/** A message `hold()` kept while there was a tap, with where it was logged. */
+class HeldMessage {
+	constructor(
+		readonly message: unknown,
+		readonly site: unknown,
+	) {}
+}
+
 export class Logger<C = unknown> {
 	private readonly sink: LogSink<C>;
 	private readonly buffer: unknown[] = [];
@@ -8,6 +22,11 @@ export class Logger<C = unknown> {
 
 	public enabled: boolean;
 	public cached: boolean;
+	/**
+	 * Told the messages as they're written, even while the logger is disabled: the assembler's `onListing`. A held
+	 * message keeps the site it was logged at.
+	 */
+	public tap: LogTap | undefined;
 
 	constructor(options: { sink: LogSink<C>; enabled?: boolean; cached?: boolean }) {
 		this.sink = options.sink;
@@ -15,14 +34,24 @@ export class Logger<C = unknown> {
 		this.cached = options.cached ?? false;
 	}
 
-	log(message: unknown): void {
-		if (!this.enabled) return;
+	/**
+	 * `from`: a message `release()` gave, `message` written where it was logged. A released message logged again is
+	 * written where it was first logged.
+	 */
+	log(logged: unknown, from?: unknown): void {
+		const message = logged instanceof HeldMessage ? logged.message : logged;
+		if (!this.enabled && !this.tap) return;
+		const first = logged instanceof HeldMessage ? logged : from;
+		const site = first instanceof HeldMessage ? first.site : this.tap?.site();
 
 		const held = this.held.at(-1);
 		if (held) {
-			held.push(message);
+			held.push(this.tap ? new HeldMessage(message, site) : message);
 			return;
 		}
+
+		this.tap?.write(message, site);
+		if (!this.enabled) return;
 
 		if (this.cached) {
 			this.buffer.push(message);

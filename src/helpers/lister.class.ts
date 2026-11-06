@@ -92,8 +92,11 @@ export class Lister implements ILister {
 		}
 	}
 
-	/** Bytes, 8 per line, with their text on the first line; data with `listing.data` "fold", the first line only. */
-	public bytes({ addr, bytes, text = "", hasText = false, isCode = false }: BytesArgs) {
+	/**
+	 * Bytes, 8 per line, with their text on the first line; data with `listing.data` "fold", the first line only.
+	 * `from`: a message the logger released, the lines written where it was logged (`Logger.log`).
+	 */
+	public bytes({ addr, bytes, text = "", hasText = false, isCode = false }: BytesArgs, from?: unknown) {
 		if (this.mutes) return;
 		const isFolded = this.listingData === "fold" && !isCode;
 		const lines = isFolded
@@ -113,7 +116,7 @@ export class Lister implements ILister {
 			loop.hasText &&= hasText;
 		}
 
-		for (const line of lines) this.logger.log(line);
+		for (const line of lines) this.logger.log(line, from);
 	}
 
 	/** One line of data: the address, up to 8 bytes, as chars too when `hasText`, a "…" when `hasMore` bytes follow, and the text. */
@@ -124,13 +127,16 @@ export class Lister implements ILister {
 		return `${header.padEnd(TEXT_PAD)} ${text}`;
 	}
 
-	/** A loop starts. With `listing.data` "fold", its lines are held until `endLoop()`; else its header is listed now. */
+	/**
+	 * A loop starts. With `listing.data` "fold", its lines are held until `endLoop()`, its header first, so it's written
+	 * where it was logged; else its header is listed now.
+	 */
 	public beginLoop(text: string) {
 		if (this.mutes) return;
 		const isFolded = this.listingData === "fold";
 		this.loops.push({ text, isFolded, bytes: [], hasText: true, dataLines: 0, isBlock: true });
 		if (isFolded) this.logger.hold();
-		else this.logger.log(`${"".padStart(TEXT_PAD)}${text}`);
+		this.logger.log(`${"".padStart(TEXT_PAD)}${text}`);
 	}
 
 	/**
@@ -149,14 +155,15 @@ export class Lister implements ILister {
 	private closeLoop(canFold: boolean) {
 		const loop = this.loops.pop();
 		if (!loop?.isFolded) return;
-		const lines = this.logger.release();
+		// Its header, then its body's lines; none while the logger is off.
+		const [header, ...lines] = this.logger.release();
 
 		if (canFold && loop.addr !== undefined && loop.isBlock && lines.length === loop.dataLines) {
-			this.bytes({ addr: loop.addr, bytes: loop.bytes, text: loop.text, hasText: loop.hasText });
+			this.bytes({ addr: loop.addr, bytes: loop.bytes, text: loop.text, hasText: loop.hasText }, header);
 			return;
 		}
 		// The enclosing loop sees these lines as not data: it isn't folded either.
-		this.logger.log(`${"".padStart(TEXT_PAD)}${loop.text}`);
+		if (header !== undefined) this.logger.log(header);
 		for (const line of lines) this.logger.log(line);
 	}
 

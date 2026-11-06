@@ -12,7 +12,7 @@ import { Logger } from "../helpers/logger.class";
 import { StreamManager } from "../helpers/stream-manager.class";
 import { Linker, type Segment, type SegmentAttributes, type SegmentParams } from "../linker/linker.class";
 import type { OperatorStackToken, ScalarToken, Token } from "../shared/lexer/lexer.class";
-import { AsmError } from "../utils/error.utils";
+import { AsmError, type DefinitionSite } from "../utils/error.utils";
 import { getHex } from "../utils/hex.util";
 import { ExpressionEvaluator } from "./expression";
 import type { ValueHolder } from "./expression.types";
@@ -105,6 +105,7 @@ export class Assembler {
 	private wannaLogLinker = false;
 	private readonly onSymbolReference: AssemblerOptions["onSymbolReference"];
 	private readonly onEmit: AssemblerOptions["onEmit"];
+	private readonly onListing: AssemblerOptions["onListing"];
 
 	public expressionEvaluator: ExpressionEvaluator;
 	public directiveHandler: DirectiveHandler;
@@ -129,6 +130,7 @@ export class Assembler {
 		this.segmentDefinitions = options?.segments ?? [];
 		this.onSymbolReference = options?.onSymbolReference;
 		this.onEmit = options?.onEmit;
+		this.onListing = options?.onListing;
 		this.initialOptions = withDefaultOptions(options?.options);
 		this.currentOptions = { ...this.initialOptions };
 		this.fileHandler = fileHandler;
@@ -530,6 +532,7 @@ export class Assembler {
 			this.lister.endLoops();
 			throw this.errorLocator.toAsmError(e);
 		} finally {
+			this.logger.tap = undefined;
 			// Symbols set up between two assemblies are known in both passes of the next one.
 			this.symbolTable.pass = 0;
 			this.fileHandler.fullpath = fullpath;
@@ -556,6 +559,18 @@ export class Assembler {
 			const site = symbol?.site.location;
 			return site && site.file === file && String(site.line) === String(line) && site.column === column ? undefined : symbol;
 		});
+	}
+
+	/** Pass 2: tells `onListing` each line listed, and the statement that listed it, until the assembly ends. */
+	private tapListing() {
+		const { onListing } = this;
+		if (!onListing) return;
+		this.logger.tap = {
+			site: () => (this.statementToken ? this.errorLocator.definitionSite(this.statementToken) : undefined),
+			write: (message, site) => {
+				for (const text of String(message).split("\n")) onListing(site ? { text, site: site as DefinitionSite } : { text });
+			},
+		};
 	}
 
 	/** Pass 2: tells `onEmit` the current statement's bytes, at `address`. */
@@ -747,6 +762,7 @@ export class Assembler {
 
 	private passTwo(): void {
 		this.logger.log("\n--- Starting Pass 2: Code Generation ---");
+		this.tapListing();
 		this.pass = 2;
 		this.symbolTable.pass = 2;
 		this.statementToken = undefined;

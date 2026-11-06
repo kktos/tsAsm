@@ -105,6 +105,19 @@ export interface AssemblerOptions {
 	 * `.include` directives that led there), its address and its bytes. Without it, nothing is kept for it.
 	 */
 	onEmit?: (emission: Emission) => void;
+	/**
+	 * Pass 2 calls it for each line of the listing, as the CLI writes it with `log.pass2Enabled`, whatever the logger's
+	 * settings: its text and the statement that listed it (located as `onEmit`'s), as an editor needs to show a line's
+	 * listing. A loop folded by `.option listing.data = "fold"` is the line of its header. Without it, nothing is kept for it.
+	 */
+	onListing?: (line: ListedLine) => void;
+}
+
+/** A line of the listing: see `AssemblerOptions.onListing`. */
+export interface ListedLine {
+	text: string;
+	/** Undefined for a line listed before the first statement. */
+	site?: DefinitionSite;
 }
 
 /** A statement's bytes: see `AssemblerOptions.onEmit`. */

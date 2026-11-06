@@ -247,10 +247,6 @@ Done in #216 for labels, constants, variables, local and anonymous labels, funct
 - **Names the evaluator doesn't resolve as values:** the name in `.def(x)` / `.undef(x)`, a name a built-in function takes as an argument.
 - **A file in no project** gets a text scan only.
 
-### 4.34 VS Code: the assembly in the editor
-
-After 4.27. The lines' addresses as inlay hints are done in #224, from the library's `onEmit`, and the hover on a mnemonic in #225. What's left: a command opening the listing at the current line, the listing built in memory, its lines tied to the source's.
-
 ### 4.36 VS Code: dim the code the assembly didn't read
 
 An `.if` branch not taken, a macro never called: their names keep the grammar's colours (#223, 4.33 left them). Dimmed, as C/C++ does for `#if 0`, they'd show what isn't assembled. Needs the assembler to report the lines it read: a statement loop's callback, as `onSymbolReference`.
