@@ -6,6 +6,12 @@ The problem is described as it was before the fix, then the fix in _italics_.
 
 ## Assembler
 
+### #222 — `.str()` takes two arguments, and reads only one (TODO 1.71)
+
+`.str` was registered with two arguments, but its handler read one: `.str(1, 2)` → `Invalid expression format.`, the second left on the stack. And `.str("a")` → `First argument to .STR() must be a number.`, though REFERENCE said "the value as a string".
+
+_Decided: `.str(<value> [, <radix>])`. A number is written in the radix, 2 to 36 (10 by default), its digits over 9 in upper case: `.str(255, 16)` is `"FF"`. A string is given as is; a radix with it is an error. An array or an object → `First argument to .STR() must be a number or a string: .JSON() writes an array or an object.`_
+
 ### #209 — `*` starting a statement followed by anything but `=` (TODO 1.68)
 
 At the start of a statement, `*` waited for an `=` (`* = $1000`) and ignored anything else: `*` alone and `*:` assembled to nothing, `* nop` to the `nop`. A word that isn't an instruction is read as a label, so `foo *` defined `foo` and dropped the `*`, and so did `brl *` on the 6502, without a word.
