@@ -1,3 +1,6 @@
+/** A one-character string used as a number is its character code: `"A"+1` is $42. Anything else is returned as is. */
+export const charCode = <T>(value: T): T | number => (typeof value === "string" && value.length === 1 ? value.charCodeAt(0) : value);
+
 /**
  * Throws unless `value` fits in `byteCount` bytes, as a signed or an unsigned number:
  * a byte accepts -128..255, a word -32768..65535.

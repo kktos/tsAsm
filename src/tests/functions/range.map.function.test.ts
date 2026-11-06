@@ -28,6 +28,12 @@ describe("Function .range()", () => {
 		expect(assemble(".db .len(.range(3, 0))")).toEqual([0]);
 	});
 
+	it("should take a one-character string as its character code", () => {
+		expect(assemble('.db ... .range("0", 10)')).toEqual([0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39]);
+		expect(assemble('.db .len(.range(0, "\\x03"))')).toEqual([3]);
+		expect(assemble('.db ... .range("A", 3, "\\x02")')).toEqual([0x41, 0x43, 0x45]);
+	});
+
 	it("should be what a .for loops over", () => {
 		const bytes = assemble(`
 			.for x of .range(0, 3, 16)
@@ -40,7 +46,7 @@ describe("Function .range()", () => {
 	it("should reject a count that isn't a whole number, 0 or more", () => {
 		expect(() => assemble(".db ... .range(0, -1)")).toThrow(errorAt(".RANGE() count: -1 isn't a whole number (0 or more).", 1, 10));
 		expect(() => assemble(".db ... .range(0, 3 / 2)")).toThrow(".RANGE() count: 1.5 isn't a whole number (0 or more).");
-		expect(() => assemble('.db ... .range(0, "A")')).toThrow(".RANGE() count: A isn't a whole number (0 or more).");
+		expect(() => assemble('.db ... .range(0, "AB")')).toThrow(".RANGE() count: AB isn't a whole number (0 or more).");
 	});
 
 	it("should reject a start or a step that isn't a whole number, and a step of 0", () => {
