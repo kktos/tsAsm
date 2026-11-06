@@ -261,7 +261,7 @@ After 4.27. Inlay hints with a line's address, or its bytes, the listing beside 
 
 ### 4.35 VS Code: folding by blocks
 
-Folding follows the indentation: a `.macro` … `.end` written flat doesn't fold. Folding ranges from the blocks, `.macro` … `.end`, `.proc`, `.if`, `{ }`. Without 4.27: the blocks are in the text.
+Folding follows the indentation: a `.macro` … `.end` written flat doesn't fold. Folding ranges from the blocks, `.macro` … `.end`, `.proc`, `.if`, `{ }`: `scanBlocks` (`src/vscode/blocks.ts`, #218) reads them from the text for the outline.
 
 ## 5. Documentation (REFERENCE.md)
 
