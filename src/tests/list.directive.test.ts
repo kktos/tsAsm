@@ -42,4 +42,37 @@ describe(".LIST Directive", () => {
 		expect(sink.logs.filter((l) => l.match("MyLabel:")).length).toEqual(0);
 		expect(sink.logs.filter((l) => l.match("AnotherLabel:")).length).toEqual(2);
 	});
+
+	describe(".LIST ON turns back on only the passes listed", () => {
+		const source = `
+			.LIST OFF
+			Hidden: .DB 1
+			.LIST ON
+			Shown: .DB 2
+		`;
+		/** The lines of `source`'s labels in the listing, each with the pass it's in (0 before the first header), its spaces collapsed. */
+		const listed = (enabled: boolean, log: { pass1Enabled?: boolean; pass2Enabled?: boolean }) => {
+			const sink = new MemorySink();
+			new Assembler(fakeCPU, new MockFileHandler(), { logger: new Logger({ sink, enabled }), log }).assemble(source);
+			let pass = 0;
+			return sink.logs.flatMap((line) => {
+				if (line.includes("Starting Pass 1")) pass = 1;
+				if (line.includes("Starting Pass 2")) pass = 2;
+				return line.includes("Shown:") || line.includes("Hidden:") ? [`${pass} ${line.trim().replace(/\s+/g, " ")}`] : [];
+			});
+		};
+
+		it("pass 2 only", () => {
+			expect(listed(true, { pass2Enabled: true })).toEqual(["2 1001 Shown:"]);
+		});
+
+		it("pass 1 only", () => {
+			expect(listed(true, { pass1Enabled: true })).toEqual(["1 1001 Shown:"]);
+		});
+
+		it("neither, the logger enabled or not", () => {
+			expect(listed(true, {})).toEqual([]);
+			expect(listed(false, { pass1Enabled: true, pass2Enabled: true })).toEqual([]);
+		});
+	});
 });

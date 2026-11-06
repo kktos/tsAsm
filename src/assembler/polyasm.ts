@@ -103,6 +103,8 @@ export class Assembler {
 	private wannaLogPass1 = false;
 	private wannaLogPass2 = false;
 	private wannaLogLinker = false;
+	/** Whether the pass being assembled is listed, as the options and the logger say: what `.list on` turns back on. */
+	private passListed = false;
 	private readonly onSymbolReference: AssemblerOptions["onSymbolReference"];
 	private readonly onEmit: AssemblerOptions["onEmit"];
 	private readonly onListing: AssemblerOptions["onListing"];
@@ -209,6 +211,11 @@ export class Assembler {
 		if (options?.log?.pass1Enabled) this.wannaLogPass1 = true;
 		if (options?.log?.pass2Enabled) this.wannaLogPass2 = true;
 		if (options?.log?.linkerEnabled) this.wannaLogLinker = true;
+	}
+
+	/** Whether the pass being assembled is listed: `.list on` lists only then. */
+	public get isPassListed(): boolean {
+		return this.passListed;
 	}
 
 	/** The first token of the statement being assembled: where its errors are located. */
@@ -504,7 +511,8 @@ export class Assembler {
 		const { fullpath, filename } = this.fileHandler;
 
 		const isLogEnabled = this.logger.enabled;
-		this.logger.enabled = isLogEnabled && this.wannaLogPass1;
+		this.passListed = isLogEnabled && this.wannaLogPass1;
+		this.logger.enabled = this.passListed;
 
 		// Initialize or re-initialize the lexer
 		this.streamManager.start(source, this.fileHandler.fullpath, this.fileHandler.filename);
@@ -524,7 +532,8 @@ export class Assembler {
 
 			// Reset stream stack for Pass 2 (fresh position)
 			this.streamManager.restart();
-			this.logger.enabled = isLogEnabled && this.wannaLogPass2;
+			this.passListed = isLogEnabled && this.wannaLogPass2;
+			this.logger.enabled = this.passListed;
 
 			this.passTwo();
 			this.reportDefinitions();
