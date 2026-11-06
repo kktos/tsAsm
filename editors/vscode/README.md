@@ -6,6 +6,7 @@ The language of the [tsAsm](https://github.com/kktos/tsAsm) assembler, for `.asm
 - **Colours from the assembly:** a name the assembler resolved is coloured as what it is, a label, a constant, a variable, a function or its parameter, a macro, wherever it's written.
 - **File links:** the path of an `.include`, an `.incbin` or a `.define … from` opens its file, with Cmd+click (Ctrl+click on Windows and Linux).
 - **Errors and warnings** in the Problems panel: the extension assembles each project of the workspace as the CLI does, while you type.
+- **Code not assembled** is faded: an `.if` branch not taken, a macro or a function never called.
 - **Go to a definition:** Cmd+click on a name (F12) goes to where it's defined, and its hover tells what it is: a label's or a constant's value, in hex and decimal, a variable's value there, a macro's or a function's parameters.
 - **Find all references:** Shift+F12 lists where a name's symbol is used, in every file of its project, and its definition.
 - **Addresses:** each line's address at its end, as an inlay hint, its bytes in its tooltip.
@@ -34,6 +35,15 @@ Each project is assembled as `tsasm` does, without writing its output: a moment 
 
 An assembly stops at its first error: the errors after it show once it's fixed.
 
+## Code not assembled
+
+The code the last assembly didn't read is faded, as VS Code fades unused code: an `.if` branch not taken, the body of a macro or a `.function` never called, a `.repeat 0`'s. Its hover says why; it isn't in the Problems panel. VS Code's `editorUnnecessaryCode.opacity` colour sets how faded it is.
+
+- A block whose directive was read keeps its `.end`, `.else`, `.elseif` and braces: an unused macro's `.macro` and `.end` lines aren't faded, only its body. A `.define`'s or a `.hex`'s text is read with its directive.
+- The comments and blank lines between faded lines are faded with them.
+- A file read by two projects is faded where neither read it: a branch one build takes stays shown.
+- It comes from the last assembly that succeeded, moved with the edits since; a line being edited shows as read until the project assembles.
+
 ## Definitions, hovers and references
 
 A name is what the assembler made of it: a label, a constant, a variable, a local or anonymous label, a function or its parameter, a macro, in its namespace, its `.proc` or its macro call. So they come from the last assembly that succeeded. While a file has an error, its names keep working, their places moved with the edits made since; a name you change is only known again once the project assembles.
@@ -44,7 +54,7 @@ A name in a macro body can refer to a symbol of each call: Cmd+click lists them 
 
 The grammar colours from the text alone: a label's reference looks like any other word, and a local label is told by its prefix only at a statement's start, as the prefix `.option local.prefix` sets isn't known to it. The assembly knows what each name is: the names it resolved are coloured with the grammar's colours for what they are, a label's reference as a label, a constant as an `.equ`, `!loop` as a local label after `.option local.prefix "!"`. A qualified name gets its name coloured, its namespace left to the grammar.
 
-They come from the last assembly that succeeded, their places moved with the edits since: a name being typed keeps the grammar's colour until the project assembles. The code the assembly didn't read, an `.if` branch not taken or a macro never called, keeps the grammar's colours.
+They come from the last assembly that succeeded, their places moved with the edits since: a name being typed keeps the grammar's colour until the project assembles. The code the assembly didn't read, an `.if` branch not taken or a macro never called, keeps the grammar's colours, faded (see [code not assembled](#code-not-assembled)).
 
 ## Addresses
 
@@ -133,4 +143,4 @@ While working on it, link the folder into VS Code's extensions instead, then run
 ln -s "$PWD/editors/vscode" ~/.vscode/extensions/kktos.tsasm
 ```
 
-The grammar is built by `src/vscode/grammar.ts`, the links found by `src/vscode/links.ts`, a project assembled by `src/vscode/analysis.ts`, its names indexed by `src/vscode/symbol-index.ts`, renamed by `src/vscode/rename.ts`, coloured by `src/vscode/semantic.ts`, their addresses told by `src/vscode/addresses.ts`, their mnemonics described by `src/vscode/instructions.ts`, their listing tied to them by `src/vscode/listing.ts` and shown by `src/vscode/listing-view.ts`, and completed by `src/vscode/completion.ts` from the language `src/vscode/language.ts` reads in the assembler, a file's blocks read by `src/vscode/blocks.ts`, its outline built by `src/vscode/outline.ts` and its folds by `src/vscode/folding.ts`, all tested in `src/tests/vscode`. `src/vscode/projects.ts` puts the projects' errors in VS Code, and `src/vscode/navigation.ts` gives the definitions, the hovers, the references, the colours, the addresses, the mnemonics' hovers, the completions, the renames, the folds and the outline.
+The grammar is built by `src/vscode/grammar.ts`, the links found by `src/vscode/links.ts`, a project assembled by `src/vscode/analysis.ts`, its names indexed by `src/vscode/symbol-index.ts`, renamed by `src/vscode/rename.ts`, coloured by `src/vscode/semantic.ts`, their addresses told by `src/vscode/addresses.ts`, their mnemonics described by `src/vscode/instructions.ts`, the code not read found by `src/vscode/unread.ts`, their listing tied to them by `src/vscode/listing.ts` and shown by `src/vscode/listing-view.ts`, and completed by `src/vscode/completion.ts` from the language `src/vscode/language.ts` reads in the assembler, a file's blocks read by `src/vscode/blocks.ts`, its outline built by `src/vscode/outline.ts` and its folds by `src/vscode/folding.ts`, all tested in `src/tests/vscode`. `src/vscode/projects.ts` puts the projects' errors in VS Code, and `src/vscode/navigation.ts` gives the definitions, the hovers, the references, the colours, the addresses, the mnemonics' hovers, the completions, the renames, the folds and the outline.

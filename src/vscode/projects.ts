@@ -15,6 +15,10 @@ import type { ListingLine } from "./listing";
 import type { Place } from "./places";
 import { RenameError, type RenameEdit, type RenameSymbol, readText, renameProjects, renameSymbol } from "./rename";
 import { findReferences, type IndexEntry, type SymbolIndex, symbolKey } from "./symbol-index";
+import { commonRuns } from "./unread";
+
+/** What a faded line's hover says. */
+const UNREAD = "Not assembled: the last assembly didn't read it (an .if branch not taken, a macro or a function never called).";
 
 /** How long the typing stops before the projects assemble again. */
 const DELAY = 300;
@@ -227,6 +231,27 @@ export class Projects implements vscode.Disposable {
 		this.assembled.fire();
 	}
 
+	/** The code no project read, by file, as faded hints: a file whose project didn't assemble yet has none. */
+	private unread(): Map<string, vscode.Diagnostic[]> {
+		const faded = new Map<string, vscode.Diagnostic[]>();
+		const files = new Set([...this.analyses.values()].flatMap(({ sources }) => [...sources]));
+		for (const file of files) {
+			const projects = [...this.analyses].filter(([, { sources }]) => sources.has(file)).map(([project]) => this.indexes.get(project));
+			if (projects.some((index) => !index)) continue;
+			const runs = commonRuns(projects.map((index) => (index as SymbolIndex).unreadIn(file)));
+			faded.set(
+				file,
+				runs.map(({ start, end, endColumn }) => {
+					const hint = new vscode.Diagnostic(new vscode.Range(start - 1, 0, end - 1, endColumn - 1), UNREAD, vscode.DiagnosticSeverity.Hint);
+					hint.source = "tsasm";
+					hint.tags = [vscode.DiagnosticTag.Unnecessary];
+					return hint;
+				}),
+			);
+		}
+		return faded;
+	}
+
 	/** Every project's diagnostics, by file: a file in two projects gets an error both give once. */
 	private publish(): void {
 		const byFile = new Map<string, Map<string, vscode.Diagnostic>>();
@@ -237,8 +262,10 @@ export class Projects implements vscode.Disposable {
 				inFile.set(JSON.stringify(diagnostic), toVscode(diagnostic));
 			}
 		}
+		const faded = this.unread();
 		this.collection.clear();
-		for (const [file, diagnostics] of byFile) this.collection.set(vscode.Uri.file(file), [...diagnostics.values()]);
+		for (const file of new Set([...byFile.keys(), ...faded.keys()]))
+			this.collection.set(vscode.Uri.file(file), [...(byFile.get(file)?.values() ?? []), ...(faded.get(file) ?? [])]);
 	}
 }
 

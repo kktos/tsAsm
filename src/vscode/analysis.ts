@@ -15,8 +15,10 @@ import { Logger } from "../helpers/logger.class";
 import type { LogSink } from "../helpers/logsink.interface";
 import { AsmError, type DefinitionSite, type IncludeSite, type SourceLocation } from "../utils/error.utils";
 import { addressHints } from "./addresses";
+import { scanBlocks } from "./blocks";
 import { nameSpan, type Place, tokenSpan } from "./places";
 import { SymbolIndex } from "./symbol-index";
+import { unreadRuns } from "./unread";
 
 /** How the analysis reads a file, by its absolute path: the editor's buffer when it's open, else the disk. Throws when there's none. */
 export interface Files {
@@ -79,6 +81,8 @@ export function analyse(projectPath: string, files: Files): Analysis {
 	const references: SymbolReference[] = [];
 	const emissions: Emission[] = [];
 	const listed: ListedLine[] = [];
+	// The lines pass 2 read, by the file the assembler names.
+	const read = new Map<string | undefined, Set<number>>();
 	let index: SymbolIndex | undefined;
 	let cpu: string | undefined;
 	try {
@@ -87,8 +91,15 @@ export function analyse(projectPath: string, files: Files): Analysis {
 		options.onSymbolReference = (reference) => references.push(reference);
 		options.onEmit = (emission) => emissions.push(emission);
 		options.onListing = (line) => listed.push(line);
+		options.onStatement = ({ location: { file, line } }) => {
+			const lines = read.get(file) ?? new Set<number>();
+			read.set(file, lines);
+			lines.add(lineNumber(line));
+		};
 		new Assembler(projectCpus(), handler, options).assemble(source);
-		index = buildIndex(references, emissions, listed, (file) => (file ? join(handler.basedir, file) : sourcePath), reader);
+		const path = (file: string | undefined) => (file ? join(handler.basedir, file) : sourcePath);
+		index = buildIndex(references, emissions, listed, path, reader);
+		addUnread(index, read, path, reader, projectPath);
 	} catch (e) {
 		// An error found before the assembly starts, without a line (a segment of the project file), is the project file's.
 		const error = e instanceof AsmError ? e : new AsmError(e instanceof Error ? e.message : String(e));
@@ -119,7 +130,7 @@ function buildIndex(
 	const lineText = (file: string, line: number) => reader.text(file)?.split("\n")[line - 1]?.replace(/\r$/, "") ?? "";
 	const locate = (location: SourceLocation, name?: string): Place => {
 		const file = path(location.file);
-		const line = Math.max(1, Number(String(location.line ?? 1).split(".")[0]) || 1);
+		const line = lineNumber(location.line);
 		const text = lineText(file, line);
 		const column = location.column ?? 1;
 		const [start, end] = name === undefined ? tokenSpan(text, column) : nameSpan(text, column, name);
@@ -140,6 +151,32 @@ function buildIndex(
 	for (const hint of addressHints(located, index.definitions())) index.addHint(hint);
 	index.listing = listed.map(({ text, site }) => (site ? { text, place: locate(site.location), chain: chainOf(site) } : { text, chain: [] }));
 	return index;
+}
+
+/** A location's line: a number, or the text `12.3` for a line in a macro's body. */
+const lineNumber = (line: number | string | undefined) => Math.max(1, Number(String(line ?? 1).split(".")[0]) || 1);
+
+/** Adds to `index` the lines of each source file pass 2 didn't read, `read` the lines it read by the file it names. */
+function addUnread(
+	index: SymbolIndex,
+	read: Map<string | undefined, Set<number>>,
+	path: (file: string | undefined) => string,
+	reader: FileReader,
+	projectPath: string,
+) {
+	const byPath = new Map<string, Set<number>>();
+	for (const [file, lines] of read) byPath.set(path(file), new Set([...(byPath.get(path(file)) ?? []), ...lines]));
+	for (const file of reader.textPaths()) {
+		const text = reader.text(file);
+		if (file === projectPath || text === undefined) continue;
+		const lines = text.split("\n");
+		for (const { start, end } of unreadRuns(text, byPath.get(file) ?? new Set(), scanBlocks(text))) {
+			for (let line = start; line <= end; line++) {
+				const length = lines[line - 1]?.replace(/\r$/, "").length ?? 0;
+				index.addUnread({ file, line, column: 1, endColumn: length + 1 });
+			}
+		}
+	}
 }
 
 /** `name` as `text` writes it, in any case: `...REST` is `...rest` in `.macro m ...rest`. */

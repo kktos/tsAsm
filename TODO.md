@@ -234,7 +234,7 @@ After 4.16: the assembler reads the code in order, so a routine called with othe
 
 ### 4.26 VS Code extension
 
-The extension is done in #213, in `editors/vscode`: syntax colouring of `.asm` files, its grammar built from the CPUs' mnemonics (`CPUHandler.mnemonics`), and links on the paths of `.include`, `.incbin` and `.define … from`. Its errors in the Problems panel are done in #215 (4.27); what else the editor can know of a source is in 4.28–4.35. What's left here:
+The extension is done in #213, in `editors/vscode`: syntax colouring of `.asm` files, its grammar built from the CPUs' mnemonics (`CPUHandler.mnemonics`), and links on the paths of `.include`, `.incbin` and `.define … from`. Its errors in the Problems panel are done in #215 (4.27); what else the editor can know of a source is in 4.28–4.36. What's left here:
 
 - **Linker scripts:** their own language (`#` comments, `.OUTPUT`, `.WRITE`), not coloured yet. To decide: their file extension.
 - **Publishing** on the Marketplace, which needs a publisher account: today it's installed from a `.vsix`.
@@ -246,10 +246,6 @@ Done in #216 for labels, constants, variables, local and anonymous labels, funct
 - **Namespaces and segments:** `gfx::` and `.segment CODE` aren't linked: neither keeps where it's defined (a namespace can be opened in several places, a segment comes from `.segment` or the project file).
 - **Names the evaluator doesn't resolve as values:** the name in `.def(x)` / `.undef(x)`, a name a built-in function takes as an argument.
 - **A file in no project** gets a text scan only.
-
-### 4.36 VS Code: dim the code the assembly didn't read
-
-An `.if` branch not taken, a macro never called: their names keep the grammar's colours (#223, 4.33 left them). Dimmed, as C/C++ does for `#if 0`, they'd show what isn't assembled. Needs the assembler to report the lines it read: a statement loop's callback, as `onSymbolReference`.
 
 ## 5. Documentation (REFERENCE.md)
 

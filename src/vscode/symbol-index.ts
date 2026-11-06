@@ -38,6 +38,8 @@ export class SymbolIndex {
 	private readonly hints = new Map<string, AddressHint[]>();
 	/** The project's listing, its lines tied to their statements. */
 	listing: ListingLine[] = [];
+	/** The lines the assembly didn't read, by file, each whole. */
+	private readonly unread = new Map<string, Place[]>();
 
 	/** Adds an entry, once: a macro body's names are reported at each call, a loop's at each iteration. */
 	add(entry: IndexEntry): void {
@@ -59,6 +61,18 @@ export class SymbolIndex {
 		const hints = this.hints.get(hint.place.file) ?? [];
 		hints.push(hint);
 		this.hints.set(hint.place.file, hints);
+	}
+
+	/** Adds a line the assembly didn't read. */
+	addUnread(place: Place): void {
+		const places = this.unread.get(place.file) ?? [];
+		places.push(place);
+		this.unread.set(place.file, places);
+	}
+
+	/** The lines the assembly didn't read in `file`. */
+	unreadIn(file: string): Place[] {
+		return this.unread.get(file) ?? [];
 	}
 
 	/** The lines' addresses in `file`. */
@@ -110,6 +124,13 @@ export class SymbolIndex {
 			const chain = line.chain.flatMap((call) => moved(call) ?? []);
 			return place ? { ...line, place, chain } : { text: line.text, chain };
 		});
+		// A line the edit touches is shown as read until the next assembly.
+		const unread = this.unread.get(file);
+		if (unread)
+			this.unread.set(
+				file,
+				unread.flatMap((place) => shiftPlace(place, edit) ?? []),
+			);
 		const hints = this.hints.get(file);
 		if (!hints) return;
 		// A statement the edit touches loses its address until the next assembly.
