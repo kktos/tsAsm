@@ -73,7 +73,7 @@ The form the line assembled to is marked ▶, from its bytes in the last assembl
 
 ## Listing
 
-**tsAsm: Show Listing**, in the command palette or the editor's title bar, opens the listing of the file's project beside it, read-only, at the cursor's line, highlighted. It's the listing the CLI writes with `output.listing.passes.pass2`, with the project's `listing.case` and `listing.data`, whether `output.listing` is enabled or not, and its tab is named as the CLI's file; nothing is written.
+**tsAsm: Show Listing**, in the command palette or the editor's title bar, opens the listing of the file's project beside it, read-only, at the cursor's line, highlighted. It's the listing the CLI writes with `output.listing.pass2`, with the project's `listing.case` and `listing.data`, whether `output.listing` lists pass 2 or not, and its tab is named as the CLI's file; nothing is written.
 
 - While it's shown, it follows the cursor in the project's files: a line goes to its first listing line, a macro call to the call's, then its body's, an `.include` to the included file's. A line that listed nothing (a comment, a blank line) scrolls to the closest line above that did, without highlighting.
 - A file in two projects asks which one's.

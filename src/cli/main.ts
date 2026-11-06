@@ -7,7 +7,7 @@ import { TeeSink } from "../helpers/teesink.class";
 import { parseCliArgs } from "./args";
 import { yamlstringify } from "./asm-yaml";
 import colors from "./colors";
-import { readConf } from "./conf";
+import { listsAnything, readConf } from "./conf";
 import { NodeFileHandler } from "./file";
 import { projectCpus, projectOptions } from "./project";
 import type { ValidationError } from "./schema";
@@ -35,8 +35,9 @@ try {
 	new ConsoleErrorSink().error(e);
 	process.exit(-1);
 }
-const { conf, errors } = confResult;
+const { conf, errors, warnings } = confResult;
 if (errors) printErrorsAndExit(errors);
+for (const { path, message } of warnings ?? []) new ConsoleErrorSink().warn(`${path}: ${message}`);
 
 // Every path in the project file is relative to the project file
 const projectDir = resolve(dirname(confFilename));
@@ -52,7 +53,7 @@ const writeOutputFile = (path: string, data: string | Buffer) => {
 fileHandler.basedir = `${projectPath(dirname(conf.input.source))}/`;
 
 const listing = conf.output?.listing;
-const listingEnabled = listing?.enabled ?? false;
+const listingEnabled = listsAnything(listing);
 const listingPath = projectPath(listing?.path ?? `${conf.input.source}.lst`);
 const sink = listingEnabled ? new TeeSink(new FileSink(dirname(listingPath), basename(listingPath)), new ConsoleErrorSink()) : new ConsoleErrorSink();
 
@@ -64,8 +65,8 @@ const logger = new Logger({
 
 const options = projectOptions(conf, logger);
 options.log = {
-	pass1Enabled: conf.output?.listing?.passes?.pass1 === true,
-	pass2Enabled: conf.output?.listing?.passes?.pass2 === true,
+	pass1Enabled: listing?.pass1 === true,
+	pass2Enabled: listing?.pass2 === true,
 	linkerEnabled: listing?.linker === true,
 };
 // The command line's .option values override the project file's

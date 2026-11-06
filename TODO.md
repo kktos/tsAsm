@@ -24,11 +24,7 @@ Since #150, a branch of `.if` not taken rejects an unknown directive starting a 
 
 ### 1.50 `.list on` lists pass 1 when only pass 2 is asked
 
-With `output.listing: { enabled: true, passes: { pass2: true } }`, the statements after a `.list on` are also listed in pass 1, before the pass 2 header, with pass 1 values (`.db "<1 bytes>"`, `.fill "<4 bytes>"`, `1006: 00  NOP`). `.list on` should only turn back on the passes the project file lists.
-
-### 1.51 `listing: { enabled: true }` alone writes an empty listing
-
-Without a linker script, `output.listing: { enabled: true }` writes a `.lst` holding only `--- Assembly Complete ---`. It needs `passes: { pass2: true }` to list anything. Pass 2 should be listed by default, as README's example (`listing: enabled: true`) implies. With a linker script and `linker: true` (the conan game) pass 2 is listed.
+With `output.listing: { pass2: true }`, the statements after a `.list on` are also listed in pass 1, before the pass 2 header, with pass 1 values (`.db "<1 bytes>"`, `.fill "<4 bytes>"`, `1006: 00  NOP`). `.list on` should only turn back on the passes the project file lists.
 
 ### 1.58 `.option` listed with its quotes inside quotes
 
@@ -191,7 +187,7 @@ Follow-ups: a function as the value, with 4.8 (`.function apple2(c) = c | $80`, 
 
 ### 4.14 Project file settings on the command line
 
-After 4.13: change any project file setting for one run, e.g. turn the listing on (`output.listing.enabled`) or a pass's listing (`output.listing.passes.pass1`), or pick another `input.cpu`. To decide: the syntax (`--output.listing.enabled true`, with the setting's path?), how a value gets its type (from the schema in `conf.ts`), how these names stay apart from the `.option` ones and their short names, and short forms for the usual ones (listing on).
+After 4.13: change any project file setting for one run, e.g. turn a pass's listing on (`output.listing.pass2`, `output.listing.pass1`), or pick another `input.cpu`. To decide: the syntax (`--output.listing.pass2 true`, with the setting's path?), how a value gets its type (from the schema in `conf.ts`), how these names stay apart from the `.option` ones and their short names, and short forms for the usual ones (listing on).
 
 ### 4.18 65C816: direct page, absolute and long addressing
 

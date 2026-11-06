@@ -16,7 +16,7 @@ import handlers from "../cpu";
 import { isMaxSize, MAX_SIZE_TEXT } from "../linker/linker.class";
 import { AsmError } from "../utils/error.utils";
 import { yamlparse } from "./asm-yaml";
-import { type InferObject, validate } from "./schema";
+import { type InferObject, type ValidationError, validate } from "./schema";
 
 // A CPU's aliases are names of it too: `65C816` for the 65816.
 const availableCpus = Object.entries(handlers).flatMap(([name, Handler]) => [name, ...(new Handler().aliases ?? [])]);
@@ -138,15 +138,9 @@ const confSchema = {
 				optional: true,
 				schema: {
 					path: { type: "string", optional: true },
-					enabled: { type: "boolean", optional: true },
-					passes: {
-						type: "object",
-						optional: true,
-						schema: {
-							pass1: { type: "boolean", optional: true },
-							pass2: { type: "boolean", optional: true },
-						},
-					},
+					// What the listing lists: the file is written when one of them is on.
+					pass1: { type: "boolean", optional: true },
+					pass2: { type: "boolean", optional: true },
 					linker: { type: "boolean", optional: true },
 				},
 			},
@@ -201,5 +195,19 @@ export function readConf(fileHandler: FileHandler, filename: string) {
 	const input = conf.input as Record<string, unknown> | undefined;
 	if (typeof input?.cpu === "number") input.cpu = String(input.cpu);
 	const result = validate(conf, confSchema);
-	return { conf: conf as ProjectConf, errors: result.ok ? undefined : result.errors };
+	if (!result.ok) return { conf: conf as ProjectConf, errors: result.errors, warnings: undefined };
+	const warnings = confWarnings(conf as ProjectConf);
+	return { conf: conf as ProjectConf, errors: undefined, warnings: warnings.length > 0 ? warnings : undefined };
 }
+
+/** What the project file says that does nothing, by its setting's path, as the schema's errors. */
+function confWarnings(conf: ProjectConf): ValidationError[] {
+	const warnings: ValidationError[] = [];
+	if (conf.output?.listing && !listsAnything(conf.output.listing))
+		warnings.push({ path: "output.listing", message: "Lists nothing, so no listing is written: set pass1, pass2 or linker to true." });
+	return warnings;
+}
+
+/** Whether the listing lists anything: the CLI writes it only then. */
+export const listsAnything = (listing: NonNullable<ProjectConf["output"]>["listing"] | null | undefined) =>
+	listing?.pass1 === true || listing?.pass2 === true || listing?.linker === true;

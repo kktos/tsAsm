@@ -1,7 +1,7 @@
 /**
  * listing.ts
  *
- * * A project's listing, as the CLI writes it with `passes.pass2`: from the assembler's `onListing`, each line tied
+ * * A project's listing, as the CLI writes it with `pass2`: from the assembler's `onListing`, each line tied
  *   to the statement that listed it, for the command showing the listing at the cursor's line.
  * * Without the vscode module, so it can be tested.
  */

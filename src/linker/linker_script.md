@@ -265,7 +265,7 @@ code = .segment("CODE")
 ```yaml
 output:
     listing:
-        enabled: true
+        pass2: true
         linker: true
 ```
 

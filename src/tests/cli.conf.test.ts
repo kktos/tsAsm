@@ -84,6 +84,60 @@ input:
 		]);
 	});
 
+	it("takes what the listing lists, pass1, pass2 and linker, without a warning", () => {
+		const { conf, errors, warnings } = readConfFrom(`${confWithCpu("6502")}
+output:
+  listing:
+    path: out/game.lst
+    pass1: false
+    pass2: true
+`);
+		expect(errors).toBeUndefined();
+		expect(warnings).toBeUndefined();
+		expect(conf.output?.listing).toEqual({ path: "out/game.lst", pass1: false, pass2: true });
+		expect(
+			readConfFrom(`${confWithCpu("6502")}
+output:
+  listing:
+    pass1: yes please
+`).errors,
+		).toEqual([{ path: "output.listing.pass1", message: "Expected boolean" }]);
+	});
+
+	it("rejects output.listing's old enabled and passes", () => {
+		const { errors } = readConfFrom(`${confWithCpu("6502")}
+output:
+  listing:
+    enabled: true
+    passes:
+      pass2: true
+`);
+		expect(errors).toEqual([
+			{ path: "output.listing.enabled", message: "Unknown property" },
+			{ path: "output.listing.passes", message: "Unknown property" },
+		]);
+	});
+
+	it("warns of a listing that lists nothing", () => {
+		const warning = { path: "output.listing", message: "Lists nothing, so no listing is written: set pass1, pass2 or linker to true." };
+		const onlyPath = readConfFrom(`${confWithCpu("6502")}
+output:
+  listing:
+    path: game.lst
+`);
+		expect(onlyPath.errors).toBeUndefined();
+		expect(onlyPath.warnings).toEqual([warning]);
+		const allOff = readConfFrom(`${confWithCpu("6502")}
+output:
+  listing:
+    pass1: false
+    pass2: false
+    linker: false
+`);
+		expect(allOff.warnings).toEqual([warning]);
+		expect(readConfFrom(confWithCpu("6502")).warnings).toBeUndefined();
+	});
+
 	it("accepts input.options, the .option values the source starts with", () => {
 		const { conf, errors } = readConfFrom(`${confWithCpu("6502")}  options:\n    local.prefix: "@"\n    anon.marker: ":"\n    listing.case: lower\n`);
 		expect(errors).toBeUndefined();
