@@ -46,10 +46,6 @@ In a relocatable segment, the instruction's PC is its offset there: a branch to 
 
 On a 32-bit CPU, `.org $12345678` in a resizable segment, or `.fill $12345678, 0`, builds an array of that many bytes in the assembler, before linking: Node runs out of memory (`FATAL ERROR: … JavaScript heap out of memory`), with no assembler error. The linker's `maxSize` (#206) only checks the output. To decide: a limit on a segment's size (the same `maxSize`, or another) and on `.fill`'s count. Found with 4.23.
 
-### 1.69 `.org` to a label defined after it crashes
-
-`.org later` / `later:` → `main.asm:2:1: error: Cannot read properties of null (reading 'toString')`, at the label. With `later = $1000` instead of a label, it assembles. Found with 4.27.
-
 ### 1.70 A label alone before an included file's assignment
 
 `start:` / `.include "c.asm"`, with `c.asm` starting with `count = 3` → `c.asm:1:1: error: Syntax error - (Unknown opcode?) Unexpected label 'COUNT' after START`. `start:` / `count = 3` in one file assembles. Found with 4.28.

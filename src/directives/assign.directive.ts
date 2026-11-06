@@ -2,6 +2,7 @@ import type { Assembler } from "../assembler/polyasm";
 import type { ILister } from "../helpers/lister.class";
 import type { ScalarToken } from "../shared/lexer/lexer.class";
 import type { DirectiveContext, IDirective } from "./directive.interface";
+import { forwardOrgError } from "./org.directive";
 
 export class AssignDirective implements IDirective {
 	public isBlockDirective = false;
@@ -37,6 +38,8 @@ export class AssignDirective implements IDirective {
 
 		if (label === "*") {
 			this.assembler.linker.checkOrg();
+			// A symbol defined after it: unknown in pass 1, it's null.
+			if (value === null) throw forwardOrgError("* =");
 			if (typeof value !== "number") throw new Error(`Invalid value for */ORG: ${value}.`);
 			this.assembler.checkAddress(value);
 			context.PC.value = value;
