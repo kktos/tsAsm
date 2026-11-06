@@ -57,7 +57,7 @@ describe("VS Code listing", () => {
 		]);
 		expect(text).not.toMatch(/ $/m);
 		expect(analysis.listingPath).toBe("/p/main.asm.lst");
-		expect(analysed(MAIN, "output:\n  listing:\n    path: out/prog.lst\n").analysis.listingPath).toBe("/p/out/prog.lst");
+		expect(analysed(MAIN, "output:\n  listing:\n    path: out/prog.lst\n    pass2: true\n").analysis.listingPath).toBe("/p/out/prog.lst");
 	});
 
 	it("ties a source line to its first listing line: a macro call's, its body's, an .include's, the included file's", () => {

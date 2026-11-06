@@ -3,7 +3,7 @@
  *
  * * The command "tsAsm: Show Listing": the listing of the file's project, read-only, beside the source, at the cursor's
  *   line, highlighted. While it's shown, it follows the cursor in the project's files, and the assemblies.
- * * The listing is the CLI's with `passes.pass2`, from the last good assembly: see `listing.ts`. Nothing is written.
+ * * The listing is the CLI's with `pass2`, from the last good assembly: see `listing.ts`. Nothing is written.
  */
 
 import * as vscode from "vscode";

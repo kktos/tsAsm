@@ -89,7 +89,7 @@ output:
     object:
         path: hello.bin
     listing:
-        enabled: true
+        pass2: true
     symbols:
         enabled: true
 ```
@@ -113,7 +113,7 @@ This writes `hello.bin` (the machine code), `hello.asm.lst` (the listing) and `h
 | `input.linker.maxSize` | The largest output file, in bytes, with or without a linker script: from 1 to `0x1000000` (16 MB), default `0x100000` (1 MB). Without a script, the output runs from the lowest segment to the highest, its gaps filled with zeros: past this size, linking is an error. The library takes it as `linker: { maxSize }`.                                                                                                                   |
 | `output.object.path`   | Output file for the assembled code.                                                                                                                                                                                                                                                                                                                                                                                                       |
 | `output.linker.script` | Linker script to use instead of writing the segments directly (see [linker_script.md](src/linker/linker_script.md)).                                                                                                                                                                                                                                                                                                                      |
-| `output.listing`       | `enabled`, `path`, `passes: { pass1, pass2 }` to list each pass, and `linker` to list the linking: the linker script's report and `.log`s, or without a script each segment's place in the output.                                                                                                                                                                                                                                        |
+| `output.listing`       | What the listing lists, each `true` or `false`: `pass1`, `pass2` (what's usually wanted), and `linker`, the linking: the linker script's report and `.log`s, or without a script each segment's place in the output. The file, `path`, is written when one of them is `true`: a listing that lists nothing is a warning.                                                                                                                  |
 | `output.symbols`       | `enabled` and `path` of the symbol file (YAML): see [symbol file](#symbol-file).                                                                                                                                                                                                                                                                                                                                                          |
 | `output.segments`      | `enabled` and `path` of the segment map file (YAML).                                                                                                                                                                                                                                                                                                                                                                                      |
 

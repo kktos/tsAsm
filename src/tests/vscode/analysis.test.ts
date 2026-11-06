@@ -176,6 +176,26 @@ describe("VS Code analysis of the project file", () => {
 		]);
 	});
 
+	it("reports a listing that lists nothing at its setting, as a warning", () => {
+		const { diagnostics } = analyseFiles({
+			"/p/proj.yaml": `${PROJECT}output:
+  listing:
+    path: game.lst
+`,
+			"/p/src/main.asm": `
+	nop
+`,
+		});
+		expect(diagnostics).toMatchObject([
+			{
+				file: "/p/proj.yaml",
+				line: 5,
+				severity: "warning",
+				message: "output.listing: Lists nothing, so no listing is written: set pass1, pass2 or linker to true.",
+			},
+		]);
+	});
+
 	it("reports a YAML error at its line", () => {
 		const { diagnostics } = analyseFiles({
 			"/p/proj.yaml": `

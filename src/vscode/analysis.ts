@@ -185,15 +185,14 @@ function spelling(name: string, text: string): string {
 	return match ? match[0] : name;
 }
 
-/** The project file, read and checked: its errors are reported in it. */
+/** The project file, read and checked: its errors and warnings are reported in it. */
 function readProject(projectPath: string, reader: FileReader, report: Report) {
 	try {
-		const { conf, errors } = readConf(new AnalysisFileHandler("", reader), projectPath);
+		const { conf, errors, warnings } = readConf(new AnalysisFileHandler("", reader), projectPath);
+		const lineOf = (path: string) => keyLine(reader.text(projectPath) ?? "", path);
+		for (const { path, message } of warnings ?? []) report.add(AsmError.warning(`${path}: ${message}`, { line: lineOf(path) }), "", projectPath);
 		if (!errors) return conf;
-		for (const { path, message } of errors) {
-			const line = keyLine(reader.text(projectPath) ?? "", path);
-			report.add(new AsmError(`${path}: ${message}`, { line }), "", projectPath);
-		}
+		for (const { path, message } of errors) report.add(new AsmError(`${path}: ${message}`, { line: lineOf(path) }), "", projectPath);
 	} catch (e) {
 		report.add(e instanceof AsmError ? e : new AsmError(String(e)), "", projectPath);
 	}
