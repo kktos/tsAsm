@@ -802,7 +802,7 @@ A call is the dot, the name and the `(` glued: `.len("AB")`. `.len ("AB")` and `
 
 ### Building an array
 
-`.range(<start>, <count> [, <step>])` gives `count` numbers from `start`, `step` apart: `.range(0, 4)` is `[0, 1, 2, 3]`, `.range(1, 3)` is `[1, 2, 3]`, `.range(0, 4, 2)` is `[0, 2, 4, 6]`, `.range(5, 3, -1)` is `[5, 4, 3]`. The second argument is a count, as `.repeat`'s, not an end: the array has that many elements. All three are whole numbers, the count `0` or more (`0` gives `[]`), the step not `0`.
+`.range(<start>, <count> [, <step>])` gives `count` numbers from `start`, `step` apart: `.range(0, 4)` is `[0, 1, 2, 3]`, `.range(1, 3)` is `[1, 2, 3]`, `.range(0, 4, 2)` is `[0, 2, 4, 6]`, `.range(5, 3, -1)` is `[5, 4, 3]`. The second argument is a count, as `.repeat`'s, not an end: the array has that many elements. All three are whole numbers, the count `0` or more (`0` gives `[]`), the step not `0`. A one-character string is its character code, as wherever a number is expected: `.range("0", 10)` gives the codes of the ten digits, `$30` to `$39`.
 
 `.map(<array>, <function>)` calls the function with each element and gives the array of its values. The function is written by its name, not called: a [user function](#functions) defined before (`row`), or a system function with its dot (`.lobyte`). It must take one argument.
 

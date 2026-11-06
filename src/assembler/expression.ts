@@ -9,6 +9,7 @@ import { FunctionDispatcher } from "../shared/functions/function.dispatcher";
 import { FunctionRef, type SymbolResolver } from "../shared/functions/types";
 import type { FunctionToken, OperatorStackToken, OperatorToken, ScalarToken, Token } from "../shared/lexer/lexer.class";
 import { AsmError, type AsmNote } from "../utils/error.utils";
+import { charCode } from "../utils/number.utils";
 import { fieldValue } from "../utils/symbol.utils";
 import { isGlued, nestingDelta, tokenText } from "../utils/token.utils";
 import { type EvaluationContext, type EvaluatorHost, PRECEDENCE } from "./expression.types";
@@ -20,8 +21,6 @@ const UNARY_TEST_OPERATORS = new Set([")", "]"]);
 // What two strings do as text: `+` joins them, the others compare them.
 const STRING_OPERATORS = new Set(["+", "=", "==", "!="]);
 
-/** A one-character string used as a number is its character code: `"A"+1` is $42. Anything else is returned as is. */
-const charCode = <T>(value: T): T | number => (typeof value === "string" && value.length === 1 ? value.charCodeAt(0) : value);
 const notACharMessage = (value: string) => `Only a one-character string can be used as a number: ${JSON.stringify(value)}.`;
 const UNARY_OPERATORS = new Set(["UNARY_MINUS", "!", "UNARY_LSB", "UNARY_MSB", "UNARY_BANK"]);
 /** The byte `<`, `>` and `^` take, by their shift. */

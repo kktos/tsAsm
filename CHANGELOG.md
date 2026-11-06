@@ -6,6 +6,12 @@ The problem is described as it was before the fix, then the fix in _italics_.
 
 ## Assembler
 
+### #228 — `.range()` with a one-character string (TODO 1.73)
+
+A one-character string used as a number is its character code (#149), but `.range()` didn't convert its arguments: `.range("0", 10)` → `.RANGE() start: 0 isn't a whole number.`, and a test even expected `.range(0, "A")` to be an error.
+
+_Fixed: its start, count and step are character codes when given a one-character string: `.range("0", 10)` gives `$30` to `$39`, `.range("A", 3, "\x02")` gives `$41 $43 $45`. A longer string is still an error. `charCode()` moves to `number.utils.ts` to be shared; the other functions taking a number are TODO 1.74._
+
 ### #222 — `.str()` takes two arguments, and reads only one (TODO 1.71)
 
 `.str` was registered with two arguments, but its handler read one: `.str(1, 2)` → `Invalid expression format.`, the second left on the stack. And `.str("a")` → `First argument to .STR() must be a number.`, though REFERENCE said "the value as a string".

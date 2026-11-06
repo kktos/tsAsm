@@ -78,6 +78,10 @@ On a 32-bit CPU, `.org $12345678` in a resizable segment, or `.fill $12345678, 0
 
 `LBRA` and `LBSR` are in the 6809's page 2 with 3 bytes, but they're page 1 opcodes (`16`, `17`), 3 bytes: `.org $1000` / `lbra $1010` / `nop` → `10 16 00 0D 12`, four bytes with a page prefix, the offset computed for three. Found with 4.34.
 
+### 1.74 A one-character string in a function's number argument
+
+A one-character string used as a number is its character code (#149), but the built-in functions taking a number don't convert it: `.db .lobyte("A")` → `.LOBYTE() requires a number argument.`, and so do `.hibyte`, `.bankbyte`, `.floor`, `.ceil` and `.round`. `.range()` does since 1.73, with `charCode()` from `number.utils.ts`. Found with 1.73.
+
 ## 2. Code review, items left
 
 ### 2.1 CPU back-ends
