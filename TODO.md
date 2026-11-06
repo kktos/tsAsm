@@ -226,7 +226,7 @@ After 4.16: the assembler reads the code in order, so a routine called with othe
 
 ### 4.26 VS Code extension
 
-The extension is done in #213, in `editors/vscode`: syntax colouring of `.asm` files, its grammar built from the CPUs' mnemonics (`CPUHandler.mnemonics`), and links on the paths of `.include`, `.incbin` and `.define … from`. What the editor knows of a source comes in 4.27–4.35. What's left here:
+The extension is done in #213, in `editors/vscode`: syntax colouring of `.asm` files, its grammar built from the CPUs' mnemonics (`CPUHandler.mnemonics`), and links on the paths of `.include`, `.incbin` and `.define … from`. Its errors in the Problems panel are done in #215 (4.27); what else the editor can know of a source is in 4.28–4.35. What's left here:
 
 - **Linker scripts:** their own language (`#` comments, `.OUTPUT`, `.WRITE`), not coloured yet. To decide: their file extension.
 - **Publishing** on the Marketplace, which needs a publisher account: today it's installed from a `.vsix`.
