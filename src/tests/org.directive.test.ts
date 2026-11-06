@@ -63,6 +63,45 @@ describe("Directive: .ORG / *", () => {
 			const asm = createAssembler();
 			expect(() => asm.assemble(source)).toThrow(/Write out of bounds: address \$300 is below segment 'CODE' start \$1000./);
 		});
+
+		it("should refuse a symbol defined after it, at the .org", () => {
+			const error = (line: number) =>
+				expect.objectContaining({
+					message: "The .org address uses a symbol defined after it: define the symbol before the .org.",
+					location: expect.objectContaining({ line }),
+				});
+			// A label it would place itself: it was a crash.
+			expect(() =>
+				createAssembler().assemble(`.org later
+later:`),
+			).toThrow(error(1));
+			expect(() =>
+				createAssembler().assemble(`nop
+.org later + 1
+nop
+later: nop`),
+			).toThrow(error(2));
+			// A constant: the code in between can't be placed in pass 1 either.
+			expect(() =>
+				createAssembler().assemble(`.org later
+lbl: nop
+later = $2000`),
+			).toThrow(error(1));
+			expect(() =>
+				createAssembler().assemble(`.org later
+nop
+later = $2000`),
+			).toThrow(error(1));
+		});
+
+		it("should take a symbol defined before it", () => {
+			const asm = createAssembler();
+			asm.assemble(`later = $1002
+.org later
+lbl: nop`);
+			expect(asm.symbolTable.lookupSymbol("LBL")).toBe(0x1002);
+			expect(asm.link()).toEqual([0, 0, 0xea]);
+		});
 	});
 
 	describe("*", () => {
@@ -72,6 +111,13 @@ describe("Directive: .ORG / *", () => {
         `;
 			const asm = createAssembler();
 			expect(() => asm.assemble(source)).toThrow("Invalid value for */ORG: test.");
+		});
+
+		it("should refuse a symbol defined after it, as .org", () => {
+			expect(() =>
+				createAssembler().assemble(`* = later
+later:`),
+			).toThrow("The * = address uses a symbol defined after it: define the symbol before the * =.");
 		});
 
 		it("should handle multiple * assign", () => {
