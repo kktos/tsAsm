@@ -49,7 +49,7 @@ start:	lda #count
 		expect(listed(`\t.option listing.data "fold"${loop}`)).toContain("3| 1000: 01 01 .repeat $02");
 		expect(listed(`\t.option listing.data "fold"${loop.replace(".db 1", ".db 1\n\tnop")}`)).toEqual([
 			"-| .set namespace: global",
-			'1| .option "listing.data = "fold""',
+			'1| .option listing.data "fold"',
 			"3| .repeat $02",
 			"4| 1000: 01 .db $01",
 			"5| 1001: EA NOP",

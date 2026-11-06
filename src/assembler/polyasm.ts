@@ -286,7 +286,8 @@ export class Assembler {
 	/** Options are broadcast as "option:<name>" events. They take effect from the next statement on. */
 	public setOption(name: OptionName, value: OptionValue) {
 		this.applyOption(name, value);
-		this.lister.directive("option", `${name} = ${JSON.stringify(value)}`);
+		// `.option listing.case "lower"`: the name with the directive, the value listed as any directive's (a number in hex).
+		this.lister.directive(`option ${name}`, value);
 	}
 
 	private applyOption(name: OptionName, value: OptionValue) {
