@@ -9,6 +9,7 @@
 import { readFileSync } from "node:fs";
 import * as vscode from "vscode";
 import { type Analysis, analyse, type Diagnostic, type Files, isProjectFile } from "./analysis";
+import { scanBlocks } from "./blocks";
 import type { Place } from "./places";
 import { findReferences, type IndexEntry, type SymbolIndex } from "./symbol-index";
 
@@ -61,6 +62,31 @@ export class Projects implements vscode.Disposable {
 	/** The references, in every project, to what the name at `position` refers to, and its definitions with `includeDeclaration`. */
 	referencesAt(uri: vscode.Uri, position: vscode.Position, includeDeclaration: boolean): Place[] {
 		return findReferences(this.indexes.values(), this.entriesAt(uri, position), includeDeclaration);
+	}
+
+	/** The definitions in `file`, every project's. */
+	definitionsIn(uri: vscode.Uri): IndexEntry[] {
+		return [...this.indexes.values()].flatMap((index) => index.definitions(uri.fsPath));
+	}
+
+	/** Every project's definitions, and the namespaces of their source files, from their text as it is now. */
+	workspaceDefinitions(): { definitions: IndexEntry[]; namespaces: { name: string; place: Place }[] } {
+		const files = editorFiles();
+		const sources = new Set([...this.analyses.values()].flatMap((analysis) => [...analysis.sources]));
+		const namespaces = [...sources].flatMap((file) => {
+			let text: string;
+			try {
+				text = files.readText(file);
+			} catch {
+				return [];
+			}
+			return scanBlocks(text).flatMap(({ kind, name, nameStart, nameEnd }) =>
+				kind === "namespace" && name && nameStart && nameEnd
+					? [{ name, place: { file, line: nameStart.line, column: nameStart.column, endColumn: nameEnd.column } }]
+					: [],
+			);
+		});
+		return { definitions: [...this.indexes.values()].flatMap((index) => index.definitions()), namespaces };
 	}
 
 	/** The indexes' places in `file` follow its edits, applied in order. */
@@ -169,7 +195,11 @@ function safeAnalyse(project: string, files: Files): Analysis {
 		return analyse(project, files);
 	} catch (e) {
 		const message = `The analysis of this project failed: ${e instanceof Error ? e.message : e}`;
-		return { files: new Set([project]), diagnostics: [{ file: project, line: 1, column: 1, endColumn: 2, message, severity: "error", related: [] }] };
+		return {
+			files: new Set([project]),
+			sources: new Set(),
+			diagnostics: [{ file: project, line: 1, column: 1, endColumn: 2, message, severity: "error", related: [] }],
+		};
 	}
 }
 
