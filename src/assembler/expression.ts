@@ -895,6 +895,7 @@ export class ExpressionEvaluator {
 		const fn = this.symbolTable.isDefined(named.value) ? this.symbolTable.lookupSymbol(named.value) : undefined;
 		if (fn === undefined) throw AsmError.at(`Unknown function '${written}'.`, named);
 		if (!(fn instanceof UserFunction)) throw AsmError.at(`'${written}' isn't a function.`, named);
+		this.host.referenceSymbol?.(named, named.value);
 		return new FunctionRef(written, false, named, [fn.parameters.length, fn.parameters.length]);
 	}
 
@@ -919,6 +920,7 @@ export class ExpressionEvaluator {
 		const fn = this.symbolTable.isDefined(token.value) ? this.symbolTable.lookupSymbol(token.value) : undefined;
 		if (fn === undefined) throw AsmError.at(`Unknown function '${name}'.`, token);
 		if (!(fn instanceof UserFunction)) throw AsmError.at(`'${name}' isn't a function.`, token);
+		this.host.referenceSymbol?.(token, token.value);
 
 		const { parameters } = fn;
 		if (args.length !== parameters.length)
@@ -1007,6 +1009,8 @@ export class ExpressionEvaluator {
 				if (value instanceof UserFunction)
 					throw AsmError.at(`'${token.raw ?? token.value}' is a function: call it, ${token.raw ?? token.value}(…).`, token);
 
+				if (value !== undefined) this.host.referenceSymbol?.(token, token.value);
+
 				// If the symbol's value is an array of tokens, it's a macro parameter.
 				// We need to evaluate it recursively. This handles .EQU with token arrays.
 				if (Array.isArray(value) && value[0]?.type) return this.evaluate(value as Token[], context);
@@ -1029,7 +1033,10 @@ export class ExpressionEvaluator {
 
 				const qualifiedName = `${context.currentLabel}.${token.value}`;
 				const value = this.symbolTable.lookupSymbol(qualifiedName);
-				if (value !== undefined) return value;
+				if (value !== undefined) {
+					this.host.referenceSymbol?.(token, qualifiedName);
+					return value;
+				}
 
 				if (context.allowForwardRef) return null; // Pass 1: Assume 0 for forward references.
 
@@ -1043,7 +1050,9 @@ export class ExpressionEvaluator {
 				if (addr === null && !context.allowForwardRef)
 					throw AsmError.at(`Not enough ${distance < 0 ? "preceding" : "succeeding"} anonymous labels to satisfy '${token.value}'.`, token);
 
-				return addr === null ? null : this.addressValue(addr);
+				if (addr === null) return null;
+				this.host.referenceAnonymousLabel?.(token, context.PC.value, distance);
+				return this.addressValue(addr);
 			}
 
 			default:

@@ -3,6 +3,7 @@ import type { CPUHandler, InstructionContext, ModeInfo, OperandReader } from "..
 import type { DirectiveContext, DirectiveRuntime } from "../directives/directive.interface";
 import { DirectiveHandler } from "../directives/handler";
 import { MacroHandler } from "../directives/macro/handler";
+import type { MacroDefinition } from "../directives/macro/macro.interface";
 import { isTextArg, markAsText } from "../directives/macro/text-arg";
 import { ConsoleSink } from "../helpers/consolesink.class";
 import { ErrorLocator } from "../helpers/error-locator.class";
@@ -15,10 +16,10 @@ import { AsmError } from "../utils/error.utils";
 import { getHex } from "../utils/hex.util";
 import { ExpressionEvaluator } from "./expression";
 import type { ValueHolder } from "./expression.types";
-import { NamelessLabels } from "./namelesslabels.class";
+import { type NamelessLabel, NamelessLabels } from "./namelesslabels.class";
 import { LOCAL_OPTIONS, type LocalOptions, type OptionName, type OptionValue, withDefaultOptions } from "./options";
 import { Parser, ParserError } from "./parser.class";
-import type { AssemblerOptions, DataProcessor, FileHandler, FunctionCall, SegmentDefinition, StreamState } from "./polyasm.types";
+import type { AssemblerOptions, DataProcessor, FileHandler, FunctionCall, SegmentDefinition, StreamState, SymbolInfo } from "./polyasm.types";
 import { noFixupError, RelocValue } from "./reloc-value.class";
 import { PASymbolTable, type SymbolValue } from "./symbol.class";
 import type { UserFunction } from "./user-function.class";
@@ -91,6 +92,7 @@ export class Assembler {
 	private wannaLogPass1 = false;
 	private wannaLogPass2 = false;
 	private wannaLogLinker = false;
+	private readonly onSymbolReference: AssemblerOptions["onSymbolReference"];
 
 	public expressionEvaluator: ExpressionEvaluator;
 	public directiveHandler: DirectiveHandler;
@@ -113,6 +115,7 @@ export class Assembler {
 		this.initialCpuHandler = options?.cpu === undefined ? firstCpu : this.findCPUHandler(options.cpu);
 		this.cpuHandler = this.initialCpuHandler;
 		this.segmentDefinitions = options?.segments ?? [];
+		this.onSymbolReference = options?.onSymbolReference;
 		this.initialOptions = withDefaultOptions(options?.options);
 		this.currentOptions = { ...this.initialOptions };
 		this.fileHandler = fileHandler;
@@ -146,6 +149,11 @@ export class Assembler {
 			isMacroDefined: (name) => this.macroHandler.isDefined(name),
 			functionRecursion: () => this.currentOptions["function.recursion"] as number,
 			runFunction: (fn) => this.runFunction(fn),
+			referenceSymbol: (token, symbolName) => this.reportReference(token, () => this.symbolTable.describe(symbolName)),
+			referenceAnonymousLabel: (token, address, distance) =>
+				this.reportReference(token, () =>
+					anonymousLabelInfo(this.namelessLabels.findNearestLabel(address, distance), (value) => this.addressValue(value)),
+				),
 		});
 
 		this.parser = new Parser(this.emitter);
@@ -499,6 +507,7 @@ export class Assembler {
 			this.logger.enabled = isLogEnabled && this.wannaLogPass2;
 
 			this.passTwo();
+			this.reportDefinitions();
 
 			this.logger.enabled = isLogEnabled;
 		} catch (e) {
@@ -515,6 +524,25 @@ export class Assembler {
 		this.logger.log("\n--- Assembly Complete ---");
 
 		return this.linker.segments;
+	}
+
+	/** Pass 2: tells `onSymbolReference` that `token` names what `describe` gives, if anything. */
+	private reportReference(token: Token, describe: () => SymbolInfo | undefined) {
+		if (this.pass !== 2 || !this.onSymbolReference) return;
+		const symbol = describe();
+		if (symbol) this.onSymbolReference({ at: this.errorLocator.definitionSite(token).location, definition: false, symbol });
+	}
+
+	/** Once assembled: tells `onSymbolReference` every symbol, macro and anonymous label defined, at its definition. */
+	private reportDefinitions() {
+		const report = this.onSymbolReference;
+		if (!report) return;
+		const symbols = [
+			...this.symbolTable.definitions(),
+			...[...this.macroHandler.macroDefinitions.values()].map(macroInfo),
+			...this.namelessLabels.all().flatMap((label) => anonymousLabelInfo(label, (value) => this.addressValue(value)) ?? []),
+		];
+		for (const symbol of symbols) report({ at: symbol.site.location, definition: true, symbol });
 	}
 
 	/** Reports a warning, located like an error: at `position`, else at the current statement. */
@@ -666,7 +694,7 @@ export class Assembler {
 
 				case "ANONYMOUS_LABEL_DEF": {
 					this.anonymousLabelsDefined++;
-					this.namelessLabels.add(this.PC.value);
+					this.namelessLabels.add(this.PC.value, this.onSymbolReference ? this.errorLocator.definitionSite(token) : undefined);
 					this.lister.label(token.value, this.addressValue(this.PC.value));
 					break;
 				}
@@ -743,6 +771,8 @@ export class Assembler {
 
 				case "IDENTIFIER": {
 					if (this.macroHandler.isMacro(token.value)) {
+						const definition = this.macroHandler.macroDefinitions.get(token.value);
+						this.reportReference(token, () => definition && macroInfo(definition));
 						this.macroHandler.expandMacro(token);
 						break;
 					}
@@ -833,7 +863,10 @@ export class Assembler {
 
 				case "ANONYMOUS_LABEL_DEF": {
 					this.anonymousLabelsDefined++;
-					const pass1Address = this.namelessLabels.update(this.PC.value);
+					const pass1Address = this.namelessLabels.update(
+						this.PC.value,
+						this.onSymbolReference ? this.errorLocator.definitionSite(token) : undefined,
+					);
 					if (pass1Address !== undefined && pass1Address !== this.PC.value) throw this.phaseError("anonymous label", pass1Address);
 					this.lister.label(token.value, this.addressValue(this.PC.value));
 					break;
@@ -1194,4 +1227,21 @@ function segmentAttributes(seg: SegmentDefinition): SegmentAttributes {
 		attrs[name] = value;
 	}
 	return attrs;
+}
+
+/** What a macro call refers to. */
+function macroInfo(definition: MacroDefinition): SymbolInfo {
+	const rest = definition.restParameter === undefined ? [] : [`...${definition.restParameter}`];
+	return {
+		name: definition.name,
+		kind: "macro",
+		parameters: [...definition.parameters, ...rest],
+		site: { location: { file: definition.file, line: definition.line, column: definition.column }, includeStack: definition.includeStack },
+	};
+}
+
+/** What an anonymous label reference refers to: nothing without its site, kept only when references are reported. */
+function anonymousLabelInfo(label: NamelessLabel | null, addressValue: (address: number) => SymbolValue): SymbolInfo | undefined {
+	if (!label?.site) return undefined;
+	return { name: ":", kind: "anonymous label", value: addressValue(label.address), site: label.site };
 }

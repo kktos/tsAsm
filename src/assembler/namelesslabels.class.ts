@@ -1,5 +1,9 @@
-interface NamelessLabel {
+import type { DefinitionSite } from "../utils/error.utils";
+
+export interface NamelessLabel {
 	address: number;
+	/** Where it's defined, kept by pass 2 when the assembler reports references. */
+	site?: DefinitionSite;
 }
 
 /**
@@ -20,9 +24,15 @@ export class NamelessLabels {
 		this.nextIndex = 0;
 	}
 
+	/** In definition order. */
+	all(): readonly NamelessLabel[] {
+		return this.labels;
+	}
+
 	/** Pass 1: defines the next anonymous label. */
-	add(address: number): void {
-		const label = { address };
+	add(address: number, site?: DefinitionSite): void {
+		const label: NamelessLabel = { address };
+		if (site) label.site = site;
 		this.labels.push(label);
 		this.byAddress.push(label);
 		this.byAddress.sort((a, b) => a.address - b.address);
@@ -37,12 +47,13 @@ export class NamelessLabels {
 	 * Pass 2: sets the address of the next anonymous label.
 	 * @returns its pass-1 address, or undefined if pass 1 didn't define it
 	 */
-	update(address: number): number | undefined {
+	update(address: number, site?: DefinitionSite): number | undefined {
 		const label = this.labels[this.nextIndex++];
 		if (!label) {
-			this.add(address);
+			this.add(address, site);
 			return undefined;
 		}
+		if (site) label.site = site;
 
 		const pass1Address = label.address;
 		if (pass1Address !== address) {
@@ -61,6 +72,11 @@ export class NamelessLabels {
 	 * @returns The address of the target label, or null if not found
 	 */
 	findNearest(currentAddress: number, distance: number): number | null {
+		return this.findNearestLabel(currentAddress, distance)?.address ?? null;
+	}
+
+	/** The anonymous label `findNearest` finds, or null. */
+	findNearestLabel(currentAddress: number, distance: number): NamelessLabel | null {
 		if (this.byAddress.length === 0) return null;
 
 		// Binary search for insertion point (where currentAddress would go)
@@ -84,7 +100,7 @@ export class NamelessLabels {
 			const backwardIndex = hasLabelAtCurrent ? left : left - 1;
 			targetIndex = backwardIndex + distance + 1; // +1 because distance=-1 means "first backward"
 
-			if (targetIndex >= 0) return this.byAddress[targetIndex]?.address ?? 0;
+			if (targetIndex >= 0) return this.byAddress[targetIndex] ?? null;
 		} else if (distance > 0) {
 			// Forward: labels strictly after currentAddress. A label at currentAddress is "behind us" (see above),
 			// e.g. in `: bne :+` the label on the same line is not the target.
@@ -92,7 +108,7 @@ export class NamelessLabels {
 			while (firstAfter < this.byAddress.length && this.byAddress[firstAfter]?.address === currentAddress) firstAfter++;
 
 			targetIndex = firstAfter + distance - 1; // firstAfter + 0 for distance=1, firstAfter + 1 for distance=2, etc.
-			if (targetIndex < this.byAddress.length) return this.byAddress[targetIndex]?.address ?? 0;
+			if (targetIndex < this.byAddress.length) return this.byAddress[targetIndex] ?? null;
 		}
 
 		return null;

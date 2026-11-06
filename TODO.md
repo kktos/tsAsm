@@ -70,6 +70,10 @@ On a 32-bit CPU, `.org $12345678` in a resizable segment, or `.fill $12345678, 0
 
 `.org later` / `later:` → `main.asm:2:1: error: Cannot read properties of null (reading 'toString')`, at the label. With `later = $1000` instead of a label, it assembles. Found with 4.27.
 
+### 1.70 A label alone before an included file's assignment
+
+`start:` / `.include "c.asm"`, with `c.asm` starting with `count = 3` → `c.asm:1:1: error: Syntax error - (Unknown opcode?) Unexpected label 'COUNT' after START`. `start:` / `count = 3` in one file assembles. Found with 4.28.
+
 ## 2. Code review, items left
 
 ### 2.1 CPU back-ends

@@ -5,6 +5,7 @@ The language of the [tsAsm](https://github.com/kktos/tsAsm) assembler, for `.asm
 - **Syntax colouring** of the language in [REFERENCE.md](../../REFERENCE.md): instructions, directives, labels (local and anonymous too), macro calls, numbers, strings, comments, system functions and variables. A `.define` block is coloured as YAML or JSON, and a `.hex` block as hex digits.
 - **File links:** the path of an `.include`, an `.incbin` or a `.define … from` opens its file, with Cmd+click (Ctrl+click on Windows and Linux).
 - **Errors and warnings** in the Problems panel: the extension assembles each project of the workspace as the CLI does, while you type.
+- **Go to a definition:** Cmd+click on a name (F12) goes to where it's defined, and its hover tells what it is: a label's or a constant's value, in hex and decimal, a variable's value there, a macro's or a function's parameters.
 
 Another extension can be mapped to the language in the settings: `"files.associations": { "*.s": "tsasm" }`.
 
@@ -24,6 +25,12 @@ Each project is assembled as `tsasm` does, without writing its output: a moment 
 
 An assembly stops at its first error: the errors after it show once it's fixed.
 
+## Definitions and hovers
+
+A name is what the assembler made of it: a label, a constant, a variable, a local or anonymous label, a function or its parameter, a macro, in its namespace, its `.proc` or its macro call. So they come from the last assembly that succeeded. While a file has an error, its names keep working, their places moved with the edits made since; a name you change is only known again once the project assembles.
+
+A name in a macro body can refer to a symbol of each call: Cmd+click lists them all, and the hover tells up to five. A namespace, a segment, and a name in `.def()` aren't linked yet.
+
 ## Building and installing
 
 From the root of the repository:
@@ -42,4 +49,4 @@ While working on it, link the folder into VS Code's extensions instead, then run
 ln -s "$PWD/editors/vscode" ~/.vscode/extensions/kktos.tsasm
 ```
 
-The grammar is built by `src/vscode/grammar.ts`, the links found by `src/vscode/links.ts`, and a project assembled by `src/vscode/analysis.ts`, all tested in `src/tests/vscode`; `src/vscode/diagnostics.ts` puts the projects' errors in VS Code.
+The grammar is built by `src/vscode/grammar.ts`, the links found by `src/vscode/links.ts`, a project assembled by `src/vscode/analysis.ts`, and its names indexed by `src/vscode/symbol-index.ts`, all tested in `src/tests/vscode`; `src/vscode/projects.ts` puts the projects' errors in VS Code, and `src/vscode/navigation.ts` gives the definitions and the hovers.
