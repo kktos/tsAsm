@@ -41,7 +41,8 @@ export class AlignDirective implements IDirective {
 		const boundary = this.runtime.evaluator.evaluateAsNumber(boundaryTokens, context);
 		this.assertPowerOfTwo(boundary);
 
-		const fillerValue = valueTokens.length > 0 ? this.runtime.evaluator.evaluateAsNumber(valueTokens, context) : 0; // Default to 0 if no value is provided
+		// No comma, no filler: 0. A comma with nothing after it is `Missing expression.`, as `.db 1,`.
+		const fillerValue = valueTokens ? this.runtime.evaluator.evaluateAsNumber(valueTokens, context) : 0;
 		assertFitsInBytes(fillerValue, 1, `.${directive.value} value:`);
 
 		const oldPC = context.PC.value;
@@ -75,11 +76,11 @@ export class AlignDirective implements IDirective {
 	 * Parses the argument tokens into boundary and value expressions.
 	 * @returns A tuple containing [boundaryTokens, valueTokens].
 	 */
-	private parseArguments(tokens: Token[]): [Token[], Token[]] {
+	private parseArguments(tokens: Token[]): [Token[], Token[] | null] {
 		const commaIndex = findTopLevelComma(tokens);
 
 		// No comma, all tokens are for the boundary.
-		if (commaIndex === -1) return [tokens, []];
+		if (commaIndex === -1) return [tokens, null];
 
 		const boundaryTokens = tokens.slice(0, commaIndex);
 		const valueTokens = tokens.slice(commaIndex + 1);

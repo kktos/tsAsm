@@ -10,10 +10,6 @@ What is done is in `CHANGELOG.md`. How we work (PR rules, design rules, commands
 
 `.macro m` / `.repeat 2 {` / `nop` / `}` / `.end` / `m` → `Missing .END for the .MACRO block.` Same with `.proc f {`, and in an `.if` / `.elseif` / `.else` branch: `.if 0` / `.repeat 2 {` / `nop` / `}` / `.end` → `Missing .END for the .IF block.` It works in a `.macro m { … }` body, and with the `.end` form of the inner block.
 
-### 1.35 A trailing comma in `.fill` / `.align`
-
-`.fill 2,` → `00 00`, `.align 4,` → `00 00 00`: an empty filler is 0, as when there's no filler at all.
-
 ### 1.37 Fractions truncated silently
 
 `/` gives fractions (`7 / 2` is `3.5`), and where a whole number is needed they are truncated without a word: `lda #7/2` → `a9 03`, `.dw 1000/3` → `4d 01`, `.org $1000 + 1/2` is accepted, `.if 1/2` is true. `.repeat 5/2` already says `isn't a whole number`, and `l[3/2]` gives `Unexpected value type undefined.` Error or warning, and what `.if` does with a fraction: decision needed (recommended: an error, as `.repeat` does). See 3.6.

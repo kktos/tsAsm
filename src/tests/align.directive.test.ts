@@ -142,6 +142,16 @@ describe(".ALIGN", () => {
 		expect(() => assembler.assemble(".align undefinedSym")).toThrow("Undefined symbol 'UNDEFINEDSYM'");
 	});
 
+	it("should reject a comma with no filler after it, aligned or not", () => {
+		const segments = [{ name: "CODE", start: 0x1000, size: 0, resizable: true }];
+		const missing = (line: number) => expect.objectContaining({ message: "Missing expression.", location: expect.objectContaining({ line }) });
+		expect(() =>
+			createAssembler(segments).assemble(`.org $1001
+.align 4,`),
+		).toThrow(missing(2));
+		expect(() => createAssembler(segments).assemble(".align 4,")).toThrow(missing(1));
+	});
+
 	it("should throw if the fill value can't be evaluated", () => {
 		const logger = new Logger({ sink: new MemorySink(), enabled: true });
 		const segments = [{ name: "CODE", start: 0x1001, size: 0, resizable: true }];

@@ -51,6 +51,16 @@ describe("Directive: .fill", () => {
 		expect(filledData).toEqual([0, 0, 0]);
 	});
 
+	it("should reject a comma with no filler after it", () => {
+		const missing = (line: number) => expect.objectContaining({ message: "Missing expression.", location: expect.objectContaining({ line }) });
+		expect(() =>
+			asm.assemble(`.org $2000
+.fill 2,`),
+		).toThrow(missing(2));
+		expect(() => asm.assemble(".res 2,")).toThrow(missing(1));
+		expect(() => asm.assemble(".fill 2, ; the filler")).toThrow(missing(1));
+	});
+
 	it("should evaluate expressions for count and value", () => {
 		const source = `
             .cpu "6502"

@@ -39,7 +39,8 @@ export class FillDirective implements IDirective {
 		const count = this.runtime.evaluator.evaluateAsNumber(countTokens, context);
 		this.assertValidCount(count, directive);
 
-		const fillerValue = valueTokens.length > 0 ? this.runtime.evaluator.evaluateAsNumber(valueTokens, context) : 0;
+		// No comma, no filler: 0. A comma with nothing after it is `Missing expression.`, as `.db 1,`.
+		const fillerValue = valueTokens ? this.runtime.evaluator.evaluateAsNumber(valueTokens, context) : 0;
 		assertFitsInBytes(fillerValue, 1, `.${directive.value} value:`);
 
 		if (count > 0) {
@@ -69,12 +70,12 @@ export class FillDirective implements IDirective {
 	 * Parses the argument tokens into count and value expressions.
 	 * @returns A tuple containing [countTokens, valueTokens].
 	 */
-	private parseArguments(tokens: Token[]): [Token[], Token[]] {
+	private parseArguments(tokens: Token[]): [Token[], Token[] | null] {
 		const commaIndex = findTopLevelComma(tokens);
 
 		if (commaIndex === -1) {
 			// No comma, all tokens are for the count.
-			return [tokens, []];
+			return [tokens, null];
 		}
 
 		const countTokens = tokens.slice(0, commaIndex);
