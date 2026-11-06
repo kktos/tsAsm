@@ -1,10 +1,11 @@
 import { RelocValue, relocatableByte } from "../../assembler/reloc-value.class";
 import { AsmError } from "../../utils/error.utils";
+import { charCode } from "../../utils/number.utils";
 import type { Token } from "../lexer/lexer.class";
 import type { EvaluationStack, FunctionHandler } from "./types";
 
 export const hibyteFunction: FunctionHandler = (stack: EvaluationStack, token: Token): void => {
-	const arg = stack.pop();
+	const arg = charCode(stack.pop());
 
 	// this is probably a label not yet resolved (pass 1)
 	if (arg === null) {

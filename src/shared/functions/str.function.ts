@@ -1,4 +1,5 @@
 import { AsmError } from "../../utils/error.utils";
+import { charCode } from "../../utils/number.utils";
 import type { Token } from "../lexer/lexer.class";
 import type { EvaluationStack, FunctionHandler } from "./types";
 
@@ -7,7 +8,8 @@ import type { EvaluationStack, FunctionHandler } from "./types";
  * a string as is.
  */
 export const strFunction: FunctionHandler = (stack: EvaluationStack, token: Token, _symbolTable, argCount): void => {
-	const radixArg = argCount === 2 ? stack.pop() : undefined;
+	// The radix is a number: a one-character string is its character code. The value stays text.
+	const radixArg = argCount === 2 ? charCode(stack.pop()) : undefined;
 	const valueArg = stack.pop();
 
 	if (typeof valueArg !== "number" && typeof valueArg !== "string")

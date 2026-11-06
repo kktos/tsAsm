@@ -78,7 +78,7 @@ describe("Function PAD()", () => {
 
 	it("fails on a width that is not an integer", () => {
 		const { evaluate } = setup();
-		expect(() => evaluate('.PAD("AB", "5")')).toThrow("Second argument to .PAD() (width) must be an integer.");
+		expect(() => evaluate('.PAD("AB", "55")')).toThrow("Second argument to .PAD() (width) must be an integer.");
 		expect(() => evaluate('.PAD("AB", 5/2)')).toThrow("Second argument to .PAD() (width) must be an integer.");
 	});
 
