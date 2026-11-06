@@ -53,5 +53,7 @@ export class LetDirective implements IDirective {
 		if (this.assembler.pass === 1 || (isLocal && !symbolTable.hasSymbolInScope(name)))
 			symbolTable.defineVariable(name, value, { filename: context.filename, line: nameToken.line, column: nameToken.column }, !isLocal);
 		else symbolTable.updateSymbol(name, value, !isLocal);
+		// A name built by an expression isn't written: only `.let x = 1` is a reference to `x`.
+		if (nameTokens.length === 1 && nameTokens[0]?.type === "IDENTIFIER") this.assembler.reportAssignment(nameTokens[0], name);
 	}
 }

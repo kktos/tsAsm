@@ -147,6 +147,22 @@ count = 3
 		]);
 	});
 
+	it("tells each assignment of a variable, with = or .let, but a name built by an expression", () => {
+		expect(
+			used(`
+count = 1
+count = count + 1
+	.let count = 3
+	.let "co" + "unt" = 4
+`),
+		).toEqual([
+			"main.asm:2:1 variable COUNT = 1 @ main.asm:5:7",
+			"main.asm:3:9 variable COUNT = 1 @ main.asm:5:7",
+			"main.asm:3:1 variable COUNT = 2 @ main.asm:5:7",
+			"main.asm:4:7 variable COUNT = 3 @ main.asm:5:7",
+		]);
+	});
+
 	it("tells, once assembled, every symbol, macro and anonymous label defined", () => {
 		expect(
 			defined(

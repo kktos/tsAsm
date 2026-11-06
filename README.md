@@ -186,7 +186,7 @@ try {
 }
 ```
 
-To know what each name refers to, as an editor does to go to a definition, pass `onSymbolReference` in the options. Pass 2 calls it for each name it resolves, a symbol, a local or anonymous label, a function, a macro call, with `at`, where the name is written, and `symbol`, what it refers to (`SymbolInfo`: `name`, `namespace`, `kind`, `value`, a macro's or a function's `parameters`, and `site`, where it's defined). A name assembled more than once, in a macro body or a loop, is reported each time, and can refer to another symbol each time. Once the assembly succeeded, it's called for each symbol, macro and anonymous label defined, with `definition: true`. Places are located as errors are: in a macro body, at its line in the macro's file.
+To know what each name refers to, as an editor does to go to a definition, pass `onSymbolReference` in the options. Pass 2 calls it for each name it resolves, a symbol, a local or anonymous label, a function, a macro call, a variable's assignment but its last (its definition), with `at`, where the name is written, and `symbol`, what it refers to (`SymbolInfo`: `name`, `namespace`, `kind`, `value`, a macro's or a function's `parameters`, and `site`, where it's defined). A name assembled more than once, in a macro body or a loop, is reported each time, and can refer to another symbol each time. Once the assembly succeeded, it's called for each symbol, macro and anonymous label defined, with `definition: true`. Places are located as errors are: in a macro body, at its line in the macro's file.
 
 ```ts
 const assembler = new Assembler(cpu, fileHandler, {
@@ -216,7 +216,7 @@ const assembler = new Assembler(cpu, fileHandler, {
 
 ## VS Code
 
-[editors/vscode](editors/vscode) is an extension for VS Code: syntax colouring, the projects' errors and warnings in the Problems panel, Cmd+click on a name to go to its definition, a hover telling its value, its references, the outline and Cmd+T, and Cmd+click on the path of an `.include`, `.incbin` or `.define … from` to open its file. Its README says how to build and install it.
+[editors/vscode](editors/vscode) is an extension for VS Code: syntax colouring, the projects' errors and warnings in the Problems panel, Cmd+click on a name to go to its definition, a hover telling its value, its references, F2 to rename it, the outline and Cmd+T, and Cmd+click on the path of an `.include`, `.incbin` or `.define … from` to open its file. Its README says how to build and install it.
 
 ## Development
 

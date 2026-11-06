@@ -84,5 +84,6 @@ export class AssignDirective implements IDirective {
 				column: labelToken.column,
 			});
 		else this.assembler.symbolTable.assignVariable(label, value);
+		this.assembler.reportAssignment(labelToken, label);
 	}
 }

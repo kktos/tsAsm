@@ -3,6 +3,7 @@
  *
  * * Cmd+click on a name goes to its definition, its hover tells what it is, and Shift+F12 lists its references: from
  *   the projects' indexes.
+ * * F2 renames a symbol: see `rename.ts`.
  * * The outline (Cmd+Shift+O) and the breadcrumbs: a file's blocks from its text, its symbols from the indexes; the
  *   workspace's symbols (Cmd+T).
  */
@@ -51,6 +52,20 @@ export function registerNavigation(projects: Projects): vscode.Disposable[] {
 				);
 			},
 		}),
+		vscode.languages.registerRenameProvider(SELECTOR, {
+			async prepareRename(document, position) {
+				const { place, placeholder } = await projects.prepareRename(document.uri, position);
+				return { range: range(place), placeholder };
+			},
+			async provideRenameEdits(document, position, newName) {
+				const edit = new vscode.WorkspaceEdit();
+				for (const { place, text, unread } of await projects.renameEdits(document.uri, position, newName)) {
+					const metadata = unread ? { needsConfirmation: true, label: UNREAD, description: UNREAD_WHY } : undefined;
+					edit.replace(vscode.Uri.file(place.file), range(place), text, metadata);
+				}
+				return edit;
+			},
+		}),
 		vscode.languages.registerHoverProvider(SELECTOR, {
 			provideHover(document, position) {
 				const entries = distinctEntries(projects.entriesAt(document.uri, position));
@@ -62,6 +77,9 @@ export function registerNavigation(projects: Projects): vscode.Disposable[] {
 		}),
 	];
 }
+
+const UNREAD = "Not read by the assembly";
+const UNREAD_WHY = "The name, where the last assembly didn't read it: an .if branch not taken, a macro not called, .def().";
 
 const SYMBOL_KINDS: Record<OutlineKind, vscode.SymbolKind> = {
 	macro: vscode.SymbolKind.Module,

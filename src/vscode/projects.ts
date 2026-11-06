@@ -11,7 +11,8 @@ import * as vscode from "vscode";
 import { type Analysis, analyse, type Diagnostic, type Files, isProjectFile } from "./analysis";
 import { scanBlocks } from "./blocks";
 import type { Place } from "./places";
-import { findReferences, type IndexEntry, type SymbolIndex } from "./symbol-index";
+import { RenameError, type RenameEdit, type RenameSymbol, readText, renameProjects, renameSymbol } from "./rename";
+import { findReferences, type IndexEntry, type SymbolIndex, symbolKey } from "./symbol-index";
 
 /** How long the typing stops before the projects assemble again. */
 const DELAY = 300;
@@ -28,6 +29,8 @@ export class Projects implements vscode.Disposable {
 	private readonly pending = new Set<string>();
 	private rediscover = false;
 	private timer: ReturnType<typeof setTimeout> | undefined;
+	/** The assembly running, if any. */
+	private running: Promise<void> | undefined;
 
 	constructor() {
 		const watcher = vscode.workspace.createFileSystemWatcher("**/*");
@@ -74,12 +77,8 @@ export class Projects implements vscode.Disposable {
 		const files = editorFiles();
 		const sources = new Set([...this.analyses.values()].flatMap((analysis) => [...analysis.sources]));
 		const namespaces = [...sources].flatMap((file) => {
-			let text: string;
-			try {
-				text = files.readText(file);
-			} catch {
-				return [];
-			}
+			const text = readText(files, file);
+			if (text === undefined) return [];
 			return scanBlocks(text).flatMap(({ kind, name, nameStart, nameEnd }) =>
 				kind === "namespace" && name && nameStart && nameEnd
 					? [{ name, place: { file, line: nameStart.line, column: nameStart.column, endColumn: nameEnd.column } }]
@@ -87,6 +86,48 @@ export class Projects implements vscode.Disposable {
 			);
 		});
 		return { definitions: [...this.indexes.values()].flatMap((index) => index.definitions()), namespaces };
+	}
+
+	/** Where the symbol at `position` can be renamed, its name there: refused, saying why, where it can't. */
+	async prepareRename(uri: vscode.Uri, position: vscode.Position): Promise<{ place: Place; placeholder: string }> {
+		const symbol = await this.renameSymbol(uri, position);
+		return { place: symbol.place, placeholder: symbol.name };
+	}
+
+	/**
+	 * The edits renaming the symbol at `position` to `typed`, those found in what the assembly didn't read to confirm:
+	 * refused when, assembled with them, a project fails or a name refers to something else.
+	 */
+	async renameEdits(uri: vscode.Uri, position: vscode.Position, typed: string): Promise<RenameEdit[]> {
+		const symbol = await this.renameSymbol(uri, position);
+		const projects = [...this.indexes].map(([path, index]) => ({ path, index, sources: this.analyses.get(path)?.sources ?? [] }));
+		return renameProjects(projects, symbol, typed, editorFiles(), relative);
+	}
+
+	/** The symbol at `position`, once the projects are assembled from the text as it is: refused while one doesn't assemble. */
+	private async renameSymbol(uri: vscode.Uri, position: vscode.Position): Promise<RenameSymbol> {
+		await this.settled();
+		const file = uri.fsPath;
+		const entries = this.entriesAt(uri, position);
+		const keys = new Set(entries.map(symbolKey));
+		for (const [project, analysis] of this.analyses) {
+			if (analysis.index || !(analysis.files.has(file) || (this.indexes.get(project)?.entriesOf(keys).length ?? 0) > 0)) continue;
+			throw new RenameError(
+				`${relative(project)} doesn't assemble: fix its errors first, else the names written since its last assembly would be missed.`,
+			);
+		}
+		const files = editorFiles();
+		return renameSymbol([...this.indexes.values()], entries, position.character + 1, (path) => readText(files, path), relative);
+	}
+
+	/** Waits for the assembly the last edits are waiting for, if any. */
+	private async settled(): Promise<void> {
+		if (this.timer !== undefined) {
+			clearTimeout(this.timer);
+			this.timer = undefined;
+			this.running = this.run();
+		}
+		await this.running;
 	}
 
 	/** The indexes' places in `file` follow its edits, applied in order. */
@@ -118,7 +159,9 @@ export class Projects implements vscode.Disposable {
 	private schedule(rediscover: boolean, delay = DELAY): void {
 		this.rediscover ||= rediscover;
 		clearTimeout(this.timer);
-		this.timer = setTimeout(() => void this.run(), delay);
+		this.timer = setTimeout(() => {
+			this.running = this.run();
+		}, delay);
 	}
 
 	private async run(): Promise<void> {
@@ -166,6 +209,8 @@ function editorFiles(): Files {
 		readBytes: (path) => Array.from(readFileSync(path)),
 	};
 }
+
+const relative = (path: string) => vscode.workspace.asRelativePath(path);
 
 /** The `tsasm.project` setting of each workspace folder, relative to it, else the workspace's YAML files with an `input.source`. */
 async function findProjects(files: Files): Promise<string[]> {

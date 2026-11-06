@@ -7,6 +7,7 @@ The language of the [tsAsm](https://github.com/kktos/tsAsm) assembler, for `.asm
 - **Errors and warnings** in the Problems panel: the extension assembles each project of the workspace as the CLI does, while you type.
 - **Go to a definition:** Cmd+click on a name (F12) goes to where it's defined, and its hover tells what it is: a label's or a constant's value, in hex and decimal, a variable's value there, a macro's or a function's parameters.
 - **Find all references:** Shift+F12 lists where a name's symbol is used, in every file of its project, and its definition.
+- **Rename** (F2): a symbol, at its definition and its references, in every file of its project.
 - **Outline and breadcrumbs** (Cmd+Shift+O): a file's macros, procs, functions and namespaces, with the labels, constants and variables in them, a local label under its global one, and its `.segment` selections; **Cmd+T** finds a symbol in the workspace.
 
 Another extension can be mapped to the language in the settings: `"files.associations": { "*.s": "tsasm" }`.
@@ -33,6 +34,19 @@ A name is what the assembler made of it: a label, a constant, a variable, a loca
 
 A name in a macro body can refer to a symbol of each call: Cmd+click lists them all, and the hover tells up to five. Their references are one list: the symbols a macro body defines are all defined at the same place, and a name in the body is listed once, not once per call. A namespace, a segment, and a name in `.def()` aren't linked yet.
 
+## Rename
+
+F2 renames a symbol where the last assembly read it: its definition, each assignment of a variable, its references. A qualified name, `gfx::sprite`, gets its name renamed, not its namespace, and a local label keeps its prefix, typed with the new name or not. Every place gets the new name as typed: names don't care about case.
+
+Where the assembly didn't read the name (an `.if` branch not taken, a macro never called, `.def(name)`), it's found in the files' text, outside comments and strings, and renamed too, to confirm: VS Code shows these changes in its preview first. A local label's are looked for under its global label only.
+
+A rename is refused, saying why:
+
+- while the project doesn't assemble: the names written since its last assembly would be missed;
+- for an anonymous label, and for a symbol whose name is built by an expression, `.let "pos" + "X"`;
+- for a name in a macro body that refers to a symbol of a namespace at one call and of another namespace at another: renaming one would rename both;
+- when the project, assembled with the new name, fails (the name is taken) or has a name referring to another symbol than before (the new name shadows another one, or another one shadows it).
+
 ## Outline
 
 A file's blocks come from its text: `.macro`, `.proc`, `.function` with a body, up to their `.end` or in `{ }`, and `.namespace` up to `.end namespace` (or a bare `.namespace`). They're in the outline even while the file doesn't assemble, or when it's in no project. The labels, constants and variables in them come from the last assembly that succeeded, each in the innermost block around it, with its value; a local label is under the global label before it. A `.segment` selection is a marker, with nothing under it: a segment isn't a block. Anonymous labels and a macro call's symbols aren't listed.
@@ -57,4 +71,4 @@ While working on it, link the folder into VS Code's extensions instead, then run
 ln -s "$PWD/editors/vscode" ~/.vscode/extensions/kktos.tsasm
 ```
 
-The grammar is built by `src/vscode/grammar.ts`, the links found by `src/vscode/links.ts`, a project assembled by `src/vscode/analysis.ts`, its names indexed by `src/vscode/symbol-index.ts`, a file's blocks read by `src/vscode/blocks.ts` and its outline built by `src/vscode/outline.ts`, all tested in `src/tests/vscode`. `src/vscode/projects.ts` puts the projects' errors in VS Code, and `src/vscode/navigation.ts` gives the definitions, the hovers, the references and the outline.
+The grammar is built by `src/vscode/grammar.ts`, the links found by `src/vscode/links.ts`, a project assembled by `src/vscode/analysis.ts`, its names indexed by `src/vscode/symbol-index.ts` and renamed by `src/vscode/rename.ts`, a file's blocks read by `src/vscode/blocks.ts` and its outline built by `src/vscode/outline.ts`, all tested in `src/tests/vscode`. `src/vscode/projects.ts` puts the projects' errors in VS Code, and `src/vscode/navigation.ts` gives the definitions, the hovers, the references, the renames and the outline.
