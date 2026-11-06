@@ -71,7 +71,7 @@ A number can't run into a letter or a digit outside its base: `123abc`, `0b2` or
 
 Strings use double or single quotes: `"Hello"` or `'Hello'`. A string ends on its line: a missing closing quote is an error. A one-character string used as a number is its character code, on every CPU: `lda #"A"` loads `$41`, `"A"+1` is `$42`, `$80|"H"` is `$C8`, and `"9"-"0"` is `9`. Between two strings, `+` still joins them and `=`, `==`, `!=` compare their text: `"A"+"B"` is `"AB"`. A longer string is never a number: `"AB"+1` is an error.
 
-Escape sequences: `\n`, `\r`, `\t`, `\b`, `\f`, `\'`, `\"`, `\\`, and `\xHH` for a character code in hexadecimal.
+Escape sequences: `\n`, `\r`, `\t`, `\b`, `\f`, `\'`, `\"`, `\\`, and `\xHH` for a character code in hexadecimal. Any other is an error, `"\q"` → `Unknown escape sequence '\q': …`, and so is `\x` without two hexadecimal digits: write `\\` for a backslash. A backslash doesn't carry a string on to the next line.
 
 Each character becomes one byte, its code: a character above 255 (like `€`) doesn't fit and is an error.
 

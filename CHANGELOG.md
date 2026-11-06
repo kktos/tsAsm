@@ -6,6 +6,12 @@ The problem is described as it was before the fix, then the fix in _italics_.
 
 ## Assembler
 
+### #230 — Unknown escape sequences (TODO 1.38)
+
+An unknown escape gave the char after the backslash: `"\0"` → `30`, `"\q"` → `71`. `\x` without two hex digits gave an `x`: `"\xZ1"` → `78 5A 31`. And a backslash ending the line carried the string on to the next one, a newline in it, though a string ends on its line.
+
+_Fixed: an error, at the backslash. `"\q"` → `Unknown escape sequence '\q': the escapes are \n \r \t \b \f \' \" \\ and \xHH.`, `"\x4"` → `Invalid escape sequence: \x must be followed by two hexadecimal digits.` A backslash ending the line, LF or CRLF, leaves the string unterminated: `Unterminated string: missing closing ".` `\0` as an escape is still an idea (4.7)._
+
 ### #229 — A trailing comma in `.fill` / `.align` (TODO 1.35)
 
 `.fill 2,` → `00 00`, `.res 2,` the same, `.align 4,` → `00 00 00`: an empty filler after the comma was 0, as when there's no filler at all, though an empty expression is `Missing expression.` since #136, a trailing one too (`.db 1,`, #137).

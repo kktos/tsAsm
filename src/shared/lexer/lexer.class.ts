@@ -522,10 +522,15 @@ export class AssemblyLexer {
 		throw new AsmError("Unterminated comment: missing closing */.", { line, column });
 	}
 
+	/** An escape sequence in a string, from its backslash. One the lexer doesn't know is an error, never the char after the backslash. */
 	private scanEscapeChar() {
+		const at = { line: this.currentStream.line, column: this.currentStream.column };
 		let value = "";
 		this.advance(); // skip escape char
 		const escaped = this.peek();
+		// A backslash ending the line or the source: the string is left unterminated, as it ends on its line.
+		const endOfLine = escaped === "\n" || (escaped === "\r" && this.peek(1) === "\n");
+		if (endOfLine || this.currentStream.pos >= this.currentStream.length) return value;
 		this.advance(); // consume escaped char
 		switch (escaped) {
 			case "n":
@@ -559,12 +564,12 @@ export class AssemblyLexer {
 					this.advance();
 					this.advance();
 				} else {
-					value += "x"; // Not a valid hex escape, treat literally
+					throw new AsmError("Invalid escape sequence: \\x must be followed by two hexadecimal digits.", at);
 				}
 				break;
 			}
 			default:
-				value += escaped; // Unknown escape sequence, treat literally
+				throw new AsmError(`Unknown escape sequence '\\${escaped}': the escapes are \\n \\r \\t \\b \\f \\' \\" \\\\ and \\xHH.`, at);
 		}
 		return value;
 	}
