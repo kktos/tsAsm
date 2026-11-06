@@ -70,6 +70,10 @@ On a 32-bit CPU, `.org $12345678` in a resizable segment, or `.fill $12345678, 0
 
 `.org later` / `later:` → `main.asm:2:1: error: Cannot read properties of null (reading 'toString')`, at the label. With `later = $1000` instead of a label, it assembles. Found with 4.27.
 
+### 1.70 A label alone before an included file's assignment
+
+`start:` / `.include "c.asm"`, with `c.asm` starting with `count = 3` → `c.asm:1:1: error: Syntax error - (Unknown opcode?) Unexpected label 'COUNT' after START`. `start:` / `count = 3` in one file assembles. Found with 4.28.
+
 ## 2. Code review, items left
 
 ### 2.1 CPU back-ends
@@ -233,14 +237,15 @@ The extension is done in #213, in `editors/vscode`: syntax colouring of `.asm` f
 
 ### 4.28 VS Code: go to a definition, and hover
 
-After 4.27. Cmd+click on a label, a constant, a variable, a macro, a function, a `.proc`, a namespace or a segment goes to where it's defined: a symbol keeps its file, line and column (`PASymbol`), its line in the macro's file when a macro defines it. To check: macros, functions and segments keep their site. Local and anonymous labels too, the assembler resolving them. The hover: its value (hex and decimal, a relocatable one as `CODE+$0012`), its kind, where it's defined; a macro's or a function's parameters.
+Done in #216 for labels, constants, variables, local and anonymous labels, functions and their parameters, macros, through the library's `onSymbolReference`. What's left:
 
-- **An assembly stops at its first error:** the extension keeps the last good assembly's symbols, for 4.28–4.33, until one succeeds again.
+- **Namespaces and segments:** `gfx::` and `.segment CODE` aren't linked: neither keeps where it's defined (a namespace can be opened in several places, a segment comes from `.segment` or the project file).
+- **Names the evaluator doesn't resolve as values:** the name in `.def(x)` / `.undef(x)`, a name a built-in function takes as an argument.
 - **A file in no project** gets a text scan only.
 
 ### 4.29 VS Code: find all references
 
-After 4.28. The assembler doesn't keep where a symbol is used: a hook in the library, telling each lookup resolved to a symbol and the token it's at. To decide: its shape (an `onSymbolReference` option, or an index the assembler fills), as it's public API. A reference in a macro body is listed once, not once per call; one in a `.repeat` body, once.
+After 4.28. The library's hook is done in #216: `onSymbolReference`, and the extension's index has every reference, a name in a macro body or a loop once. What's left is the provider: the references of the symbol at the cursor, its definition included or not as VS Code asks.
 
 ### 4.30 VS Code: outline and workspace symbols
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { analyse, isProjectFile, tokenSpan } from "../../vscode/analysis";
+import { analyse, isProjectFile } from "../../vscode/analysis";
+import { tokenSpan } from "../../vscode/places";
 
 const PROJECT = `
 input:

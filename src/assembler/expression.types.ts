@@ -84,4 +84,8 @@ export interface EvaluatorHost {
 	runFunction?(fn: UserFunction): SymbolValue;
 	/** The `function.recursion` option: how deep a function can call itself. Without it, the option's default. */
 	functionRecursion?(): number;
+	/** `token` names `symbolName`, defined: for the assembler's `onSymbolReference`. */
+	referenceSymbol?(token: Token, symbolName: string): void;
+	/** `token`, an anonymous label reference, names the label `distance` labels away from `address`. */
+	referenceAnonymousLabel?(token: Token, address: number, distance: number): void;
 }

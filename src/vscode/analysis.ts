@@ -7,26 +7,20 @@
 
 import { basename, dirname, join } from "node:path";
 import { Assembler } from "../assembler/polyasm";
-import type { FileHandler } from "../assembler/polyasm.types";
+import type { FileHandler, SymbolReference } from "../assembler/polyasm.types";
 import { yamlparse } from "../cli/asm-yaml";
 import { readConf } from "../cli/conf";
 import { projectCpus, projectOptions } from "../cli/project";
 import { Logger } from "../helpers/logger.class";
 import type { LogSink } from "../helpers/logsink.interface";
 import { AsmError, type IncludeSite, type SourceLocation } from "../utils/error.utils";
+import { nameSpan, type Place, tokenSpan } from "./places";
+import { SymbolIndex } from "./symbol-index";
 
 /** How the analysis reads a file, by its absolute path: the editor's buffer when it's open, else the disk. Throws when there's none. */
 export interface Files {
 	readText(path: string): string;
 	readBytes(path: string): number[];
-}
-
-/** A place in a file: its absolute path, and its line and columns, from 1, `endColumn` after its last char. */
-export interface Place {
-	file: string;
-	line: number;
-	column: number;
-	endColumn: number;
 }
 
 export interface Diagnostic extends Place {
@@ -40,6 +34,8 @@ export interface Analysis {
 	/** Every file the assembly read, or tried to, the project file too: a change to one of them assembles again. */
 	files: Set<string>;
 	diagnostics: Diagnostic[];
+	/** Where the names are and what they refer to, when it assembled: an assembly stopped by an error gives none. */
+	index?: SymbolIndex;
 }
 
 /** A YAML file is a project file when it has an `input.source`. */
@@ -73,16 +69,51 @@ export function analyse(projectPath: string, files: Files): Analysis {
 		report.add(new AsmError(`Can't read the source '${conf.input.source}': ${e instanceof Error ? e.message : e}`, { line }), "", projectPath);
 		return { files: reader.paths, diagnostics: report.diagnostics };
 	}
+	const references: SymbolReference[] = [];
+	let index: SymbolIndex | undefined;
 	try {
-		const assembler = new Assembler(projectCpus(), handler, projectOptions(conf, new Logger({ sink: warnings, enabled: false })));
-		assembler.assemble(source);
+		const options = projectOptions(conf, new Logger({ sink: warnings, enabled: false }));
+		options.onSymbolReference = (reference) => references.push(reference);
+		new Assembler(projectCpus(), handler, options).assemble(source);
+		index = buildIndex(references, (file) => (file ? join(handler.basedir, file) : sourcePath), reader);
 	} catch (e) {
 		// An error found before the assembly starts, without a line (a segment of the project file), is the project file's.
 		const error = e instanceof AsmError ? e : new AsmError(e instanceof Error ? e.message : String(e));
 		report.add(error, handler.basedir, error.location.line === undefined ? projectPath : sourcePath);
 	}
 	for (const warning of warnings.warnings) report.add(warning, handler.basedir, sourcePath);
-	return { files: reader.paths, diagnostics: report.diagnostics };
+	return index ? { files: reader.paths, diagnostics: report.diagnostics, index } : { files: reader.paths, diagnostics: report.diagnostics };
+}
+
+/** The index of the references, each at its name, its target at the name of its definition: `path` makes a file absolute. */
+function buildIndex(references: SymbolReference[], path: (file: string | undefined) => string, reader: FileReader): SymbolIndex {
+	const index = new SymbolIndex();
+	const lineText = (file: string, line: number) => reader.text(file)?.split("\n")[line - 1]?.replace(/\r$/, "") ?? "";
+	const locate = (location: SourceLocation, name?: string): Place => {
+		const file = path(location.file);
+		const line = Math.max(1, Number(String(location.line ?? 1).split(".")[0]) || 1);
+		const text = lineText(file, line);
+		const column = location.column ?? 1;
+		const [start, end] = name === undefined ? tokenSpan(text, column) : nameSpan(text, column, name);
+		return { file, line, column: start, endColumn: end };
+	};
+	for (const reference of references) {
+		const { at, definition } = reference;
+		let { symbol } = reference;
+		const target = locate(symbol.site.location, symbol.name);
+		const text = lineText(target.file, target.line);
+		const written = text.slice(target.column - 1, target.endColumn - 1) || symbol.name;
+		// The assembler keeps a macro's parameters in upper case: as written, from its line.
+		if (symbol.parameters) symbol = { ...symbol, parameters: symbol.parameters.map((parameter) => spelling(parameter, text)) };
+		index.add({ place: definition ? target : locate(at), definition, symbol, target, written });
+	}
+	return index;
+}
+
+/** `name` as `text` writes it, in any case: `...REST` is `...rest` in `.macro m ...rest`. */
+function spelling(name: string, text: string): string {
+	const match = new RegExp(`(?<![\\w.])${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?!\\w)`, "i").exec(text);
+	return match ? match[0] : name;
 }
 
 /** The project file, read and checked: its errors are reported in it. */
@@ -225,22 +256,4 @@ class Report {
 
 function siteMessage(site: IncludeSite): string {
 	return site.macro !== undefined ? `in macro ${site.macro}, called here` : "included here";
-}
-
-/** A string, or a run of chars that aren't spaces, separators or operators. */
-const TOKEN = /"(?:[^"\\]|\\.)*"?|'(?:[^'\\]|\\.)*'?|[^\s,;()[\]{}+\-*/<>=&|^~]+/y;
-
-/**
- * The columns of the token at `column` in `text`, from 1, the end after its last char: the whole line, but its
- * indentation, without a column; at least one char.
- */
-export function tokenSpan(text: string, column: number | undefined): [number, number] {
-	if (column === undefined) {
-		const start = text.search(/\S/) + 1 || 1;
-		return [start, Math.max(start + 1, text.trimEnd().length + 1)];
-	}
-	TOKEN.lastIndex = column - 1;
-	// A label's colon isn't part of its name: `start:` is `start`, `:l` stays.
-	const token = TOKEN.exec(text)?.[0].replace(/(?<=.):$/, "") ?? "";
-	return [column, column + Math.max(1, token.length)];
 }

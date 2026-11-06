@@ -1,6 +1,7 @@
 import type { DirectiveContext } from "../directives/directive.interface";
 import type { Logger } from "../helpers/logger.class";
 import type { Token } from "../shared/lexer/lexer.class";
+import type { DefinitionSite, SourceLocation } from "../utils/error.utils";
 import type { Options } from "./options";
 import type { SymbolValue } from "./symbol.class";
 
@@ -91,4 +92,34 @@ export interface AssemblerOptions {
 	options?: Options;
 	/** `maxSize`: the largest output, with or without a linker script, 1 to $1000000 (16 MB). Default: $100000 (1 MB). */
 	linker?: { maxSize?: number };
+	/**
+	 * Called for each name pass 2 resolves to what it names, as many times as it's assembled (a macro body at each
+	 * call), then, once the assembly succeeded, for each symbol, macro and anonymous label defined (`definition`): what an
+	 * editor needs to go to a definition. Without it, nothing is kept for it.
+	 */
+	onSymbolReference?: (reference: SymbolReference) => void;
+}
+
+/** What a name refers to: `kind` tells which. */
+export interface SymbolInfo {
+	/** As the assembler keeps it, in upper case: `START`, a local label `START.LOOP`, an anonymous label `:`. */
+	name: string;
+	/** Its namespace when it isn't the global one: `GFX`, or the scope the user can't name, `macro m`, `function f`. */
+	namespace?: string;
+	kind: "label" | "constant" | "variable" | "function" | "macro" | "anonymous label";
+	/** A label's, a constant's or an anonymous label's value; a variable's where it's referred to, its last one for its definition. */
+	value?: SymbolValue;
+	/** A macro's or a function's parameters, as written: a macro's rest parameter is `...name`. */
+	parameters?: string[];
+	/** Where it's defined: in a macro body, its line in the macro's file, with the calls that led there. */
+	site: DefinitionSite;
+}
+
+/** A name in the source, and what it refers to. */
+export interface SymbolReference {
+	/** Where the name is written: in a macro body, its line in the macro's file. */
+	at: SourceLocation;
+	/** Whether it's the definition itself, at `symbol.site`. */
+	definition: boolean;
+	symbol: SymbolInfo;
 }

@@ -2,6 +2,7 @@ import type { ILister } from "../helpers/lister.class";
 import type { Token } from "../shared/lexer/lexer.class";
 import { AsmError, type DefinitionSite, type IncludeStack } from "../utils/error.utils";
 import { getHex } from "../utils/hex.util";
+import type { SymbolInfo } from "./polyasm.types";
 import { RelocValue } from "./reloc-value.class";
 import { UserFunction } from "./user-function.class";
 
@@ -515,6 +516,42 @@ export class PASymbolTable {
 		}
 
 		return undefined;
+	}
+
+	/** What `symbolName` refers to here, found as its value is: see `SymbolInfo`. */
+	describe(symbolName: string): SymbolInfo | undefined {
+		const symbol = this.lookup(symbolName);
+		return symbol && this.info(symbol);
+	}
+
+	/** Every symbol defined, a closed `.proc`'s too: those of a macro call or a function call are gone with it. */
+	definitions(): SymbolInfo[] {
+		const scopes = [...this.symbols.values(), ...this.savedSymbols.values()];
+		return [...new Set(scopes.flatMap((scope) => [...scope.values()]))].filter((symbol) => symbol.name !== "*").map((symbol) => this.info(symbol));
+	}
+
+	private info(symbol: PASymbol): SymbolInfo {
+		const site = { location: { file: symbol.source, line: symbol.line, column: symbol.column }, includeStack: symbol.includeStack };
+		const info: SymbolInfo = { name: symbol.name, kind: "variable", site };
+		const namespace = this.namespaceName(symbol.namespace);
+		if (namespace) info.namespace = namespace;
+		if (symbol.value instanceof UserFunction) {
+			info.kind = "function";
+			info.parameters = symbol.value.parameters.map((parameter) => parameter.raw ?? parameter.value);
+			return info;
+		}
+		info.kind = symbol.isLabel ? "label" : symbol.isConstant ? "constant" : "variable";
+		info.value = symbol.value;
+		return info;
+	}
+
+	/** A scope's name for the user: a namespace's, `proc CLEAR`, `macro m`; none for the global scope or an internal one. */
+	private namespaceName(scope: string): string | undefined {
+		if (scope === INTERNAL_GLOBAL) return undefined;
+		const label = this.scopeLabels.get(scope);
+		if (label) return label;
+		if (scope.startsWith(PROC_SCOPE_PREFIX)) return `proc ${scope.slice(PROC_SCOPE_PREFIX.length).replace(/^GLOBAL::/i, "")}`;
+		return scope.startsWith("@@") || scope.startsWith("__") ? undefined : scope;
 	}
 
 	/**

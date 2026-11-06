@@ -1,23 +1,28 @@
 /**
- * diagnostics.ts
+ * projects.ts
  *
- * * The projects of the workspace, assembled while their files change, their errors and warnings in the Problems panel.
+ * * The projects of the workspace, assembled while their files change: their errors and warnings in the Problems panel,
+ *   and the names in their files, for `navigation.ts`.
  * * What a project gives is `analysis.ts`'s: this is its link to VS Code.
  */
 
 import { readFileSync } from "node:fs";
 import * as vscode from "vscode";
-import { type Analysis, analyse, type Diagnostic, type Files, isProjectFile, type Place } from "./analysis";
+import { type Analysis, analyse, type Diagnostic, type Files, isProjectFile } from "./analysis";
+import type { Place } from "./places";
+import type { IndexEntry, SymbolIndex } from "./symbol-index";
 
 /** How long the typing stops before the projects assemble again. */
 const DELAY = 300;
 const PROJECT_FILES = "**/*.{yaml,yml}";
 
-export class ProjectDiagnostics implements vscode.Disposable {
+export class Projects implements vscode.Disposable {
 	private readonly collection = vscode.languages.createDiagnosticCollection("tsasm");
 	private readonly disposables: vscode.Disposable[] = [this.collection];
 	/** Each project's last assembly, by the project file's path. */
 	private readonly analyses = new Map<string, Analysis>();
+	/** Each project's last index: an assembly stopped by an error keeps the one before, its places moved by the edits since. */
+	private readonly indexes = new Map<string, SymbolIndex>();
 	/** The projects to assemble when the timer runs out, and whether to look for the projects again first. */
 	private readonly pending = new Set<string>();
 	private rediscover = false;
@@ -31,7 +36,10 @@ export class ProjectDiagnostics implements vscode.Disposable {
 			watcher.onDidChange((uri) => this.isOpen(uri) || this.changed(uri)),
 			watcher.onDidCreate((uri) => this.changed(uri)),
 			watcher.onDidDelete((uri) => this.changed(uri)),
-			vscode.workspace.onDidChangeTextDocument(({ document }) => this.changed(document.uri)),
+			vscode.workspace.onDidChangeTextDocument(({ document, contentChanges }) => {
+				if (document.uri.scheme === "file") this.edited(document.uri.fsPath, contentChanges);
+				this.changed(document.uri);
+			}),
 			// Closed without saving, it's the disk's again.
 			vscode.workspace.onDidCloseTextDocument(({ uri }) => this.changed(uri)),
 			vscode.workspace.onDidChangeConfiguration((event) => event.affectsConfiguration("tsasm.project") && this.schedule(true)),
@@ -43,6 +51,24 @@ export class ProjectDiagnostics implements vscode.Disposable {
 	dispose(): void {
 		clearTimeout(this.timer);
 		for (const disposable of this.disposables) disposable.dispose();
+	}
+
+	/** What the name at `position` refers to, in every project that has the file. */
+	entriesAt(uri: vscode.Uri, position: vscode.Position): IndexEntry[] {
+		return [...this.indexes.values()].flatMap((index) => index.at(uri.fsPath, position.line + 1, position.character + 1));
+	}
+
+	/** The indexes' places in `file` follow its edits, applied in order. */
+	private edited(file: string, changes: readonly vscode.TextDocumentContentChangeEvent[]): void {
+		for (const change of changes) {
+			const { start, end } = change.range;
+			const edit = {
+				start: { line: start.line + 1, column: start.character + 1 },
+				end: { line: end.line + 1, column: end.character + 1 },
+				text: change.text,
+			};
+			for (const index of this.indexes.values()) index.shift(file, edit);
+		}
 	}
 
 	private isOpen(uri: vscode.Uri): boolean {
@@ -70,10 +96,18 @@ export class ProjectDiagnostics implements vscode.Disposable {
 		if (this.rediscover) {
 			this.rediscover = false;
 			const projects = await findProjects(files);
-			for (const project of this.analyses.keys()) if (!projects.includes(project)) this.analyses.delete(project);
+			for (const project of this.analyses.keys()) {
+				if (projects.includes(project)) continue;
+				this.analyses.delete(project);
+				this.indexes.delete(project);
+			}
 			for (const project of projects) if (!this.analyses.has(project)) this.pending.add(project);
 		}
-		for (const project of this.pending) this.analyses.set(project, safeAnalyse(project, files));
+		for (const project of this.pending) {
+			const analysis = safeAnalyse(project, files);
+			this.analyses.set(project, analysis);
+			if (analysis.index) this.indexes.set(project, analysis.index);
+		}
 		this.pending.clear();
 		this.publish();
 	}
