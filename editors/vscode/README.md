@@ -3,6 +3,7 @@
 The language of the [tsAsm](https://github.com/kktos/tsAsm) assembler, for `.asm` files:
 
 - **Syntax colouring** of the language in [REFERENCE.md](../../REFERENCE.md): instructions, directives, labels (local and anonymous too), macro calls, numbers, strings, comments, system functions and variables. A `.define` block is coloured as YAML or JSON, and a `.hex` block as hex digits.
+- **Colours from the assembly:** a name the assembler resolved is coloured as what it is, a label, a constant, a variable, a function or its parameter, a macro, wherever it's written.
 - **File links:** the path of an `.include`, an `.incbin` or a `.define … from` opens its file, with Cmd+click (Ctrl+click on Windows and Linux).
 - **Errors and warnings** in the Problems panel: the extension assembles each project of the workspace as the CLI does, while you type.
 - **Go to a definition:** Cmd+click on a name (F12) goes to where it's defined, and its hover tells what it is: a label's or a constant's value, in hex and decimal, a variable's value there, a macro's or a function's parameters.
@@ -35,6 +36,12 @@ An assembly stops at its first error: the errors after it show once it's fixed.
 A name is what the assembler made of it: a label, a constant, a variable, a local or anonymous label, a function or its parameter, a macro, in its namespace, its `.proc` or its macro call. So they come from the last assembly that succeeded. While a file has an error, its names keep working, their places moved with the edits made since; a name you change is only known again once the project assembles.
 
 A name in a macro body can refer to a symbol of each call: Cmd+click lists them all, and the hover tells up to five. Their references are one list: the symbols a macro body defines are all defined at the same place, and a name in the body is listed once, not once per call. A namespace, a segment, and a name in `.def()` aren't linked yet.
+
+## Colours from the assembly
+
+The grammar colours from the text alone: a label's reference looks like any other word, and a local label is told by its prefix only at a statement's start, as the prefix `.option local.prefix` sets isn't known to it. The assembly knows what each name is: the names it resolved are coloured with the grammar's colours for what they are, a label's reference as a label, a constant as an `.equ`, `!loop` as a local label after `.option local.prefix "!"`. A qualified name gets its name coloured, its namespace left to the grammar.
+
+They come from the last assembly that succeeded, their places moved with the edits since: a name being typed keeps the grammar's colour until the project assembles. The code the assembly didn't read, an `.if` branch not taken or a macro never called, keeps the grammar's colours.
 
 ## Completion and signature help
 
@@ -100,4 +107,4 @@ While working on it, link the folder into VS Code's extensions instead, then run
 ln -s "$PWD/editors/vscode" ~/.vscode/extensions/kktos.tsasm
 ```
 
-The grammar is built by `src/vscode/grammar.ts`, the links found by `src/vscode/links.ts`, a project assembled by `src/vscode/analysis.ts`, its names indexed by `src/vscode/symbol-index.ts`, renamed by `src/vscode/rename.ts` and completed by `src/vscode/completion.ts` from the language `src/vscode/language.ts` reads in the assembler, a file's blocks read by `src/vscode/blocks.ts`, its outline built by `src/vscode/outline.ts` and its folds by `src/vscode/folding.ts`, all tested in `src/tests/vscode`. `src/vscode/projects.ts` puts the projects' errors in VS Code, and `src/vscode/navigation.ts` gives the definitions, the hovers, the references, the completions, the renames, the folds and the outline.
+The grammar is built by `src/vscode/grammar.ts`, the links found by `src/vscode/links.ts`, a project assembled by `src/vscode/analysis.ts`, its names indexed by `src/vscode/symbol-index.ts`, renamed by `src/vscode/rename.ts`, coloured by `src/vscode/semantic.ts` and completed by `src/vscode/completion.ts` from the language `src/vscode/language.ts` reads in the assembler, a file's blocks read by `src/vscode/blocks.ts`, its outline built by `src/vscode/outline.ts` and its folds by `src/vscode/folding.ts`, all tested in `src/tests/vscode`. `src/vscode/projects.ts` puts the projects' errors in VS Code, and `src/vscode/navigation.ts` gives the definitions, the hovers, the references, the colours, the completions, the renames, the folds and the outline.

@@ -5,6 +5,7 @@
  *   the projects' indexes.
  * * F2 renames a symbol: see `rename.ts`.
  * * Completion and signature help: see `completion.ts`.
+ * * The colours of the names the assembly resolved: see `semantic.ts`.
  * * Folding by blocks, routines and comments: see `folding.ts`.
  * * The outline (Cmd+Shift+O) and the breadcrumbs: a file's blocks from its text, its symbols from the indexes; the
  *   workspace's symbols (Cmd+T).
@@ -18,6 +19,7 @@ import { type Language, language } from "./language";
 import { buildOutline, type OutlineKind, type OutlineNode, type Range, workspaceSymbols } from "./outline";
 import type { Place } from "./places";
 import type { Projects } from "./projects";
+import { semanticTokens, TOKEN_MODIFIERS, TOKEN_TYPES } from "./semantic";
 import { distinctEntries, hoverText } from "./symbol-index";
 
 const SELECTOR = { language: "tsasm" };
@@ -88,6 +90,22 @@ export function registerNavigation(projects: Projects): vscode.Disposable[] {
 				return buildOutline(scanBlocks(document.getText()), projects.definitionsIn(document.uri)).map(documentSymbol);
 			},
 		}),
+		vscode.languages.registerDocumentSemanticTokensProvider(
+			SELECTOR,
+			{
+				// The names come from the assemblies.
+				onDidChangeSemanticTokens: projects.onDidAssemble,
+				provideDocumentSemanticTokens(document) {
+					const builder = new vscode.SemanticTokensBuilder(LEGEND);
+					for (const { line, column, length, type, modifiers } of semanticTokens(projects.entriesIn(document.uri), document.getText())) {
+						const bits = modifiers.reduce((all, modifier) => all | (1 << TOKEN_MODIFIERS.indexOf(modifier)), 0);
+						builder.push(line - 1, column - 1, length, TOKEN_TYPES.indexOf(type), bits);
+					}
+					return builder.build();
+				},
+			},
+			LEGEND,
+		),
 		vscode.languages.registerFoldingRangeProvider(SELECTOR, {
 			// The labels' folds come from the assemblies.
 			onDidChangeFoldingRanges: projects.onDidAssemble,
@@ -163,6 +181,8 @@ function completionItem(completion: Completion, line: number): vscode.Completion
 	if (completion.parameterHints) item.command = { command: "editor.action.triggerParameterHints", title: "Parameter hints" };
 	return item;
 }
+
+const LEGEND = new vscode.SemanticTokensLegend([...TOKEN_TYPES], [...TOKEN_MODIFIERS]);
 
 const FOLDING_KINDS = { comment: vscode.FoldingRangeKind.Comment, region: vscode.FoldingRangeKind.Region };
 

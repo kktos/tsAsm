@@ -2,7 +2,7 @@
 	"name": "tsasm",
 	"displayName": "tsAsm",
 	"version": "0.1.0",
-	"description": "The tsAsm assembler's language: syntax colouring, the projects' errors in the Problems panel, go to a definition, hovers, references and the outline, and links to the files a source includes.",
+	"description": "The tsAsm assembler's language: syntax colouring from the grammar and the assembly, the projects' errors in the Problems panel, go to a definition, hovers, references, completion and signature help, rename, folding and the outline, and links to the files a source includes.",
 	"categories": [
 		"Programming Languages"
 	],
@@ -53,7 +53,54 @@
 					"markdownDescription": "The project files to assemble, relative to the workspace folder: `\"build/game.yaml\"`, or a list. Left empty, every YAML file with an `input.source` is one."
 				}
 			}
-		}
+		},
+		"semanticTokenModifiers": [
+			{
+				"id": "local",
+				"description": "A local label: `:loop`, with the prefix `.option local.prefix` sets."
+			},
+			{
+				"id": "anonymous",
+				"description": "An anonymous label, or a reference to one: `:`, `:-`, `:++`."
+			}
+		],
+		"semanticTokenScopes": [
+			{
+				"language": "tsasm",
+				"scopes": {
+					"label": [
+						"entity.name.function.label.tsasm"
+					],
+					"label.local": [
+						"variable.other.label.local.tsasm"
+					],
+					"label.local.declaration": [
+						"entity.name.function.label.local.tsasm"
+					],
+					"label.anonymous": [
+						"variable.other.label.anonymous.tsasm"
+					],
+					"label.anonymous.declaration": [
+						"entity.name.function.label.anonymous.tsasm"
+					],
+					"variable": [
+						"variable.other.tsasm"
+					],
+					"variable.readonly": [
+						"variable.other.constant.tsasm"
+					],
+					"function": [
+						"entity.name.function.tsasm"
+					],
+					"parameter": [
+						"variable.parameter.tsasm"
+					],
+					"macro": [
+						"entity.name.function.macro.tsasm"
+					]
+				}
+			}
+		]
 	},
 	"activationEvents": [
 		"workspaceContains:**/*.asm"
