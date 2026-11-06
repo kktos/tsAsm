@@ -38,6 +38,23 @@ describe("VS Code blocks", () => {
 		).toEqual(["proc main 2:1-9:2", "loop 3:2-3:19", "if 4:2-6:3", "if 6:4-8:3"]);
 	});
 
+	it("tells where an .if's .elseif and .else are, when it ends with .end", () => {
+		const [outer, inner] = scanBlocks(`
+.if a
+	.if b
+	.else
+	.end
+.elseif c
+.else
+.end
+`);
+		expect(outer?.branches).toEqual([
+			{ line: 6, column: 1 },
+			{ line: 7, column: 1 },
+		]);
+		expect(inner?.branches).toEqual([{ line: 4, column: 2 }]);
+	});
+
 	it("names a block where its name is, after a label too", () => {
 		const [macro] = scanBlocks("start: .macro clear(a, b)\n.end\n");
 		expect(macro).toMatchObject({ kind: "macro", name: "clear", nameStart: { line: 1, column: 15 }, nameEnd: { line: 1, column: 20 } });

@@ -4,12 +4,14 @@
  * * Cmd+click on a name goes to its definition, its hover tells what it is, and Shift+F12 lists its references: from
  *   the projects' indexes.
  * * F2 renames a symbol: see `rename.ts`.
+ * * Folding by blocks, routines and comments: see `folding.ts`.
  * * The outline (Cmd+Shift+O) and the breadcrumbs: a file's blocks from its text, its symbols from the indexes; the
  *   workspace's symbols (Cmd+T).
  */
 
 import * as vscode from "vscode";
 import { scanBlocks } from "./blocks";
+import { foldingRanges } from "./folding";
 import { buildOutline, type OutlineKind, type OutlineNode, type Range, workspaceSymbols } from "./outline";
 import type { Place } from "./places";
 import type { Projects } from "./projects";
@@ -41,6 +43,19 @@ export function registerNavigation(projects: Projects): vscode.Disposable[] {
 		vscode.languages.registerDocumentSymbolProvider(SELECTOR, {
 			provideDocumentSymbols(document) {
 				return buildOutline(scanBlocks(document.getText()), projects.definitionsIn(document.uri)).map(documentSymbol);
+			},
+		}),
+		vscode.languages.registerFoldingRangeProvider(SELECTOR, {
+			// The labels' folds come from the assemblies.
+			onDidChangeFoldingRanges: projects.onDidAssemble,
+			provideFoldingRanges(document) {
+				const labels = projects
+					.definitionsIn(document.uri)
+					.filter(({ symbol }) => symbol.kind === "label" && !symbol.name.includes("."))
+					.map(({ target }) => target.line);
+				return foldingRanges(document.getText(), scanBlocks(document.getText()), labels).map(
+					({ start, end, kind }) => new vscode.FoldingRange(start - 1, end - 1, kind ? FOLDING_KINDS[kind] : undefined),
+				);
 			},
 		}),
 		vscode.languages.registerWorkspaceSymbolProvider({
@@ -80,6 +95,8 @@ export function registerNavigation(projects: Projects): vscode.Disposable[] {
 
 const UNREAD = "Not read by the assembly";
 const UNREAD_WHY = "The name, where the last assembly didn't read it: an .if branch not taken, a macro not called, .def().";
+
+const FOLDING_KINDS = { comment: vscode.FoldingRangeKind.Comment, region: vscode.FoldingRangeKind.Region };
 
 const SYMBOL_KINDS: Record<OutlineKind, vscode.SymbolKind> = {
 	macro: vscode.SymbolKind.Module,

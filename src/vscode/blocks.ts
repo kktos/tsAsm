@@ -31,6 +31,8 @@ export interface Block {
 	end: Position;
 	/** Whether its `.end` or `}` was found: else it runs to the end of the file. */
 	closed: boolean;
+	/** An `.if`'s `.elseif` and `.else`, where they are, when it ends with `.end`: in braces, each branch is a block. */
+	branches?: Position[];
 }
 
 interface Token {
@@ -198,10 +200,16 @@ export function scanBlocks(source: string): Block[] {
 				return false;
 			}
 			case "ELSE":
-			case "ELSEIF":
+			case "ELSEIF": {
 				// `} .else {`: the branch is a block of the `.if`.
-				if (braced) open.push({ block: block("if"), closer: "brace" });
-				return braced;
+				if (braced) {
+					open.push({ block: block("if"), closer: "brace" });
+					return true;
+				}
+				const owner = open.findLast((entry) => entry.closer === "end")?.block;
+				if (owner?.kind === "if") (owner.branches ??= []).push(start);
+				return false;
+			}
 			case "NAMESPACE": {
 				const name = operands[0];
 				if (!name || name.text.toLowerCase() === "global") {
