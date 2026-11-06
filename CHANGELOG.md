@@ -6,6 +6,12 @@ The problem is described as it was before the fix, then the fix in _italics_.
 
 ## Assembler
 
+### #233 — `.list on` lists a pass the project file doesn't (TODO 1.50)
+
+`.list on` turned the listing on whatever the pass. With only pass 2 listed, what followed it was listed in pass 1 too, before the pass 2 header, with pass 1 values (`.db "<1 bytes>"`, `1006: 00  NOP`). With only pass 1 listed, it was also listed in pass 2. With the logger disabled, it was listed in both.
+
+_Fixed: each pass keeps whether it's listed (`Assembler.isPassListed`), and `.list on` turns the listing back on only then._
+
 ### #232 — `.option` listed with its quotes inside quotes (TODO 1.58)
 
 `.option listing.case "lower"` was listed `.option "listing.case = "lower""`, and `.option repeat.start 0` `.option "repeat.start = 0"`: `setOption` gave the lister the name and the value as one string, which it quoted.
