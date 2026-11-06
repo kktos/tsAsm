@@ -66,6 +66,10 @@ In a relocatable segment, the instruction's PC is its offset there: a branch to 
 
 On a 32-bit CPU, `.org $12345678` in a resizable segment, or `.fill $12345678, 0`, builds an array of that many bytes in the assembler, before linking: Node runs out of memory (`FATAL ERROR: … JavaScript heap out of memory`), with no assembler error. The linker's `maxSize` (#206) only checks the output. To decide: a limit on a segment's size (the same `maxSize`, or another) and on `.fill`'s count. Found with 4.23.
 
+### 1.69 `.org` to a label defined after it crashes
+
+`.org later` / `later:` → `main.asm:2:1: error: Cannot read properties of null (reading 'toString')`, at the label. With `later = $1000` instead of a label, it assembles. Found with 4.27.
+
 ## 2. Code review, items left
 
 ### 2.1 CPU back-ends
@@ -222,23 +226,17 @@ After 4.16: the assembler reads the code in order, so a routine called with othe
 
 ### 4.26 VS Code extension
 
-The extension is done in #213, in `editors/vscode`: syntax colouring of `.asm` files, its grammar built from the CPUs' mnemonics (`CPUHandler.mnemonics`), and links on the paths of `.include`, `.incbin` and `.define … from`. What the editor knows of a source comes in 4.27–4.35. What's left here:
+The extension is done in #213, in `editors/vscode`: syntax colouring of `.asm` files, its grammar built from the CPUs' mnemonics (`CPUHandler.mnemonics`), and links on the paths of `.include`, `.incbin` and `.define … from`. Its errors in the Problems panel are done in #215 (4.27); what else the editor can know of a source is in 4.28–4.35. What's left here:
 
 - **Linker scripts:** their own language (`#` comments, `.OUTPUT`, `.WRITE`), not coloured yet. To decide: their file extension.
 - **Publishing** on the Marketplace, which needs a publisher account: today it's installed from a `.vsix`.
 
-### 4.27 VS Code: the analysis, and errors in the Problems panel
-
-The base of 4.28–4.34. Decided: the extension runs the assembler as a library, in the extension (no language server yet), on the project's main source: an included file alone doesn't assemble. It reads the editor's buffers, saved or not, through its own `FileHandler`, and assembles again a moment (~300 ms) after the typing stops.
-
-- **The project file:** the `tsasm.project` setting, else the workspace's YAML files with an `input.source`. A file in none of them gets a text scan only.
-- **An assembly stops at its first error:** the extension keeps the last good assembly's symbols for 4.28–4.33, until one succeeds again.
-- **Errors and warnings** in the Problems panel, at their file and line, their notes (`first defined here`) as related information, the include stack too.
-- **The analysis without the `vscode` module,** as `links.ts`: tested by `pnpm test`, and movable into a language server, for other editors, if one is wanted.
-
 ### 4.28 VS Code: go to a definition, and hover
 
 After 4.27. Cmd+click on a label, a constant, a variable, a macro, a function, a `.proc`, a namespace or a segment goes to where it's defined: a symbol keeps its file, line and column (`PASymbol`), its line in the macro's file when a macro defines it. To check: macros, functions and segments keep their site. Local and anonymous labels too, the assembler resolving them. The hover: its value (hex and decimal, a relocatable one as `CODE+$0012`), its kind, where it's defined; a macro's or a function's parameters.
+
+- **An assembly stops at its first error:** the extension keeps the last good assembly's symbols, for 4.28–4.33, until one succeeds again.
+- **A file in no project** gets a text scan only.
 
 ### 4.29 VS Code: find all references
 

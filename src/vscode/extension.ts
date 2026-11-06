@@ -1,15 +1,17 @@
 /**
  * extension.ts
  *
- * * The VS Code extension's code (editors/vscode): the paths of `.include`, `.incbin` and `.define … from` open their file.
+ * * The VS Code extension's code (editors/vscode): the paths of `.include`, `.incbin` and `.define … from` open their file,
+ *   and the projects' errors and warnings are in the Problems panel (diagnostics.ts).
  * * The colours are its grammar's, built by grammar.ts.
  */
 
 import * as vscode from "vscode";
+import { ProjectDiagnostics } from "./diagnostics";
 import { findFileLinks } from "./links";
 
 export function activate(context: vscode.ExtensionContext) {
-	context.subscriptions.push(vscode.languages.registerDocumentLinkProvider({ language: "tsasm" }, { provideDocumentLinks }));
+	context.subscriptions.push(vscode.languages.registerDocumentLinkProvider({ language: "tsasm" }, { provideDocumentLinks }), new ProjectDiagnostics());
 }
 
 function provideDocumentLinks(document: vscode.TextDocument): vscode.DocumentLink[] {

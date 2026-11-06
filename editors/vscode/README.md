@@ -4,6 +4,7 @@ The language of the [tsAsm](https://github.com/kktos/tsAsm) assembler, for `.asm
 
 - **Syntax colouring** of the language in [REFERENCE.md](../../REFERENCE.md): instructions, directives, labels (local and anonymous too), macro calls, numbers, strings, comments, system functions and variables. A `.define` block is coloured as YAML or JSON, and a `.hex` block as hex digits.
 - **File links:** the path of an `.include`, an `.incbin` or a `.define … from` opens its file, with Cmd+click (Ctrl+click on Windows and Linux).
+- **Errors and warnings** in the Problems panel: the extension assembles each project of the workspace as the CLI does, while you type.
 
 Another extension can be mapped to the language in the settings: `"files.associations": { "*.s": "tsasm" }`.
 
@@ -14,6 +15,14 @@ The first word of a statement is an instruction when a CPU of tsAsm has it, what
 ## Links
 
 A path is linked when it's a string alone, relative to the file it's in, as the assembler reads it. A path built by an expression (`.include "gfx/" + name`) is only known when it's assembled, and isn't linked. In a macro body, the assembler reads a path relative to the file the macro is called from: the link is relative to the file the macro is defined in.
+
+## Errors and warnings
+
+A source is assembled through its project file, which tells which source is the main one: an included file alone doesn't assemble. The projects are the files the `tsasm.project` setting names, relative to the workspace folder (`"tsasm.project": "build/game.yaml"`, or a list), else every YAML file of the workspace with an `input.source`.
+
+Each project is assembled as `tsasm` does, without writing its output: a moment after the typing stops, from the editor's buffers, saved or not, and again when a file it reads changes on the disk. Its errors and warnings are in the Problems panel and under their token, with the places they're about: a symbol's first definition, the macro calls and `.include` directives that led there. An error in the project file is in it, at its setting.
+
+An assembly stops at its first error: the errors after it show once it's fixed.
 
 ## Building and installing
 
@@ -33,4 +42,4 @@ While working on it, link the folder into VS Code's extensions instead, then run
 ln -s "$PWD/editors/vscode" ~/.vscode/extensions/kktos.tsasm
 ```
 
-The grammar is built by `src/vscode/grammar.ts` and the links found by `src/vscode/links.ts`, both tested in `src/tests/vscode`.
+The grammar is built by `src/vscode/grammar.ts`, the links found by `src/vscode/links.ts`, and a project assembled by `src/vscode/analysis.ts`, all tested in `src/tests/vscode`; `src/vscode/diagnostics.ts` puts the projects' errors in VS Code.
