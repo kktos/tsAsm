@@ -242,6 +242,19 @@ start:
 		expect(references(3, 6, true, [macroIndex as SymbolIndex])).toEqual(["main.asm:3:6", "main.asm:4:1"]);
 	});
 
+	it("lists a variable's assignments, its last one its definition", () => {
+		const { index: variables } = analyseFiles({
+			"/p/proj.yaml": PROJECT,
+			"/p/src/main.asm": `
+count = 1
+	.db count
+count = count + 1
+`,
+		});
+		expect(references(2, 1, false, [variables as SymbolIndex])).toEqual(["main.asm:2:1", "main.asm:3:6", "main.asm:4:9"]);
+		expect(references(2, 1, true, [variables as SymbolIndex])).toEqual(["main.asm:2:1", "main.asm:3:6", "main.asm:4:1", "main.asm:4:9"]);
+	});
+
 	it("lists a reference once when its file is in two projects", () => {
 		const other = analyseFiles({ "/p/proj.yaml": PROJECT, "/p/src/main.asm": MAIN, "/p/src/macros.asm": MACROS }).index as SymbolIndex;
 		expect(references(5, 9, false, [index, other])).toEqual(["main.asm:5:8", "main.asm:11:13"]);

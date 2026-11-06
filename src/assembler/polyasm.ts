@@ -533,6 +533,16 @@ export class Assembler {
 		if (symbol) this.onSymbolReference({ at: this.errorLocator.definitionSite(token).location, definition: false, symbol });
 	}
 
+	/** Pass 2: tells `onSymbolReference` that `token` assigns the variable `name`, but at its definition, its last assignment. */
+	public reportAssignment(token: Token, name: string) {
+		this.reportReference(token, () => {
+			const symbol = this.symbolTable.describe(name);
+			const { file, line, column } = this.errorLocator.definitionSite(token).location;
+			const site = symbol?.site.location;
+			return site && site.file === file && String(site.line) === String(line) && site.column === column ? undefined : symbol;
+		});
+	}
+
 	/** Once assembled: tells `onSymbolReference` every symbol, macro and anonymous label defined, at its definition. */
 	private reportDefinitions() {
 		const report = this.onSymbolReference;

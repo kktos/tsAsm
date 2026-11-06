@@ -243,10 +243,6 @@ Done in #216 for labels, constants, variables, local and anonymous labels, funct
 - **Names the evaluator doesn't resolve as values:** the name in `.def(x)` / `.undef(x)`, a name a built-in function takes as an argument.
 - **A file in no project** gets a text scan only.
 
-### 4.31 VS Code: rename a symbol
-
-After 4.29. Renames a symbol at its definition and its references. Refused, saying why, where a reference isn't written as the name: a name built by an expression, a symbol from `.define … from`.
-
 ### 4.32 VS Code: completion and signature help
 
 After 4.28. Completion of the current CPU's mnemonics, the directives, the symbols in scope, the macros, `.option`'s keys, the system functions and variables. Signature help on a macro's or a function's call: its parameters.
