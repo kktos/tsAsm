@@ -11,6 +11,7 @@ import * as vscode from "vscode";
 import type { AddressHint } from "./addresses";
 import { type Analysis, analyse, type Diagnostic, type Files, isProjectFile } from "./analysis";
 import { scanBlocks } from "./blocks";
+import type { ListingLine } from "./listing";
 import type { Place } from "./places";
 import { RenameError, type RenameEdit, type RenameSymbol, readText, renameProjects, renameSymbol } from "./rename";
 import { findReferences, type IndexEntry, type SymbolIndex, symbolKey } from "./symbol-index";
@@ -81,6 +82,18 @@ export class Projects implements vscode.Disposable {
 	/** The addresses of the lines of `file`, every project's. */
 	hintsIn(uri: vscode.Uri): AddressHint[] {
 		return [...this.indexes.values()].flatMap((index) => index.hintsIn(uri.fsPath));
+	}
+
+	/** The projects that read `uri` and have a listing: the project file's path, and the listing's, as the CLI names it. */
+	listingsOf(uri: vscode.Uri): { project: string; path: string }[] {
+		return [...this.analyses].flatMap(([project, { files, listingPath }]) =>
+			files.has(uri.fsPath) && listingPath && this.indexes.has(project) ? [{ project, path: listingPath }] : [],
+		);
+	}
+
+	/** The listing of `project`'s last good assembly, its lines tied to the statements as they are now. */
+	listingOf(project: string): ListingLine[] | undefined {
+		return this.indexes.get(project)?.listing;
 	}
 
 	/** The definitions in `file`, every project's. */

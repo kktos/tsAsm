@@ -3,12 +3,13 @@
  *
  * * The VS Code extension's code (editors/vscode): the paths of `.include`, `.incbin` and `.define … from` open their file,
  *   the projects' errors and warnings are in the Problems panel (projects.ts), and a name goes to its definition, its
- *   hover telling what it is (navigation.ts).
+ *   hover telling what it is (navigation.ts), and the listing opens beside a file (listing-view.ts).
  * * The colours are its grammar's, built by grammar.ts.
  */
 
 import * as vscode from "vscode";
 import { findFileLinks } from "./links";
+import { registerListing } from "./listing-view";
 import { registerNavigation } from "./navigation";
 import { Projects } from "./projects";
 
@@ -18,6 +19,7 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.languages.registerDocumentLinkProvider({ language: "tsasm" }, { provideDocumentLinks }),
 		projects,
 		...registerNavigation(projects),
+		...registerListing(projects),
 	);
 }
 

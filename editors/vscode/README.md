@@ -10,6 +10,7 @@ The language of the [tsAsm](https://github.com/kktos/tsAsm) assembler, for `.asm
 - **Find all references:** Shift+F12 lists where a name's symbol is used, in every file of its project, and its definition.
 - **Addresses:** each line's address at its end, as an inlay hint, its bytes in its tooltip.
 - **Instructions:** a mnemonic's hover lists its forms on the current CPU, with their addressing modes, opcodes and sizes, the line's marked.
+- **Listing:** "tsAsm: Show Listing" opens the project's listing beside the file, at the cursor's line, and follows the cursor.
 - **Completion and signature help:** the current CPU's mnemonics, the directives and macros at a statement's start; the symbols in scope, the local labels, the system functions and variables in an operand; a call's parameters as you type them.
 - **Rename** (F2): a symbol, at its definition and its references, in every file of its project.
 - **Folding** by blocks: `.macro`, `.proc`, each branch of an `.if`, `{ }`, a routine under its label, comments and `; region` … `; endregion`.
@@ -59,6 +60,14 @@ They come from the last assembly that succeeded, moved with the edits since; a l
 The hover on a mnemonic lists the ways to write it on the current CPU, the last `.cpu` above the line, else the project's: each one's operands, as an example (`lda $12,x`), its addressing mode, its opcode and its size in bytes. The 6809's opcodes have their page prefix (`10 8E` for `ldy #`), and an indexed operand takes from two bytes to four; the 65816's immediates take one byte or two, by the register's width; the RV32I gives its formats and fields instead (`opcode $33, funct3 0, funct7 $20`).
 
 The form the line assembled to is marked ▶, from its bytes in the last assembly, and its bytes are shown; a line assembled several times shows its first run's. A file in no project gets every CPU having the mnemonic, unmarked.
+
+## Listing
+
+**tsAsm: Show Listing**, in the command palette or the editor's title bar, opens the listing of the file's project beside it, read-only, at the cursor's line, highlighted. It's the listing the CLI writes with `output.listing.passes.pass2`, with the project's `listing.case` and `listing.data`, whether `output.listing` is enabled or not, and its tab is named as the CLI's file; nothing is written.
+
+- While it's shown, it follows the cursor in the project's files: a line goes to its first listing line, a macro call to the call's, then its body's, an `.include` to the included file's. A line that listed nothing (a comment, a blank line) scrolls to the closest line above that did, without highlighting.
+- A file in two projects asks which one's.
+- It comes from the last assembly that succeeded, its ties moved with the edits since, and is read again on each assembly.
 
 ## Completion and signature help
 
@@ -124,4 +133,4 @@ While working on it, link the folder into VS Code's extensions instead, then run
 ln -s "$PWD/editors/vscode" ~/.vscode/extensions/kktos.tsasm
 ```
 
-The grammar is built by `src/vscode/grammar.ts`, the links found by `src/vscode/links.ts`, a project assembled by `src/vscode/analysis.ts`, its names indexed by `src/vscode/symbol-index.ts`, renamed by `src/vscode/rename.ts`, coloured by `src/vscode/semantic.ts`, their addresses told by `src/vscode/addresses.ts`, their mnemonics described by `src/vscode/instructions.ts`, and completed by `src/vscode/completion.ts` from the language `src/vscode/language.ts` reads in the assembler, a file's blocks read by `src/vscode/blocks.ts`, its outline built by `src/vscode/outline.ts` and its folds by `src/vscode/folding.ts`, all tested in `src/tests/vscode`. `src/vscode/projects.ts` puts the projects' errors in VS Code, and `src/vscode/navigation.ts` gives the definitions, the hovers, the references, the colours, the addresses, the mnemonics' hovers, the completions, the renames, the folds and the outline.
+The grammar is built by `src/vscode/grammar.ts`, the links found by `src/vscode/links.ts`, a project assembled by `src/vscode/analysis.ts`, its names indexed by `src/vscode/symbol-index.ts`, renamed by `src/vscode/rename.ts`, coloured by `src/vscode/semantic.ts`, their addresses told by `src/vscode/addresses.ts`, their mnemonics described by `src/vscode/instructions.ts`, their listing tied to them by `src/vscode/listing.ts` and shown by `src/vscode/listing-view.ts`, and completed by `src/vscode/completion.ts` from the language `src/vscode/language.ts` reads in the assembler, a file's blocks read by `src/vscode/blocks.ts`, its outline built by `src/vscode/outline.ts` and its folds by `src/vscode/folding.ts`, all tested in `src/tests/vscode`. `src/vscode/projects.ts` puts the projects' errors in VS Code, and `src/vscode/navigation.ts` gives the definitions, the hovers, the references, the colours, the addresses, the mnemonics' hovers, the completions, the renames, the folds and the outline.

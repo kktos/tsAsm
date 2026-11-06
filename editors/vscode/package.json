@@ -2,7 +2,7 @@
 	"name": "tsasm",
 	"displayName": "tsAsm",
 	"version": "0.1.0",
-	"description": "The tsAsm assembler's language: syntax colouring from the grammar and the assembly, the projects' errors in the Problems panel, go to a definition, hovers, references, completion and signature help, rename, folding and the outline, and links to the files a source includes.",
+	"description": "The tsAsm assembler's language: syntax colouring from the grammar and the assembly, the projects' errors in the Problems panel, go to a definition, hovers, references, completion and signature help, rename, folding and the outline, the listing beside a file, and links to the files a source includes.",
 	"categories": [
 		"Programming Languages"
 	],
@@ -15,6 +15,29 @@
 	"publisher": "kktos",
 	"main": "./dist/extension.js",
 	"contributes": {
+		"commands": [
+			{
+				"command": "tsasm.showListing",
+				"title": "Show Listing",
+				"category": "tsAsm",
+				"icon": "$(list-flat)"
+			}
+		],
+		"menus": {
+			"commandPalette": [
+				{
+					"command": "tsasm.showListing",
+					"when": "editorLangId == tsasm"
+				}
+			],
+			"editor/title": [
+				{
+					"command": "tsasm.showListing",
+					"when": "editorLangId == tsasm",
+					"group": "navigation"
+				}
+			]
+		},
 		"languages": [
 			{
 				"id": "tsasm",
