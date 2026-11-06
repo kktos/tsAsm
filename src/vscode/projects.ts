@@ -8,6 +8,7 @@
 
 import { readFileSync } from "node:fs";
 import * as vscode from "vscode";
+import type { AddressHint } from "./addresses";
 import { type Analysis, analyse, type Diagnostic, type Files, isProjectFile } from "./analysis";
 import { scanBlocks } from "./blocks";
 import type { Place } from "./places";
@@ -75,6 +76,11 @@ export class Projects implements vscode.Disposable {
 	/** The names in `file`, every project's: what the assembly made of each. */
 	entriesIn(uri: vscode.Uri): IndexEntry[] {
 		return [...this.indexes.values()].flatMap((index) => index.entriesIn(uri.fsPath));
+	}
+
+	/** The addresses of the lines of `file`, every project's. */
+	hintsIn(uri: vscode.Uri): AddressHint[] {
+		return [...this.indexes.values()].flatMap((index) => index.hintsIn(uri.fsPath));
 	}
 
 	/** The definitions in `file`, every project's. */

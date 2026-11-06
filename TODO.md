@@ -245,7 +245,10 @@ Done in #216 for labels, constants, variables, local and anonymous labels, funct
 
 ### 4.34 VS Code: the assembly in the editor
 
-After 4.27. Inlay hints with a line's address, or its bytes, the listing beside the source; a command opening the listing at the current line; a hover on a mnemonic with its addressing modes and opcodes on the current CPU.
+After 4.27. The lines' addresses as inlay hints are done in #224, from the library's `onEmit`. What's left, a PR each:
+
+- **A hover on a mnemonic:** its addressing modes and opcodes on the current CPU. Each CPU describes its own: the 65xx's opcode sets, the 6809's pages, the RV32I's formats.
+- **A command opening the listing at the current line:** the listing, built in memory, its lines tied to the source's.
 
 ### 4.36 VS Code: dim the code the assembly didn't read
 
