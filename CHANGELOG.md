@@ -6,6 +6,12 @@ The problem is described as it was before the fix, then the fix in _italics_.
 
 ## Assembler
 
+### #229 — A trailing comma in `.fill` / `.align` (TODO 1.35)
+
+`.fill 2,` → `00 00`, `.res 2,` the same, `.align 4,` → `00 00 00`: an empty filler after the comma was 0, as when there's no filler at all, though an empty expression is `Missing expression.` since #136, a trailing one too (`.db 1,`, #137).
+
+_Fixed: a comma always asks for a filler. An empty one is `Missing expression.`, located at the statement, also with only a comment after the comma, and for `.align` when the PC is already aligned. `.fill 2` and `.align 4` still fill with 0._
+
 ### #228 — `.range()` with a one-character string (TODO 1.73)
 
 A one-character string used as a number is its character code (#149), but `.range()` didn't convert its arguments: `.range("0", 10)` → `.RANGE() start: 0 isn't a whole number.`, and a test even expected `.range(0, "A")` to be an error.
