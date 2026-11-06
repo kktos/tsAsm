@@ -30,7 +30,7 @@ export interface AddressHint {
 	runs: number;
 	/** Its bytes, in all its runs. */
 	size: number;
-	/** Its bytes, when it's a statement assembled once. */
+	/** Its bytes, in its first run, when it's a statement (not a macro call or an `.include`). */
 	bytes?: number[];
 	order: number;
 }
@@ -66,7 +66,7 @@ export function addressHints(emissions: LocatedEmission[], labels: IndexEntry[])
 		const count = runs.filter(({ path }) => path === first.path).length;
 		const size = runs.reduce((total, { bytes }) => total + bytes.length, 0);
 		const hint: AddressHint = { place, address: addressText(first.address), runs: count, size, order };
-		if (count === 1 && first.path === "[]") hint.bytes = first.bytes;
+		if (first.path === "[]") hint.bytes = first.bytes;
 		hints.push(hint);
 	}
 
@@ -101,7 +101,7 @@ export function lineHints(hints: AddressHint[], blocks: Block[]): LineHint[] {
 	for (const [line, { address, runs, size, bytes }] of byLine) {
 		const times = runs > 1 ? ` ×${runs}` : "";
 		let tooltip: string;
-		if (bytes) tooltip = bytes.length > MAX_BYTES ? `${hex(bytes.slice(0, MAX_BYTES))} … (${bytes.length} bytes)` : hex(bytes);
+		if (bytes && runs === 1) tooltip = bytes.length > MAX_BYTES ? `${hex(bytes.slice(0, MAX_BYTES))} … (${bytes.length} bytes)` : hex(bytes);
 		else if (size === 0) tooltip = "A label's address.";
 		else tooltip = `${size} byte${size === 1 ? "" : "s"}${runs > 1 ? ` in ${runs} runs` : ""}.`;
 		result.push({ line, text: `${address}${times}`, tooltip });

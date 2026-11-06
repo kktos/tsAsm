@@ -9,6 +9,7 @@ The language of the [tsAsm](https://github.com/kktos/tsAsm) assembler, for `.asm
 - **Go to a definition:** Cmd+click on a name (F12) goes to where it's defined, and its hover tells what it is: a label's or a constant's value, in hex and decimal, a variable's value there, a macro's or a function's parameters.
 - **Find all references:** Shift+F12 lists where a name's symbol is used, in every file of its project, and its definition.
 - **Addresses:** each line's address at its end, as an inlay hint, its bytes in its tooltip.
+- **Instructions:** a mnemonic's hover lists its forms on the current CPU, with their addressing modes, opcodes and sizes, the line's marked.
 - **Completion and signature help:** the current CPU's mnemonics, the directives and macros at a statement's start; the symbols in scope, the local labels, the system functions and variables in an operand; a call's parameters as you type them.
 - **Rename** (F2): a symbol, at its definition and its references, in every file of its project.
 - **Folding** by blocks: `.macro`, `.proc`, each branch of an `.if`, `{ }`, a routine under its label, comments and `; region` … `; endregion`.
@@ -52,6 +53,12 @@ Each line that the assembly wrote bytes for gets its address at its end, `$1000`
 - A macro call, an `.include` and a loop's header get the first address of what they assembled, and its size in the tooltip.
 
 They come from the last assembly that succeeded, moved with the edits since; a line being edited loses its address until the project assembles. VS Code's `editor.inlayHints.enabled` turns them off, or shows them while Ctrl+Alt is held, for every language or for tsAsm alone (`"[tsasm]": { "editor.inlayHints.enabled": "offUnlessPressed" }`).
+
+## Instructions
+
+The hover on a mnemonic lists the ways to write it on the current CPU, the last `.cpu` above the line, else the project's: each one's operands, as an example (`lda $12,x`), its addressing mode, its opcode and its size in bytes. The 6809's opcodes have their page prefix (`10 8E` for `ldy #`), and an indexed operand takes from two bytes to four; the 65816's immediates take one byte or two, by the register's width; the RV32I gives its formats and fields instead (`opcode $33, funct3 0, funct7 $20`).
+
+The form the line assembled to is marked ▶, from its bytes in the last assembly, and its bytes are shown; a line assembled several times shows its first run's. A file in no project gets every CPU having the mnemonic, unmarked.
 
 ## Completion and signature help
 
@@ -117,4 +124,4 @@ While working on it, link the folder into VS Code's extensions instead, then run
 ln -s "$PWD/editors/vscode" ~/.vscode/extensions/kktos.tsasm
 ```
 
-The grammar is built by `src/vscode/grammar.ts`, the links found by `src/vscode/links.ts`, a project assembled by `src/vscode/analysis.ts`, its names indexed by `src/vscode/symbol-index.ts`, renamed by `src/vscode/rename.ts`, coloured by `src/vscode/semantic.ts`, their addresses told by `src/vscode/addresses.ts`, and completed by `src/vscode/completion.ts` from the language `src/vscode/language.ts` reads in the assembler, a file's blocks read by `src/vscode/blocks.ts`, its outline built by `src/vscode/outline.ts` and its folds by `src/vscode/folding.ts`, all tested in `src/tests/vscode`. `src/vscode/projects.ts` puts the projects' errors in VS Code, and `src/vscode/navigation.ts` gives the definitions, the hovers, the references, the colours, the addresses, the completions, the renames, the folds and the outline.
+The grammar is built by `src/vscode/grammar.ts`, the links found by `src/vscode/links.ts`, a project assembled by `src/vscode/analysis.ts`, its names indexed by `src/vscode/symbol-index.ts`, renamed by `src/vscode/rename.ts`, coloured by `src/vscode/semantic.ts`, their addresses told by `src/vscode/addresses.ts`, their mnemonics described by `src/vscode/instructions.ts`, and completed by `src/vscode/completion.ts` from the language `src/vscode/language.ts` reads in the assembler, a file's blocks read by `src/vscode/blocks.ts`, its outline built by `src/vscode/outline.ts` and its folds by `src/vscode/folding.ts`, all tested in `src/tests/vscode`. `src/vscode/projects.ts` puts the projects' errors in VS Code, and `src/vscode/navigation.ts` gives the definitions, the hovers, the references, the colours, the addresses, the mnemonics' hovers, the completions, the renames, the folds and the outline.

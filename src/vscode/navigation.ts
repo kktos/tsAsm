@@ -7,6 +7,7 @@
  * * Completion and signature help: see `completion.ts`.
  * * The colours of the names the assembly resolved: see `semantic.ts`.
  * * Each line's address, as an inlay hint: see `addresses.ts`.
+ * * The hover on a mnemonic, its forms and opcodes on the current CPU: see `instructions.ts`.
  * * Folding by blocks, routines and comments: see `folding.ts`.
  * * The outline (Cmd+Shift+O) and the breadcrumbs: a file's blocks from its text, its symbols from the indexes; the
  *   workspace's symbols (Cmd+T).
@@ -17,6 +18,7 @@ import { lineHints } from "./addresses";
 import { scanBlocks } from "./blocks";
 import { type Completion, type CompletionKind, complete, type SourceContext, signatureAt } from "./completion";
 import { foldingRanges } from "./folding";
+import { instructionHover } from "./instructions";
 import { type Language, language } from "./language";
 import { buildOutline, type OutlineKind, type OutlineNode, type Range, workspaceSymbols } from "./outline";
 import type { Place } from "./places";
@@ -165,6 +167,16 @@ export function registerNavigation(projects: Projects): vscode.Disposable[] {
 				if (!first) return undefined;
 				const text = hoverText(entries, (file) => vscode.workspace.asRelativePath(file));
 				return new vscode.Hover(new vscode.MarkdownString(text), range(first.place));
+			},
+		}),
+		vscode.languages.registerHoverProvider(SELECTOR, {
+			provideHover(document, position) {
+				// The line's bytes, from the last assembly: its form among the mnemonic's.
+				const hint = projects.hintsIn(document.uri).find(({ place, bytes }) => place.line === position.line + 1 && bytes);
+				const line = hint?.bytes ? { bytes: hint.bytes, runs: hint.runs } : undefined;
+				const hover = instructionHover(sourceContext(document, position), line);
+				if (!hover) return undefined;
+				return new vscode.Hover(new vscode.MarkdownString(hover.text), new vscode.Range(position.line, hover.start - 1, position.line, hover.end - 1));
 			},
 		}),
 	];
