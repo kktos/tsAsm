@@ -3,6 +3,7 @@ import type { Logger } from "../helpers/logger.class";
 import type { Token } from "../shared/lexer/lexer.class";
 import type { DefinitionSite, SourceLocation } from "../utils/error.utils";
 import type { Options } from "./options";
+import type { RelocValue } from "./reloc-value.class";
 import type { SymbolValue } from "./symbol.class";
 
 /** Defines the state of an active token stream. */
@@ -98,6 +99,20 @@ export interface AssemblerOptions {
 	 * editor needs to go to a definition. Without it, nothing is kept for it.
 	 */
 	onSymbolReference?: (reference: SymbolReference) => void;
+	/**
+	 * Pass 2 calls it for each statement that writes bytes, as an editor needs to show a line's address: where the
+	 * statement is (located as an error is: in a macro body, its line in the macro's file, then the macro calls and the
+	 * `.include` directives that led there), its address and its bytes. Without it, nothing is kept for it.
+	 */
+	onEmit?: (emission: Emission) => void;
+}
+
+/** A statement's bytes: see `AssemblerOptions.onEmit`. */
+export interface Emission {
+	site: DefinitionSite;
+	/** In a relocatable segment, its offset there (`CODE+$0012`). */
+	address: number | RelocValue;
+	bytes: number[];
 }
 
 /** What a name refers to: `kind` tells which. */

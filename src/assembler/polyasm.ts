@@ -104,6 +104,7 @@ export class Assembler {
 	private wannaLogPass2 = false;
 	private wannaLogLinker = false;
 	private readonly onSymbolReference: AssemblerOptions["onSymbolReference"];
+	private readonly onEmit: AssemblerOptions["onEmit"];
 
 	public expressionEvaluator: ExpressionEvaluator;
 	public directiveHandler: DirectiveHandler;
@@ -127,6 +128,7 @@ export class Assembler {
 		this.cpuHandler = this.initialCpuHandler;
 		this.segmentDefinitions = options?.segments ?? [];
 		this.onSymbolReference = options?.onSymbolReference;
+		this.onEmit = options?.onEmit;
 		this.initialOptions = withDefaultOptions(options?.options);
 		this.currentOptions = { ...this.initialOptions };
 		this.fileHandler = fileHandler;
@@ -268,6 +270,7 @@ export class Assembler {
 
 	/** Write an array of bytes at the current PC via the linker and advance PC. */
 	private writeBytes(bytes: number[]) {
+		this.reportEmission(this.PC.value, bytes);
 		this.linker.writeBytes(this.PC.value, bytes);
 		this.PC.value += bytes.length;
 	}
@@ -553,6 +556,12 @@ export class Assembler {
 			const site = symbol?.site.location;
 			return site && site.file === file && String(site.line) === String(line) && site.column === column ? undefined : symbol;
 		});
+	}
+
+	/** Pass 2: tells `onEmit` the current statement's bytes, at `address`. */
+	private reportEmission(address: number, bytes: number[]) {
+		if (this.pass !== 2 || !this.onEmit || !this.statementToken || bytes.length === 0) return;
+		this.onEmit({ site: this.errorLocator.definitionSite(this.statementToken), address: this.addressValue(address), bytes: [...bytes] });
 	}
 
 	/** Once assembled: tells `onSymbolReference` every symbol, macro and anonymous label defined, at its definition. */
@@ -1110,6 +1119,7 @@ export class Assembler {
 			});
 
 			this.checkBank(instructionPC, encodedBytes.length);
+			this.reportEmission(instructionPC, encodedBytes);
 			this.linker.writeBytes(this.PC.value, encodedBytes);
 			if (modeInfo.fixup) this.linker.addFixup(instructionPC + modeInfo.fixup.at, modeInfo.fixup.size, modeInfo.fixup.value);
 			this.PC.value += encodedBytes.length;

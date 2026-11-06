@@ -7,13 +7,14 @@
 
 import { basename, dirname, join } from "node:path";
 import { Assembler } from "../assembler/polyasm";
-import type { FileHandler, SymbolReference } from "../assembler/polyasm.types";
+import type { Emission, FileHandler, SymbolReference } from "../assembler/polyasm.types";
 import { yamlparse } from "../cli/asm-yaml";
 import { readConf } from "../cli/conf";
 import { projectCpus, projectOptions } from "../cli/project";
 import { Logger } from "../helpers/logger.class";
 import type { LogSink } from "../helpers/logsink.interface";
 import { AsmError, type IncludeSite, type SourceLocation } from "../utils/error.utils";
+import { addressHints } from "./addresses";
 import { nameSpan, type Place, tokenSpan } from "./places";
 import { SymbolIndex } from "./symbol-index";
 
@@ -74,14 +75,16 @@ export function analyse(projectPath: string, files: Files): Analysis {
 		return { files: reader.paths, diagnostics: report.diagnostics, sources: new Set() };
 	}
 	const references: SymbolReference[] = [];
+	const emissions: Emission[] = [];
 	let index: SymbolIndex | undefined;
 	let cpu: string | undefined;
 	try {
 		const options = projectOptions(conf, new Logger({ sink: warnings, enabled: false }));
 		cpu = options.cpu;
 		options.onSymbolReference = (reference) => references.push(reference);
+		options.onEmit = (emission) => emissions.push(emission);
 		new Assembler(projectCpus(), handler, options).assemble(source);
-		index = buildIndex(references, (file) => (file ? join(handler.basedir, file) : sourcePath), reader);
+		index = buildIndex(references, emissions, (file) => (file ? join(handler.basedir, file) : sourcePath), reader);
 	} catch (e) {
 		// An error found before the assembly starts, without a line (a segment of the project file), is the project file's.
 		const error = e instanceof AsmError ? e : new AsmError(e instanceof Error ? e.message : String(e));
@@ -96,7 +99,7 @@ export function analyse(projectPath: string, files: Files): Analysis {
 }
 
 /** The index of the references, each at its name, its target at the name of its definition: `path` makes a file absolute. */
-function buildIndex(references: SymbolReference[], path: (file: string | undefined) => string, reader: FileReader): SymbolIndex {
+function buildIndex(references: SymbolReference[], emissions: Emission[], path: (file: string | undefined) => string, reader: FileReader): SymbolIndex {
 	const index = new SymbolIndex();
 	const lineText = (file: string, line: number) => reader.text(file)?.split("\n")[line - 1]?.replace(/\r$/, "") ?? "";
 	const locate = (location: SourceLocation, name?: string): Place => {
@@ -117,6 +120,13 @@ function buildIndex(references: SymbolReference[], path: (file: string | undefin
 		if (symbol.parameters) symbol = { ...symbol, parameters: symbol.parameters.map((parameter) => spelling(parameter, text)) };
 		index.add({ place: definition ? target : locate(at), definition, symbol, target, written });
 	}
+	const located = emissions.map(({ site, address, bytes }) => ({
+		place: locate(site.location),
+		chain: site.includeStack.filter(({ line }) => line !== undefined).map((call) => locate(call)),
+		address,
+		bytes,
+	}));
+	for (const hint of addressHints(located, index.definitions())) index.addHint(hint);
 	return index;
 }
 

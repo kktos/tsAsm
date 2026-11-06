@@ -8,6 +8,7 @@ The language of the [tsAsm](https://github.com/kktos/tsAsm) assembler, for `.asm
 - **Errors and warnings** in the Problems panel: the extension assembles each project of the workspace as the CLI does, while you type.
 - **Go to a definition:** Cmd+click on a name (F12) goes to where it's defined, and its hover tells what it is: a label's or a constant's value, in hex and decimal, a variable's value there, a macro's or a function's parameters.
 - **Find all references:** Shift+F12 lists where a name's symbol is used, in every file of its project, and its definition.
+- **Addresses:** each line's address at its end, as an inlay hint, its bytes in its tooltip.
 - **Completion and signature help:** the current CPU's mnemonics, the directives and macros at a statement's start; the symbols in scope, the local labels, the system functions and variables in an operand; a call's parameters as you type them.
 - **Rename** (F2): a symbol, at its definition and its references, in every file of its project.
 - **Folding** by blocks: `.macro`, `.proc`, each branch of an `.if`, `{ }`, a routine under its label, comments and `; region` … `; endregion`.
@@ -42,6 +43,15 @@ A name in a macro body can refer to a symbol of each call: Cmd+click lists them 
 The grammar colours from the text alone: a label's reference looks like any other word, and a local label is told by its prefix only at a statement's start, as the prefix `.option local.prefix` sets isn't known to it. The assembly knows what each name is: the names it resolved are coloured with the grammar's colours for what they are, a label's reference as a label, a constant as an `.equ`, `!loop` as a local label after `.option local.prefix "!"`. A qualified name gets its name coloured, its namespace left to the grammar.
 
 They come from the last assembly that succeeded, their places moved with the edits since: a name being typed keeps the grammar's colour until the project assembles. The code the assembly didn't read, an `.if` branch not taken or a macro never called, keeps the grammar's colours.
+
+## Addresses
+
+Each line that the assembly wrote bytes for gets its address at its end, `$1000`, as an inlay hint; its bytes are in the hint's tooltip. A label alone on its line gets its address too, and a relocatable segment's line its offset there, `CODE+$0012`.
+
+- A line assembled several times, in a loop's body or a macro's, gets its first address and how many times: `$1003 ×4`.
+- A macro call, an `.include` and a loop's header get the first address of what they assembled, and its size in the tooltip.
+
+They come from the last assembly that succeeded, moved with the edits since; a line being edited loses its address until the project assembles. VS Code's `editor.inlayHints.enabled` turns them off, or shows them while Ctrl+Alt is held, for every language or for tsAsm alone (`"[tsasm]": { "editor.inlayHints.enabled": "offUnlessPressed" }`).
 
 ## Completion and signature help
 
@@ -107,4 +117,4 @@ While working on it, link the folder into VS Code's extensions instead, then run
 ln -s "$PWD/editors/vscode" ~/.vscode/extensions/kktos.tsasm
 ```
 
-The grammar is built by `src/vscode/grammar.ts`, the links found by `src/vscode/links.ts`, a project assembled by `src/vscode/analysis.ts`, its names indexed by `src/vscode/symbol-index.ts`, renamed by `src/vscode/rename.ts`, coloured by `src/vscode/semantic.ts` and completed by `src/vscode/completion.ts` from the language `src/vscode/language.ts` reads in the assembler, a file's blocks read by `src/vscode/blocks.ts`, its outline built by `src/vscode/outline.ts` and its folds by `src/vscode/folding.ts`, all tested in `src/tests/vscode`. `src/vscode/projects.ts` puts the projects' errors in VS Code, and `src/vscode/navigation.ts` gives the definitions, the hovers, the references, the colours, the completions, the renames, the folds and the outline.
+The grammar is built by `src/vscode/grammar.ts`, the links found by `src/vscode/links.ts`, a project assembled by `src/vscode/analysis.ts`, its names indexed by `src/vscode/symbol-index.ts`, renamed by `src/vscode/rename.ts`, coloured by `src/vscode/semantic.ts`, their addresses told by `src/vscode/addresses.ts`, and completed by `src/vscode/completion.ts` from the language `src/vscode/language.ts` reads in the assembler, a file's blocks read by `src/vscode/blocks.ts`, its outline built by `src/vscode/outline.ts` and its folds by `src/vscode/folding.ts`, all tested in `src/tests/vscode`. `src/vscode/projects.ts` puts the projects' errors in VS Code, and `src/vscode/navigation.ts` gives the definitions, the hovers, the references, the colours, the addresses, the completions, the renames, the folds and the outline.

@@ -10,6 +10,7 @@ import type { SymbolInfo } from "../assembler/polyasm.types";
 import { RelocValue } from "../assembler/reloc-value.class";
 import type { SymbolValue } from "../assembler/symbol.class";
 import { getHex } from "../utils/hex.util";
+import type { AddressHint } from "./addresses";
 import type { Place } from "./places";
 
 /** A name in a file: `place` is where it's written, `target` where what it refers to is defined, the same for a definition. */
@@ -32,6 +33,8 @@ export interface TextEdit {
 export class SymbolIndex {
 	private readonly byFile = new Map<string, IndexEntry[]>();
 	private readonly keys = new Set<string>();
+	/** The lines' addresses, by file. */
+	private readonly hints = new Map<string, AddressHint[]>();
 
 	/** Adds an entry, once: a macro body's names are reported at each call, a loop's at each iteration. */
 	add(entry: IndexEntry): void {
@@ -46,6 +49,18 @@ export class SymbolIndex {
 	/** The entries of the name at `line` and `column` in `file`: the cursor can be right after it. */
 	at(file: string, line: number, column: number): IndexEntry[] {
 		return (this.byFile.get(file) ?? []).filter(({ place }) => place.line === line && place.column <= column && column <= place.endColumn);
+	}
+
+	/** Adds a line's address. */
+	addHint(hint: AddressHint): void {
+		const hints = this.hints.get(hint.place.file) ?? [];
+		hints.push(hint);
+		this.hints.set(hint.place.file, hints);
+	}
+
+	/** The lines' addresses in `file`. */
+	hintsIn(file: string): AddressHint[] {
+		return this.hints.get(file) ?? [];
 	}
 
 	/** The entries, in every file. */
@@ -85,6 +100,16 @@ export class SymbolIndex {
 			}
 			this.byFile.set(entryFile, kept);
 		}
+		const hints = this.hints.get(file);
+		if (!hints) return;
+		// A statement the edit touches loses its address until the next assembly.
+		this.hints.set(
+			file,
+			hints.flatMap((hint) => {
+				const place = shiftPlace(hint.place, edit);
+				return place ? [{ ...hint, place }] : [];
+			}),
+		);
 	}
 }
 

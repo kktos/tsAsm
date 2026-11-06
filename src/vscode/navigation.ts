@@ -6,12 +6,14 @@
  * * F2 renames a symbol: see `rename.ts`.
  * * Completion and signature help: see `completion.ts`.
  * * The colours of the names the assembly resolved: see `semantic.ts`.
+ * * Each line's address, as an inlay hint: see `addresses.ts`.
  * * Folding by blocks, routines and comments: see `folding.ts`.
  * * The outline (Cmd+Shift+O) and the breadcrumbs: a file's blocks from its text, its symbols from the indexes; the
  *   workspace's symbols (Cmd+T).
  */
 
 import * as vscode from "vscode";
+import { lineHints } from "./addresses";
 import { scanBlocks } from "./blocks";
 import { type Completion, type CompletionKind, complete, type SourceContext, signatureAt } from "./completion";
 import { foldingRanges } from "./folding";
@@ -106,6 +108,20 @@ export function registerNavigation(projects: Projects): vscode.Disposable[] {
 			},
 			LEGEND,
 		),
+		vscode.languages.registerInlayHintsProvider(SELECTOR, {
+			// The addresses come from the assemblies.
+			onDidChangeInlayHints: projects.onDidAssemble,
+			provideInlayHints(document, range) {
+				return lineHints(projects.hintsIn(document.uri), scanBlocks(document.getText()))
+					.filter(({ line }) => line - 1 >= range.start.line && line - 1 <= range.end.line && line <= document.lineCount)
+					.map(({ line, text, tooltip }) => {
+						const hint = new vscode.InlayHint(document.lineAt(line - 1).range.end, text);
+						hint.paddingLeft = true;
+						hint.tooltip = tooltip;
+						return hint;
+					});
+			},
+		}),
 		vscode.languages.registerFoldingRangeProvider(SELECTOR, {
 			// The labels' folds come from the assemblies.
 			onDidChangeFoldingRanges: projects.onDidAssemble,
