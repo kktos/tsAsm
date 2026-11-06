@@ -26,7 +26,8 @@ export class ListDirective implements IDirective {
 		const mode = instruction.value;
 		switch (mode) {
 			case "ON":
-				this.logger.enabled = true;
+				// Back to what the pass was given: a pass the options don't list stays unlisted.
+				this.logger.enabled = this.assembler.isPassListed;
 				break;
 			case "OFF":
 				this.logger.enabled = false;

@@ -22,10 +22,6 @@ What is done is in `CHANGELOG.md`. How we work (PR rules, design rules, commands
 
 Since #150, a branch of `.if` not taken rejects an unknown directive starting a statement. Other blocks that aren't assembled still don't: `.repeat 0` / `.foobar` / `.end` and a macro never called with `.foobar` in its body assemble. In a branch not taken, a label without a colon before the directive isn't seen as a statement start (`lbl .foobar` passes, `lbl: .foobar` doesn't): telling it from an instruction's operand (`jmp .pc`) needs the CPU's mnemonics and the macros.
 
-### 1.50 `.list on` lists pass 1 when only pass 2 is asked
-
-With `output.listing: { pass2: true }`, the statements after a `.list on` are also listed in pass 1, before the pass 2 header, with pass 1 values (`.db "<1 bytes>"`, `.fill "<4 bytes>"`, `1006: 00  NOP`). `.list on` should only turn back on the passes the project file lists.
-
 ### 1.61 A braced `.if` in a keyword block
 
 `.macro m` / `.if 1 { .db 0 }` / `.db 1` / `.end` → `Missing .END for the .MACRO block.`, same in a `.for` … `.end`. Reading the block, `getKeywordBlock` counts the `.if` as a block that needs its own `.end`, though its `{ }` already ended it. Found with `.exitmacro`.

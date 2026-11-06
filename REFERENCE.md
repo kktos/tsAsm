@@ -633,14 +633,14 @@ A file can be included several times: each `.include` assembles it again. A file
 
 ## Messages and listing
 
-| Directive                                         | Effect                                                                       |
-| ------------------------------------------------- | ---------------------------------------------------------------------------- |
-| `.log` / `.echo` / `.out` `<value> [, <value> …]` | Print the values, separated by tabs                                          |
-| `.warning` / `.warn` `<value> [, <value> …]`      | Print a warning                                                              |
-| `.error` / `.err` `<value> [, <value> …]`         | Stop the assembly with this error                                            |
-| `.assert <condition> [, warn] [, <value> …]`      | Stop the assembly when the condition is false, or only warn: see below       |
-| `.list on` / `.list off`                          | Turn the listing on or off (when the listing is enabled in the project file) |
-| `.list file = "<name>"`                           | Write the listing of the current file to another file                        |
+| Directive                                         | Effect                                                                  |
+| ------------------------------------------------- | ----------------------------------------------------------------------- |
+| `.log` / `.echo` / `.out` `<value> [, <value> …]` | Print the values, separated by tabs                                     |
+| `.warning` / `.warn` `<value> [, <value> …]`      | Print a warning                                                         |
+| `.error` / `.err` `<value> [, <value> …]`         | Stop the assembly with this error                                       |
+| `.assert <condition> [, warn] [, <value> …]`      | Stop the assembly when the condition is false, or only warn: see below  |
+| `.list on` / `.list off`                          | Turn the listing off, and back on for the passes the project file lists |
+| `.list file = "<name>"`                           | Write the listing of the current file to another file                   |
 
 ```as
 .log "count = ", count
