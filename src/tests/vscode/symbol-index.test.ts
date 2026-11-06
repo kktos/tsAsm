@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { RelocValue } from "../../assembler/reloc-value.class";
 import { analyse } from "../../vscode/analysis";
 import { nameSpan } from "../../vscode/places";
-import { distinctEntries, hoverText, type IndexEntry, shiftPlace, SymbolIndex, valueText } from "../../vscode/symbol-index";
+import { distinctEntries, findReferences, hoverText, type IndexEntry, shiftPlace, SymbolIndex, valueText } from "../../vscode/symbol-index";
 
 const PROJECT = `
 input:
@@ -194,5 +194,62 @@ describe("VS Code name spans", () => {
 		expect(nameSpan(".macro clear addr", 1, "CLEAR")).toEqual([8, 13]);
 		expect(nameSpan("\t.function double(x) = x * 2", 2, "X")).toEqual([19, 20]);
 		expect(nameSpan(":\tnop", 1, ":")).toEqual([1, 2]);
+	});
+});
+
+describe("VS Code references", () => {
+	/** The references to the name at a line and column of main.asm, as `file:line:column`. */
+	const references = (line: number, column: number, includeDeclaration: boolean, indexes = [index]) =>
+		findReferences(indexes, distinctEntries(indexes.flatMap((each) => each.at("/p/src/main.asm", line, column))), includeDeclaration).map(
+			({ file, line: at, column: col }) => `${file.replace("/p/src/", "")}:${at}:${col}`,
+		);
+
+	it("lists the references to a symbol, and its definition when asked", () => {
+		expect(references(5, 9, false)).toEqual(["main.asm:5:8", "main.asm:11:13"]);
+		expect(references(5, 9, true)).toEqual(["main.asm:3:1", "main.asm:5:8", "main.asm:11:13"]);
+	});
+
+	it("lists them from the definition too", () => {
+		expect(references(3, 2, false)).toEqual(["main.asm:5:8", "main.asm:11:13"]);
+	});
+
+	it("lists a macro's calls, its definition in its file", () => {
+		expect(references(5, 2, true)).toEqual(["macros.asm:2:8", "main.asm:5:2"]);
+	});
+
+	it("tells a local label's references, and an anonymous label's, from the others", () => {
+		expect(references(8, 7, true)).toEqual(["main.asm:7:1", "main.asm:8:6"]);
+		expect(references(9, 6, true)).toEqual(["main.asm:6:1", "main.asm:9:6"]);
+	});
+
+	it("lists nothing where there's no name", () => {
+		expect(references(6, 3, true)).toEqual([]);
+	});
+
+	it("lists a name in a macro body once, though each call has its symbol", () => {
+		const { index: macroIndex } = analyseFiles({
+			"/p/proj.yaml": PROJECT,
+			"/p/src/main.asm": `
+.macro wait
+	jmp :done
+:done	rts
+.end
+start:
+	wait
+	wait
+`,
+		});
+		expect(references(3, 6, true, [macroIndex as SymbolIndex])).toEqual(["main.asm:3:6", "main.asm:4:1"]);
+	});
+
+	it("lists a reference once when its file is in two projects", () => {
+		const other = analyseFiles({ "/p/proj.yaml": PROJECT, "/p/src/main.asm": MAIN, "/p/src/macros.asm": MACROS }).index as SymbolIndex;
+		expect(references(5, 9, false, [index, other])).toEqual(["main.asm:5:8", "main.asm:11:13"]);
+	});
+
+	it("lists them at their places after an edit", () => {
+		const moved = analyseFiles({ "/p/proj.yaml": PROJECT, "/p/src/main.asm": MAIN, "/p/src/macros.asm": MACROS }).index as SymbolIndex;
+		moved.shift("/p/src/main.asm", { start: { line: 4, column: 1 }, end: { line: 4, column: 1 }, text: "\tnop\n" });
+		expect(references(6, 9, true, [moved])).toEqual(["main.asm:3:1", "main.asm:6:8", "main.asm:12:13"]);
 	});
 });

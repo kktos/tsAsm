@@ -216,7 +216,7 @@ const assembler = new Assembler(cpu, fileHandler, {
 
 ## VS Code
 
-[editors/vscode](editors/vscode) is an extension for VS Code: syntax colouring, the projects' errors and warnings in the Problems panel, Cmd+click on a name to go to its definition and a hover telling its value, and Cmd+click on the path of an `.include`, `.incbin` or `.define … from` to open its file. Its README says how to build and install it.
+[editors/vscode](editors/vscode) is an extension for VS Code: syntax colouring, the projects' errors and warnings in the Problems panel, Cmd+click on a name to go to its definition, a hover telling its value, and its references, and Cmd+click on the path of an `.include`, `.incbin` or `.define … from` to open its file. Its README says how to build and install it.
 
 ## Development
 

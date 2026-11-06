@@ -243,10 +243,6 @@ Done in #216 for labels, constants, variables, local and anonymous labels, funct
 - **Names the evaluator doesn't resolve as values:** the name in `.def(x)` / `.undef(x)`, a name a built-in function takes as an argument.
 - **A file in no project** gets a text scan only.
 
-### 4.29 VS Code: find all references
-
-After 4.28. The library's hook is done in #216: `onSymbolReference`, and the extension's index has every reference, a name in a macro body or a loop once. What's left is the provider: the references of the symbol at the cursor, its definition included or not as VS Code asks.
-
 ### 4.30 VS Code: outline and workspace symbols
 
 After 4.28. The outline and breadcrumbs (Cmd+Shift+O): labels, `.proc`, macros, functions, namespaces, segments, nested as in the source. The workspace's symbols (Cmd+T).
