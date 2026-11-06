@@ -6,6 +6,12 @@ The problem is described as it was before the fix, then the fix in _italics_.
 
 ## Assembler
 
+### #234 — `.org` to a symbol defined after it crashes (TODO 1.69)
+
+`.org later` / `later:` → `Cannot read properties of null (reading 'toString')`: a symbol defined later is `null` in pass 1, and so was the PC. An instruction turned it into `1`: `.org later` / `nop` / `later: nop` → `Write out of bounds: address $1 is below segment 'CODE' start $1000.` `* = later` said `Invalid value for */ORG: null.` And `.org later` / `later:` is circular: any address fits.
+
+_Decided: the address `.org` or `* =` sets must be known where it's read. A symbol defined after it, a label or a constant, is an error at the `.org`: `The .org address uses a symbol defined after it: define the symbol before the .org.` (`The * = address …` for `* =`). `.org later` / `nop` / `later = $1000`, which assembled, is now this error._
+
 ### #233 — `.list on` lists a pass the project file doesn't (TODO 1.50)
 
 `.list on` turned the listing on whatever the pass. With only pass 2 listed, what followed it was listed in pass 1 too, before the pass 2 header, with pass 1 values (`.db "<1 bytes>"`, `1006: 00  NOP`). With only pass 1 listed, it was also listed in pass 2. With the logger disabled, it was listed in both.
