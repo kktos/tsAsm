@@ -77,7 +77,13 @@ export class FunctionDispatcher {
 			description: "The address of the label with that name.",
 		});
 		for (const [name, definition] of defFunctions((macro) => this.host.isMacroDefined?.(macro) ?? false)) this.register(name, definition);
-		this.register("STR", { handler: strFunction, minArgs: 1, maxArgs: 2, parameters: ["value"], description: "The value as a string." });
+		this.register("STR", {
+			handler: strFunction,
+			minArgs: 1,
+			maxArgs: 2,
+			parameters: ["value", "radix"],
+			description: "A number as a string, written in `radix` (10 by default, 2 to 36), or a string as is.",
+		});
 		this.register("HEX", {
 			handler: hexFunction,
 			minArgs: 1,
