@@ -243,10 +243,6 @@ Done in #216 for labels, constants, variables, local and anonymous labels, funct
 - **Names the evaluator doesn't resolve as values:** the name in `.def(x)` / `.undef(x)`, a name a built-in function takes as an argument.
 - **A file in no project** gets a text scan only.
 
-### 4.30 VS Code: outline and workspace symbols
-
-After 4.28. The outline and breadcrumbs (Cmd+Shift+O): labels, `.proc`, macros, functions, namespaces, segments, nested as in the source. The workspace's symbols (Cmd+T).
-
 ### 4.31 VS Code: rename a symbol
 
 After 4.29. Renames a symbol at its definition and its references. Refused, saying why, where a reference isn't written as the name: a name built by an expression, a symbol from `.define … from`.
@@ -265,7 +261,7 @@ After 4.27. Inlay hints with a line's address, or its bytes, the listing beside 
 
 ### 4.35 VS Code: folding by blocks
 
-Folding follows the indentation: a `.macro` … `.end` written flat doesn't fold. Folding ranges from the blocks, `.macro` … `.end`, `.proc`, `.if`, `{ }`. Without 4.27: the blocks are in the text.
+Folding follows the indentation: a `.macro` … `.end` written flat doesn't fold. Folding ranges from the blocks, `.macro` … `.end`, `.proc`, `.if`, `{ }`: `scanBlocks` (`src/vscode/blocks.ts`, #218) reads them from the text for the outline.
 
 ## 5. Documentation (REFERENCE.md)
 

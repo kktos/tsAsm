@@ -37,7 +37,7 @@ export function findFileLinks(source: string): FileLink[] {
 }
 
 /** The source with its comments made spaces, its line breaks kept: a path in a comment isn't linked, and the offsets stay. */
-function blankComments(source: string): string {
+export function blankComments(source: string): string {
 	let text = "";
 	let quote: string | undefined;
 	for (let i = 0; i < source.length; i++) {

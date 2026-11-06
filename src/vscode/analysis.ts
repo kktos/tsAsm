@@ -36,6 +36,8 @@ export interface Analysis {
 	diagnostics: Diagnostic[];
 	/** Where the names are and what they refer to, when it assembled: an assembly stopped by an error gives none. */
 	index?: SymbolIndex;
+	/** The source files it read, the project file left out. */
+	sources: Set<string>;
 }
 
 /** A YAML file is a project file when it has an `input.source`. */
@@ -55,7 +57,7 @@ export function analyse(projectPath: string, files: Files): Analysis {
 	const report = new Report(reader);
 
 	const conf = readProject(projectPath, reader, report);
-	if (!conf) return { files: reader.paths, diagnostics: report.diagnostics };
+	if (!conf) return { files: reader.paths, diagnostics: report.diagnostics, sources: new Set() };
 
 	// As the CLI: the source's paths are relative to its directory, the project file's to the project file.
 	const handler = new AnalysisFileHandler(join(dirname(projectPath), dirname(conf.input.source)), reader);
@@ -67,7 +69,7 @@ export function analyse(projectPath: string, files: Files): Analysis {
 	} catch (e) {
 		const line = keyLine(reader.text(projectPath) ?? "", "input.source");
 		report.add(new AsmError(`Can't read the source '${conf.input.source}': ${e instanceof Error ? e.message : e}`, { line }), "", projectPath);
-		return { files: reader.paths, diagnostics: report.diagnostics };
+		return { files: reader.paths, diagnostics: report.diagnostics, sources: new Set() };
 	}
 	const references: SymbolReference[] = [];
 	let index: SymbolIndex | undefined;
@@ -82,7 +84,8 @@ export function analyse(projectPath: string, files: Files): Analysis {
 		report.add(error, handler.basedir, error.location.line === undefined ? projectPath : sourcePath);
 	}
 	for (const warning of warnings.warnings) report.add(warning, handler.basedir, sourcePath);
-	return index ? { files: reader.paths, diagnostics: report.diagnostics, index } : { files: reader.paths, diagnostics: report.diagnostics };
+	const sources = new Set(reader.textPaths().filter((path) => path !== projectPath));
+	return index ? { files: reader.paths, diagnostics: report.diagnostics, index, sources } : { files: reader.paths, diagnostics: report.diagnostics, sources };
 }
 
 /** The index of the references, each at its name, its target at the name of its definition: `path` makes a file absolute. */
@@ -162,6 +165,11 @@ class FileReader {
 
 	text(path: string): string | undefined {
 		return this.texts.get(path);
+	}
+
+	/** The files read as text. */
+	textPaths(): string[] {
+		return [...this.texts.keys()];
 	}
 }
 

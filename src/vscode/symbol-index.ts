@@ -48,6 +48,12 @@ export class SymbolIndex {
 		return (this.byFile.get(file) ?? []).filter(({ place }) => place.line === line && place.column <= column && column <= place.endColumn);
 	}
 
+	/** The definitions, in `file` or in every file. */
+	definitions(file?: string): IndexEntry[] {
+		const entries = file === undefined ? [...this.byFile.values()].flat() : (this.byFile.get(file) ?? []);
+		return entries.filter((entry) => entry.definition);
+	}
+
 	/** The entries, in every file, of the symbols `symbolKey` gives `keys`. */
 	entriesOf(keys: ReadonlySet<string>): IndexEntry[] {
 		return [...this.byFile.values()].flatMap((entries) => entries.filter((entry) => keys.has(symbolKey(entry))));
