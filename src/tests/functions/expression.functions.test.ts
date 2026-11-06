@@ -122,11 +122,37 @@ describe("ExpressionEvaluator", () => {
 		});
 
 		it.each([
-			['.BANKBYTE("A")', ".BANKBYTE() requires a number argument."],
-			['.BKBYTE("A")', ".BKBYTE() requires a number argument."],
-		])("should reject a string: %s", (expr, message) => {
+			['.BANKBYTE("AB")', ".BANKBYTE() requires a number argument."],
+			['.BKBYTE("AB")', ".BKBYTE() requires a number argument."],
+			['.LOBYTE("AB")', ".LOBYTE() requires a number argument."],
+			['.FLOOR("")', ".FLOOR() requires a number argument."],
+		])("should reject a string that isn't one character: %s", (expr, message) => {
 			const { evaluator, tokenize } = setup();
 			expect(() => evaluator.evaluate(tokenize(expr), { PC: { value: 0 } })).toThrow(message);
+		});
+
+		// A one-character string used as a number is its character code, wherever a number is expected.
+		it.each([
+			['.LOBYTE("A")', 0x41],
+			['.HIBYTE("A")', 0],
+			['.BANKBYTE("A")', 0],
+			['.BKBYTE("A")', 0],
+			['.FLOOR("A")', 0x41],
+			['.CEIL("A")', 0x41],
+			['.ROUND("A")', 0x41],
+			['.HEX("A")', "$41"],
+			['.HEX(1, "\\x04")', "$0001"],
+			['.PAD(1, "\\x03")', "  1"],
+			['.STR(255, "\\x10")', "FF"],
+		])("should take a one-character string as its character code: %s", (expr, expected) => {
+			const { evaluator, tokenize } = setup();
+			expect(evaluator.evaluate(tokenize(expr), { PC: { value: 0 } })).toBe(expected);
+		});
+
+		it("should keep a string where text is taken: .PAD()'s value and fill, .STR()'s value", () => {
+			const { evaluator, tokenize } = setup();
+			expect(evaluator.evaluate(tokenize('.PAD("A", 3, "0")'), { PC: { value: 0 } })).toBe("00A");
+			expect(evaluator.evaluate(tokenize('.STR("A")'), { PC: { value: 0 } })).toBe("A");
 		});
 	});
 

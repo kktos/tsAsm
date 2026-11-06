@@ -54,9 +54,9 @@ On a 32-bit CPU, `.org $12345678` in a resizable segment, or `.fill $12345678, 0
 
 `LBRA` and `LBSR` are in the 6809's page 2 with 3 bytes, but they're page 1 opcodes (`16`, `17`), 3 bytes: `.org $1000` / `lbra $1010` / `nop` → `10 16 00 0D 12`, four bytes with a page prefix, the offset computed for three. Found with 4.34.
 
-### 1.74 A one-character string in a function's number argument
+### 1.75 A string as a condition
 
-A one-character string used as a number is its character code (#149), but the built-in functions taking a number don't convert it: `.db .lobyte("A")` → `.LOBYTE() requires a number argument.`, and so do `.hibyte`, `.bankbyte`, `.floor`, `.ceil` and `.round`. `.range()` does since 1.73, with `charCode()` from `number.utils.ts`. Found with 1.73.
+`.if` takes any value as JavaScript does (`Boolean(value)`): a string is true unless it's empty, so `.if "\x00"` is true, though a one-character string used as a number is its character code (#149), here 0, and `.if "AB"` is true, though a longer string is never a number. `.iif("A", 1, 2)` → `First argument to .IIF() must be a number.`: `.iif` doesn't convert a one-character string. How a condition reads a string, and an array or an object, to decide: as a number (recommended: a one-character string its code, anything else an error), or as true when not empty. Found with 1.74.
 
 ## 2. Code review, items left
 

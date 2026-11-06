@@ -1,11 +1,13 @@
 import { AsmError } from "../../utils/error.utils";
+import { charCode } from "../../utils/number.utils";
 import type { Token } from "../lexer/lexer.class";
 import type { EvaluationStack, FunctionHandler } from "./types";
 
 /** `.PAD(value, width [, fill])`: right-aligned in `width` columns, or left-aligned when `width` is negative. Never truncates. */
 export const padFunction: FunctionHandler = (stack: EvaluationStack, token: Token, _symbolTable, argCount): void => {
 	const fillArg = argCount === 3 ? stack.pop() : " ";
-	const widthArg = stack.pop();
+	// The width is a number: a one-character string is its character code. The value and the fill stay text.
+	const widthArg = charCode(stack.pop());
 	const valueArg = stack.pop();
 
 	if (typeof valueArg !== "string" && typeof valueArg !== "number") throw AsmError.at("First argument to .PAD() must be a string or a number.", token);
