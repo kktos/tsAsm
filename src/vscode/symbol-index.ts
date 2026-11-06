@@ -48,6 +48,11 @@ export class SymbolIndex {
 		return (this.byFile.get(file) ?? []).filter(({ place }) => place.line === line && place.column <= column && column <= place.endColumn);
 	}
 
+	/** The entries, in every file, of the symbols `symbolKey` gives `keys`. */
+	entriesOf(keys: ReadonlySet<string>): IndexEntry[] {
+		return [...this.byFile.values()].flatMap((entries) => entries.filter((entry) => keys.has(symbolKey(entry))));
+	}
+
 	/**
 	 * Moves the places in `file`, theirs and their targets', as `edit` moves the text: a name the edit touches is
 	 * dropped, as the index can't tell what it is now.
@@ -118,6 +123,32 @@ export function distinctEntries(entries: IndexEntry[]): IndexEntry[] {
 
 function entryKey({ place, definition, symbol, target }: IndexEntry): string {
 	return JSON.stringify([place, definition, symbol.kind, symbol.namespace, symbol.name, target, valueText(symbol.value)]);
+}
+
+/**
+ * What an entry refers to, whatever its value there: its kind, its name and where it's defined. A name in a macro
+ * body refers to one symbol at each call, all defined at the same place: they are one for its references.
+ */
+export function symbolKey({ symbol, target }: IndexEntry): string {
+	return JSON.stringify([symbol.kind, symbol.namespace, symbol.name, target]);
+}
+
+/**
+ * The places of the references, in `indexes`, to what `entries` (the name at the cursor) refer to, and their
+ * definitions with `includeDeclaration`: each once, by file, line and column.
+ */
+export function findReferences(indexes: Iterable<SymbolIndex>, entries: IndexEntry[], includeDeclaration: boolean): Place[] {
+	const keys = new Set(entries.map(symbolKey));
+	const places = new Map<string, Place>();
+	const add = (place: Place) => places.set(JSON.stringify(place), place);
+	for (const index of indexes) {
+		for (const entry of index.entriesOf(keys)) {
+			if (!entry.definition) add(entry.place);
+			if (includeDeclaration) add(entry.target);
+		}
+	}
+	if (includeDeclaration) for (const entry of entries) add(entry.target);
+	return [...places.values()].sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line || a.column - b.column);
 }
 
 const MAX_SYMBOLS = 5;

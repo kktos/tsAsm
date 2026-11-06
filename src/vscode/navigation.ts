@@ -1,7 +1,8 @@
 /**
  * navigation.ts
  *
- * * Cmd+click on a name goes to its definition, and its hover tells what it is: from the projects' indexes.
+ * * Cmd+click on a name goes to its definition, its hover tells what it is, and Shift+F12 lists its references: from
+ *   the projects' indexes.
  */
 
 import * as vscode from "vscode";
@@ -23,6 +24,13 @@ export function registerNavigation(projects: Projects): vscode.Disposable[] {
 					targetRange: range(target),
 					targetSelectionRange: range(target),
 				}));
+			},
+		}),
+		vscode.languages.registerReferenceProvider(SELECTOR, {
+			provideReferences(document, position, context) {
+				return projects
+					.referencesAt(document.uri, position, context.includeDeclaration)
+					.map((place) => new vscode.Location(vscode.Uri.file(place.file), range(place)));
 			},
 		}),
 		vscode.languages.registerHoverProvider(SELECTOR, {

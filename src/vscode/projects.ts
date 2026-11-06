@@ -10,7 +10,7 @@ import { readFileSync } from "node:fs";
 import * as vscode from "vscode";
 import { type Analysis, analyse, type Diagnostic, type Files, isProjectFile } from "./analysis";
 import type { Place } from "./places";
-import type { IndexEntry, SymbolIndex } from "./symbol-index";
+import { findReferences, type IndexEntry, type SymbolIndex } from "./symbol-index";
 
 /** How long the typing stops before the projects assemble again. */
 const DELAY = 300;
@@ -56,6 +56,11 @@ export class Projects implements vscode.Disposable {
 	/** What the name at `position` refers to, in every project that has the file. */
 	entriesAt(uri: vscode.Uri, position: vscode.Position): IndexEntry[] {
 		return [...this.indexes.values()].flatMap((index) => index.at(uri.fsPath, position.line + 1, position.character + 1));
+	}
+
+	/** The references, in every project, to what the name at `position` refers to, and its definitions with `includeDeclaration`. */
+	referencesAt(uri: vscode.Uri, position: vscode.Position, includeDeclaration: boolean): Place[] {
+		return findReferences(this.indexes.values(), this.entriesAt(uri, position), includeDeclaration);
 	}
 
 	/** The indexes' places in `file` follow its edits, applied in order. */

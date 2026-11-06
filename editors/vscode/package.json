@@ -2,7 +2,7 @@
 	"name": "tsasm",
 	"displayName": "tsAsm",
 	"version": "0.1.0",
-	"description": "The tsAsm assembler's language: syntax colouring, the projects' errors in the Problems panel, go to a definition and hovers, and links to the files a source includes.",
+	"description": "The tsAsm assembler's language: syntax colouring, the projects' errors in the Problems panel, go to a definition, hovers and references, and links to the files a source includes.",
 	"categories": [
 		"Programming Languages"
 	],
