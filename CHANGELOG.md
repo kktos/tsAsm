@@ -6,6 +6,12 @@ The problem is described as it was before the fix, then the fix in _italics_.
 
 ## Assembler
 
+### #235 — A one-character string in a function's number argument (TODO 1.74)
+
+A one-character string used as a number is its character code (#149), but the built-in functions taking a number didn't convert it: `.lobyte("A")` → `.LOBYTE() requires a number argument.`, and so did `.hibyte`, `.bankbyte`, `.floor`, `.ceil`, `.round`, `.hex` (value and digits), `.pad`'s width and `.str`'s radix.
+
+_Fixed: their number arguments go through `charCode()`, as `.range()`'s do (#228): `.lobyte("A")` is `$41`, `.hex("A")` is `"$41"`. A string taken as text stays text (`.pad`'s value and fill, `.str`'s value), and a longer string is still an error. So `.pad("AB", "5")` pads to 53 columns. `.if` and `.iif` reading a string are 1.75._
+
 ### #234 — `.org` to a symbol defined after it crashes (TODO 1.69)
 
 `.org later` / `later:` → `Cannot read properties of null (reading 'toString')`: a symbol defined later is `null` in pass 1, and so was the PC. An instruction turned it into `1`: `.org later` / `nop` / `later: nop` → `Write out of bounds: address $1 is below segment 'CODE' start $1000.` `* = later` said `Invalid value for */ORG: null.` And `.org later` / `later:` is circular: any address fits.
