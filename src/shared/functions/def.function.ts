@@ -15,7 +15,27 @@ export function defFunctions(isMacroDefined: (name: string) => boolean): Map<str
 	};
 
 	return new Map([
-		["DEF", { handler: (stack, token, symbolTable) => stack.push(isDefined(stack, token, symbolTable) ? 1 : 0), minArgs: 1, maxArgs: 1, nameArgs: 1 }],
-		["UNDEF", { handler: (stack, token, symbolTable) => stack.push(isDefined(stack, token, symbolTable) ? 0 : 1), minArgs: 1, maxArgs: 1, nameArgs: 1 }],
+		[
+			"DEF",
+			{
+				handler: (stack, token, symbolTable) => stack.push(isDefined(stack, token, symbolTable) ? 1 : 0),
+				minArgs: 1,
+				maxArgs: 1,
+				nameArgs: 1,
+				parameters: ["symbol"],
+				description: "1 if the symbol, function or macro is defined at this point of the source, else 0.",
+			},
+		],
+		[
+			"UNDEF",
+			{
+				handler: (stack, token, symbolTable) => stack.push(isDefined(stack, token, symbolTable) ? 0 : 1),
+				minArgs: 1,
+				maxArgs: 1,
+				nameArgs: 1,
+				parameters: ["symbol"],
+				description: "1 if the symbol, function or macro isn't defined at this point of the source, else 0.",
+			},
+		],
 	]);
 }

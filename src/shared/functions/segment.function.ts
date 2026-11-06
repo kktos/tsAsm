@@ -18,5 +18,7 @@ export function segmentFunction(findSegment: (name: string) => Segment | undefin
 		},
 		minArgs: 1,
 		maxArgs: 1,
+		parameters: ["name"],
+		description: 'The segment of that name: `.segment("CODE").start`.',
 	};
 }

@@ -28,6 +28,8 @@ export class Projects implements vscode.Disposable {
 	private readonly analyses = new Map<string, Analysis>();
 	/** Each project's last index: an assembly stopped by an error keeps the one before, its places moved by the edits since. */
 	private readonly indexes = new Map<string, SymbolIndex>();
+	/** Each project's namespaces, as written in its files: from their text at its last assembly. */
+	private readonly namespaces = new Map<string, string[]>();
 	/** The projects to assemble when the timer runs out, and whether to look for the projects again first. */
 	private readonly pending = new Set<string>();
 	private rediscover = false;
@@ -73,6 +75,15 @@ export class Projects implements vscode.Disposable {
 	/** The definitions in `file`, every project's. */
 	definitionsIn(uri: vscode.Uri): IndexEntry[] {
 		return [...this.indexes.values()].flatMap((index) => index.definitions(uri.fsPath));
+	}
+
+	/** What completion knows of the projects that read `uri`: their CPU, their definitions, their namespaces. */
+	sourceContext(uri: vscode.Uri): { cpu?: string; definitions: IndexEntry[]; namespaces: string[] } {
+		const projects = [...this.analyses].filter(([, analysis]) => analysis.files.has(uri.fsPath));
+		const definitions = projects.flatMap(([project]) => this.indexes.get(project)?.definitions() ?? []);
+		const namespaces = [...new Set(projects.flatMap(([project]) => this.namespaces.get(project) ?? []))];
+		const cpu = projects.map(([, analysis]) => analysis.cpu).find((name) => name !== undefined);
+		return cpu === undefined ? { definitions, namespaces } : { cpu, definitions, namespaces };
 	}
 
 	/** Every project's definitions, and the namespaces of their source files, from their text as it is now. */
@@ -177,6 +188,7 @@ export class Projects implements vscode.Disposable {
 				if (projects.includes(project)) continue;
 				this.analyses.delete(project);
 				this.indexes.delete(project);
+				this.namespaces.delete(project);
 			}
 			for (const project of projects) if (!this.analyses.has(project)) this.pending.add(project);
 		}
@@ -184,6 +196,7 @@ export class Projects implements vscode.Disposable {
 			const analysis = safeAnalyse(project, files);
 			this.analyses.set(project, analysis);
 			if (analysis.index) this.indexes.set(project, analysis.index);
+			this.namespaces.set(project, namespacesOf(files, analysis.sources));
 		}
 		this.pending.clear();
 		this.publish();
@@ -212,6 +225,17 @@ function editorFiles(): Files {
 		readText: (path) => open.get(path)?.getText() ?? readFileSync(path, "utf-8"),
 		readBytes: (path) => Array.from(readFileSync(path)),
 	};
+}
+
+/** The namespaces opened in `sources`, as written. */
+function namespacesOf(files: Files, sources: Iterable<string>): string[] {
+	const names = new Map<string, string>();
+	for (const file of sources) {
+		const text = readText(files, file);
+		if (text === undefined) continue;
+		for (const { kind, name } of scanBlocks(text)) if (kind === "namespace" && name && !names.has(name.toUpperCase())) names.set(name.toUpperCase(), name);
+	}
+	return [...names.values()];
 }
 
 const relative = (path: string) => vscode.workspace.asRelativePath(path);

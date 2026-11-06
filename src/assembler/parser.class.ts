@@ -45,6 +45,11 @@ export class Parser {
 		if (directive.isRawDirective) this.rawDirectives.set(name, directive.getRawBlock);
 	}
 
+	/** The directives' names, in upper case, an `.if`'s branches too: for an editor. */
+	public directiveNames(): string[] {
+		return [...this.directives, ...IF_BRANCHES];
+	}
+
 	public isKnownDirective(name: string): boolean {
 		return this.directives.has(name);
 	}

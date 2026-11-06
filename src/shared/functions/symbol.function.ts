@@ -19,5 +19,7 @@ export function symbolFunction(findSourceSymbol: (name: string) => SymbolValue |
 		},
 		minArgs: 1,
 		maxArgs: 1,
+		parameters: ["name"],
+		description: "In a linker script: the value of the assembled source's symbol of that name, global or `ns::name`.",
 	};
 }

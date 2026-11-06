@@ -4,6 +4,7 @@
  * * Cmd+click on a name goes to its definition, its hover tells what it is, and Shift+F12 lists its references: from
  *   the projects' indexes.
  * * F2 renames a symbol: see `rename.ts`.
+ * * Completion and signature help: see `completion.ts`.
  * * Folding by blocks, routines and comments: see `folding.ts`.
  * * The outline (Cmd+Shift+O) and the breadcrumbs: a file's blocks from its text, its symbols from the indexes; the
  *   workspace's symbols (Cmd+T).
@@ -11,7 +12,9 @@
 
 import * as vscode from "vscode";
 import { scanBlocks } from "./blocks";
+import { type Completion, type CompletionKind, complete, type SourceContext, signatureAt } from "./completion";
 import { foldingRanges } from "./folding";
+import { type Language, language } from "./language";
 import { buildOutline, type OutlineKind, type OutlineNode, type Range, workspaceSymbols } from "./outline";
 import type { Place } from "./places";
 import type { Projects } from "./projects";
@@ -20,7 +23,47 @@ import { distinctEntries, hoverText } from "./symbol-index";
 const SELECTOR = { language: "tsasm" };
 
 export function registerNavigation(projects: Projects): vscode.Disposable[] {
+	// The language, from the assembler's code: built once, when first asked for.
+	let lang: Language | undefined;
+	const sourceContext = (document: vscode.TextDocument, position: vscode.Position): SourceContext => {
+		lang ??= language();
+		return {
+			text: document.getText(),
+			line: position.line + 1,
+			column: position.character + 1,
+			language: lang,
+			file: document.uri.fsPath,
+			...projects.sourceContext(document.uri),
+		};
+	};
 	return [
+		vscode.languages.registerCompletionItemProvider(
+			SELECTOR,
+			{
+				provideCompletionItems(document, position) {
+					return complete(sourceContext(document, position)).map((item) => completionItem(item, position.line));
+				},
+			},
+			".",
+			":",
+		),
+		vscode.languages.registerSignatureHelpProvider(
+			SELECTOR,
+			{
+				provideSignatureHelp(document, position) {
+					const signature = signatureAt(sourceContext(document, position));
+					if (!signature) return undefined;
+					const information = new vscode.SignatureInformation(signature.label, signature.documentation);
+					information.parameters = signature.parameters.map((offsets) => new vscode.ParameterInformation(offsets));
+					const help = new vscode.SignatureHelp();
+					help.signatures = [information];
+					help.activeSignature = 0;
+					help.activeParameter = signature.active;
+					return help;
+				},
+			},
+			{ triggerCharacters: ["(", ",", " "], retriggerCharacters: [","] },
+		),
 		vscode.languages.registerDefinitionProvider(SELECTOR, {
 			provideDefinition(document, position) {
 				const entries = distinctEntries(projects.entriesAt(document.uri, position));
@@ -95,6 +138,31 @@ export function registerNavigation(projects: Projects): vscode.Disposable[] {
 
 const UNREAD = "Not read by the assembly";
 const UNREAD_WHY = "The name, where the last assembly didn't read it: an .if branch not taken, a macro not called, .def().";
+
+const COMPLETION_KINDS: Record<CompletionKind, vscode.CompletionItemKind> = {
+	mnemonic: vscode.CompletionItemKind.Keyword,
+	directive: vscode.CompletionItemKind.Keyword,
+	macro: vscode.CompletionItemKind.Module,
+	label: vscode.CompletionItemKind.Field,
+	constant: vscode.CompletionItemKind.Constant,
+	variable: vscode.CompletionItemKind.Variable,
+	function: vscode.CompletionItemKind.Method,
+	"system function": vscode.CompletionItemKind.Function,
+	"system variable": vscode.CompletionItemKind.Property,
+	namespace: vscode.CompletionItemKind.Module,
+	option: vscode.CompletionItemKind.Property,
+	cpu: vscode.CompletionItemKind.EnumMember,
+};
+
+function completionItem(completion: Completion, line: number): vscode.CompletionItem {
+	const item = new vscode.CompletionItem(completion.label, COMPLETION_KINDS[completion.kind]);
+	item.insertText = completion.snippet ? new vscode.SnippetString(completion.insert) : completion.insert;
+	item.range = new vscode.Range(line, completion.start - 1, line, completion.end - 1);
+	if (completion.detail) item.detail = completion.detail;
+	if (completion.documentation) item.documentation = new vscode.MarkdownString(completion.documentation);
+	if (completion.parameterHints) item.command = { command: "editor.action.triggerParameterHints", title: "Parameter hints" };
+	return item;
+}
 
 const FOLDING_KINDS = { comment: vscode.FoldingRangeKind.Comment, region: vscode.FoldingRangeKind.Region };
 

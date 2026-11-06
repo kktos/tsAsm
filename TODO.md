@@ -74,6 +74,10 @@ On a 32-bit CPU, `.org $12345678` in a resizable segment, or `.fill $12345678, 0
 
 `start:` / `.include "c.asm"`, with `c.asm` starting with `count = 3` → `c.asm:1:1: error: Syntax error - (Unknown opcode?) Unexpected label 'COUNT' after START`. `start:` / `count = 3` in one file assembles. Found with 4.28.
 
+### 1.71 `.str()` takes two arguments, and reads only one
+
+`.str` is registered with `maxArgs: 2`, but its handler pops one argument: `.str(1, 2)` → `main.asm:1:2: error: Invalid expression format.`, instead of an arity error. REFERENCE documents `.str(<value>)`, "the value as a string", but `.str("a")` → `First argument to .STR() must be a number.`. To decide: one argument, and whether a string is taken. Found with 4.32.
+
 ## 2. Code review, items left
 
 ### 2.1 CPU back-ends
@@ -242,10 +246,6 @@ Done in #216 for labels, constants, variables, local and anonymous labels, funct
 - **Namespaces and segments:** `gfx::` and `.segment CODE` aren't linked: neither keeps where it's defined (a namespace can be opened in several places, a segment comes from `.segment` or the project file).
 - **Names the evaluator doesn't resolve as values:** the name in `.def(x)` / `.undef(x)`, a name a built-in function takes as an argument.
 - **A file in no project** gets a text scan only.
-
-### 4.32 VS Code: completion and signature help
-
-After 4.28. Completion of the current CPU's mnemonics, the directives, the symbols in scope, the macros, `.option`'s keys, the system functions and variables. Signature help on a macro's or a function's call: its parameters.
 
 ### 4.33 VS Code: semantic colouring
 
