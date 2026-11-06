@@ -1,14 +1,16 @@
 /**
  * language.ts
  *
- * * What the language has, for completion and signature help: each CPU's mnemonics and directives, the directives,
- *   the system functions and variables, the `.option` names. From the assembler's code, so they follow it.
+ * * What the language has, for completion, signature help and the mnemonics' hover: each CPU's mnemonics, their forms
+ *   and its directives, the directives, the system functions and variables, the `.option` names. From the assembler's
+ *   code, so they follow it.
  * * Without the vscode module, so it can be tested.
  */
 
 import { DEFAULT_OPTIONS, type OptionName, optionValuesText } from "../assembler/options";
 import { Assembler, SYSTEM_VARIABLES } from "../assembler/polyasm";
 import { projectCpus } from "../cli/project";
+import type { InstructionForm } from "../cpu/cpuhandler.interface";
 import { Logger } from "../helpers/logger.class";
 import type { LogSink } from "../helpers/logsink.interface";
 
@@ -21,6 +23,8 @@ export interface Cpu {
 	mnemonics: string[];
 	/** Its own directives, in upper case: the 65816's `NATIVE`. */
 	directives: string[];
+	/** The ways to write a mnemonic, with their opcodes: none for a CPU that can't tell. */
+	describe(mnemonic: string): InstructionForm[];
 }
 
 export interface SystemFunction {
@@ -60,6 +64,7 @@ export function language(): Language {
 			names: [cpu.cpuType, ...(cpu.aliases ?? [])].map((name) => name.toUpperCase()),
 			mnemonics: [...(cpu.mnemonics ?? [])],
 			directives: Object.keys(cpu.directives ?? {}),
+			describe: (mnemonic: string) => cpu.describeInstruction?.(mnemonic) ?? [],
 		})),
 		directives: assembler.parser.directiveNames().filter((name) => /^[A-Z]\w*$/.test(name) && !own.has(name)),
 		functions: assembler.expressionEvaluator.functionDispatcher.list(),

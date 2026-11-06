@@ -160,6 +160,11 @@ export class Cpu65816Handler extends Mos65xxHandler {
 	}
 
 	/** The width of `mnemonic`'s immediate, if it has M's or X's: the one `.b` / `.w` forces, else the register's. */
+	/** An immediate of A, X or Y takes one byte or two, as M or X is 8 or 16 bits. */
+	protected override immediateSizes(mnemonic: string): readonly [number, number] {
+		return WIDTH_OF[mnemonic] ? [1, 2] : [1, 1];
+	}
+
 	protected override immediateWidth(mnemonic: string, forcedWidth: 1 | 2 | null): ImmediateWidth | undefined {
 		const register = WIDTH_OF[mnemonic];
 		if (!register) return undefined;

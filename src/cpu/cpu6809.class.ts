@@ -1,6 +1,6 @@
 import type { OperatorStackToken } from "../shared/lexer/lexer.class";
 import { pushNumber, pushSignedNumber } from "../utils/array.utils";
-import type { AddressingMode, CPUHandler, ModeInfo, ResolvedModeInfo } from "./cpuhandler.interface";
+import type { AddressingMode, CPUHandler, InstructionForm, ModeInfo, ResolvedModeInfo } from "./cpuhandler.interface";
 
 // Helper structure for opcode details
 interface OpcodeInfo {
@@ -11,6 +11,9 @@ interface OpcodeInfo {
 // Maps a mnemonic to its available addressing modes and opcodes
 type InstructionModes = Map<AddressingMode, OpcodeInfo>;
 type Page = Map<string, InstructionModes>;
+
+/** How each mode is written, for `describeInstruction`: an immediate's width depends on the instruction. */
+const OPERANDS_6809: Record<string, string> = { INHERENT: "", DIRECT: "$12", EXTENDED: "$1234", INDEXED: "$10,X", RELATIVE: "label" };
 
 /** The 6809 adds its indexed-mode post byte and its opcode page (1, 2 or 3). */
 export interface Cpu6809ModeInfo extends ModeInfo {
@@ -384,6 +387,30 @@ export class Cpu6809Handler implements CPUHandler<Cpu6809ModeInfo> {
 
 	get mnemonics(): readonly string[] {
 		return [...this.pages.page1.keys(), ...this.pages.page2.keys(), ...this.pages.page3.keys()];
+	}
+
+	describeInstruction(mnemonic: string): InstructionForm[] {
+		const name = mnemonic.toUpperCase();
+		const { page1, page2, page3 } = this.pages;
+		const pages: [number[], Page][] = [
+			[[], page1],
+			[[0x10], page2],
+			[[0x11], page3],
+		];
+		const forms: InstructionForm[] = [];
+		for (const [prefix, page] of pages) {
+			for (const [mode, { opcode, bytes }] of page.get(name) ?? []) {
+				const kind = mode.replace(/^M6809_/, "");
+				// PSHS and PULS take a register list, in a post byte.
+				const stack = name === "PSHS" || name === "PULS";
+				let operands = stack ? "a, b, x" : (OPERANDS_6809[kind] ?? "");
+				if (kind === "IMMEDIATE") operands = bytes - prefix.length - 1 === 2 ? "#$1234" : "#$12";
+				const size = stack ? bytes + 1 : bytes;
+				// An indexed operand adds up to two bytes to the post byte: an offset, an address.
+				forms.push({ mode: kind, operands, opcode: [...prefix, opcode], size: [size, kind === "INDEXED" ? size + 2 : size] });
+			}
+		}
+		return forms;
 	}
 
 	isInstruction(mnemonic: string): boolean {

@@ -1,5 +1,5 @@
 import type { OperatorStackToken } from "../shared/lexer/lexer.class";
-import type { AddressingMode, CPUHandler, ModeInfo, ResolvedModeInfo } from "./cpuhandler.interface";
+import type { AddressingMode, CPUHandler, InstructionForm, ModeInfo, ResolvedModeInfo } from "./cpuhandler.interface";
 
 // In RISC-V, there aren't addressing modes in the traditional sense, but instruction formats.
 // We'll use the instruction format names as "addressing modes".
@@ -11,6 +11,19 @@ const RV32I_FORMATS = {
 	U: "U-type",
 	J: "J-type",
 };
+
+/** How each format is written, for `describeInstruction`: a load, I-type, as a store. */
+const RV32I_OPERANDS: Record<string, string> = {
+	[RV32I_FORMATS.R]: "rd, rs1, rs2",
+	[RV32I_FORMATS.I]: "rd, rs1, imm",
+	[RV32I_FORMATS.S]: "rs2, imm(rs1)",
+	[RV32I_FORMATS.B]: "rs1, rs2, label",
+	[RV32I_FORMATS.U]: "rd, imm",
+	[RV32I_FORMATS.J]: "rd, label",
+};
+
+/** A field's value: decimal under 10, else hexadecimal. */
+const fieldText = (value: number) => (value < 10 ? String(value) : `$${value.toString(16).toUpperCase()}`);
 
 /** RV32I instructions are made of these fields, depending on their format (R, I, S, B, U, J). */
 export interface RV32IModeInfo extends ModeInfo {
@@ -151,6 +164,17 @@ export class CpuRV32IHandler implements CPUHandler<RV32IModeInfo> {
 
 	get mnemonics(): readonly string[] {
 		return [...this.instructionMap.keys()];
+	}
+
+	describeInstruction(mnemonic: string): InstructionForm[] {
+		const name = mnemonic.toUpperCase();
+		return [...(this.instructionMap.get(name) ?? [])].map(([mode, { opcode, funct3, funct7 }]) => {
+			const load = mode === RV32I_FORMATS.I && name.startsWith("L");
+			const fields = [`opcode ${fieldText(opcode)}`];
+			if (funct3 !== undefined) fields.push(`funct3 ${fieldText(funct3)}`);
+			if (funct7 !== undefined) fields.push(`funct7 ${fieldText(funct7)}`);
+			return { mode, operands: load ? "rd, imm(rs1)" : (RV32I_OPERANDS[mode] ?? ""), opcode: [], fields: fields.join(", "), size: [4, 4] as const };
+		});
 	}
 
 	isInstruction(mnemonic: string): boolean {

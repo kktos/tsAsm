@@ -67,6 +67,20 @@ export type ResolvedModeInfo<TModeInfo extends ModeInfo = ModeInfo> = TModeInfo 
 	pc: number;
 };
 
+/** One way to write an instruction: see `CPUHandler.describeInstruction`. */
+export interface InstructionForm {
+	/** Its addressing mode, or its format, as the CPU names it: `ZEROPAGE_X`, `INDEXED`, `R-type`. */
+	mode: string;
+	/** Its operands, as written: `$12,X`, `#$12`, `rd, rs1, rs2`; empty when it takes none. */
+	operands: string;
+	/** The bytes it starts with: its opcode, after a 6809 page's prefix. Empty when its opcode isn't whole bytes (RV32I). */
+	opcode: number[];
+	/** Its opcode's fields, when they aren't whole bytes: the RV32I's `opcode $33, funct3 0, funct7 $20`. */
+	fields?: string;
+	/** Its size in bytes, at least and at most. */
+	size: readonly [number, number];
+}
+
 export interface CPUHandler<TModeInfo extends ModeInfo = ModeInfo> {
 	cpuType: string;
 
@@ -103,6 +117,12 @@ export interface CPUHandler<TModeInfo extends ModeInfo = ModeInfo> {
 	 * one on its line is an error.
 	 */
 	directives?: Readonly<Record<string, IDirective>>;
+
+	/**
+	 * The ways to write `mnemonic` (in upper case, without a suffix), for a tool: an editor's hover. None when it isn't
+	 * one of the CPU's. A CPU without it leaves it out.
+	 */
+	describeInstruction?(mnemonic: string): InstructionForm[];
 
 	/**
 	 * For a CPU keeping state (the 65816's M / X): puts it back as after reset. Called at the start of each pass, for

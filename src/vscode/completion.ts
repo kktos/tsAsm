@@ -63,7 +63,7 @@ const SCOPES = /^(proc|macro|function) /;
 const CPU_DIRECTIVES = new Set(["CPU", "SETCPU", "PROCESSOR"]);
 
 /** The cursor's line, its code (comments made spaces) and its statement before the cursor. */
-function lineBefore(context: SourceContext) {
+export function lineBefore(context: SourceContext) {
 	const lineText = context.text.split("\n")[context.line - 1]?.replace(/\r$/, "") ?? "";
 	const before = lineText.slice(0, context.column - 1);
 	const code = blankComments(lineText).slice(0, context.column - 1);
@@ -76,7 +76,7 @@ function lineBefore(context: SourceContext) {
 }
 
 /** The words of a statement before what's being typed, its label left out: the first is its mnemonic, directive or macro. */
-function statementWords(statement: string, typed: string, isHead: (word: string) => boolean): { words: string[]; atHead: boolean } {
+export function statementWords(statement: string, typed: string, isHead: (word: string) => boolean): { words: string[]; atHead: boolean } {
 	const head = statement.slice(0, statement.length - typed.length);
 	const words = head.trim().split(/\s+/).filter(Boolean);
 	// `start:`, `:loop`, `:`, or a word that is no instruction, directive or macro, then a space: a label.

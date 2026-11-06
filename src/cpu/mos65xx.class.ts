@@ -3,7 +3,7 @@ import type { OperatorStackToken } from "../shared/lexer/lexer.class";
 import { getHex } from "../utils/hex.util";
 import { assertFitsInBytes } from "../utils/number.utils";
 import { findClosingBracket, findTopLevelComma } from "../utils/token.utils";
-import type { CPUHandler, InstructionContext, ModeInfo, OperandReader, ResolvedModeInfo } from "./cpuhandler.interface";
+import type { CPUHandler, InstructionContext, InstructionForm, ModeInfo, OperandReader, ResolvedModeInfo } from "./cpuhandler.interface";
 import type { Mos65xxMode, OpcodeSet } from "./mos65xx.opcodes";
 
 /** What makes one 65xx CPU: its name, the opcode sets it's made of, and its mnemonic suffixes. */
@@ -71,6 +71,36 @@ const MODE_BYTES: Record<Mos65xxMode, number> = {
 	SIGNATURE: 2,
 };
 
+/** Each mode's operands, as written. */
+const MODE_OPERANDS: Record<Mos65xxMode, string> = {
+	IMPLIED: "",
+	ACCUMULATOR: "A",
+	IMMEDIATE: "#$12",
+	RELATIVE: "label",
+	ZEROPAGE_RELATIVE: "$12,label",
+	ZEROPAGE: "$12",
+	ZEROPAGE_X: "$12,X",
+	ZEROPAGE_Y: "$12,Y",
+	INDIRECT_X: "($12,X)",
+	INDIRECT_Y: "($12),Y",
+	ZEROPAGE_INDIRECT: "($12)",
+	ABSOLUTE: "$1234",
+	ABSOLUTE_X: "$1234,X",
+	ABSOLUTE_Y: "$1234,Y",
+	INDIRECT: "($1234)",
+	ABSOLUTE_INDIRECT_X: "($1234,X)",
+	ZEROPAGE_INDIRECT_LONG: "[$12]",
+	ZEROPAGE_INDIRECT_LONG_Y: "[$12],Y",
+	ABSOLUTE_INDIRECT_LONG: "[$1234]",
+	ABSOLUTE_LONG: "$123456",
+	ABSOLUTE_LONG_X: "$123456,X",
+	STACK_RELATIVE: "$12,S",
+	STACK_RELATIVE_INDIRECT_Y: "($12,S),Y",
+	RELATIVE_LONG: "label",
+	BLOCK_MOVE: "$01,$02",
+	SIGNATURE: "#$12",
+};
+
 /** The largest address of each width: zero page, absolute, long. */
 type AddressMax = 0xff | 0xffff | 0xffffff;
 
@@ -127,6 +157,21 @@ export class Mos65xxHandler implements CPUHandler<Mos65xxModeInfo> {
 
 	get mnemonics(): readonly string[] {
 		return [...this.instructionMap.keys()];
+	}
+
+	describeInstruction(mnemonic: string): InstructionForm[] {
+		const modes = this.instructionMap.get(mnemonic.toUpperCase());
+		if (!modes) return [];
+		return [...modes].map(([mode, opcode]) => {
+			const [least, most] = mode === "IMMEDIATE" ? this.immediateSizes(mnemonic.toUpperCase()) : [0, 0];
+			const size = MODE_BYTES[mode];
+			return { mode, operands: MODE_OPERANDS[mode], opcode: [opcode], size: [size - 1 + Math.max(least, 1), size - 1 + Math.max(most, 1)] };
+		});
+	}
+
+	/** The sizes an immediate of `mnemonic` takes, at least and at most: one byte, but on the 65816. */
+	protected immediateSizes(_mnemonic: string): readonly [number, number] {
+		return [1, 1];
 	}
 
 	isInstruction(mnemonic: string): boolean {

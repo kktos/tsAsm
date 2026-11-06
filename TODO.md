@@ -74,6 +74,10 @@ On a 32-bit CPU, `.org $12345678` in a resizable segment, or `.fill $12345678, 0
 
 `start:` / `.include "c.asm"`, with `c.asm` starting with `count = 3` → `c.asm:1:1: error: Syntax error - (Unknown opcode?) Unexpected label 'COUNT' after START`. `start:` / `count = 3` in one file assembles. Found with 4.28.
 
+### 1.72 The 6809's `LBRA` and `LBSR` on page 2
+
+`LBRA` and `LBSR` are in the 6809's page 2 with 3 bytes, but they're page 1 opcodes (`16`, `17`), 3 bytes: `.org $1000` / `lbra $1010` / `nop` → `10 16 00 0D 12`, four bytes with a page prefix, the offset computed for three. Found with 4.34.
+
 ## 2. Code review, items left
 
 ### 2.1 CPU back-ends
@@ -245,10 +249,7 @@ Done in #216 for labels, constants, variables, local and anonymous labels, funct
 
 ### 4.34 VS Code: the assembly in the editor
 
-After 4.27. The lines' addresses as inlay hints are done in #224, from the library's `onEmit`. What's left, a PR each:
-
-- **A hover on a mnemonic:** its addressing modes and opcodes on the current CPU. Each CPU describes its own: the 65xx's opcode sets, the 6809's pages, the RV32I's formats.
-- **A command opening the listing at the current line:** the listing, built in memory, its lines tied to the source's.
+After 4.27. The lines' addresses as inlay hints are done in #224, from the library's `onEmit`, and the hover on a mnemonic in #225. What's left: a command opening the listing at the current line, the listing built in memory, its lines tied to the source's.
 
 ### 4.36 VS Code: dim the code the assembly didn't read
 
