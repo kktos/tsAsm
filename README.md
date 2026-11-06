@@ -202,6 +202,8 @@ To know each line's address, as an editor does to show it beside the line, pass 
 
 To show a line's listing, pass `onListing`. Pass 2 calls it for each line of the listing, as the CLI writes it with `log.pass2Enabled`, whatever the logger's settings, with its `text` and `site`, the statement that listed it, located as `onEmit`'s (none for a line listed before the first statement). A loop that `.option listing.data "fold"` folds into one line is tied to its header. It goes through the logger's `tap`, told each message written, the logger enabled or not, which the assembler sets for pass 2.
 
+To show the code not assembled, pass `onStatement`. Pass 2 calls it for each statement it reads, with its site, located as `onEmit`'s: a line no statement starts on was skipped (an `.if` branch not taken, a macro or a function never called), unless it's part of a statement's block (an `.end`, a `.define`'s text). A statement in a loop or a macro body is told each time it's read, a function's body each time it runs.
+
 To use `.define` blocks, pass the data processors in the options, for example:
 
 ```ts
@@ -220,7 +222,7 @@ const assembler = new Assembler(cpu, fileHandler, {
 
 ## VS Code
 
-[editors/vscode](editors/vscode) is an extension for VS Code: syntax colouring, from the grammar and from the assembly, the projects' errors and warnings in the Problems panel, Cmd+click on a name to go to its definition, a hover telling its value, its references, each line's address, a mnemonic's forms and opcodes, the listing beside a file, completion and signature help, F2 to rename it, folding by blocks, the outline and Cmd+T, and Cmd+click on the path of an `.include`, `.incbin` or `.define … from` to open its file. Its README says how to build and install it.
+[editors/vscode](editors/vscode) is an extension for VS Code: syntax colouring, from the grammar and from the assembly, the projects' errors and warnings in the Problems panel, the code not assembled faded, Cmd+click on a name to go to its definition, a hover telling its value, its references, each line's address, a mnemonic's forms and opcodes, the listing beside a file, completion and signature help, F2 to rename it, folding by blocks, the outline and Cmd+T, and Cmd+click on the path of an `.include`, `.incbin` or `.define … from` to open its file. Its README says how to build and install it.
 
 ## Development
 

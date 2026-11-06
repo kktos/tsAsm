@@ -111,6 +111,12 @@ export interface AssemblerOptions {
 	 * listing. A loop folded by `.option listing.data = "fold"` is the line of its header. Without it, nothing is kept for it.
 	 */
 	onListing?: (line: ListedLine) => void;
+	/**
+	 * Pass 2 calls it for each statement it reads, where it starts (located as `onEmit`'s), as an editor needs to show
+	 * the code not assembled: an `.if` branch not taken, a macro or a function never called. A statement in a loop or a
+	 * macro body is told each time it's read, a function's body each time it runs. Without it, nothing is kept for it.
+	 */
+	onStatement?: (site: DefinitionSite) => void;
 }
 
 /** A line of the listing: see `AssemblerOptions.onListing`. */

@@ -106,6 +106,7 @@ export class Assembler {
 	private readonly onSymbolReference: AssemblerOptions["onSymbolReference"];
 	private readonly onEmit: AssemblerOptions["onEmit"];
 	private readonly onListing: AssemblerOptions["onListing"];
+	private readonly onStatement: AssemblerOptions["onStatement"];
 
 	public expressionEvaluator: ExpressionEvaluator;
 	public directiveHandler: DirectiveHandler;
@@ -131,6 +132,7 @@ export class Assembler {
 		this.onSymbolReference = options?.onSymbolReference;
 		this.onEmit = options?.onEmit;
 		this.onListing = options?.onListing;
+		this.onStatement = options?.onStatement;
 		this.initialOptions = withDefaultOptions(options?.options);
 		this.currentOptions = { ...this.initialOptions };
 		this.fileHandler = fileHandler;
@@ -573,6 +575,11 @@ export class Assembler {
 		};
 	}
 
+	/** Pass 2: tells `onStatement` where the statement starting at `token` is. */
+	private reportStatement(token: Token) {
+		if (this.pass === 2 && this.onStatement) this.onStatement(this.errorLocator.definitionSite(token));
+	}
+
 	/** Pass 2: tells `onEmit` the current statement's bytes, at `address`. */
 	private reportEmission(address: number, bytes: number[]) {
 		if (this.pass !== 2 || !this.onEmit || !this.statementToken || bytes.length === 0) return;
@@ -629,6 +636,7 @@ export class Assembler {
 				continue;
 			}
 			this.statementToken = token;
+			this.reportStatement(token);
 
 			switch (token.type) {
 				case "DOT": {
@@ -789,6 +797,7 @@ export class Assembler {
 				continue;
 			}
 			this.statementToken = token;
+			this.reportStatement(token);
 
 			switch (token.type) {
 				case "OPERATOR": {
@@ -948,6 +957,7 @@ export class Assembler {
 					continue;
 				}
 				this.statementToken = token;
+				this.reportStatement(token);
 				try {
 					this.runFunctionStatement(token);
 				} catch (e) {
