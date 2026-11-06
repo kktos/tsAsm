@@ -40,6 +40,10 @@ export interface IFunctionDef {
 	handler: FunctionHandler;
 	minArgs: number;
 	maxArgs: number;
+	/** Its parameters' names, for an editor: those from `minArgs` on are optional, the last is repeated when `maxArgs` is unbounded. */
+	parameters: readonly string[];
+	/** What it gives, in a line, for an editor. */
+	description: string;
 	/**
 	 * How many leading arguments must be known for the result to be: in pass 1, if one isn't (a symbol defined later),
 	 * the call gives null (not known yet) without running the handler, as the operators do. All of them by default.

@@ -38,6 +38,8 @@ export interface Analysis {
 	index?: SymbolIndex;
 	/** The source files it read, the project file left out. */
 	sources: Set<string>;
+	/** The CPU the source starts with, from the project file. */
+	cpu?: string;
 }
 
 /** A YAML file is a project file when it has an `input.source`. */
@@ -73,8 +75,10 @@ export function analyse(projectPath: string, files: Files): Analysis {
 	}
 	const references: SymbolReference[] = [];
 	let index: SymbolIndex | undefined;
+	let cpu: string | undefined;
 	try {
 		const options = projectOptions(conf, new Logger({ sink: warnings, enabled: false }));
+		cpu = options.cpu;
 		options.onSymbolReference = (reference) => references.push(reference);
 		new Assembler(projectCpus(), handler, options).assemble(source);
 		index = buildIndex(references, (file) => (file ? join(handler.basedir, file) : sourcePath), reader);
@@ -85,7 +89,10 @@ export function analyse(projectPath: string, files: Files): Analysis {
 	}
 	for (const warning of warnings.warnings) report.add(warning, handler.basedir, sourcePath);
 	const sources = new Set(reader.textPaths().filter((path) => path !== projectPath));
-	return index ? { files: reader.paths, diagnostics: report.diagnostics, index, sources } : { files: reader.paths, diagnostics: report.diagnostics, sources };
+	const analysis: Analysis = { files: reader.paths, diagnostics: report.diagnostics, sources };
+	if (index) analysis.index = index;
+	if (cpu) analysis.cpu = cpu;
+	return analysis;
 }
 
 /** The index of the references, each at its name, its target at the name of its definition: `path` makes a file absolute. */

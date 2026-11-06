@@ -55,6 +55,11 @@ export class FunctionDispatcher {
 		return this.functions.get(name.toUpperCase())?.functionArg === index;
 	}
 
+	/** The functions, for an editor: their names, parameters and descriptions. */
+	public list(): ({ name: string } & Pick<IFunctionDef, "minArgs" | "maxArgs" | "parameters" | "description">)[] {
+		return [...this.functions].map(([name, { minArgs, maxArgs, parameters, description }]) => ({ name, minArgs, maxArgs, parameters, description }));
+	}
+
 	/** How many arguments the function takes, at least and at most. */
 	public arity(name: string): [number, number] | undefined {
 		const definition = this.functions.get(name.toUpperCase());
@@ -63,19 +68,45 @@ export class FunctionDispatcher {
 
 	private registerDefaultFunctions(): void {
 		// Register functions with their argument constraints
-		this.register("LEN", { handler: lenFunction, minArgs: 1, maxArgs: 1 });
-		this.register("LABEL", { handler: labelFunction, minArgs: 1, maxArgs: 1 });
+		this.register("LEN", { handler: lenFunction, minArgs: 1, maxArgs: 1, parameters: ["value"], description: "Its length: an array's or a string's." });
+		this.register("LABEL", {
+			handler: labelFunction,
+			minArgs: 1,
+			maxArgs: 1,
+			parameters: ["name"],
+			description: "The address of the label with that name.",
+		});
 		for (const [name, definition] of defFunctions((macro) => this.host.isMacroDefined?.(macro) ?? false)) this.register(name, definition);
-		this.register("STR", { handler: strFunction, minArgs: 1, maxArgs: 2 });
-		this.register("HEX", { handler: hexFunction, minArgs: 1, maxArgs: 2 });
-		this.register("PAD", { handler: padFunction, minArgs: 2, maxArgs: 3 });
-		this.register("SPLIT", { handler: splitFunction, minArgs: 1, maxArgs: 2 });
+		this.register("STR", { handler: strFunction, minArgs: 1, maxArgs: 2, parameters: ["value"], description: "The value as a string." });
+		this.register("HEX", {
+			handler: hexFunction,
+			minArgs: 1,
+			maxArgs: 2,
+			parameters: ["value", "digits"],
+			description: "The value as a hexadecimal string, on as many digits as the bytes holding it, or at least `digits`.",
+		});
+		this.register("PAD", {
+			handler: padFunction,
+			minArgs: 2,
+			maxArgs: 3,
+			parameters: ["value", "width", "fill"],
+			description: "The value padded with `fill` (space by default) to `width` chars: on the left for a positive width, on the right for a negative one.",
+		});
+		this.register("SPLIT", {
+			handler: splitFunction,
+			minArgs: 1,
+			maxArgs: 2,
+			parameters: ["string", "separator"],
+			description: "An array of the parts (separator: space by default).",
+		});
 		this.register("ARRAY", {
 			handler: arrayFunction,
 			minArgs: 0,
 			maxArgs: Number.POSITIVE_INFINITY,
 			knownArgs: 0,
 			relocatable: true,
+			parameters: ["item"],
+			description: "A new array.",
 		});
 		this.register("PUSH", {
 			handler: pushFunction,
@@ -83,23 +114,85 @@ export class FunctionDispatcher {
 			maxArgs: Number.POSITIVE_INFINITY,
 			knownArgs: 1,
 			relocatable: true,
+			parameters: ["array", "item"],
+			description: "The array, with the items added at the end.",
 		});
-		this.register("POP", { handler: popFunction, minArgs: 1, maxArgs: 1, relocatable: true });
-		this.register("RANGE", { handler: rangeFunction, minArgs: 2, maxArgs: 3 });
-		this.register("MAP", { handler: mapFunction, minArgs: 2, maxArgs: 2, functionArg: 1 });
-		this.register("TYPE", { handler: typeFunction, minArgs: 1, maxArgs: 1 });
-		this.register("HAS", { handler: hasFunction, minArgs: 2, maxArgs: 2 });
-		this.register("JSON", { handler: jsonFunction, minArgs: 1, maxArgs: 1 });
-		this.register("IIF", { handler: iifFunction, minArgs: 3, maxArgs: 3, knownArgs: 1, relocatable: true });
-		this.register("JOIN", { handler: joinFunction, minArgs: 2, maxArgs: 2 });
-		this.register("LOBYTE", { handler: lobyteFunction, minArgs: 1, maxArgs: 1, relocatable: true });
-		this.register("HIBYTE", { handler: hibyteFunction, minArgs: 1, maxArgs: 1, relocatable: true });
-		this.register("BANKBYTE", { handler: bankbyteFunction, minArgs: 1, maxArgs: 1, relocatable: true });
-		this.register("BKBYTE", { handler: bankbyteFunction, minArgs: 1, maxArgs: 1, relocatable: true });
+		this.register("POP", {
+			handler: popFunction,
+			minArgs: 1,
+			maxArgs: 1,
+			relocatable: true,
+			parameters: ["array"],
+			description: "The last item, removed from the array.",
+		});
+		this.register("RANGE", {
+			handler: rangeFunction,
+			minArgs: 2,
+			maxArgs: 3,
+			parameters: ["start", "count", "step"],
+			description: "An array of `count` numbers from `start`, `step` apart (1 by default).",
+		});
+		this.register("MAP", {
+			handler: mapFunction,
+			minArgs: 2,
+			maxArgs: 2,
+			functionArg: 1,
+			parameters: ["array", "function"],
+			description: "A new array, of the function's value for each element.",
+		});
+		this.register("TYPE", {
+			handler: typeFunction,
+			minArgs: 1,
+			maxArgs: 1,
+			parameters: ["value"],
+			description: '`"number"`, `"string"`, `"array"` or `"object"`.',
+		});
+		this.register("HAS", {
+			handler: hasFunction,
+			minArgs: 2,
+			maxArgs: 2,
+			parameters: ["object", "key"],
+			description: "1 if the object has the field `key`, a string, else 0.",
+		});
+		this.register("JSON", { handler: jsonFunction, minArgs: 1, maxArgs: 1, parameters: ["value"], description: "The value as a JSON string." });
+		this.register("IIF", {
+			handler: iifFunction,
+			minArgs: 3,
+			maxArgs: 3,
+			knownArgs: 1,
+			relocatable: true,
+			parameters: ["condition", "then", "else"],
+			description: "`then` if the condition is not 0, else `else`.",
+		});
+		this.register("JOIN", {
+			handler: joinFunction,
+			minArgs: 2,
+			maxArgs: 2,
+			parameters: ["array", "separator"],
+			description: "A string of the items joined by the separator.",
+		});
+		this.register("LOBYTE", { handler: lobyteFunction, minArgs: 1, maxArgs: 1, relocatable: true, parameters: ["value"], description: "Its low byte." });
+		this.register("HIBYTE", { handler: hibyteFunction, minArgs: 1, maxArgs: 1, relocatable: true, parameters: ["value"], description: "Its high byte." });
+		this.register("BANKBYTE", {
+			handler: bankbyteFunction,
+			minArgs: 1,
+			maxArgs: 1,
+			relocatable: true,
+			parameters: ["value"],
+			description: "Its bank byte, bits 16–23.",
+		});
+		this.register("BKBYTE", {
+			handler: bankbyteFunction,
+			minArgs: 1,
+			maxArgs: 1,
+			relocatable: true,
+			parameters: ["value"],
+			description: "Its bank byte, bits 16–23.",
+		});
 
-		this.register("CEIL", { handler: ceilFunction, minArgs: 1, maxArgs: 1 });
-		this.register("FLOOR", { handler: floorFunction, minArgs: 1, maxArgs: 1 });
-		this.register("ROUND", { handler: roundFunction, minArgs: 1, maxArgs: 1 });
+		this.register("CEIL", { handler: ceilFunction, minArgs: 1, maxArgs: 1, parameters: ["n"], description: "`n` rounded up." });
+		this.register("FLOOR", { handler: floorFunction, minArgs: 1, maxArgs: 1, parameters: ["n"], description: "`n` rounded down." });
+		this.register("ROUND", { handler: roundFunction, minArgs: 1, maxArgs: 1, parameters: ["n"], description: "`n` rounded to the nearest integer." });
 		this.register(
 			"SEGMENT",
 			segmentFunction((name) => this.host.findSegment(name)),

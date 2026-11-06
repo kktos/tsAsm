@@ -49,6 +49,17 @@ const FUNCTION_DIRECTIVES = new Set([
 ]);
 const FUNCTION_ONLY = "a function only computes a value";
 
+/** The system variables, `.pc`, and what each gives: for an editor. `resolveSysValue` gives their values. */
+export const SYSTEM_VARIABLES: Readonly<Record<string, string>> = {
+	PC: "The current address, as `*`.",
+	NAMESPACE: "The current namespace.",
+	NS: "The current namespace.",
+	SEGMENT: "The current segment: `.segment.name`, `.segment.start`, `.segment.size`.",
+	FILENAME: "The current source file's name.",
+	FILEPATH: "The current source file's path.",
+	PASS: "The current assembler pass: 1 or 2.",
+};
+
 export class Assembler {
 	public logger: Logger;
 	public lister: Lister;
@@ -199,6 +210,7 @@ export class Assembler {
 		return this.statementToken;
 	}
 
+	/** A system variable's value: `.pc`; see `SYSTEM_VARIABLES`. */
 	private resolveSysValue(nameToken: Token) {
 		switch (nameToken.value) {
 			case "NAMESPACE":

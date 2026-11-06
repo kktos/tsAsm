@@ -7,6 +7,7 @@ The language of the [tsAsm](https://github.com/kktos/tsAsm) assembler, for `.asm
 - **Errors and warnings** in the Problems panel: the extension assembles each project of the workspace as the CLI does, while you type.
 - **Go to a definition:** Cmd+click on a name (F12) goes to where it's defined, and its hover tells what it is: a label's or a constant's value, in hex and decimal, a variable's value there, a macro's or a function's parameters.
 - **Find all references:** Shift+F12 lists where a name's symbol is used, in every file of its project, and its definition.
+- **Completion and signature help:** the current CPU's mnemonics, the directives and macros at a statement's start; the symbols in scope, the local labels, the system functions and variables in an operand; a call's parameters as you type them.
 - **Rename** (F2): a symbol, at its definition and its references, in every file of its project.
 - **Folding** by blocks: `.macro`, `.proc`, each branch of an `.if`, `{ }`, a routine under its label, comments and `; region` … `; endregion`.
 - **Outline and breadcrumbs** (Cmd+Shift+O): a file's macros, procs, functions and namespaces, with the labels, constants and variables in them, a local label under its global one, and its `.segment` selections; **Cmd+T** finds a symbol in the workspace.
@@ -34,6 +35,22 @@ An assembly stops at its first error: the errors after it show once it's fixed.
 A name is what the assembler made of it: a label, a constant, a variable, a local or anonymous label, a function or its parameter, a macro, in its namespace, its `.proc` or its macro call. So they come from the last assembly that succeeded. While a file has an error, its names keep working, their places moved with the edits made since; a name you change is only known again once the project assembles.
 
 A name in a macro body can refer to a symbol of each call: Cmd+click lists them all, and the hover tells up to five. Their references are one list: the symbols a macro body defines are all defined at the same place, and a name in the body is listed once, not once per call. A namespace, a segment, and a name in `.def()` aren't linked yet.
+
+## Completion and signature help
+
+At a statement's start, after a label too, completion offers the mnemonics of the current CPU (the last `.cpu` above, else the project's `input.cpu`, else every CPU's for a file in no project), the macros, and after a dot the directives, a CPU's own only for it. They're written in the case typed, `LD` → `LDA`, else as most of the file's.
+
+In an operand, it offers:
+
+- the symbols reachable by their bare name there: the global ones, the current namespace's, the current `.proc`'s, macro's or function's;
+- another namespace's symbols as `gfx::sprite`, the namespaces as `gfx::`, and after `gfx::` its symbols;
+- after a local label's prefix, the local labels under the global label before the cursor;
+- after a dot, the system functions and variables, with what each gives;
+- `.option`'s names and `.cpu`'s CPUs.
+
+The symbols come from the last assembly that succeeded, with their values. A function is inserted with its `(`, and its parameters shown.
+
+Signature help shows a call's parameters, the one at the cursor highlighted: a system function's (`.pad(value, width, fill?)`), a function's, a macro's, in parentheses or as operands (`clear addr, ...rest`).
 
 ## Rename
 
@@ -83,4 +100,4 @@ While working on it, link the folder into VS Code's extensions instead, then run
 ln -s "$PWD/editors/vscode" ~/.vscode/extensions/kktos.tsasm
 ```
 
-The grammar is built by `src/vscode/grammar.ts`, the links found by `src/vscode/links.ts`, a project assembled by `src/vscode/analysis.ts`, its names indexed by `src/vscode/symbol-index.ts` and renamed by `src/vscode/rename.ts`, a file's blocks read by `src/vscode/blocks.ts`, its outline built by `src/vscode/outline.ts` and its folds by `src/vscode/folding.ts`, all tested in `src/tests/vscode`. `src/vscode/projects.ts` puts the projects' errors in VS Code, and `src/vscode/navigation.ts` gives the definitions, the hovers, the references, the renames, the folds and the outline.
+The grammar is built by `src/vscode/grammar.ts`, the links found by `src/vscode/links.ts`, a project assembled by `src/vscode/analysis.ts`, its names indexed by `src/vscode/symbol-index.ts`, renamed by `src/vscode/rename.ts` and completed by `src/vscode/completion.ts` from the language `src/vscode/language.ts` reads in the assembler, a file's blocks read by `src/vscode/blocks.ts`, its outline built by `src/vscode/outline.ts` and its folds by `src/vscode/folding.ts`, all tested in `src/tests/vscode`. `src/vscode/projects.ts` puts the projects' errors in VS Code, and `src/vscode/navigation.ts` gives the definitions, the hovers, the references, the completions, the renames, the folds and the outline.
