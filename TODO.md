@@ -243,13 +243,13 @@ Done in #216 for labels, constants, variables, local and anonymous labels, funct
 - **Names the evaluator doesn't resolve as values:** the name in `.def(x)` / `.undef(x)`, a name a built-in function takes as an argument.
 - **A file in no project** gets a text scan only.
 
-### 4.33 VS Code: semantic colouring
-
-After 4.27. Colours from the assembly, not from the grammar alone: a label, a constant, a macro as the assembler saw them, an undefined symbol. Fixes `.option local.prefix` and `anon.marker`: the grammar knows the chars they take, not which one a file sets, so `!x` is coloured as a local label only at a statement's start.
-
 ### 4.34 VS Code: the assembly in the editor
 
 After 4.27. Inlay hints with a line's address, or its bytes, the listing beside the source; a command opening the listing at the current line; a hover on a mnemonic with its addressing modes and opcodes on the current CPU.
+
+### 4.36 VS Code: dim the code the assembly didn't read
+
+An `.if` branch not taken, a macro never called: their names keep the grammar's colours (#223, 4.33 left them). Dimmed, as C/C++ does for `#if 0`, they'd show what isn't assembled. Needs the assembler to report the lines it read: a statement loop's callback, as `onSymbolReference`.
 
 ## 5. Documentation (REFERENCE.md)
 

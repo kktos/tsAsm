@@ -72,6 +72,11 @@ export class Projects implements vscode.Disposable {
 		return findReferences(this.indexes.values(), this.entriesAt(uri, position), includeDeclaration);
 	}
 
+	/** The names in `file`, every project's: what the assembly made of each. */
+	entriesIn(uri: vscode.Uri): IndexEntry[] {
+		return [...this.indexes.values()].flatMap((index) => index.entriesIn(uri.fsPath));
+	}
+
 	/** The definitions in `file`, every project's. */
 	definitionsIn(uri: vscode.Uri): IndexEntry[] {
 		return [...this.indexes.values()].flatMap((index) => index.definitions(uri.fsPath));
