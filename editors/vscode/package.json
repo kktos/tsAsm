@@ -2,7 +2,7 @@
 	"name": "tsasm",
 	"displayName": "tsAsm",
 	"version": "0.1.0",
-	"description": "The tsAsm assembler's language: syntax colouring, and links to the files a source includes.",
+	"description": "The tsAsm assembler's language: syntax colouring, links to the files a source includes, and the projects' errors in the Problems panel.",
 	"categories": [
 		"Programming Languages"
 	],
@@ -37,8 +37,27 @@
 					"meta.embedded.block.json": "json"
 				}
 			}
-		]
+		],
+		"configuration": {
+			"title": "tsAsm",
+			"properties": {
+				"tsasm.project": {
+					"type": [
+						"string",
+						"array"
+					],
+					"items": {
+						"type": "string"
+					},
+					"default": [],
+					"markdownDescription": "The project files to assemble, relative to the workspace folder: `\"build/game.yaml\"`, or a list. Left empty, every YAML file with an `input.source` is one."
+				}
+			}
+		}
 	},
+	"activationEvents": [
+		"workspaceContains:**/*.asm"
+	],
 	"engines": {
 		"vscode": "^1.75.0"
 	}

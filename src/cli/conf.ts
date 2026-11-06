@@ -170,7 +170,8 @@ const confSchema = {
 	},
 } as const;
 
-type TConf = InferObject<typeof confSchema>;
+/** A project file, as `readConf` reads it. */
+export type ProjectConf = InferObject<typeof confSchema>;
 
 /** A project file that can't be read, isn't YAML or isn't a mapping throws an AsmError; one that doesn't fit the schema returns `errors`. */
 export function readConf(fileHandler: FileHandler, filename: string) {
@@ -200,5 +201,5 @@ export function readConf(fileHandler: FileHandler, filename: string) {
 	const input = conf.input as Record<string, unknown> | undefined;
 	if (typeof input?.cpu === "number") input.cpu = String(input.cpu);
 	const result = validate(conf, confSchema);
-	return { conf: conf as TConf, errors: result.ok ? undefined : result.errors };
+	return { conf: conf as ProjectConf, errors: result.ok ? undefined : result.errors };
 }

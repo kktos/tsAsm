@@ -68,9 +68,10 @@ const configs = {
 		{
 			// The VS Code extension (editors/vscode): VS Code loads it as CommonJS, and gives it the vscode module
 			input: "src/vscode/extension.ts",
+			// The assembler is bundled with it, js-yaml too: VS Code gives node's modules.
 			output: { file: "editors/vscode/dist/extension.js", format: "cjs", sourcemap: false },
-			external: ["vscode"],
-			plugins: [vscodeTypescript()],
+			external: ["vscode", /^node:/],
+			plugins: [nodeResolve({ preferBuiltins: true }), vscodeTypescript(), json()],
 		},
 		{
 			input: "src/vscode/grammar.ts",

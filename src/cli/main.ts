@@ -2,16 +2,14 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
 import { name, version } from "../../package.json";
 import { Assembler } from "../assembler/polyasm";
-import type { AssemblerOptions } from "../assembler/polyasm.types";
-import handlers from "../cpu";
-import type { DirectiveContext } from "../directives/directive.interface";
 import { Logger } from "../helpers/logger.class";
 import { TeeSink } from "../helpers/teesink.class";
 import { parseCliArgs } from "./args";
-import { yamlparse, yamlstringify } from "./asm-yaml";
+import { yamlstringify } from "./asm-yaml";
 import colors from "./colors";
 import { readConf } from "./conf";
 import { NodeFileHandler } from "./file";
+import { projectCpus, projectOptions } from "./project";
 import type { ValidationError } from "./schema";
 import { ConsoleErrorSink } from "./sinks/consoleerrorsink.class";
 import { FileSink } from "./sinks/filesink.class";
@@ -53,20 +51,6 @@ const writeOutputFile = (path: string, data: string | Buffer) => {
 
 fileHandler.basedir = `${projectPath(dirname(conf.input.source))}/`;
 
-const segments = conf.input.segments;
-
-const textHandler = (blockContent: string, _context: DirectiveContext) => blockContent;
-const yamlHandler = (blockContent: string, _context: DirectiveContext) => yamlparse(blockContent);
-const jsonHandler = (blockContent: string, _context: DirectiveContext) => JSON.parse(blockContent);
-const dataProcessorhandlers = {
-	default: "YAML",
-	map: new Map([
-		["TEXT", textHandler],
-		["YAML", yamlHandler],
-		["JSON", jsonHandler],
-	]),
-};
-
 const listing = conf.output?.listing;
 const listingEnabled = listing?.enabled ?? false;
 const listingPath = projectPath(listing?.path ?? `${conf.input.source}.lst`);
@@ -78,26 +62,17 @@ const logger = new Logger({
 	cached: false,
 });
 
-const options: AssemblerOptions = {
-	logger,
-	rawDataProcessors: dataProcessorhandlers,
-	log: {
-		pass1Enabled: conf.output?.listing?.passes?.pass1 === true,
-		pass2Enabled: conf.output?.listing?.passes?.pass2 === true,
-		linkerEnabled: listing?.linker === true,
-	},
+const options = projectOptions(conf, logger);
+options.log = {
+	pass1Enabled: conf.output?.listing?.passes?.pass1 === true,
+	pass2Enabled: conf.output?.listing?.passes?.pass2 === true,
+	linkerEnabled: listing?.linker === true,
 };
-if (segments) options.segments = segments;
 // The command line's .option values override the project file's
 options.options = { ...conf.input.options, ...cliArgs.options };
-if (conf.input.linker) options.linker = conf.input.linker;
 
 try {
-	// Every CPU the CLI has: .cpu can switch to any of them. The project file picks the one the source starts with.
-	const cpus = Object.values(handlers).map((CpuHandlerClass) => new CpuHandlerClass());
-	options.cpu = conf.input.cpu || "6502";
-
-	const assembler = new Assembler(cpus, fileHandler, options);
+	const assembler = new Assembler(projectCpus(), fileHandler, options);
 	const sourceFile = fileHandler.readSourceFile(basename(conf.input.source));
 
 	const segmentList = assembler.assemble(sourceFile);
