@@ -337,10 +337,47 @@ describe("AssemblyLexer", () => {
 		['.DB "AB\\"', '"', 1, 5],
 		[".DB \"AB'", '"', 1, 5],
 		["NOP\n  LDA #'A", "'", 2, 8],
+		// A backslash ending the line doesn't carry the string on to the next one.
+		[
+			`.DB "AB\\
+.DB 1"`,
+			'"',
+			1,
+			5,
+		],
+		['.DB "AB\\\r\n.DB 1"', '"', 1, 5],
+		['.DB "AB\\', '"', 1, 5],
 	])("should throw on an unterminated string, at its opening quote: %j", (source, quote, line, column) => {
 		expect(() => lexer.tokenize(source)).toThrow(
 			expect.objectContaining({
 				message: `Unterminated string: missing closing ${quote}.`,
+				location: { line, column },
+			}),
+		);
+	});
+
+	test.each([
+		['.DB "\\0"', "\\0", 1, 6],
+		['.DB "\\q"', "\\q", 1, 6],
+		[".DB 'A\\eB'", "\\e", 1, 7],
+		['NOP\n  .TEXT "AB\\zC"', "\\z", 2, 12],
+	])("should throw on an unknown escape sequence, at its backslash: %j", (source, escape, line, column) => {
+		expect(() => lexer.tokenize(source)).toThrow(
+			expect.objectContaining({
+				message: `Unknown escape sequence '${escape}': the escapes are \\n \\r \\t \\b \\f \\' \\" \\\\ and \\xHH.`,
+				location: { line, column },
+			}),
+		);
+	});
+
+	test.each([
+		['.DB "\\xZ1"', 1, 6],
+		['.DB "\\x4"', 1, 6],
+		['.DB "\\x"', 1, 6],
+	])("should throw on \\x without two hexadecimal digits, at its backslash: %j", (source, line, column) => {
+		expect(() => lexer.tokenize(source)).toThrow(
+			expect.objectContaining({
+				message: "Invalid escape sequence: \\x must be followed by two hexadecimal digits.",
 				location: { line, column },
 			}),
 		);

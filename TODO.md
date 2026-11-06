@@ -14,10 +14,6 @@ What is done is in `CHANGELOG.md`. How we work (PR rules, design rules, commands
 
 `/` gives fractions (`7 / 2` is `3.5`), and where a whole number is needed they are truncated without a word: `lda #7/2` → `a9 03`, `.dw 1000/3` → `4d 01`, `.org $1000 + 1/2` is accepted, `.if 1/2` is true. `.repeat 5/2` already says `isn't a whole number`, and `l[3/2]` gives `Unexpected value type undefined.` Error or warning, and what `.if` does with a fraction: decision needed (recommended: an error, as `.repeat` does). See 3.6.
 
-### 1.38 Unknown escape sequences
-
-`"\0"` → `30`, `"\q"` → `71`: an unknown escape gives the char after the backslash. It should be an error. `\0` is an idea in 4.7.
-
 ### 1.41 A macro's or a function's labels end the caller's local label scope
 
 `start:` / `:l nop` / `m` / `jmp :l`, with `.macro m` / `lbl: nop` / `.end` → `Undefined local label ':l' in scope 'LBL'`, though `LBL` is local to the macro call. Same with a label in a `.proc` body: a `:l` before `.proc f` / `x: rts` / `.end` isn't found after it (that one may be wanted: decide).
