@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { Assembler } from "../assembler/polyasm";
 import { Cpu6502Handler } from "../cpu/cpu6502.class";
+import { CpuRV32IHandler } from "../cpu/cpurv32i.class";
 import { Logger } from "../helpers/logger.class";
 import { MemorySink } from "../helpers/memorysink.class";
 import type { Segment } from "../linker/linker.class";
@@ -14,6 +15,18 @@ describe("Directive: .fill", () => {
 		const cpu = new Cpu6502Handler();
 		const fileHandler = new MockFileHandler();
 		asm = new Assembler(cpu, fileHandler);
+	});
+
+	it("should fill more bytes than a call takes as arguments", () => {
+		const rv32i = new Assembler(new CpuRV32IHandler(), new MockFileHandler(), {
+			logger: new Logger({ sink: new MemorySink(), enabled: false }),
+			segments: [{ name: "BIG", start: 0, size: 0, resizable: true }],
+		});
+		rv32i.assemble(`
+			.segment BIG
+			.fill 200000, 7
+		`);
+		expect(rv32i.link()).toEqual(Array.from({ length: 200_000 }, () => 7));
 	});
 
 	it("should fill a block of memory with a specified value", () => {

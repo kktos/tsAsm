@@ -782,4 +782,48 @@ describe("Linker", () => {
 			expect(() => link(`.OUTPUT "f.bin" MAX $11`)).toThrow(".OUTPUT MAX $11 is more than the linker's maxSize, $10.");
 		});
 	});
+
+	/** More bytes than V8 takes as a call's arguments (about 128K): written one by one, not spread. */
+	describe("Big writes", () => {
+		const BIG = 200_000;
+		const logger = {
+			log: () => {},
+			warn: () => {},
+			error: (m: unknown) => {
+				throw new Error(String(m));
+			},
+		} as unknown as Logger;
+		const link = (script: string) => linker.link(script, undefined, logger).data;
+
+		it("should write them in a fixed segment or a growing one", () => {
+			linker.addSegment("FIXED", { start: 0, size: BIG });
+			linker.useSegment("FIXED");
+			linker.writeBytes(
+				0,
+				Array.from({ length: BIG }, () => 1),
+			);
+			linker.addSegment("GROWING", { start: 0, resizable: true, padValue: 0xff });
+			linker.useSegment("GROWING");
+			linker.writeBytes(
+				2,
+				Array.from({ length: BIG }, () => 2),
+			);
+			expect(linker.segments.map((segment) => segment.data.length)).toEqual([BIG, BIG + 2]);
+			expect(linker.segments[1]?.data.slice(0, 4)).toEqual([0xff, 0xff, 2, 2]);
+		});
+
+		it("should .FILL them in the script", () => {
+			expect(link(`.OUTPUT "out.bin"\n.FILL ${BIG}, 3`)).toEqual(Array.from({ length: BIG }, () => 3));
+		});
+
+		it("should .WRITE a segment or a module of them", () => {
+			linker.addSegment("BIG", { start: 0, size: BIG, padValue: 4 });
+			linker.addModule("M");
+			linker.useSegment("BIG");
+			linker.writeBytes(0, [5]);
+			const output = link(`.OUTPUT "out.bin"\n.WRITE SEGMENT("BIG")\n.WRITE MODULE("M")`);
+			expect(output).toHaveLength(2 * BIG);
+			expect([output[0], output[1], output[BIG], output[2 * BIG - 1]]).toEqual([5, 4, 5, 4]);
+		});
+	});
 });
