@@ -58,6 +58,10 @@ On a 32-bit CPU, `.org $12345678` in a resizable segment, or `.fill $12345678, 0
 
 `.if` takes any value as JavaScript does (`Boolean(value)`): a string is true unless it's empty, so `.if "\x00"` is true, though a one-character string used as a number is its character code (#149), here 0, and `.if "AB"` is true, though a longer string is never a number. `.iif("A", 1, 2)` → `First argument to .IIF() must be a number.`: `.iif` doesn't convert a one-character string. How a condition reads a string, and an array or an object, to decide: as a number (recommended: a one-character string its code, anything else an error), or as true when not empty. Found with 1.74.
 
+### 1.76 A big write in a linker script overflows the stack
+
+A linker script's `.FILL` of more than about 128K bytes → `Maximum call stack size exceeded`, located at the `.FILL`: `.OUTPUT "out.bin"` / `.FILL 130000` fails, `.FILL 100000` works, and so does `.REPEAT 400` / `.FILL 512` / `.END`. The linker's `write()` appends with `segment.data.push(...bytes)` (`src/linker/linker.class.ts`), which passes every byte as an argument: past V8's limit on a call's arguments, it throws. `.WRITE SEGMENT` and `.WRITE MODULE` go through the same `write()`, so a segment or a module that big should fail the same way. A loop, or `concat`, in place of the spread fixes it; the assembler's `push(...)` of a directive's bytes (`.text`, `.db`) could be checked too. Found with conan's 800K disk image, filling the blocks before its files.
+
 ## 2. Code review, items left
 
 ### 2.1 CPU back-ends
