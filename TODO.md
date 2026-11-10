@@ -235,8 +235,21 @@ The assembler writes every byte of a segment in memory, in a JavaScript array, b
 
 Done in the VS Code extension in #241: labels, mnemonics, operands and comments in fixed columns, a block's body indented; the settings per project in `.editorconfig` in #243. What's left:
 
-- **`tsasm fmt`:** the same layout from the CLI, with `--check` for CI (a file not formatted is an error). Its settings from `.editorconfig` with `src/vscode/editorconfig.ts`, as the extension's. Which CPU and macros it knows: the project file's, as the extension's.
+- **`tsasm fmt`:** the same layout from the CLI, see 4.39.
 - **Linker scripts:** a `.asm` link script is formatted as a source; only its lines starting with `#` are kept. Their own language (4.26) would leave them out.
+
+### 4.39 `tsasm fmt`: formatting from the CLI
+
+The layout of the VS Code extension (4.38) from the command line, for a project without VS Code and for CI: `tsasm fmt` writes the files formatted, `tsasm fmt --check` changes nothing and fails when a file isn't formatted.
+
+- **The same code:** `formatSource` (`src/vscode/format.ts`), the blocks it reads (`blocks.ts`) and the `.editorconfig` reader (`editorconfig.ts`) are free of the vscode module: they move to a folder of their own (`src/format`?), shared by the CLI and the extension, so the two give the same result.
+- **The same settings:** `.editorconfig` (`indent_style`, `tab_width`, `indent_size`, the `tsasm_*` keys), else the defaults: the columns at 8 / 16 / 40, blocks indented; no VS Code settings. To decide: tabs or spaces, and their width, when `.editorconfig` doesn't say (tabs of 4, or an error?). An error in `.editorconfig` is an error of the command, with its file and line.
+- **`--check`:** lists the files not formatted, and exits with a non-zero status; nothing is written. To decide: whether it also shows the lines that would change (a diff).
+- **To decide, how it's called:** `tsasm fmt <files or folders…>` as a subcommand, while `tsasm <project-file>` assembles (a project file named `fmt` would need `./fmt`), or an option, `tsasm --fmt`.
+- **To decide, what it formats:** the files named, the `.asm` files of the folders named, or a project's sources (`tsasm fmt game.yaml`: the main source and the files it includes, as the assembly reads them).
+- **To decide, labels and statements:** the extension knows the CPU and the macros from the last assembly. The CLI could assemble the project too, or read the files only: the mnemonics of the `input.cpu` of a project file, or of every CPU, the `.cpu` lines, the macros the files define with `.macro`. A word it can't tell keeps its side, as in the extension.
+- **Linker scripts:** a `.asm` link script is formatted as a source (4.38). The CLI could leave the project's `input.linker.script` out, which a project names.
+- **To check:** a file's line endings and byte order mark kept, a file not written when nothing changes (its date kept), the exit status when a file can't be read.
 
 ## 5. Documentation (REFERENCE.md)
 
