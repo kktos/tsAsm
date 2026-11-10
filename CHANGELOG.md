@@ -6,6 +6,12 @@ The problem is described as it was before the fix, then the fix in _italics_.
 
 ## Assembler
 
+### #239 — A `.fill` of megabytes crashes Node (TODO 1.67)
+
+On a 32-bit CPU, `.fill $12345678, 0` built its bytes in memory before writing them: Node ran out of memory (`FATAL ERROR: invalid table size Allocation failed - JavaScript heap out of memory`), with no assembler error; a `.fill $4000000` (64 MB) too, with a 2 GB heap. The linker's `maxSize` (#206) only checks the output.
+
+_Decided: a `.fill` writes 1 MB at most, and a bigger block takes several. `.fill`, `.ds` and `.res` with a count over $100000 → `.FILL count: $200000 is more than $100000 bytes (1 MB): split it into several .FILL.`, in both passes, at the statement. `.align` building megabytes of padding is 1.78; `.org` growing a segment by megabytes (`Invalid array length`), and segments that keep the statements and leave the bytes to the linker, are 4.37._
+
 ### #238 — A big write in a loop overflows the stack (TODO 1.77)
 
 `.repeat 1` / `.fill 200000` / `.end` → `Maximum call stack size exceeded`, located at the `.fill`, listing on or off: the lister kept a loop's bytes, for a folded listing, with `push(...bytes)`, one argument per byte, past V8's limit. The same `.fill` outside a loop worked since #237.
