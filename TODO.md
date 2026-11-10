@@ -231,6 +231,13 @@ Done in #216 for labels, constants, variables, local and anonymous labels, funct
 
 The assembler writes every byte of a segment in memory, in a JavaScript array, before linking: a segment growing by megabytes fails. On a 32-bit CPU, `addi x0, x0, 0` / `.org $12345678` / `addi x0, x0, 0` in a resizable segment pads it up to `$12345678` → `Invalid array length`, a JavaScript error, with no segment or size. `.fill` stops at 1 MB since #239 (1.67), `.align`'s padding since #240 (1.78). An idea, from the object files: a segment keeps what to write (`.fill $100000, 0`, `.org`'s gap, an `.incbin`'s file), as an object file does, and the linker writes the bytes, as it writes the output. Until then, a check on how far `.org` moves a resizable segment could replace the JavaScript error: to decide with this.
 
+### 4.38 Formatting in columns
+
+Done in the VS Code extension in #PR: labels, mnemonics, operands and comments in fixed columns, a block's body indented, tabs or spaces from the editor (`.editorconfig`). What's left:
+
+- **`tsasm fmt`:** the same layout from the CLI, reading `.editorconfig` itself, with `--check` for CI (a file not formatted is an error). Which CPU and macros it knows: the project file's, as the extension's.
+- **Linker scripts:** a `.asm` link script is formatted as a source; only its lines starting with `#` are kept. Their own language (4.26) would leave them out.
+
 ## 5. Documentation (REFERENCE.md)
 
 - **Macro scope:** labels and variables in a macro body are local to the call. CLAUDE.md says it, REFERENCE doesn't.
