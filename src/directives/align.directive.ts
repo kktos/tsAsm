@@ -1,8 +1,10 @@
 import type { SymbolValue } from "../assembler/symbol.class";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
+import { getHex } from "../utils/hex.util";
 import { assertFitsInBytes } from "../utils/number.utils";
 import { findTopLevelComma } from "../utils/token.utils";
 import type { DirectiveContext, DirectiveRuntime, IDirective } from "./directive.interface";
+import { MAX_FILL } from "./fill.directive";
 
 export class AlignDirective implements IDirective {
 	public isBlockDirective = false;
@@ -49,6 +51,11 @@ export class AlignDirective implements IDirective {
 
 		const newPC = (context.PC.value + boundary - 1) & ~(boundary - 1);
 		const paddingBytesCount = newPC - context.PC.value;
+		// Checked here only: the PC is final in pass 2, and pass 1 builds no bytes.
+		if (paddingBytesCount > MAX_FILL)
+			throw new Error(
+				`.${directive.value} $${getHex(boundary, 1)} at $${getHex(oldPC, 1)} pads $${getHex(paddingBytesCount, 1)} bytes: more than $${getHex(MAX_FILL, 1)} (1 MB).`,
+			);
 
 		if (paddingBytesCount > 0) {
 			// Ensure filler value is a single byte

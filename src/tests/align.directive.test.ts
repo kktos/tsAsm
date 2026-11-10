@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Assembler } from "../assembler/polyasm";
 import type { SegmentDefinition } from "../assembler/polyasm.types";
+import { CpuRV32IHandler } from "../cpu/cpurv32i.class";
 import { Logger } from "../helpers/logger.class";
 import { MemorySink } from "../helpers/memorysink.class";
 import { MockFileHandler } from "./mockfilehandler.class";
@@ -157,5 +158,46 @@ describe(".ALIGN", () => {
 		const segments = [{ name: "CODE", start: 0x1001, size: 0, resizable: true }];
 		const assembler = createAssembler(segments, logger);
 		expect(() => assembler.assemble(".org $1001\n.align 4, undefinedSym")).toThrow("Undefined symbol 'UNDEFINEDSYM'");
+	});
+
+	describe("its padding, at most 1 MB", () => {
+		const rv32i = (start: number) =>
+			new Assembler(new CpuRV32IHandler(), new MockFileHandler(), {
+				logger: new Logger({ sink: new MemorySink(), enabled: false }),
+				segments: [{ name: "BIG", start, size: 0, resizable: true }],
+			});
+
+		it("should pad 1 MB", () => {
+			const asm = rv32i(0x100000);
+			asm.assemble(`
+				.segment BIG
+				.align $200000, 7
+			`);
+			expect(asm.link()).toEqual(Array.from({ length: 0x100000 }, () => 7));
+		});
+
+		it("should take a big boundary already reached", () => {
+			const asm = rv32i(0);
+			asm.assemble(`
+				.segment BIG
+				.align $40000000
+				.db 1
+			`);
+			expect(asm.link()).toEqual([1]);
+		});
+
+		it.each([
+			[0xfffff, ".align $200000", ".ALIGN $200000 at $FFFFF pads $100001 bytes"],
+			[0, ".db 1\n.align $40000000", ".ALIGN $40000000 at $1 pads $3FFFFFFF bytes"],
+			[0, ".db 1\n.align boundary, $EA\nboundary = $400000", ".ALIGN $400000 at $1 pads $3FFFFF bytes"],
+		])("should stop a padding over 1 MB: %#", (start, source, message) => {
+			const line = source.split("\n").findIndex((statement) => statement.startsWith(".align")) + 2;
+			expect(() => rv32i(start).assemble(`.segment BIG\n${source}\naddi x1, x0, 1`)).toThrow(
+				expect.objectContaining({
+					message: `${message}: more than $100000 (1 MB).`,
+					location: expect.objectContaining({ line }),
+				}),
+			);
+		});
 	});
 });

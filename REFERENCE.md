@@ -302,7 +302,7 @@ The CPU's byte order is little-endian (`.dw $1234` gives `34 12`), except on the
 
 A string is its characters, one value each: `.db "AB"` is `.db "A", "B"`, and `.dw "AB"` is `.dw "A", "B"`, `41 00 42 00`. A character above 255 is an error.
 
-A `.fill` writes 1 MB at most: a bigger block takes several, `.fill $200000` being `.FILL count: $200000 is more than $100000 bytes (1 MB): split it into several .FILL.`
+A `.fill` writes 1 MB at most: a bigger block takes several, `.fill $200000` being `.FILL count: $200000 is more than $100000 bytes (1 MB): split it into several .FILL.` So does an `.align`, its padding at most 1 MB: at `$1`, `.align $400000` is `.ALIGN $400000 at $1 pads $3FFFFF bytes: more than $100000 (1 MB).`
 
 ```as
 .db $01, 2, "A"

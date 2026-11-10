@@ -54,9 +54,9 @@ In a relocatable segment, the instruction's PC is its offset there: a branch to 
 
 `.if` takes any value as JavaScript does (`Boolean(value)`): a string is true unless it's empty, so `.if "\x00"` is true, though a one-character string used as a number is its character code (#149), here 0, and `.if "AB"` is true, though a longer string is never a number. `.iif("A", 1, 2)` → `First argument to .IIF() must be a number.`: `.iif` doesn't convert a one-character string. How a condition reads a string, and an array or an object, to decide: as a number (recommended: a one-character string its code, anything else an error), or as true when not empty. Found with 1.74.
 
-### 1.78 An `.align` of megabytes crashes Node
+### 1.79 An `.align` of 2 GB or more
 
-On a 32-bit CPU, `.db 1` / `.align $40000000` builds its padding in memory, $3FFFFFFF bytes: Node runs out of memory (`FATAL ERROR: invalid table size Allocation failed - JavaScript heap out of memory`), with no assembler error. `.fill` writes 1 MB at most since #239 (1.67). To decide: the same limit on the padding (recommended: `.align` padding more than $100000 bytes is an error), or on the boundary. Found with 1.67.
+The padding is computed with a bit mask, `(PC + boundary - 1) & ~(boundary - 1)`, and JavaScript's `&` and `~` work on signed 32-bit numbers: from `$80000000`, a boundary gives a wrong address. On RV32I, `.db 1` / `.align $80000000` / `end:` → `Phase error: label 'END' is $80000000 in pass 1 but $1001 in pass 2.`, and the same at `$7FFFFFF0`, where it would pad 15 bytes; `.align $100000000` the same, `END` being `$00` in pass 1. To fix: the padding computed with arithmetic, not bits. Found with 1.78.
 
 ## 2. Code review, items left
 
@@ -229,7 +229,7 @@ Done in #216 for labels, constants, variables, local and anonymous labels, funct
 
 ### 4.37 Segments that keep statements, not bytes
 
-The assembler writes every byte of a segment in memory, in a JavaScript array, before linking: a segment growing by megabytes fails. On a 32-bit CPU, `addi x0, x0, 0` / `.org $12345678` / `addi x0, x0, 0` in a resizable segment pads it up to `$12345678` → `Invalid array length`, a JavaScript error, with no segment or size. `.fill` stops at 1 MB since #239 (1.67), `.align` is 1.78. An idea, from the object files: a segment keeps what to write (`.fill $100000, 0`, `.org`'s gap, an `.incbin`'s file), as an object file does, and the linker writes the bytes, as it writes the output. Until then, a check on how far `.org` moves a resizable segment could replace the JavaScript error: to decide with this.
+The assembler writes every byte of a segment in memory, in a JavaScript array, before linking: a segment growing by megabytes fails. On a 32-bit CPU, `addi x0, x0, 0` / `.org $12345678` / `addi x0, x0, 0` in a resizable segment pads it up to `$12345678` → `Invalid array length`, a JavaScript error, with no segment or size. `.fill` stops at 1 MB since #239 (1.67), `.align`'s padding since #240 (1.78). An idea, from the object files: a segment keeps what to write (`.fill $100000, 0`, `.org`'s gap, an `.incbin`'s file), as an object file does, and the linker writes the bytes, as it writes the output. Until then, a check on how far `.org` moves a resizable segment could replace the JavaScript error: to decide with this.
 
 ## 5. Documentation (REFERENCE.md)
 
