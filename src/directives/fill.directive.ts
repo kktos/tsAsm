@@ -5,8 +5,8 @@ import { assertFitsInBytes } from "../utils/number.utils";
 import { findTopLevelComma } from "../utils/token.utils";
 import type { DirectiveContext, DirectiveRuntime, IDirective } from "./directive.interface";
 
-/** The most bytes one `.fill` writes: 1 MB. The bytes are built in memory, and a count of hundreds of MB crashed Node. */
-const MAX_FILL = 0x100000;
+/** The most bytes one `.fill` or `.align` writes: 1 MB. The bytes are built in memory, and hundreds of MB crashed Node. */
+export const MAX_FILL = 0x100000;
 
 export class FillDirective implements IDirective {
 	public isBlockDirective = false;
@@ -70,7 +70,7 @@ export class FillDirective implements IDirective {
 			throw new Error(`.${directive.value} count: ${count} isn't a whole number of bytes (0 or more).`);
 		if ((count as number) > MAX_FILL)
 			throw new Error(
-				`.${directive.value} count: $${getHex(count as number)} is more than $${getHex(MAX_FILL)} bytes (1 MB): split it into several .FILL.`,
+				`.${directive.value} count: $${getHex(count as number, 1)} is more than $${getHex(MAX_FILL, 1)} bytes (1 MB): split it into several .FILL.`,
 			);
 	}
 
