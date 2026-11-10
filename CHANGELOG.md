@@ -6,6 +6,12 @@ The problem is described as it was before the fix, then the fix in _italics_.
 
 ## Assembler
 
+### #240 — An `.align` of megabytes crashes Node (TODO 1.78)
+
+On a 32-bit CPU, `.db 1` / `.align $40000000` built its padding in memory, $3FFFFFFF bytes: Node ran out of memory (`FATAL ERROR: invalid table size Allocation failed - JavaScript heap out of memory`), with no assembler error.
+
+_Decided: as `.fill` (#239), an `.align` pads 1 MB at most. More → `.ALIGN $40000000 at $1 pads $3FFFFFFF bytes: more than $100000 (1 MB).`, at the statement. Checked in pass 2, where the PC is final: a boundary over 1 MB is fine while the padding isn't, `.align $40000000` at `0` pads nothing. The `.fill` message writes its count as the others do, `$1000000`, not `$01000000`. A boundary of `$80000000` or more gives a wrong address, the bit mask being 32-bit signed: 1.79._
+
 ### #239 — A `.fill` of megabytes crashes Node (TODO 1.67)
 
 On a 32-bit CPU, `.fill $12345678, 0` built its bytes in memory before writing them: Node ran out of memory (`FATAL ERROR: invalid table size Allocation failed - JavaScript heap out of memory`), with no assembler error; a `.fill $4000000` (64 MB) too, with a 2 GB heap. The linker's `maxSize` (#206) only checks the output.
