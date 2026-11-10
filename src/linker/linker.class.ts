@@ -274,13 +274,11 @@ export class Linker {
 
 		if (offset >= active.data.length) {
 			if (!active.resizable) throw new Error(`Internal error: segment '${active.name}' data shorter than declared size and not resizable.`);
-
-			const needed = offset + values.length - active.data.length;
-			active.data.push(...Array.from({ length: needed }, () => active.padValue ?? 0));
+			padTo(active.data, offset, active.padValue ?? 0);
 		}
 
-		// active.data[offset] = value & 0xff;
-		active.data.splice(offset, values.length, ...values);
+		// One byte at a time: a spread of `values` passes each as an argument, past V8's limit for a big write.
+		for (let i = 0; i < values.length; i++) active.data[offset + i] = values[i] as number;
 		if (active.resizable && active.size < active.data.length) active.size = active.data.length;
 	}
 
@@ -364,7 +362,8 @@ export class Linker {
 		}
 		const segment = this.activeSegment();
 		this.checkOffset(segment.start + segment.data.length, bytes.length);
-		segment.data.push(...bytes);
+		// Not push(...bytes): a big write would pass more arguments than V8 takes.
+		for (const byte of bytes) segment.data.push(byte);
 		this.PC.value += bytes.length;
 	}
 
