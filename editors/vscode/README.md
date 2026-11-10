@@ -154,6 +154,14 @@ From the root of the repository:
 
 ```shell
 pnpm install
+pnpm install:vscode
+```
+
+It bumps the extension's version in `editors/vscode/package.json` (a patch; `pnpm install:vscode minor`, `major`, or `--no-bump` to keep it), builds it, packages it into a `.vsix` in the system's temp directory and installs it with `code --install-extension`. `--code code-insiders` (or `cursor`…) installs it in another editor. The open windows keep the old version until they're reloaded (Developer: Reload Window).
+
+The same, step by step:
+
+```shell
 pnpm build:vscode       # writes editors/vscode/dist: the extension's code and its grammar
 cd editors/vscode
 pnpm dlx @vscode/vsce package --skip-license --no-dependencies

@@ -15,6 +15,7 @@ Multi-CPU assembler in TypeScript (6502, 65C02, 6809, RV32I, ARM stub), usable a
 
 - `pnpm test`, `pnpm check` (tsc), `pnpm lint:ci`: what CI runs, with `pnpm bundle`.
 - **Checking the CLI:** build it with `pnpm exec rollup -c rollup.config.js --environment TARGET:cli` (`pnpm build:cli` bumps the version since #70), then run `node dist/tsasm proj.yaml` on a small project.
+- **Installing the VS Code extension:** `pnpm install:vscode` bumps `editors/vscode`'s version, builds, packages and installs it.
 - **`pnpm-workspace.yaml` is committed** since #71: it holds the pnpm 12 `allowBuilds` settings.
 
 ## How we work
