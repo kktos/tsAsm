@@ -1,8 +1,12 @@
 import type { SymbolValue } from "../assembler/symbol.class";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
+import { getHex } from "../utils/hex.util";
 import { assertFitsInBytes } from "../utils/number.utils";
 import { findTopLevelComma } from "../utils/token.utils";
 import type { DirectiveContext, DirectiveRuntime, IDirective } from "./directive.interface";
+
+/** The most bytes one `.fill` writes: 1 MB. The bytes are built in memory, and a count of hundreds of MB crashed Node. */
+const MAX_FILL = 0x100000;
 
 export class FillDirective implements IDirective {
 	public isBlockDirective = false;
@@ -64,6 +68,10 @@ export class FillDirective implements IDirective {
 	private assertValidCount(count: number | null, directive: ScalarToken) {
 		if (!Number.isInteger(count) || (count as number) < 0)
 			throw new Error(`.${directive.value} count: ${count} isn't a whole number of bytes (0 or more).`);
+		if ((count as number) > MAX_FILL)
+			throw new Error(
+				`.${directive.value} count: $${getHex(count as number)} is more than $${getHex(MAX_FILL)} bytes (1 MB): split it into several .FILL.`,
+			);
 	}
 
 	/**

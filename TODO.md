@@ -42,10 +42,6 @@ Since #150, a branch of `.if` not taken rejects an unknown directive starting a 
 
 In a relocatable segment, the instruction's PC is its offset there: a branch to a fixed address is computed from it, silently. `.segment CODE { reloc: true }` / `nop` / `bra $10` → `12 20 0D` on the 6809; `beq x0, x0, $10` the same on the RV32I. The 65xx reads its branch targets with `OperandReader.branchTarget` since #181, which rejects them (`A branch from relocatable segment 'CODE' can't reach $10: …`); the other CPUs should too. Their operands don't take relocatable values (`the 6809's operands can't take one`): fixups for them would follow, RV32I's with `%hi` / `%lo` (2.1). Found with 4.19.
 
-### 1.67 A segment growing by megabytes crashes Node
-
-On a 32-bit CPU, `.org $12345678` in a resizable segment, or `.fill $12345678, 0`, builds an array of that many bytes in the assembler, before linking: Node runs out of memory (`FATAL ERROR: … JavaScript heap out of memory`), with no assembler error. The linker's `maxSize` (#206) only checks the output. To decide: a limit on a segment's size (the same `maxSize`, or another) and on `.fill`'s count. Found with 4.23.
-
 ### 1.70 A label alone before an included file's assignment
 
 `start:` / `.include "c.asm"`, with `c.asm` starting with `count = 3` → `c.asm:1:1: error: Syntax error - (Unknown opcode?) Unexpected label 'COUNT' after START`. `start:` / `count = 3` in one file assembles. Found with 4.28.
@@ -57,6 +53,10 @@ On a 32-bit CPU, `.org $12345678` in a resizable segment, or `.fill $12345678, 0
 ### 1.75 A string as a condition
 
 `.if` takes any value as JavaScript does (`Boolean(value)`): a string is true unless it's empty, so `.if "\x00"` is true, though a one-character string used as a number is its character code (#149), here 0, and `.if "AB"` is true, though a longer string is never a number. `.iif("A", 1, 2)` → `First argument to .IIF() must be a number.`: `.iif` doesn't convert a one-character string. How a condition reads a string, and an array or an object, to decide: as a number (recommended: a one-character string its code, anything else an error), or as true when not empty. Found with 1.74.
+
+### 1.78 An `.align` of megabytes crashes Node
+
+On a 32-bit CPU, `.db 1` / `.align $40000000` builds its padding in memory, $3FFFFFFF bytes: Node runs out of memory (`FATAL ERROR: invalid table size Allocation failed - JavaScript heap out of memory`), with no assembler error. `.fill` writes 1 MB at most since #239 (1.67). To decide: the same limit on the padding (recommended: `.align` padding more than $100000 bytes is an error), or on the boundary. Found with 1.67.
 
 ## 2. Code review, items left
 
@@ -206,7 +206,7 @@ The script library `lib/omf.linker.asm` is done in #185: version 2.0 segments, L
 
 Before 4.18: the 65816 addresses 16 MB. The PC's range is done in #200: `CPUHandler.addressBits`, and leaving it is an error; a segment's range in #201, checked when it's selected; an instruction crossing a bank in #202, `CPUHandler.bankBits`; a segment's `banksize` in #203; the listing's addresses in #204; numbers over $FFFF in hex in #205; the output's size, `input.linker.maxSize`, in #206; `hexDump`'s addresses in #207. What's left:
 
-- **A segment growing by megabytes:** see 1.67.
+- **A segment growing by megabytes:** see 4.37.
 
 ### 4.25 65816: the widths per `.proc`
 
@@ -226,6 +226,10 @@ Done in #216 for labels, constants, variables, local and anonymous labels, funct
 - **Namespaces and segments:** `gfx::` and `.segment CODE` aren't linked: neither keeps where it's defined (a namespace can be opened in several places, a segment comes from `.segment` or the project file).
 - **Names the evaluator doesn't resolve as values:** the name in `.def(x)` / `.undef(x)`, a name a built-in function takes as an argument.
 - **A file in no project** gets a text scan only.
+
+### 4.37 Segments that keep statements, not bytes
+
+The assembler writes every byte of a segment in memory, in a JavaScript array, before linking: a segment growing by megabytes fails. On a 32-bit CPU, `addi x0, x0, 0` / `.org $12345678` / `addi x0, x0, 0` in a resizable segment pads it up to `$12345678` → `Invalid array length`, a JavaScript error, with no segment or size. `.fill` stops at 1 MB since #239 (1.67), `.align` is 1.78. An idea, from the object files: a segment keeps what to write (`.fill $100000, 0`, `.org`'s gap, an `.incbin`'s file), as an object file does, and the linker writes the bytes, as it writes the output. Until then, a check on how far `.org` moves a resizable segment could replace the JavaScript error: to decide with this.
 
 ## 5. Documentation (REFERENCE.md)
 
