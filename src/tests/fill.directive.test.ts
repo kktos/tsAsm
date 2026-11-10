@@ -163,6 +163,37 @@ describe("Directive: .fill", () => {
 		);
 	});
 
+	describe("its count, at most 1 MB", () => {
+		const rv32i = () =>
+			new Assembler(new CpuRV32IHandler(), new MockFileHandler(), {
+				logger: new Logger({ sink: new MemorySink(), enabled: false }),
+				segments: [{ name: "BIG", start: 0, size: 0, resizable: true }],
+			});
+
+		it("should fill 1 MB", () => {
+			const asm = rv32i();
+			asm.assemble(`
+				.segment BIG
+				.fill $100000, 7
+			`);
+			expect(asm.link()).toHaveLength(0x100000);
+		});
+
+		it.each([
+			[".fill $100001", ".FILL count: $100001"],
+			[".fill $12345678, 0", ".FILL count: $12345678"],
+			[".res $200000", ".RES count: $200000"],
+			[".ds count\ncount = $200000", ".DS count: $200000"],
+		])("should stop a count over 1 MB: %j", (source, message) => {
+			expect(() => rv32i().assemble(`.segment BIG\n${source}\naddi x1, x0, 1`)).toThrow(
+				expect.objectContaining({
+					message: `${message} is more than $100000 bytes (1 MB): split it into several .FILL.`,
+					location: expect.objectContaining({ line: 2 }),
+				}),
+			);
+		});
+	});
+
 	describe("listing", () => {
 		/** The pass 2 listing lines that have bytes, each from its address up to the directive. */
 		function listBytes(source: string): string[] {

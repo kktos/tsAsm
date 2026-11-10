@@ -293,7 +293,7 @@ The linker script writes a module's segments with `.WRITE MODULE "GAME"`. Withou
 | `.db` / `.byte`                                | 8-bit values                                                                                    |
 | `.dw` / `.word`                                | 16-bit values, in the CPU's byte order                                                          |
 | `.dl` / `.long`                                | 32-bit values, in the CPU's byte order                                                          |
-| `.fill` / `.ds` / `.res` `<count> [, <value>]` | `count` bytes of `value` (default `0`); `count` is a whole number, 0 or more                    |
+| `.fill` / `.ds` / `.res` `<count> [, <value>]` | `count` bytes of `value` (default `0`); `count` is a whole number, 0 to `$100000` (1 MB)        |
 | `.align <boundary> [, <value>]`                | `value` bytes (default `0`) up to the next multiple of `boundary`, which must be a power of two |
 | `.hex`                                         | Bytes written as hexadecimal digits                                                             |
 | `.incbin "<file>"`                             | The content of a binary file                                                                    |
@@ -301,6 +301,8 @@ The linker script writes a module's segments with `.WRITE MODULE "GAME"`. Withou
 The CPU's byte order is little-endian (`.dw $1234` gives `34 12`), except on the 6809, which is big-endian (`12 34`).
 
 A string is its characters, one value each: `.db "AB"` is `.db "A", "B"`, and `.dw "AB"` is `.dw "A", "B"`, `41 00 42 00`. A character above 255 is an error.
+
+A `.fill` writes 1 MB at most: a bigger block takes several, `.fill $200000` being `.FILL count: $200000 is more than $100000 bytes (1 MB): split it into several .FILL.`
 
 ```as
 .db $01, 2, "A"
