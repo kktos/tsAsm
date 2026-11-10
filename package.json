@@ -23,6 +23,7 @@
 		"version:bump": "npm version patch --no-git-tag-version",
 		"install:cli": "node scripts/install-cli.js",
 		"uninstall:cli": "node scripts/install-cli.js --uninstall",
+		"install:vscode": "node scripts/install-vscode.js",
 		"test": "vitest",
 		"lint:ci": "oxlint && oxfmt --check",
 		"lint:fix": "oxlint --fix-suggestions",
