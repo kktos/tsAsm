@@ -481,6 +481,7 @@ _Now `.REPEAT: 'N' must be defined before it is used here (the count is needed t
 
 ## Build (TODO 2.4)
 
+- **#242** — Installing the VS Code extension took four commands, and its version stayed `0.1.0`. _`pnpm install:vscode` (`scripts/install-vscode.js`) bumps `editors/vscode/package.json`'s version (a patch, or `minor`, `major`, `--no-bump`), builds it, packages a `.vsix` in the system's temp directory and installs it with `code --install-extension` (`--code` for another editor); it warns about a link to a checkout in `~/.vscode/extensions`._
 - **#123** — Type errors don't fail the build, and CI doesn't run `check` / `build`. _Rollup's typescript plugin now has `noEmitOnError: true`; CI runs `pnpm check` and `pnpm bundle`, a new script with `build`'s rollup part minus the version bump._
 - **#91** — `tsconfig`: `moduleResolution: node` and `esModuleInterop: false` are deprecated in TS 6. Use `"bundler"`. _Now on TypeScript 6.0.3, with `moduleResolution: "bundler"`, no `esModuleInterop` (always on in TS 6) and `types: ["node"]` (TS 6 no longer includes every `@types` package). The build output is byte-identical to TS 5.9's._
 - **#69** — `build:cli` / `build:lib` are broken on macOS/Linux. _Now `rollup --environment TARGET:…`._
