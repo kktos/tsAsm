@@ -15,7 +15,7 @@ The language of the [tsAsm](https://github.com/kktos/tsAsm) assembler, for `.asm
 - **Completion and signature help:** the current CPU's mnemonics, the directives and macros at a statement's start; the symbols in scope, the local labels, the system functions and variables in an operand; a call's parameters as you type them.
 - **Rename** (F2): a symbol, at its definition and its references, in every file of its project.
 - **Folding** by blocks: `.macro`, `.proc`, each branch of an `.if`, `{ }`, a routine under its label, comments and `; region` … `; endregion`.
-- **Formatting** (Format Document, `editor.formatOnSave`): labels, mnemonics, operands and comments in their columns, a block's body indented, with tabs or spaces as `.editorconfig` says.
+- **Formatting** (Format Document, `editor.formatOnSave`): labels, mnemonics, operands and comments in their columns, a block's body indented, with tabs or spaces and the columns a project's `.editorconfig` sets.
 - **Outline and breadcrumbs** (Cmd+Shift+O): a file's macros, procs, functions and namespaces, with the labels, constants and variables in them, a local label under its global one, and its `.segment` selections; **Cmd+T** finds a symbol in the workspace.
 
 Another extension can be mapped to the language in the settings: `"files.associations": { "*.s": "tsasm" }`.
@@ -141,7 +141,23 @@ HEIGHT  =       5
 ```
 
 - **The columns:** a label at the line's start; the mnemonic, directive or macro call in the opcode column, `tsasm.format.opcodeColumn` (8); its operand in `tsasm.format.operandColumn` (16); a comment ending the line in `tsasm.format.commentColumn` (40). Columns count from 0. An assignment is a label and a directive: `HEIGHT = 5` puts `=` in the opcode column.
-- **Tabs or spaces** are the editor's, and so is the tab width: the EditorConfig extension sets them from `.editorconfig`'s `indent_style` and `tab_width`. With tabs, a column is rounded up to a tab stop.
+- **Tabs or spaces** and the tab width come from `.editorconfig`'s `indent_style`, `tab_width` and `indent_size`, else from the editor. With tabs, a column is rounded up to a tab stop.
+- **Per project, in `.editorconfig`:** the keys `tsasm_opcode_column`, `tsasm_operand_column`, `tsasm_comment_column` and `tsasm_indent_blocks` override the `tsasm.format.*` settings, as `indent_style` overrides the editor's. They're read as EditorConfig reads its own, without its extension: from the file's folder up to an `.editorconfig` with `root = true`, the closest winning, in the sections whose glob matches the file.
+
+    ```ini
+    root = true
+
+    [*]
+    indent_style = tab
+    tab_width = 4
+
+    [*.asm]
+    tsasm_opcode_column = 12
+    tsasm_comment_column = 48
+    ```
+
+    A `tsasm_*` key it doesn't know or a bad value (`tsasm_opcode_column = abc`) is an error: the file isn't formatted, and the message opens the `.editorconfig` at its line. A value of EditorConfig's own keys it doesn't know is ignored, as EditorConfig says.
+
 - **A field past its column** goes to the next tab stop: a long label pushes its mnemonic, never glued to it.
 - **Blocks:** the body of a `.macro`, `.proc`, `.function`, `.if`, `.repeat` or `.for`, in braces or up to its `.end`, is one level further, its `.end`, `}` and `.else` at the block's level, its labels still at the line's start. A namespace's body isn't indented, as it may run to the end of the file. `tsasm.format.indentBlocks` turns it off.
 - **Kept as written:** an operand, its spaces and strings (`lda ( $10 ),y`); a comment alone on its line; a block comment's lines; the raw text of a `.define`, a `.hex` or a `.segment`'s definition; a line starting with `#`, a linker script's comment.
