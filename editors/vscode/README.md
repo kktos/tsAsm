@@ -15,6 +15,7 @@ The language of the [tsAsm](https://github.com/kktos/tsAsm) assembler, for `.asm
 - **Completion and signature help:** the current CPU's mnemonics, the directives and macros at a statement's start; the symbols in scope, the local labels, the system functions and variables in an operand; a call's parameters as you type them.
 - **Rename** (F2): a symbol, at its definition and its references, in every file of its project.
 - **Folding** by blocks: `.macro`, `.proc`, each branch of an `.if`, `{ }`, a routine under its label, comments and `; region` … `; endregion`.
+- **Formatting** (Format Document, `editor.formatOnSave`): labels, mnemonics, operands and comments in their columns, a block's body indented, with tabs or spaces as `.editorconfig` says.
 - **Outline and breadcrumbs** (Cmd+Shift+O): a file's macros, procs, functions and namespaces, with the labels, constants and variables in them, a local label under its global one, and its `.segment` selections; **Cmd+T** finds a symbol in the workspace.
 
 Another extension can be mapped to the language in the settings: `"files.associations": { "*.s": "tsasm" }`.
@@ -125,6 +126,28 @@ The folds follow the blocks, read from the text as the outline's, not the indent
 
 A block's `.end` or `}` stays shown when it's folded. A `.segment` doesn't fold: it's a selection, not a block.
 
+## Formatting
+
+Format Document (Shift+Alt+F) and Format Selection lay a file out in columns; `"[tsasm]": { "editor.formatOnSave": true }` does it on save.
+
+```as
+start:  lda     #$00                    ; load 0
+        sta     $D020
+        .repeat 3 {
+:loop       dex
+            bne     :loop
+        }
+HEIGHT  =       5
+```
+
+- **The columns:** a label at the line's start; the mnemonic, directive or macro call in the opcode column, `tsasm.format.opcodeColumn` (8); its operand in `tsasm.format.operandColumn` (16); a comment ending the line in `tsasm.format.commentColumn` (40). Columns count from 0. An assignment is a label and a directive: `HEIGHT = 5` puts `=` in the opcode column.
+- **Tabs or spaces** are the editor's, and so is the tab width: the EditorConfig extension sets them from `.editorconfig`'s `indent_style` and `tab_width`. With tabs, a column is rounded up to a tab stop.
+- **A field past its column** goes to the next tab stop: a long label pushes its mnemonic, never glued to it.
+- **Blocks:** the body of a `.macro`, `.proc`, `.function`, `.if`, `.repeat` or `.for`, in braces or up to its `.end`, is one level further, its `.end`, `}` and `.else` at the block's level, its labels still at the line's start. A namespace's body isn't indented, as it may run to the end of the file. `tsasm.format.indentBlocks` turns it off.
+- **Kept as written:** an operand, its spaces and strings (`lda ( $10 ),y`); a comment alone on its line; a block comment's lines; the raw text of a `.define`, a `.hex` or a `.segment`'s definition; a line starting with `#`, a linker script's comment.
+- **Labels and statements:** the colon after a label is optional, so the first word of a line is a label unless it's a mnemonic of the CPU there (the last `.cpu` above, else the project's), a directive or a macro the last assembly defined. A word it can't tell, a macro of a file in no project, keeps its side: at the line's start a label, else a statement.
+- **Checked:** only the whitespace between the fields changes. The result is lexed: if its tokens aren't the source's, the file is left as it is.
+
 ## Building and installing
 
 From the root of the repository:
@@ -143,4 +166,4 @@ While working on it, link the folder into VS Code's extensions instead, then run
 ln -s "$PWD/editors/vscode" ~/.vscode/extensions/kktos.tsasm
 ```
 
-The grammar is built by `src/vscode/grammar.ts`, the links found by `src/vscode/links.ts`, a project assembled by `src/vscode/analysis.ts`, its names indexed by `src/vscode/symbol-index.ts`, renamed by `src/vscode/rename.ts`, coloured by `src/vscode/semantic.ts`, their addresses told by `src/vscode/addresses.ts`, their mnemonics described by `src/vscode/instructions.ts`, the code not read found by `src/vscode/unread.ts`, their listing tied to them by `src/vscode/listing.ts` and shown by `src/vscode/listing-view.ts`, and completed by `src/vscode/completion.ts` from the language `src/vscode/language.ts` reads in the assembler, a file's blocks read by `src/vscode/blocks.ts`, its outline built by `src/vscode/outline.ts` and its folds by `src/vscode/folding.ts`, all tested in `src/tests/vscode`. `src/vscode/projects.ts` puts the projects' errors in VS Code, and `src/vscode/navigation.ts` gives the definitions, the hovers, the references, the colours, the addresses, the mnemonics' hovers, the completions, the renames, the folds and the outline.
+The grammar is built by `src/vscode/grammar.ts`, the links found by `src/vscode/links.ts`, a project assembled by `src/vscode/analysis.ts`, its names indexed by `src/vscode/symbol-index.ts`, renamed by `src/vscode/rename.ts`, coloured by `src/vscode/semantic.ts`, their addresses told by `src/vscode/addresses.ts`, their mnemonics described by `src/vscode/instructions.ts`, the code not read found by `src/vscode/unread.ts`, their listing tied to them by `src/vscode/listing.ts` and shown by `src/vscode/listing-view.ts`, and completed by `src/vscode/completion.ts` from the language `src/vscode/language.ts` reads in the assembler, a file's blocks read by `src/vscode/blocks.ts`, its outline built by `src/vscode/outline.ts`, its folds by `src/vscode/folding.ts` and its layout by `src/vscode/format.ts`, all tested in `src/tests/vscode`. `src/vscode/projects.ts` puts the projects' errors in VS Code, and `src/vscode/navigation.ts` gives the definitions, the hovers, the references, the colours, the addresses, the mnemonics' hovers, the completions, the renames, the folds and the outline; `src/vscode/format-provider.ts` formats.
