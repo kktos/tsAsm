@@ -233,7 +233,7 @@ The assembler writes every byte of a segment in memory, in a JavaScript array, b
 
 ### 4.38 Formatting in columns
 
-Done in the VS Code extension in #241: labels, mnemonics, operands and comments in fixed columns, a block's body indented; the settings per project in `.editorconfig` in #PR. What's left:
+Done in the VS Code extension in #241: labels, mnemonics, operands and comments in fixed columns, a block's body indented; the settings per project in `.editorconfig` in #243. What's left:
 
 - **`tsasm fmt`:** the same layout from the CLI, with `--check` for CI (a file not formatted is an error). Its settings from `.editorconfig` with `src/vscode/editorconfig.ts`, as the extension's. Which CPU and macros it knows: the project file's, as the extension's.
 - **Linker scripts:** a `.asm` link script is formatted as a source; only its lines starting with `#` are kept. Their own language (4.26) would leave them out.
