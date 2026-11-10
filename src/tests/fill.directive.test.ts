@@ -29,6 +29,35 @@ describe("Directive: .fill", () => {
 		expect(rv32i.link()).toEqual(Array.from({ length: 200_000 }, () => 7));
 	});
 
+	it("should fill more bytes than a call takes as arguments in a loop, listed or not", () => {
+		const sink = new MemorySink();
+		const rv32i = (enabled: boolean) =>
+			new Assembler(new CpuRV32IHandler(), new MockFileHandler(), {
+				logger: new Logger({ sink, enabled }),
+				segments: [{ name: "BIG", start: 0, size: 0, resizable: true }],
+				log: { pass2Enabled: enabled },
+				options: { "listing.data": "fold" },
+			});
+		const source = `
+			.segment BIG
+			.repeat 2
+			.fill 200000, 7
+			.end
+		`;
+		for (const enabled of [false, true]) {
+			const asm = rv32i(enabled);
+			asm.assemble(source);
+			expect(asm.link()).toEqual(Array.from({ length: 400_000 }, () => 7));
+		}
+		// Folded: the loop is one data statement, its 400 000 bytes cut to the first 8.
+		expect(
+			sink.logs
+				.map(String)
+				.find((line) => line.startsWith("0000:"))
+				?.replace(/\s+/g, " "),
+		).toBe("0000: 07 07 07 07 07 07 07 07 … .repeat $02");
+	});
+
 	it("should fill a block of memory with a specified value", () => {
 		const source = `
             .cpu "6502"

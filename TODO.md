@@ -58,10 +58,6 @@ On a 32-bit CPU, `.org $12345678` in a resizable segment, or `.fill $12345678, 0
 
 `.if` takes any value as JavaScript does (`Boolean(value)`): a string is true unless it's empty, so `.if "\x00"` is true, though a one-character string used as a number is its character code (#149), here 0, and `.if "AB"` is true, though a longer string is never a number. `.iif("A", 1, 2)` → `First argument to .IIF() must be a number.`: `.iif` doesn't convert a one-character string. How a condition reads a string, and an array or an object, to decide: as a number (recommended: a one-character string its code, anything else an error), or as true when not empty. Found with 1.74.
 
-### 1.77 A big write in a loop overflows the stack
-
-`.repeat 1` / `.fill 200000` / `.end` (on a 32-bit CPU, in a resizable segment) → `Maximum call stack size exceeded`, located at the `.fill`, listing on or off. The lister keeps the bytes a loop emits with `loop.bytes.push(...bytes)` (`src/helpers/lister.class.ts`), one argument per byte: the overflow of 1.76, in the lister. The same `.fill` outside a loop works. A loop in place of the spread fixes it. Found while fixing 1.76.
-
 ## 2. Code review, items left
 
 ### 2.1 CPU back-ends

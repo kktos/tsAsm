@@ -112,7 +112,8 @@ export class Lister implements ILister {
 			loop.dataLines += lines.length;
 			loop.isBlock &&= loop.addr === undefined || loop.addr + loop.bytes.length === addr;
 			loop.addr ??= addr;
-			loop.bytes.push(...bytes);
+			// Not push(...bytes): a big write would pass more arguments than V8 takes.
+			for (const byte of bytes) loop.bytes.push(byte);
 			loop.hasText &&= hasText;
 		}
 

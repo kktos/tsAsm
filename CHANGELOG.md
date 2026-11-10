@@ -6,6 +6,12 @@ The problem is described as it was before the fix, then the fix in _italics_.
 
 ## Assembler
 
+### #238 — A big write in a loop overflows the stack (TODO 1.77)
+
+`.repeat 1` / `.fill 200000` / `.end` → `Maximum call stack size exceeded`, located at the `.fill`, listing on or off: the lister kept a loop's bytes, for a folded listing, with `push(...bytes)`, one argument per byte, past V8's limit. The same `.fill` outside a loop worked since #237.
+
+_Fixed: the bytes are copied one by one, as the linker's are (#237)._
+
 ### #235 — A one-character string in a function's number argument (TODO 1.74)
 
 A one-character string used as a number is its character code (#149), but the built-in functions taking a number didn't convert it: `.lobyte("A")` → `.LOBYTE() requires a number argument.`, and so did `.hibyte`, `.bankbyte`, `.floor`, `.ceil`, `.round`, `.hex` (value and digits), `.pad`'s width and `.str`'s radix.
