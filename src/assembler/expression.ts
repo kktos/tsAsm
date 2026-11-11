@@ -1044,13 +1044,13 @@ export class ExpressionEvaluator {
 
 			case "ANONYMOUS_LABEL_REF": {
 				const distance = Number.parseInt(token.value, 10);
-				const addr = this.host.findNearestLabel?.(context.PC.value, distance) ?? null;
+				const addr = this.host.findAnonymousLabel?.(distance) ?? null;
 
 				if (addr === null && !context.allowForwardRef)
 					throw AsmError.at(`Not enough ${distance < 0 ? "preceding" : "succeeding"} anonymous labels to satisfy '${token.value}'.`, token);
 
 				if (addr === null) return null;
-				this.host.referenceAnonymousLabel?.(token, context.PC.value, distance);
+				this.host.referenceAnonymousLabel?.(token, distance);
 				return this.addressValue(addr);
 			}
 

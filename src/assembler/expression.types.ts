@@ -73,8 +73,8 @@ export interface EvaluatorHost {
 	findSourceSymbol?(name: string): SymbolValue | undefined;
 	/** An address in the current segment, `*` or an anonymous label: relocatable in a relocatable segment. Without it, the address. */
 	addressValue?(address: number): SymbolValue;
-	/** The anonymous label `distance` labels away from `address`. Without it, there are none. */
-	findNearestLabel?(address: number, distance: number): number | null;
+	/** The address of the anonymous label `distance` labels away, in definition order. Without it, there are none. */
+	findAnonymousLabel?(distance: number): number | null;
 	/** Whether a macro is defined at this point, for `.def(name)` / `.undef(name)`. Without it, there are none. */
 	isMacroDefined?(name: string): boolean;
 	/**
@@ -86,6 +86,6 @@ export interface EvaluatorHost {
 	functionRecursion?(): number;
 	/** `token` names `symbolName`, defined: for the assembler's `onSymbolReference`. */
 	referenceSymbol?(token: Token, symbolName: string): void;
-	/** `token`, an anonymous label reference, names the label `distance` labels away from `address`. */
-	referenceAnonymousLabel?(token: Token, address: number, distance: number): void;
+	/** `token`, an anonymous label reference, names the label `distance` labels away. */
+	referenceAnonymousLabel?(token: Token, distance: number): void;
 }

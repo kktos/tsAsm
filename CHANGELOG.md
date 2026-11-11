@@ -6,6 +6,12 @@ The problem is described as it was before the fix, then the fix in _italics_.
 
 ## Assembler
 
+### #245 — `:+` / `:-` find a label of another segment at the same address (TODO 1.80)
+
+An anonymous label reference looked for the nearest `:` by address, among all the labels of the source. Two segments at the same address, overlays loaded in turn, saw each other's labels: in a game with 9 level overlays at $A000, level 0's `bpl :+` at $A027 went to level 8's `:` at $A03B instead of its own at $A047, and its `bne :-` at $A2C1 to level 8's at $A2C0 instead of its own at $A2B8. Adding level 8 broke level 0, with no error.
+
+_Fixed: a reference counts the labels in source order, from where it is, as REFERENCE.md says: `:-` is the last `:` met, `:+` the next one, whatever their addresses. A label on the same line, before the reference, is already met, as before (`: bne :+` goes to the next one)._
+
 ### #240 — An `.align` of megabytes crashes Node (TODO 1.78)
 
 On a 32-bit CPU, `.db 1` / `.align $40000000` built its padding in memory, $3FFFFFFF bytes: Node ran out of memory (`FATAL ERROR: invalid table size Allocation failed - JavaScript heap out of memory`), with no assembler error.
