@@ -164,15 +164,13 @@ export class Assembler {
 			resolveSysValue: (nameToken) => this.resolveSysValue(nameToken),
 			addressValue: (address) => this.addressValue(address),
 			findSegment: (name) => this.linker.findSegment(name),
-			findNearestLabel: (address, distance) => this.namelessLabels.findNearest(address, distance),
+			findAnonymousLabel: (distance) => this.namelessLabels.find(distance)?.address ?? null,
 			isMacroDefined: (name) => this.macroHandler.isDefined(name),
 			functionRecursion: () => this.currentOptions["function.recursion"] as number,
 			runFunction: (fn) => this.runFunction(fn),
 			referenceSymbol: (token, symbolName) => this.reportReference(token, () => this.symbolTable.describe(symbolName)),
-			referenceAnonymousLabel: (token, address, distance) =>
-				this.reportReference(token, () =>
-					anonymousLabelInfo(this.namelessLabels.findNearestLabel(address, distance), (value) => this.addressValue(value)),
-				),
+			referenceAnonymousLabel: (token, distance) =>
+				this.reportReference(token, () => anonymousLabelInfo(this.namelessLabels.find(distance), (value) => this.addressValue(value))),
 		});
 
 		this.parser = new Parser(this.emitter);

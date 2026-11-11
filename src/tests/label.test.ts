@@ -45,6 +45,9 @@ describe("Label References", () => {
 			const { evaluator, tokenize, assembler } = setup();
 			assembler.namelessLabels.add(0x1000);
 			assembler.namelessLabels.add(0x1008);
+			// pass 2, past the first label only
+			assembler.namelessLabels.rewind();
+			assembler.namelessLabels.update(0x1000);
 			const tokens = tokenize(":+");
 			const result = evaluator.evaluateAsNumber(tokens, {
 				PC: { value: 0x1002 },
@@ -81,6 +84,9 @@ describe("Label References", () => {
 			assembler.namelessLabels.add(0x1000);
 			assembler.namelessLabels.add(0x1008);
 			assembler.namelessLabels.add(0x1010);
+			// pass 2, past the first label only
+			assembler.namelessLabels.rewind();
+			assembler.namelessLabels.update(0x1000);
 			const tokens = tokenize(":+2");
 			const result = evaluator.evaluateAsNumber(tokens, {
 				PC: { value: 0x1002 },
@@ -115,6 +121,48 @@ describe("Label References", () => {
 
 		it("should give each .repeat iteration its own anonymous labels", () => {
 			expect(assembleBytes(".repeat 2\n bne :+\n nop\n: nop\n.end")).toEqual([0xd0, 0x01, 0xea, 0xea, 0xd0, 0x01, 0xea, 0xea]);
+		});
+
+		const assembleSegments = (source: string) => {
+			const { assembler } = setup();
+			const segments = assembler.assemble(source);
+			return (name: string, length: number) => segments.find((s) => s.name === name)?.data.slice(0, length);
+		};
+
+		it("should find :+ in source order, not in another segment at the same address", () => {
+			// two overlays at $1000: L0's ':+' is its own ':' at $1005, not L8's at $1001
+			const bytes = assembleSegments(`
+				.SEGMENT L0 { start: 0x1000, end: 0x10FF }
+				.SEGMENT L8 { start: 0x1000, end: 0x10FF }
+				.SEGMENT "L0"
+					bpl :+
+					nop
+					nop
+					nop
+				:	rts
+				.SEGMENT "L8"
+					nop
+				:	rts
+			`);
+			expect(bytes("L0", 6)).toEqual([0x10, 0x03, 0xea, 0xea, 0xea, 0x60]);
+		});
+
+		it("should find :- in source order, not in another segment at the same address", () => {
+			// L8's ':' at $1002, defined after, lies between L0's ':' at $1000 and its 'bne :-' at $1003
+			const bytes = assembleSegments(`
+				.SEGMENT L0 { start: 0x1000, end: 0x10FF }
+				.SEGMENT L8 { start: 0x1000, end: 0x10FF }
+				.SEGMENT "L0"
+				:	nop
+					nop
+					dex
+					bne :-
+				.SEGMENT "L8"
+					nop
+					nop
+				:	rts
+			`);
+			expect(bytes("L0", 5)).toEqual([0xea, 0xea, 0xca, 0xd0, 0xfb]);
 		});
 
 		it("should throw when an anonymous label moves between the passes", () => {

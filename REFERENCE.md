@@ -160,7 +160,7 @@ The prefix can be another char: see [`.option local.prefix`](#assembler-settings
 
 ### Anonymous labels
 
-A lone `:` (followed by a space, a comment or the end of the line) defines an anonymous label. `:-` refers to the previous one and `:+` to the next one. Repeat the sign or add a number to go further: `:--`, `:++`, `:-3`. The marker can be another char: see [`.option anon.marker`](#assembler-settings).
+A lone `:` (followed by a space, a comment or the end of the line) defines an anonymous label. `:-` refers to the previous one and `:+` to the next one, in source order, whatever their addresses: two segments at the same address don't see each other's labels. Repeat the sign or add a number to go further: `:--`, `:++`, `:-3`. The marker can be another char: see [`.option anon.marker`](#assembler-settings).
 
 ```as
 :   dex
