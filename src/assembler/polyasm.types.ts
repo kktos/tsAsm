@@ -49,7 +49,7 @@ export interface SegmentDefinition {
 	name: string;
 	start?: number;
 	size?: number;
-	padValue?: number;
+	pad?: number;
 	resizable?: boolean;
 	relocatable?: boolean;
 	/** Short for `relocatable`. */

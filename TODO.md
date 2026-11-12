@@ -271,7 +271,3 @@ A constant of `input.symbols` (4.40) is located at the project file without a li
 ### 5.5 CPUs
 
 Only the 65C02 is documented. The `.cpu` names and the 6809 and RV32I syntax aren't, and README's `input.cpu` lists `65C02` only.
-
-### 5.6 Segment pad value
-
-`padValue` in the project file, `pad` in `.segment`. Document both, or unify.

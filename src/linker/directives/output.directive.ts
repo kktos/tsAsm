@@ -14,7 +14,7 @@ export class OutputDirective implements IDirective {
 
 		let fixedSize: number | undefined;
 		let maxSize: number | undefined;
-		let padValue = 0;
+		let pad = 0;
 		const filename = parser.string().value;
 
 		if (parser.isIdentifier("FIXED")) {
@@ -25,7 +25,7 @@ export class OutputDirective implements IDirective {
 			if (parser.isIdentifier("PAD")) {
 				parser.advance();
 				const exprTokens = parser.getExpressionTokens(directive);
-				padValue = this.runtime.evaluator.evaluateAsNumber(exprTokens, context);
+				pad = this.runtime.evaluator.evaluateAsNumber(exprTokens, context);
 			}
 		} else if (parser.isIdentifier("MAX")) {
 			parser.advance();
@@ -33,6 +33,6 @@ export class OutputDirective implements IDirective {
 			maxSize = this.runtime.evaluator.evaluateAsNumber(exprTokens, context);
 		}
 
-		this.runtime.linker.setOutputFile(filename, fixedSize, padValue, maxSize);
+		this.runtime.linker.setOutputFile(filename, fixedSize, pad, maxSize);
 	}
 }

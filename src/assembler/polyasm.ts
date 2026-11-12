@@ -475,7 +475,7 @@ export class Assembler {
 					throw new Error(`Segment '${seg.name}' is relocatable: it has no 'start', its address is only known when it's loaded.`);
 				this.linker.addSegment(seg.name, {
 					size: seg.size,
-					padValue: seg.padValue,
+					pad: seg.pad,
 					resizable: seg.size === undefined || seg.resizable,
 					relocatable: true,
 					attrs,
@@ -489,7 +489,7 @@ export class Assembler {
 			this.linker.addSegment(seg.name, {
 				start: seg.start,
 				size: seg.size,
-				padValue: seg.padValue,
+				pad: seg.pad,
 				resizable: seg.resizable,
 				attrs,
 				banksize: seg.banksize,
@@ -1303,7 +1303,10 @@ export class Assembler {
 }
 
 /** The keys of a `SegmentDefinition` the assembler reads: any other is an attribute. */
-const SEGMENT_DEFINITION_KEYS = ["name", "start", "size", "padValue", "resizable", "relocatable", "reloc", "banksize"];
+const SEGMENT_DEFINITION_KEYS = ["name", "start", "size", "pad", "resizable", "relocatable", "reloc", "banksize"];
+
+/** Keys renamed, by their old name in lowercase: an old project file is an error, not an attribute. */
+const RENAMED_SEGMENT_KEYS: Record<string, string> = { padvalue: "pad" };
 
 /** A segment definition's attributes: its other keys, in lowercase, each a number or a string. */
 function segmentAttributes(seg: SegmentDefinition): SegmentAttributes {
@@ -1312,7 +1315,7 @@ function segmentAttributes(seg: SegmentDefinition): SegmentAttributes {
 		if (SEGMENT_DEFINITION_KEYS.includes(key)) continue;
 
 		const name = key.toLowerCase();
-		const known = SEGMENT_DEFINITION_KEYS.find((k) => k.toLowerCase() === name);
+		const known = SEGMENT_DEFINITION_KEYS.find((k) => k.toLowerCase() === name) ?? RENAMED_SEGMENT_KEYS[name];
 		if (known) throw new Error(`Segment '${seg.name}': '${key}' is written '${known}'.`);
 		if (name in attrs) throw new Error(`Segment '${seg.name}' gives the attribute '${name}' twice.`);
 		if (typeof value !== "number" && typeof value !== "string") throw new Error(`Segment '${seg.name}': attribute '${name}' must be a number or a string.`);
