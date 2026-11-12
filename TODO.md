@@ -180,7 +180,7 @@ Follow-ups: a function as the value, with 4.8 (`.function apple2(c) = c | $80`, 
 
 ### 4.7 Smaller ones
 
-- `.struct`, what's left after #253 and #PR: arrays of structs (`sprites[2].tile`), nested structs (`pos .res Point` in a struct, an error today, and `player.pos.x`), `.union`. An instance's values in `{ }` over several lines, as `.segment`'s options (`player: .res Sprite {`, then a field per line): the `.res` reads them on its line only. A field's default value in the struct, as 64tass's (`x .byte 10`, an error today, its message pointing to `.res`), which `.res Sprite` would write and `{ }` override. No `.enum`: `.define Color` with `{ BLACK: 0, RED: 5 }` already gives `Color.RED`, only the auto-numbering is missing;
+- `.struct`, what's left after #253 and #255: arrays of structs (`sprites[2].tile`), nested structs (`pos .res Point` in a struct, an error today, and `player.pos.x`), `.union`. An instance's values in `{ }` over several lines, as `.segment`'s options (`player: .res Sprite {`, then a field per line): the `.res` reads them on its line only. A field's default value in the struct, as 64tass's (`x .byte 10`, an error today, its message pointing to `.res`), which `.res Sprite` would write and `{ }` override. No `.enum`: `.define Color` with `{ BLACK: 0, RED: 5 }` already gives `Color.RED`, only the auto-numbering is missing;
 - `.continue`, to go to a loop's next iteration (`.break` ends the loop), as 64tass's;
 - a `\0` escape;
 - `.min`, `.max`, `.abs`, `.sin`, `.cos`, `.chr`, `.ord`: system functions to write user functions with (4.8).
