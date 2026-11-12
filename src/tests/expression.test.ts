@@ -97,6 +97,24 @@ describe("ExpressionEvaluator", () => {
 		});
 	});
 
+	describe("'<' and '>' on any value", () => {
+		// Bits 0-7 and 8-15, whatever the value's width: the bits above are dropped.
+		it.each([
+			["<$12345", 0x45],
+			[">$12345", 0x23],
+			["<$12345678", 0x78],
+			[">$12345678", 0x56],
+			[">$12", 0x00],
+			["<-1", 0xff],
+			[">-1", 0xff],
+			["<-$1234", 0xcc], // two's complement: $FFFFEDCC
+			[">-$1234", 0xed],
+		])("%s = %d", (expression, expected) => {
+			const { evaluator, tokenize } = setup();
+			expect(evaluator.evaluateAsNumber(tokenize(expression as string), { PC: { value: 0 } })).toBe(expected);
+		});
+	});
+
 	describe("'^': bank byte or XOR", () => {
 		// As '<' and '>': unary where an operand starts, binary after one.
 		it.each([

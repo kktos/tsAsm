@@ -561,6 +561,7 @@ _Now `.REPEAT: 'N' must be defined before it is used here (the count is needed t
 
 - **#248** — A macro call's scope (TODO 5.1). CLAUDE.md said a macro has a scope per call, REFERENCE.md didn't. _REFERENCE.md says it: what the body defines, labels, constants and variables, is the call's, so a macro with a label can be called twice and the label isn't seen out of the call; the parameters hide a symbol of the same name; the body reads the symbols around the call, an inner macro the outer one's; an assignment makes a variable of the call, and `.let` assigns in the scope around it. What a body reads before assigning a name is wrong in pass 2: 1.81._
 - **#248** — `_` in hex and decimal numbers (TODO 5.2). Only `0b1010_1010` was shown. _REFERENCE.md says a `_` between digits groups them in any base: `$FF_FF`, `1_000`. Where else it's accepted is 1.82._
+- **#248** — `<` / `>` on a value over 16 bits (TODO 5.3). REFERENCE.md said they give the low and high byte of a 16-bit value, and `^` bits 16–23 of a 24-bit address. _It says they take bits 0–7, 8–15 and 16–23 of any value, the bits above dropped: `>$12345` is `$23`, `^$12345678` is `$34`; a negative value in two's complement, `>-1` is `$FF`._
 
 ## #30–#77: the code review fixes
 

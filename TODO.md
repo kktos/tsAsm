@@ -264,10 +264,6 @@ A constant of `input.symbols` (4.40) is located at the project file without a li
 
 ## 5. Documentation (REFERENCE.md)
 
-### 5.3 `<` / `>` on a value over 16 bits
-
-They give bits 0–7 and 8–15 (`>$12345` is `$23`).
-
 ### 5.4 `.proc` labels
 
 They can't be reached from outside (`f::loop` → `Undefined symbol`): say it, or add a way.

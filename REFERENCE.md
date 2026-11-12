@@ -107,8 +107,8 @@ Data directives only emit numbers and strings: `.db list` is an error. Index the
 | `=` or `==`, `!=`   | Equality. Works on numbers and on strings.                                                                                                                                                            |
 | `<` `<=` `>` `>=`   | Numeric comparison                                                                                                                                                                                    |
 | `!` `&&` `\|\|`     | Logical NOT, AND, OR. The result is `1` (true) or `0` (false).                                                                                                                                        |
-| `<` `>` (unary)     | Low byte and high byte of a 16-bit value                                                                                                                                                              |
-| `^` (unary)         | Bank byte, bits 16–23 of a 24-bit address: `lda #^table`. Unary where an operand starts, XOR after one: `1 ^ ^table` is `1` XOR the bank byte, as `<` and `>` are also comparisons.                   |
+| `<` `>` (unary)     | Low byte and high byte: bits 0–7 and 8–15 of any value, the bits above dropped (`>$12345` is `$23`), a negative value in two's complement (`>-1` is `$FF`).                                           |
+| `^` (unary)         | Bank byte, bits 16–23 of any value: `lda #^table`, `^$12345678` is `$34`. Unary where an operand starts, XOR after one: `1 ^ ^table` is `1` XOR the bank byte, as `<` and `>` are also comparisons.   |
 | `+` on strings      | Concatenation: `"A" + "B"` is `"AB"`                                                                                                                                                                  |
 
 Precedence follows [ca65](https://cc65.github.io/doc/ca65.html#ss5.5), from the tightest binding to the loosest. Operators on the same line are evaluated left to right.
