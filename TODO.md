@@ -176,7 +176,7 @@ Follow-ups: a function as the value, with 4.8 (`.function apple2(c) = c | $80`, 
 
 ### 4.7 Smaller ones
 
-- `.struct` / `.enum`, for field offsets;
+- `.struct`, for field offsets computed from the fields' sizes (`x .byte`, `tile .word`, `name .res 8`), read as `Sprite.tile`, with its size (`Sprite.size`). `.define` can only hold offsets written by hand, renumbered when a field changes. Later: instances (`.tag Sprite { x: 10 }`, ca65's `.tag`, 64tass's `.dstruct`), nested structs, `.union`. No `.enum`: `.define Color` with `{ BLACK: 0, RED: 5 }` already gives `Color.RED`, only the auto-numbering is missing;
 - `.continue`, to go to a loop's next iteration (`.break` ends the loop), as 64tass's;
 - a `\0` escape;
 - `.min`, `.max`, `.abs`, `.sin`, `.cos`, `.chr`, `.ord`: system functions to write user functions with (4.8).
