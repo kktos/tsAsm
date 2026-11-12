@@ -6,6 +6,12 @@ The problem is described as it was before the fix, then the fix in _italics_.
 
 ## Assembler
 
+### #251 — Where a `_` can be in a number (TODO 1.82)
+
+A `_` grouping digits (5.2) was accepted anywhere after a number's prefix: `$_FF`, `0x_FF`, `$FF_`, `$F__F`, `1000_` and `1__000` were read as `$FF` and `1000`, while `0b_1` → `Invalid number '0b_1'.`
+
+_Decided: a `_` goes between two digits only, as in JavaScript. The others → `Invalid number '$FF_': a '_' goes between two digits.`, `0b_1` included. `%_1010` stays the modulo of the symbol `_1010`, `%` being a binary prefix only before a digit. The VS Code grammar colours a number only when its `_` are between digits._
+
 ### #245 — `:+` / `:-` find a label of another segment at the same address (TODO 1.80)
 
 An anonymous label reference looked for the nearest `:` by address, among all the labels of the source. Two segments at the same address, overlays loaded in turn, saw each other's labels: in a game with 9 level overlays at $A000, level 0's `bpl :+` at $A027 went to level 8's `:` at $A03B instead of its own at $A047, and its `bne :-` at $A2C1 to level 8's at $A2C0 instead of its own at $A2B8. Adding level 8 broke level 0, with no error.
