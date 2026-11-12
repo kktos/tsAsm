@@ -1,4 +1,5 @@
 import { DEFAULT_OPTIONS, findOptionName, OPTION_SHORT_NAMES, type OptionName, type Options, optionValueError, optionValuesText } from "../assembler/options";
+import { yamlparse } from "./asm-yaml";
 import colors from "./colors";
 
 interface CliArgs {
@@ -6,6 +7,8 @@ interface CliArgs {
 	link: boolean;
 	/** The `.option` values given on the command line: they override the project file's `input.options`. */
 	options: Options;
+	/** The symbols given on the command line, `-D NAME=VALUE`: they override the project file's `input.symbols`. */
+	symbols: Record<string, unknown>;
 }
 
 const OPTION_NAMES = Object.keys(DEFAULT_OPTIONS) as OptionName[];
@@ -16,6 +19,7 @@ export function parseCliArgs(argv: string[], name: string): CliArgs {
 		projectName: null,
 		link: true,
 		options: {},
+		symbols: {},
 	};
 	const errors: string[] = [];
 
@@ -60,6 +64,22 @@ export function parseCliArgs(argv: string[], name: string): CliArgs {
 				const equalPos = assignment.indexOf("=");
 				if (equalPos < 1) errors.push(`Invalid value for -O: '${assignment}'. Expected <option>=<value>, e.g. -O listing.data=fold.`);
 				else setOption(assignment.slice(0, equalPos), assignment.slice(equalPos + 1));
+				break;
+			}
+			case "-D": {
+				// The value is read as in the project file: `800`, `$320`, `hello`, `[1, 2]`
+				const assignment = args.shift() ?? "";
+				const equalPos = assignment.indexOf("=");
+				const name = assignment.slice(0, equalPos);
+				if (equalPos < 1) errors.push(`Invalid value for -D: '${assignment}'. Expected <symbol>=<value>, e.g. -D DISK_KB=140.`);
+				else if (Object.keys(result.symbols).some((known) => known.toUpperCase() === name.toUpperCase()))
+					errors.push(`The symbol '${name}' is given twice.`);
+				else
+					try {
+						result.symbols[name] = yamlparse(assignment.slice(equalPos + 1));
+					} catch (e) {
+						errors.push(`Invalid value for -D ${name}: ${e instanceof Error ? e.message.split("\n")[0] : e}`);
+					}
 				break;
 			}
 			default:
@@ -107,6 +127,7 @@ Options:
   -l, --link <true|false>  Enable or disable the final linking stage (default: true).
   -O <option>=<value>      Set a .option value, over the project file's input.options. Can be repeated.
   --<option> <value>       The same, also written --<option>=<value>.
+  -D <symbol>=<value>      Define a constant, over the project file's input.symbols. Can be repeated.
   -h, --help               Display this help message.
 
 The .option names, with their short name, and their values:

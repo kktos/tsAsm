@@ -28,8 +28,9 @@ interface PASymbol {
 	isLabel: boolean;
 	namespace: string;
 	source: string;
-	line: number | string;
-	column: number;
+	/** None for a constant given to the assembler, defined in the project file or on the command line: see `definePresetConstant`. */
+	line?: number | string;
+	column?: number;
 	/** The `.include` directives its file was reached through. */
 	includeStack: IncludeStack;
 	/** The pass that last defined it, 0 outside the passes: see `isDefined`. */
@@ -319,6 +320,28 @@ export class PASymbolTable {
 			isLabel,
 			namespace: ns,
 			...this.symbolSite(source),
+			definedInPass: this.pass,
+			assignments: 1,
+		});
+	}
+
+	/**
+	 * A constant given to the assembler, defined before the source in the global namespace: by the project file or on
+	 * the command line, `file`, which has no line for it.
+	 */
+	definePresetConstant(constantName: string, value: SymbolValue, file: string) {
+		const scope = this.symbols.get(INTERNAL_GLOBAL) as Map<string, PASymbol>;
+		const name = constantName.toUpperCase();
+		const existing = scope.get(name);
+		if (existing) throw this.redefinitionError(existing);
+		scope.set(name, {
+			name,
+			value,
+			isConstant: true,
+			isLabel: false,
+			namespace: INTERNAL_GLOBAL,
+			source: file,
+			includeStack: [],
 			definedInPass: this.pass,
 			assignments: 1,
 		});
@@ -669,7 +692,9 @@ export class PASymbolTable {
 					break;
 			}
 			const kind = symbol.isLabel ? "label" : symbol.isConstant ? "const" : "var";
-			nsDict[prefix + symbol.name] = `${kind} ${value} ;${symbol.source}:${symbol.line}:${symbol.column}`;
+			// A constant given to the assembler has a file but no line.
+			const site = symbol.line === undefined ? symbol.source : `${symbol.source}:${symbol.line}:${symbol.column}`;
+			nsDict[prefix + symbol.name] = `${kind} ${value} ;${site}`;
 
 			// A closed `.proc`'s scope is kept aside for the next pass, which fills it again.
 			const procScope = symbol.isLabel ? this.savedSymbols.get(PROC_SCOPE_PREFIX + this.fullPath(symbol)) : undefined;

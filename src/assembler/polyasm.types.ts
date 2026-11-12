@@ -94,6 +94,13 @@ export interface AssemblerOptions {
 	/** `maxSize`: the largest output, with or without a linker script, 1 to $1000000 (16 MB). Default: $100000 (1 MB). */
 	linker?: { maxSize?: number };
 	/**
+	 * Constants the source starts with, in the global namespace, as `.equ` defines them: `{ DISK_KB: 800 }`. A value
+	 * is a number, a string, an array or an object; a boolean is 1 or 0. The source can't define them again.
+	 */
+	symbols?: Record<string, unknown>;
+	/** Where each of `symbols` is defined, for messages and the symbol file: the project file, `command line`. */
+	symbolSource?: (name: string) => string;
+	/**
 	 * Called for each name pass 2 resolves to what it names, as many times as it's assembled (a macro body at each
 	 * call), then, once the assembly succeeded, for each symbol, macro and anonymous label defined (`definition`): what an
 	 * editor needs to go to a definition. Without it, nothing is kept for it.

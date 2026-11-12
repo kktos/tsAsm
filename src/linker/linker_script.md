@@ -205,7 +205,7 @@ The function `.segment("<name>")` returns a segment by name.
 
 ### The source's symbols
 
-The function `.symbol("<name>")` gives the value of a symbol of the assembled source: an entry point, a version number, a size computed in the source. The name is a string, so it can be computed (`.symbol(s.name + "_END")`), in any case. A symbol of a namespace is `.symbol("gfx::TILES")`, of the global one `.symbol("main")` or `.symbol("global::main")`, whatever namespace the source ends in. A variable gives its last value.
+The function `.symbol("<name>")` gives the value of a symbol of the assembled source: an entry point, a version number, a size computed in the source. The name is a string, so it can be computed (`.symbol(s.name + "_END")`), in any case. A symbol of a namespace is `.symbol("gfx::TILES")`, of the global one `.symbol("main")` or `.symbol("global::main")`, whatever namespace the source ends in. A variable gives its last value. A constant of the project file's `input.symbols`, or of `-D` on the command line, is one of the source's: a build setting the script reads, as the disk's size `.symbol("DISK_KB")`.
 
 ```as
 .WRITE WORD .symbol("VERSION")

@@ -251,6 +251,10 @@ The layout of the VS Code extension (4.38) from the command line, for a project 
 - **Linker scripts:** a `.asm` link script is formatted as a source (4.38). The CLI could leave the project's `input.linker.script` out, which a project names.
 - **To check:** a file's line endings and byte order mark kept, a file not written when nothing changes (its date kept), the exit status when a file can't be read.
 
+### 4.41 A project symbol's line
+
+A constant of `input.symbols` (4.40) is located at the project file without a line: `;conan.yaml` in the `.sym` file, `conan.yaml: note: defined here` for a redefinition, and the VS Code extension's go to definition opens the project file at its first line. js-yaml 5 doesn't give a key's position: the CLI would find the key's line in the text, as the extension's `keyLine` does for the schema's errors (`src/vscode/analysis.ts`), for a block mapping and a flow one (`symbols: { DISK_KB: 800 }`). The `.sym` line then gets its `:line:column` back, which the debugger reads.
+
 ## 5. Documentation (REFERENCE.md)
 
 - **Macro scope:** labels and variables in a macro body are local to the call. CLAUDE.md says it, REFERENCE doesn't.

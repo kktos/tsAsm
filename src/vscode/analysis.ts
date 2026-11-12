@@ -5,7 +5,7 @@
  * * Without the vscode module, so it can be tested, and moved into a language server.
  */
 
-import { basename, dirname, join } from "node:path";
+import { basename, dirname, join, relative } from "node:path";
 import { Assembler } from "../assembler/polyasm";
 import type { Emission, FileHandler, ListedLine, SymbolReference } from "../assembler/polyasm.types";
 import { yamlparse } from "../cli/asm-yaml";
@@ -86,7 +86,8 @@ export function analyse(projectPath: string, files: Files): Analysis {
 	let index: SymbolIndex | undefined;
 	let cpu: string | undefined;
 	try {
-		const options = projectOptions(conf, new Logger({ sink: warnings, enabled: false }));
+		// Located as the source's files are, relative to its directory: the project file's symbols are defined in it.
+		const options = projectOptions(conf, new Logger({ sink: warnings, enabled: false }), relative(handler.basedir, projectPath));
 		cpu = options.cpu;
 		options.onSymbolReference = (reference) => references.push(reference);
 		options.onEmit = (emission) => emissions.push(emission);

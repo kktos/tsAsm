@@ -72,6 +72,9 @@ export class Assembler {
 	/** The CPU and segments given to the constructor: each assemble() starts from them. */
 	private readonly initialCpuHandler: CPUHandler;
 	private readonly segmentDefinitions: SegmentDefinition[];
+	/** The constants given to the constructor, and where each is defined: see `AssemblerOptions.symbols`. */
+	private readonly symbolDefinitions: Record<string, unknown>;
+	private readonly symbolSource: (name: string) => string;
 	/** The `.option` values each pass starts with. */
 	private readonly initialOptions: Record<OptionName, OptionValue>;
 	/** The `.option` values in effect. */
@@ -131,6 +134,8 @@ export class Assembler {
 		this.initialCpuHandler = options?.cpu === undefined ? firstCpu : this.findCPUHandler(options.cpu);
 		this.cpuHandler = this.initialCpuHandler;
 		this.segmentDefinitions = options?.segments ?? [];
+		this.symbolDefinitions = options?.symbols ?? {};
+		this.symbolSource = options?.symbolSource ?? (() => "");
 		this.onSymbolReference = options?.onSymbolReference;
 		this.onEmit = options?.onEmit;
 		this.onListing = options?.onListing;
@@ -205,6 +210,7 @@ export class Assembler {
 		this.pass = -1;
 
 		this.addConfiguredSegments();
+		this.addConfiguredSymbols();
 
 		if (options?.log?.pass1Enabled) this.wannaLogPass1 = true;
 		if (options?.log?.pass2Enabled) this.wannaLogPass2 = true;
@@ -492,12 +498,32 @@ export class Assembler {
 		if (this.segmentDefinitions[0]) this.linker.useSegment(this.segmentDefinitions[0].name);
 	}
 
+	/** Defines the constants given to the constructor, each located at its source, the project file or the command line. */
+	private addConfiguredSymbols() {
+		for (const [name, value] of Object.entries(this.symbolDefinitions)) {
+			const file = this.symbolSource(name);
+			const error = (message: string) => new AsmError(message, { file });
+			if (!this.parser.lexer.isValidIdentifier(name))
+				throw error(`'${name}' isn't a symbol name: a letter, then letters, digits or '_'. These symbols are in the global namespace.`);
+			const problem = presetValueProblem(value);
+			if (problem) throw error(`Symbol '${name}' ${problem}: a number, a string, an array or an object is needed.`);
+			try {
+				// The assembler has no boolean: `true` is 1, as in a YAML block.
+				this.symbolTable.definePresetConstant(name, typeof value === "boolean" ? Number(value) : (value as SymbolValue), file);
+			} catch (e) {
+				if (e instanceof AsmError && e.location.file === undefined) e.location.file = file;
+				throw e;
+			}
+		}
+	}
+
 	/** Back to the state after construction: no symbols, macros or emitted code, the initial segments. */
 	private reset() {
 		this.symbolTable.reset();
 		this.macroHandler.macroDefinitions.clear();
 		this.linker.reset();
 		this.addConfiguredSegments();
+		this.addConfiguredSymbols();
 	}
 
 	public assemble(source: string): Segment[] {
@@ -1310,4 +1336,13 @@ function macroInfo(definition: MacroDefinition): SymbolInfo {
 function anonymousLabelInfo(label: NamelessLabel | null, addressValue: (address: number) => SymbolValue): SymbolInfo | undefined {
 	if (!label?.site) return undefined;
 	return { name: ":", kind: "anonymous label", value: addressValue(label.address), site: label.site };
+}
+
+/** What's wrong with a constant's value given to the assembler (`AssemblerOptions.symbols`), as `has no value`; none if it can be one. */
+function presetValueProblem(value: unknown): string | undefined {
+	if (value === null || value === undefined) return "has no value";
+	if (typeof value === "number") return Number.isFinite(value) ? undefined : `is ${value}`;
+	if (typeof value === "string" || typeof value === "boolean" || Array.isArray(value)) return undefined;
+	if (typeof value === "object" && Object.getPrototypeOf(value) === Object.prototype) return undefined;
+	return `is a ${value instanceof Date ? "date" : typeof value}`;
 }
