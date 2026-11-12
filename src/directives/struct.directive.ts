@@ -2,7 +2,7 @@ import type { ExpressionEvaluator } from "../assembler/expression";
 import type { EvaluationContext } from "../assembler/expression.types";
 import type { Assembler } from "../assembler/polyasm";
 import { RelocValue } from "../assembler/reloc-value.class";
-import { StructType } from "../assembler/struct-type.class";
+import { type StructField, StructType } from "../assembler/struct-type.class";
 import type { SymbolValue } from "../assembler/symbol.class";
 import type { ILister } from "../helpers/lister.class";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
@@ -65,7 +65,7 @@ export class StructDirective implements IDirective {
 
 	/** The struct of the body's fields, one per line: its offsets one after the other, from 0. */
 	private build(name: string, body: Token[], context: DirectiveContext): StructType {
-		const fields: [string, number][] = [];
+		const fields: StructField[] = [];
 		const seen = new Set<string>();
 		let offset = 0;
 
@@ -74,7 +74,7 @@ export class StructDirective implements IDirective {
 			if (field.name !== undefined) {
 				if (seen.has(field.name)) throw AsmError.at(`Field '${field.name}' is defined twice in struct ${name}.`, line[0] as Token);
 				seen.add(field.name);
-				fields.push([field.name, offset]);
+				fields.push({ name: field.name, offset, size: field.size, kind: field.kind });
 			}
 			offset += field.size;
 		}
@@ -83,7 +83,7 @@ export class StructDirective implements IDirective {
 	}
 
 	/** A line of the body: an optional name, as written, and a directive giving its size. */
-	private field(line: Token[], context: DirectiveContext): { name?: string; size: number } {
+	private field(line: Token[], context: DirectiveContext): { name?: string; size: number; kind: StructField["kind"] } {
 		const first = line[0] as Token;
 		const hasName = first.type === "IDENTIFIER" || first.type === "LABEL";
 		const name = hasName ? ((first.raw as string | undefined) ?? (first.value as string)) : undefined;
@@ -102,11 +102,11 @@ export class StructDirective implements IDirective {
 			const [extra] = operand;
 			if (extra)
 				throw AsmError.at(`${written} in a struct takes no operand, it is ${fixed} byte${fixed > 1 ? "s" : ""}: .res <count> reserves more.`, extra);
-			return { name, size: fixed };
+			return { name, size: fixed, kind: "number" };
 		}
 
 		if (!RESERVE.has(kind)) throw AsmError.at(`${written} can't be in a struct: ${FIELD_KINDS}.`, directive);
-		return { name, size: this.count(written, directive, operand, context) };
+		return { name, size: this.count(written, directive, operand, context), kind: "bytes" };
 	}
 
 	/** The byte count of a `.res` field: known where the struct is, as its offsets are. */
@@ -142,9 +142,15 @@ function byLine(tokens: Token[]): Token[][] {
 
 /**
  * A value typed by a struct, `$0300 as Sprite` (`=`, `.equ`, `.let`): the value's tokens and the struct, which must be
- * defined before. Without `as`, the tokens as they are and no struct.
+ * defined before. Without `as`, the tokens as they are and no struct. `next`, the token after them, can't be a `{` on their line:
+ * an instance at an address has no bytes for its fields' values.
  */
-export function readStructType(tokens: Token[], evaluator: ExpressionEvaluator, context: EvaluationContext): { valueTokens: Token[]; struct?: StructType } {
+export function readStructType(
+	tokens: Token[],
+	evaluator: ExpressionEvaluator,
+	context: EvaluationContext,
+	next: Token | null,
+): { valueTokens: Token[]; struct?: StructType } {
 	const as = tokens[tokens.length - 2];
 	const typeToken = tokens[tokens.length - 1];
 	if (as?.type !== "IDENTIFIER" || as.value !== "AS" || typeToken?.type !== "IDENTIFIER") return { valueTokens: tokens };
@@ -153,6 +159,10 @@ export function readStructType(tokens: Token[], evaluator: ExpressionEvaluator, 
 	if (valueTokens.length === 0) throw AsmError.at(`Missing the address before '${tokenText(as)}'.`, as);
 	const struct = evaluator.evaluate([typeToken], { ...context, allowForwardRef: false });
 	if (!(struct instanceof StructType)) throw AsmError.at(`'${tokenText(typeToken)}' is not a struct.`, typeToken);
+	if (next?.type === "LBRACE" && next.line === typeToken.line) {
+		const name = StructType.nameOf(struct);
+		throw AsmError.at(`An instance made with 'as' has no bytes: its fields take no values. .res ${name} { … } reserves them, with their values.`, next);
+	}
 	return { valueTokens, struct };
 }
 

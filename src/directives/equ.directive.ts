@@ -37,7 +37,7 @@ export class EquDirective implements IDirective {
 
 	/** The value, and its struct after `as`. */
 	private readValue(tokens: Token[], context: DirectiveContext) {
-		const { valueTokens, struct } = readStructType(tokens, this.assembler.expressionEvaluator, context);
+		const { valueTokens, struct } = readStructType(tokens, this.assembler.expressionEvaluator, context, this.assembler.parser.peek());
 		const value = this.assembler.expressionEvaluator.evaluate(valueTokens, context);
 		if (struct) checkInstance(value, struct, valueTokens[0] as Token);
 		return { value, struct };

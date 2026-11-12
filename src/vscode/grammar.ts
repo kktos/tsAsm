@@ -210,6 +210,7 @@ export function buildGrammar(cpus: readonly CPUHandler[] = Object.values(handler
 					{ include: "#loop-header" },
 					{ include: "#named-block" },
 					{ include: "#segment-header" },
+					{ include: "#reserve" },
 					{ include: "#option" },
 					{ include: "#cpu" },
 					{
@@ -302,6 +303,22 @@ export function buildGrammar(cpus: readonly CPUHandler[] = Object.values(handler
 					{ include: "#comments" },
 					{
 						match: String.raw`(${ID})[ \t]*(:)`,
+						captures: { "1": { name: "variable.other.property.tsasm" }, "2": { name: "punctuation.separator.key-value.tsasm" } },
+					},
+					{ include: "#expression" },
+				],
+			},
+
+			// `player: .res Sprite { x: 10, name: "HERO" }`: its fields' names aren't labels
+			reserve: {
+				begin: String.raw`${HEAD}(\.)((?i:res|ds|fill))${WORD_END}`,
+				beginCaptures: headCaptures(directiveCaptures(2)),
+				end: "$",
+				patterns: [
+					{ include: "#comments" },
+					{
+						// `gfx::Sprite` isn't a field
+						match: String.raw`(?<!:)(${ID})[ \t]*(:)(?!:)`,
 						captures: { "1": { name: "variable.other.property.tsasm" }, "2": { name: "punctuation.separator.key-value.tsasm" } },
 					},
 					{ include: "#expression" },

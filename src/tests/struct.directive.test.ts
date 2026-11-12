@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Assembler } from "../assembler/polyasm";
 import { Cpu6502Handler } from "../cpu/cpu6502.class";
+import { Cpu6809Handler } from "../cpu/cpu6809.class";
 import { Logger } from "../helpers/logger.class";
 import { MemorySink } from "../helpers/memorysink.class";
 import { MockFileHandler } from "./mockfilehandler.class";
@@ -380,6 +381,177 @@ p = $90
 			["    lda #.size(nope)", "Undefined symbol 'NOPE'."],
 		])("%s", (source, message) => {
 			expect(() => bytesOf(source)).toThrow(message);
+		});
+	});
+
+	describe("an instance's values", () => {
+		it("writes each field's value at its offset, the filler, 0, in the others", () => {
+			const source = `
+${SPRITE}
+player: .res Sprite { x: 10, tile: $1234 }
+`;
+			expect(bytesOf(source)).toEqual([10, 0, 0x34, 0x12, 0, 0, 0, 0, 0, 0, 0, 0]);
+		});
+
+		it("takes a filler after the values, for the fields not given and the padding", () => {
+			const source = `
+.struct S
+    a .byte
+      .res 1
+    b .byte
+    c .byte
+.end
+p:  .res S { b: 2 }, $FF
+`;
+			expect(bytesOf(source)).toEqual([0xff, 0xff, 2, 0xff]);
+		});
+
+		it("takes a string or an array of bytes for a .res field, the filler after it", () => {
+			const source = `
+${SPRITE}
+hero: .res Sprite { name: "HERO" }, $EE
+foe:  .res Sprite { name: [1, 2, 3] }
+`;
+			const hero = [0xee, 0xee, 0xee, 0xee, 0x48, 0x45, 0x52, 0x4f, 0xee, 0xee, 0xee, 0xee];
+			const foe = [0, 0, 0, 0, 1, 2, 3, 0, 0, 0, 0, 0];
+			expect(bytesOf(source)).toEqual([...hero, ...foe]);
+		});
+
+		it("takes a one-character string for a number field, its code", () => {
+			expect(bytesOf(`${SPRITE}\np: .res Sprite { y: "A" }`).slice(0, 2)).toEqual([0, 0x41]);
+		});
+
+		it("takes an empty { }: no value", () => {
+			expect(bytesOf(`${SPRITE}\np: .res Sprite {}, $FF`)).toEqual(Array.from({ length: 12 }, () => 0xff));
+		});
+
+		it("takes a label defined after it, and the instance's own", () => {
+			const source = `
+.struct Link
+    self .word
+    next .word
+.end
+head: .res Link { self: head, next: later }
+later:
+`;
+			expect(bytesOf(source)).toEqual([0x00, 0x10, 0x04, 0x10]);
+		});
+
+		it("keeps its label an instance", () => {
+			const source = `
+${SPRITE}
+player: .res Sprite { x: 1 }
+    lda player.tile
+`;
+			expect(bytesOf(source).slice(12)).toEqual([0xad, 0x02, 0x10]);
+		});
+
+		it("is taken by .ds and .fill too", () => {
+			const source = `
+.struct S
+    a .byte
+.end
+p:  .ds S { a: 1 }
+q:  .fill S { a: 2 }
+`;
+			expect(bytesOf(source)).toEqual([1, 2]);
+		});
+
+		it("takes a macro's parameter", () => {
+			const source = `
+.struct S
+    a .byte
+    b .word
+.end
+.macro sprite at
+    .res S { b: at }
+.end
+    sprite $1234
+`;
+			expect(bytesOf(source)).toEqual([0, 0x34, 0x12]);
+		});
+
+		it("writes a number in the CPU's byte order: big-endian on the 6809", () => {
+			const assembler = new Assembler(new Cpu6809Handler(), new MockFileHandler(), {
+				segments: [{ name: "CODE", start: 0x1000, size: 0, resizable: true }],
+				logger: new Logger({ sink: new MemorySink(), enabled: false }),
+			});
+			const source = `
+.struct S
+    w .word
+    l .long
+.end
+p:  .res S { w: $1234, l: $12345678 }
+`;
+			expect(assembler.assemble(source)[0]?.data).toEqual([0x12, 0x34, 0x12, 0x34, 0x56, 0x78]);
+		});
+
+		it("records a fixup for a relocatable address, as .dw does", () => {
+			const assembler = new Assembler(new Cpu6502Handler(), new MockFileHandler(), { logger: new Logger({ sink: new MemorySink(), enabled: false }) });
+			const segments = assembler.assemble(`
+.segment CODE { reloc: true }
+.segment CODE
+.struct S
+    lo  .byte
+    ptr .word
+.end
+    nop
+p:  .res S { ptr: p, lo: <p }
+`);
+			expect(segments[0]).toMatchObject({
+				data: [0xea, 0x01, 0x01, 0x00],
+				relocs: [
+					{ offset: 2, size: 2, shift: 0, segment: "CODE", targetOffset: 1 },
+					{ offset: 1, size: 1, shift: 0, segment: "CODE", targetOffset: 1 },
+				],
+			});
+		});
+	});
+
+	describe("errors in an instance's values", () => {
+		it.each([
+			[`${SPRITE}\np: .res Sprite { X: 5 }`, "'X' is not a field of struct Sprite: its fields are x, y, tile, name."],
+			[`${SPRITE}\np: .res Sprite { x: 5, x: 6 }`, "Field 'x' is given twice."],
+			[`${SPRITE}\np: .res Sprite { x: 256 }`, "Field 'x' of Sprite: 256 doesn't fit in a byte (-128..255)."],
+			[`${SPRITE}\np: .res Sprite { tile: $10000 }`, "Field 'tile' of Sprite: 65536 doesn't fit in 2 bytes (-32768..65535)."],
+			[`${SPRITE}\np: .res Sprite { x: "AB" }`, "AB"],
+			[`${SPRITE}\np: .res Sprite { name: "TOO LONG!" }`, "Field 'name' of Sprite: 9 bytes don't fit in its 8."],
+			[`${SPRITE}\np: .res Sprite { name: 5 }`, "Field 'name' of Sprite: it is 8 bytes, given by a string or an array of bytes: 5 is neither."],
+			[`${SPRITE}\np: .res Sprite { name: [1, 256] }`, "Field 'name' of Sprite: 256 doesn't fit in a byte (-128..255)."],
+			[`${SPRITE}\np: .res Sprite { x 1 }`, "Expected a field's name and a colon, as 'x: 10', at 'x'."],
+			[`${SPRITE}\np: .res Sprite { x: }`, "Missing the value of field 'x'."],
+			[`${SPRITE}\np: .res Sprite { x: 1, }`, "Missing a field's value after ','."],
+			[`${SPRITE}\np: .res Sprite { , x: 1 }`, "Missing a field's value before ','."],
+			[`${SPRITE}\np: .res Sprite, $FF { x: 1 }`, "The fields' values come before the filler: .RES <struct> { … }, <filler>."],
+			[`${SPRITE}\np: .res Sprite { x: 1 } $FF`, "Unexpected '$FF' after the fields' values."],
+			[`${SPRITE}\np: .res Sprite { x: 1 }, $FF { }`, "Unexpected '{' after the filler."],
+			[`${SPRITE}\np: .res Sprite { x: { } }`, "Unexpected '{' in the fields' values."],
+			[`${SPRITE}\np: .res Sprite {\n    x: 1\n}`, "'{' isn't closed on its line: the fields' values are on the line of the struct."],
+			[`p: .res 4 { x: 1 }`, "Values in { } are a struct's fields: .RES 4 reserves no struct."],
+			[
+				`${SPRITE}\np = $300 as Sprite { x: 1 }`,
+				"An instance made with 'as' has no bytes: its fields take no values. .res Sprite { … } reserves them, with their values.",
+			],
+			[`${SPRITE}\np .equ $300 as Sprite { x: 1 }`, "An instance made with 'as' has no bytes: its fields take no values."],
+			[`${SPRITE}\n.let p = $300 as Sprite { x: 1 }`, "An instance made with 'as' has no bytes: its fields take no values."],
+		])("%s", (source, message) => {
+			expect(() => bytesOf(source)).toThrow(message);
+		});
+
+		it("is located at the field", () => {
+			const source = `
+${SPRITE}
+p: .res Sprite { x: 1, X: 2 }
+`;
+			expect(() => bytesOf(source)).toThrow(expect.objectContaining({ location: expect.objectContaining({ line: 10, column: 24 }) }));
+		});
+
+		it("is located at the value", () => {
+			const source = `
+${SPRITE}
+p: .res Sprite { x: 1, y: 256 }
+`;
+			expect(() => bytesOf(source)).toThrow(expect.objectContaining({ location: expect.objectContaining({ line: 10, column: 27 }) }));
 		});
 	});
 });

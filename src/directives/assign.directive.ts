@@ -59,7 +59,7 @@ export class AssignDirective implements IDirective {
 
 	/** The value's tokens, and its struct after `as`: the PC can't have one. */
 	private readValue(label: string, tokens: Token[], context: DirectiveContext) {
-		const typed = readStructType(tokens, this.assembler.expressionEvaluator, context);
+		const typed = readStructType(tokens, this.assembler.expressionEvaluator, context, this.assembler.parser.peek());
 		if (label === "*" && typed.struct)
 			throw AsmError.at("The PC is an address, not an instance of a struct: '* =' takes no 'as'.", tokens[tokens.length - 2] as Token);
 		return typed;

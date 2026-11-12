@@ -126,7 +126,7 @@ export class DirectiveHandler {
 		this.register("EXITMACRO", exitMacroHandler);
 		this.register("EXITM", exitMacroHandler);
 
-		const fillHandler = new FillDirective(runtime);
+		const fillHandler = new FillDirective(runtime, cpuEndianness);
 		this.register("FILL", fillHandler);
 		this.register("DS", fillHandler);
 		this.register("RES", fillHandler);
