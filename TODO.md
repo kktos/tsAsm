@@ -66,6 +66,10 @@ A call's variables are its own, but in pass 2 the body reads the value its varia
 
 `_` groups digits (5.2), and it's accepted anywhere after a number's prefix: `$_FF`, `0x_FF`, `$FF_`, `$F__F`, `1000_` and `1__000` are taken as `$FF` and `1000`, but `0b_1` → `Invalid number '0b_1'.` and `%_1010` → `Binary operator '%' requires two operands.` To decide: only between digits, the rest an error (recommended, as JavaScript does), or anywhere after the prefix. Found with 5.2.
 
+### 1.83 A `.proc`'s variable has its pass-1 value in pass 2
+
+As in a macro call (1.81): the body should read the symbol outside until it assigns the name, but in pass 2 it reads the value its own variable got in pass 1. `count = 1` / `.proc f` / `.db count` / `count = 5` / `.end` → `05`, not `01`. `count` stays 1 after the `.end`, as it should. Found with 5.4.
+
 ## 2. Code review, items left
 
 ### 2.1 CPU back-ends
@@ -263,10 +267,6 @@ The layout of the VS Code extension (4.38) from the command line, for a project 
 A constant of `input.symbols` (4.40) is located at the project file without a line: `;conan.yaml` in the `.sym` file, `conan.yaml: note: defined here` for a redefinition, and the VS Code extension's go to definition opens the project file at its first line. js-yaml 5 doesn't give a key's position: the CLI would find the key's line in the text, as the extension's `keyLine` does for the schema's errors (`src/vscode/analysis.ts`), for a block mapping and a flow one (`symbols: { DISK_KB: 800 }`). The `.sym` line then gets its `:line:column` back, which the debugger reads.
 
 ## 5. Documentation (REFERENCE.md)
-
-### 5.4 `.proc` labels
-
-They can't be reached from outside (`f::loop` → `Undefined symbol`): say it, or add a way.
 
 ### 5.5 CPUs
 

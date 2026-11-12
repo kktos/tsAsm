@@ -606,7 +606,7 @@ Without parentheses, `.function clearScreen` is an error that says to write [`.p
 
 ## Procedures
 
-`.proc <name>` … `.end` defines a routine whose labels stay local to it. Alias: `.procedure`.
+`.proc <name>` … `.end` defines a routine with a scope of its own. Alias: `.procedure`.
 
 ```as
 .proc clearScreen
@@ -620,6 +620,12 @@ loop:               ; not visible outside clearScreen
 
     jsr clearScreen
 ```
+
+The name is a label of the scope the `.proc` is in: `jsr clearScreen` there, `jsr video::clearScreen` from another namespace when the `.proc` is in `.namespace video`.
+
+What the body defines is the procedure's, and can't be reached from outside: its labels, constants, variables, functions and inner `.proc`s. Neither `jmp loop` after the `.end` nor `jmp clearScreen::loop` works: `Undefined symbol 'LOOP'.`, `Undefined symbol 'CLEARSCREEN::LOOP'.` A symbol of the same name outside is another one, and keeps its value.
+
+The body reads the symbols around it. An assignment in the body, `=` or `.let`, makes a variable of the procedure, even when a symbol outside has the same name: with `count = 1`, `count` is still 1 after a body that says `count = 5` or `.let count = 5`.
 
 `.function` and `.fn` were aliases: they now define [functions](#functions), and without parentheses they are an error that says to write `.proc`.
 
