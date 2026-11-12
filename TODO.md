@@ -266,6 +266,12 @@ The layout of the VS Code extension (4.38) from the command line, for a project 
 
 A constant of `input.symbols` (4.40) is located at the project file without a line: `;conan.yaml` in the `.sym` file, `conan.yaml: note: defined here` for a redefinition, and the VS Code extension's go to definition opens the project file at its first line. js-yaml 5 doesn't give a key's position: the CLI would find the key's line in the text, as the extension's `keyLine` does for the schema's errors (`src/vscode/analysis.ts`), for a block mapping and a flow one (`symbols: { DISK_KB: 800 }`). The `.sym` line then gets its `:line:column` back, which the debugger reads.
 
+### 4.42 A struct's instance in the symbol file
+
+The `.sym` file writes an instance of a struct (4.7) as any symbol: `portal = * as PortalState` in conan's level 3 is `PORTAL: var number = $7900`, without its struct, and nothing names `$7901`-`$7903`. The debugger, which reads the `.sym` file, then has no name for those bytes, where separate labels (`portalOff`) gave one per byte: converting a block of variables to a struct loses them. The struct itself is there, an object of its offsets (`PORTALSTATE: const object = {"on":0,"off":1,…}`).
+
+- **To decide, how the line says it:** the instance's struct in place of its type (`PORTAL: var PORTALSTATE = $7900`), after its value, or a line per field, as a `.proc`'s symbols follow its name (`PORTAL.OFF: var number = $7901`), which the debugger reads with no change, but one line per field and instance.
+
 ## 5. Documentation (REFERENCE.md)
 
 ### 5.5 CPUs
