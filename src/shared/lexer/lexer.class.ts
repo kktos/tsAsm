@@ -604,7 +604,7 @@ export class AssemblyLexer {
 			radix = 16;
 			this.advance();
 			if (firstChar === "0") this.advance(); // skip 'x'
-		} else if (firstChar === "%" || (firstChar === "0" && secondChar === "b" && (this.peek(2) === "0" || this.peek(2) === "1"))) {
+		} else if (firstChar === "%" || (firstChar === "0" && secondChar === "b" && (this.peek(2) === "0" || this.peek(2) === "1" || this.peek(2) === "_"))) {
 			radix = 2;
 			this.advance();
 			if (firstChar === "0") this.advance(); // skip 'b'
@@ -615,7 +615,8 @@ export class AssemblyLexer {
 		const start = this.currentStream.pos;
 		while (this.isValidDigitForRadix(this.peek(), radix) || this.peek() === "_") this.advance();
 
-		const numberString = this.currentStream.source.slice(start, this.currentStream.pos).replace(/_/g, "");
+		const digits = this.currentStream.source.slice(start, this.currentStream.pos);
+		const numberString = digits.replace(/_/g, "");
 		if (numberString === "") {
 			// A hex prefix not followed by any digits (e.g. '$', '$x', '0xZZ').
 			const prefix = this.currentStream.source.slice(prefixStart, start);
@@ -627,6 +628,12 @@ export class AssemblyLexer {
 			while (this.isIdentifierPart(this.peek())) this.advance();
 			const word = this.currentStream.source.slice(prefixStart, this.currentStream.pos);
 			throw new AsmError(`Invalid number '${word}'.`, { line, column });
+		}
+
+		// A '_' groups digits: it goes between two of them, never after the prefix or at the end, nor doubled.
+		if (digits.startsWith("_") || digits.endsWith("_") || digits.includes("__")) {
+			const word = this.currentStream.source.slice(prefixStart, this.currentStream.pos);
+			throw new AsmError(`Invalid number '${word}': a '_' goes between two digits.`, { line, column });
 		}
 
 		const numericValue = Number.parseInt(numberString, radix);

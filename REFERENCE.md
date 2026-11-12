@@ -66,7 +66,7 @@ A block comment without its closing `*/` is an error.
 .dw $FF_FF, 1_000 ; in hexadecimal and decimal too
 ```
 
-A `_` between digits groups them, in any base: it's ignored, `$FF_FF` is `$FFFF`. A number starts with a digit, `$`, `%`, `0x` or `0b`: `_100` is a symbol's name.
+A `_` between digits groups them, in any base: it's ignored, `$FF_FF` is `$FFFF`. It goes between two digits only: `$_FF`, `0x_FF`, `$FF_`, `1__000` are errors. A number starts with a digit, `$`, `%`, `0x` or `0b`: `_100` is a symbol's name, and `%_1010` the modulo of `_1010`.
 
 A number can't run into a letter or a digit outside its base: `123abc`, `0b2` or `$12g` is an error.
 
