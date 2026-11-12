@@ -214,10 +214,10 @@ After 4.16: the assembler reads the code in order, so a routine called with othe
 
 ### 4.26 VS Code extension
 
-The extension is done in #213, in `editors/vscode`: syntax colouring of `.asm` files, its grammar built from the CPUs' mnemonics (`CPUHandler.mnemonics`), and links on the paths of `.include`, `.incbin` and `.define … from`. Its errors in the Problems panel are done in #215 (4.27); what else the editor can know of a source is in 4.28–4.36. What's left here:
+The extension is done in #213, in `editors/vscode`: syntax colouring of `.asm` files, its grammar built from the CPUs' mnemonics (`CPUHandler.mnemonics`), and links on the paths of `.include`, `.incbin` and `.define … from`. Its errors in the Problems panel are done in #215 (4.27); what else the editor can know of a source is in 4.28–4.36. The linker scripts' own language, `.linker.asm`, is done in #247. What's left here:
 
-- **Linker scripts:** their own language (`#` comments, `.OUTPUT`, `.WRITE`), not coloured yet. To decide: their file extension.
 - **Publishing** on the Marketplace, which needs a publisher account: today it's installed from a `.vsix`.
+- **A linker script's errors:** the extension assembles a project without linking it, so a script's errors (`Segment 'NOPE' not found.`) are only the CLI's, not in the Problems panel. To decide: link after each assembly, without writing the output.
 
 ### 4.28 VS Code: go to a definition, and hover
 
@@ -233,10 +233,9 @@ The assembler writes every byte of a segment in memory, in a JavaScript array, b
 
 ### 4.38 Formatting in columns
 
-Done in the VS Code extension in #241: labels, mnemonics, operands and comments in fixed columns, a block's body indented; the settings per project in `.editorconfig` in #243. What's left:
+Done in the VS Code extension in #241: labels, mnemonics, operands and comments in fixed columns, a block's body indented; the settings per project in `.editorconfig` in #243. A linker script, `.linker.asm`, is another language since #247 (4.26): it isn't formatted. What's left:
 
 - **`tsasm fmt`:** the same layout from the CLI, see 4.39.
-- **Linker scripts:** a `.asm` link script is formatted as a source; only its lines starting with `#` are kept. Their own language (4.26) would leave them out.
 
 ### 4.39 `tsasm fmt`: formatting from the CLI
 
@@ -246,7 +245,7 @@ The layout of the VS Code extension (4.38) from the command line, for a project 
 - **The same settings:** `.editorconfig` (`indent_style`, `tab_width`, `indent_size`, the `tsasm_*` keys), else the defaults: the columns at 8 / 16 / 40, blocks indented; no VS Code settings. To decide: tabs or spaces, and their width, when `.editorconfig` doesn't say (tabs of 4, or an error?). An error in `.editorconfig` is an error of the command, with its file and line.
 - **`--check`:** lists the files not formatted, and exits with a non-zero status; nothing is written. To decide: whether it also shows the lines that would change (a diff).
 - **To decide, how it's called:** `tsasm fmt <files or folders…>` as a subcommand, while `tsasm <project-file>` assembles (a project file named `fmt` would need `./fmt`), or an option, `tsasm --fmt`.
-- **To decide, what it formats:** the files named, the `.asm` files of the folders named, or a project's sources (`tsasm fmt game.yaml`: the main source and the files it includes, as the assembly reads them).
+- **To decide, what it formats:** the files named, the `.asm` files of the folders named (but the linker scripts, `*.linker.asm`, see 4.26), or a project's sources (`tsasm fmt game.yaml`: the main source and the files it includes, as the assembly reads them).
 - **To decide, labels and statements:** the extension knows the CPU and the macros from the last assembly. The CLI could assemble the project too, or read the files only: the mnemonics of the `input.cpu` of a project file, or of every CPU, the `.cpu` lines, the macros the files define with `.macro`. A word it can't tell keeps its side, as in the extension.
 - **Linker scripts:** a `.asm` link script is formatted as a source (4.38). The CLI could leave the project's `input.linker.script` out, which a project names.
 - **To check:** a file's line endings and byte order mark kept, a file not written when nothing changes (its date kept), the exit status when a file can't be read.

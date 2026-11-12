@@ -1,6 +1,6 @@
 # tsAsm for VS Code
 
-The language of the [tsAsm](https://github.com/kktos/tsAsm) assembler, for `.asm` files:
+The language of the [tsAsm](https://github.com/kktos/tsAsm) assembler, for `.asm` files, and of its [linker scripts](#linker-scripts), `.linker.asm`:
 
 - **Syntax colouring** of the language in [REFERENCE.md](../../REFERENCE.md): instructions, directives, labels (local and anonymous too), macro calls, numbers, strings, comments, system functions and variables. A `.define` block is coloured as YAML or JSON, and a `.hex` block as hex digits.
 - **Colours from the assembly:** a name the assembler resolved is coloured as what it is, a label, a constant, a variable, a function or its parameter, a macro, wherever it's written.
@@ -18,7 +18,17 @@ The language of the [tsAsm](https://github.com/kktos/tsAsm) assembler, for `.asm
 - **Formatting** (Format Document, `editor.formatOnSave`): labels, mnemonics, operands and comments in their columns, a block's body indented, with tabs or spaces and the columns a project's `.editorconfig` sets.
 - **Outline and breadcrumbs** (Cmd+Shift+O): a file's macros, procs, functions and namespaces, with the labels, constants and variables in them, a local label under its global one, and its `.segment` selections; **Cmd+T** finds a symbol in the workspace.
 
-Another extension can be mapped to the language in the settings: `"files.associations": { "*.s": "tsasm" }`.
+Another extension can be mapped to the language in the settings: `"files.associations": { "*.s": "tsasm" }`. A pattern there wins over the extensions: `"*.asm": "tsasm"` would make the linker scripts sources too.
+
+## Linker scripts
+
+A [linker script](../../src/linker/linker_script.md) named `*.linker.asm` is a language of its own, "tsAsm linker script": VS Code gives a file the language of its longest extension, so the other `.asm` files stay sources. A file a script includes is one too only when it's named so.
+
+- **Syntax colouring:** `#`, `//` and `/* */` comments, `;` not being one; directives, `.OUTPUT`'s `FIXED`, `PAD` and `MAX`, `.WRITE`'s type and `AT`, `.SECTION`'s name, `.ENDIAN`'s `BIG` / `LITTLE`, variables, macros and their calls, and the sources' expressions. There are no labels nor instructions: a word starting a statement is a macro call, `OMF_FILE "main"`, or a variable before `=`.
+- **Comments:** Cmd+/ writes `#`.
+- **File links:** the path of an `.include` opens its file.
+
+The rest, formatting, completion, hovers, the outline, is the sources' only. A project is assembled without linking it: a script's errors are only the CLI's.
 
 ## Instructions and macro calls
 
@@ -190,4 +200,4 @@ While working on it, link the folder into VS Code's extensions instead, then run
 ln -s "$PWD/editors/vscode" ~/.vscode/extensions/kktos.tsasm
 ```
 
-The grammar is built by `src/vscode/grammar.ts`, the links found by `src/vscode/links.ts`, a project assembled by `src/vscode/analysis.ts`, its names indexed by `src/vscode/symbol-index.ts`, renamed by `src/vscode/rename.ts`, coloured by `src/vscode/semantic.ts`, their addresses told by `src/vscode/addresses.ts`, their mnemonics described by `src/vscode/instructions.ts`, the code not read found by `src/vscode/unread.ts`, their listing tied to them by `src/vscode/listing.ts` and shown by `src/vscode/listing-view.ts`, and completed by `src/vscode/completion.ts` from the language `src/vscode/language.ts` reads in the assembler, a file's blocks read by `src/vscode/blocks.ts`, its outline built by `src/vscode/outline.ts`, its folds by `src/vscode/folding.ts` and its layout by `src/vscode/format.ts`, all tested in `src/tests/vscode`. `src/vscode/projects.ts` puts the projects' errors in VS Code, and `src/vscode/navigation.ts` gives the definitions, the hovers, the references, the colours, the addresses, the mnemonics' hovers, the completions, the renames, the folds and the outline; `src/vscode/format-provider.ts` formats.
+The grammars, the sources' and the linker scripts', are built by `src/vscode/grammar.ts`, the links found by `src/vscode/links.ts`, a project assembled by `src/vscode/analysis.ts`, its names indexed by `src/vscode/symbol-index.ts`, renamed by `src/vscode/rename.ts`, coloured by `src/vscode/semantic.ts`, their addresses told by `src/vscode/addresses.ts`, their mnemonics described by `src/vscode/instructions.ts`, the code not read found by `src/vscode/unread.ts`, their listing tied to them by `src/vscode/listing.ts` and shown by `src/vscode/listing-view.ts`, and completed by `src/vscode/completion.ts` from the language `src/vscode/language.ts` reads in the assembler, a file's blocks read by `src/vscode/blocks.ts`, its outline built by `src/vscode/outline.ts`, its folds by `src/vscode/folding.ts` and its layout by `src/vscode/format.ts`, all tested in `src/tests/vscode`. `src/vscode/projects.ts` puts the projects' errors in VS Code, and `src/vscode/navigation.ts` gives the definitions, the hovers, the references, the colours, the addresses, the mnemonics' hovers, the completions, the renames, the folds and the outline; `src/vscode/format-provider.ts` formats.

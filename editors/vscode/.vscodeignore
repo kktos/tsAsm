@@ -2,6 +2,8 @@
 **
 !package.json
 !language-configuration.json
+!linker-language-configuration.json
 !README.md
 !dist/extension.js
 !dist/tsasm.tmLanguage.json
+!dist/tsasm-linker.tmLanguage.json

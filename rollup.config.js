@@ -7,17 +7,18 @@ import typescript from "@rollup/plugin-typescript";
 import { defineConfig } from "rollup";
 
 /**
- * The extension's grammar: grammar.ts is bundled, run, and only the JSON it builds is written. The mnemonics come
- * from the CPUs, so the grammar is built from the code rather than kept by hand.
+ * The extension's grammars, the sources' and the linker scripts': grammar.ts is bundled, run, and only the JSON they
+ * build is written. The mnemonics come from the CPUs, so the grammar is built from the code rather than kept by hand.
  */
 function vscodeGrammar() {
 	return {
 		name: "vscode-grammar",
 		async generateBundle(_options, bundle) {
 			const [fileName, chunk] = Object.entries(bundle).find(([, file]) => file.type === "chunk");
-			const { buildGrammar } = await import(`data:text/javascript;base64,${Buffer.from(chunk.code).toString("base64")}`);
+			const { buildGrammar, buildLinkerGrammar } = await import(`data:text/javascript;base64,${Buffer.from(chunk.code).toString("base64")}`);
 			delete bundle[fileName];
 			this.emitFile({ type: "asset", fileName: "tsasm.tmLanguage.json", source: `${JSON.stringify(buildGrammar(), null, "\t")}\n` });
+			this.emitFile({ type: "asset", fileName: "tsasm-linker.tmLanguage.json", source: `${JSON.stringify(buildLinkerGrammar(), null, "\t")}\n` });
 		},
 	};
 }

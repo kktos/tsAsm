@@ -4,9 +4,10 @@ import { beforeAll, describe, expect, it } from "vitest";
 import * as oniguruma from "vscode-oniguruma";
 import { type IGrammar, INITIAL, Registry, parseRawGrammar } from "vscode-textmate";
 import handlers from "../../cpu";
-import { buildGrammar } from "../../vscode/grammar";
+import { buildGrammar, buildLinkerGrammar } from "../../vscode/grammar";
 
 let grammar: IGrammar;
+let linkerGrammar: IGrammar;
 
 beforeAll(async () => {
 	const wasm = readFileSync(createRequire(import.meta.url).resolve("vscode-oniguruma/release/onig.wasm"));
@@ -17,28 +18,34 @@ beforeAll(async () => {
 			createOnigString: (text) => new oniguruma.OnigString(text),
 		}),
 		// VS Code has the YAML and JSON grammars a .define block embeds: empty ones here, as a rule embedding a missing one is dropped.
-		loadGrammar: async (scopeName) =>
-			parseRawGrammar(JSON.stringify(scopeName === "source.tsasm" ? buildGrammar() : { scopeName, patterns: [] }), `${scopeName}.json`),
+		loadGrammar: async (scopeName) => {
+			const built = { "source.tsasm": buildGrammar, "source.tsasm.linker": buildLinkerGrammar }[scopeName];
+			return parseRawGrammar(JSON.stringify(built ? built() : { scopeName, patterns: [] }), `${scopeName}.json`);
+		},
 	});
 	grammar = (await registry.loadGrammar("source.tsasm")) as IGrammar;
+	linkerGrammar = (await registry.loadGrammar("source.tsasm.linker")) as IGrammar;
 });
 
 /** The tokens of the source, each with its innermost scope. */
-function tokenize(source: string) {
+function tokenize(source: string, using = grammar) {
 	let ruleStack = INITIAL;
 	return source.split("\n").flatMap((line) => {
-		const result = grammar.tokenizeLine(line, ruleStack);
+		const result = using.tokenizeLine(line, ruleStack);
 		ruleStack = result.ruleStack;
 		return result.tokens.map((token) => ({ text: line.slice(token.startIndex, token.endIndex), scope: token.scopes.at(-1) }));
 	});
 }
 
 /** The innermost scope of the `nth` token whose text, without its spaces, is `text`. */
-function scopeOf(source: string, text: string, nth = 0) {
-	const tokens = tokenize(source).filter((token) => token.text.trim() === text);
-	if (!tokens[nth]) throw new Error(`No token '${text}' in: ${JSON.stringify(tokenize(source))}`);
+function scopeOf(source: string, text: string, nth = 0, using = grammar) {
+	const tokens = tokenize(source, using).filter((token) => token.text.trim() === text);
+	if (!tokens[nth]) throw new Error(`No token '${text}' in: ${JSON.stringify(tokenize(source, using))}`);
 	return tokens[nth].scope;
 }
+
+/** The same, in a linker script. */
+const scriptScopeOf = (source: string, text: string) => scopeOf(source, text, 0, linkerGrammar);
 
 describe("VS Code grammar", () => {
 	it("takes every mnemonic from the CPUs", () => {
@@ -178,5 +185,76 @@ describe("VS Code grammar", () => {
 		expect(scopeOf(json, "nop")).toBe("keyword.other.mnemonic.tsasm");
 		const braces = ".define cfg { a: { b: 1 } }\n    nop";
 		expect(scopeOf(braces, "nop")).toBe("keyword.other.mnemonic.tsasm");
+	});
+});
+
+describe("VS Code grammar of the linker scripts", () => {
+	it.each([
+		// `#` starts a comment; `;` doesn't
+		["# 64-byte ROM", "# 64-byte ROM", "comment.line.number-sign.tsasm"],
+		[".WRITE BYTE 0 AT 2    # overwrite", "# overwrite", "comment.line.number-sign.tsasm"],
+		["// C style", "// C style", "comment.line.double-slash.tsasm"],
+		[".byte $41 ; x", "; x", "source.tsasm.linker"],
+		['.WRITE STRING "a # b"', "a # b", "string.quoted.double.tsasm"],
+		// no instructions: a word starting a statement calls a macro
+		["    lda #$00", "lda", "entity.name.function.macro.tsasm"],
+		["    lda #$00", "#$00", "comment.line.number-sign.tsasm"],
+		['OMF_FILE "main"', "OMF_FILE", "entity.name.function.macro.tsasm"],
+		["    checkProdosName module.name", "checkProdosName", "entity.name.function.macro.tsasm"],
+		["    OMF_FILE", "OMF_FILE", "entity.name.function.macro.tsasm"],
+		// variables
+		["romSize = 32 * 1024", "romSize", "variable.other.tsasm"],
+		["romSize = 32 * 1024", "*", "keyword.operator.arithmetic.tsasm"],
+		// .OUTPUT
+		['.OUTPUT "game.rom" FIXED 64 PAD $FF', "OUTPUT", "keyword.control.directive.tsasm"],
+		['.OUTPUT "game.rom" FIXED 64 PAD $FF', "game.rom", "string.quoted.double.tsasm"],
+		['.OUTPUT "game.rom" FIXED 64 PAD $FF', "FIXED", "keyword.other.tsasm"],
+		['.OUTPUT "game.rom" FIXED 64 PAD $FF', "PAD", "keyword.other.tsasm"],
+		['.OUTPUT "game.rom" FIXED 64 PAD $FF', "$FF", "constant.numeric.hex.tsasm"],
+		['.output "game.bin" max $8000', "max", "keyword.other.tsasm"],
+		// .WRITE
+		[".WRITE BYTE 0 AT 2", "WRITE", "keyword.control.directive.tsasm"],
+		[".WRITE BYTE 0 AT 2", "BYTE", "storage.type.tsasm"],
+		[".WRITE BYTE 0 AT 2", "AT", "keyword.other.tsasm"],
+		['.WRITE SEGMENT "CODE"', "SEGMENT", "storage.type.tsasm"],
+		['.WRITE MODULE("BOOT")', "MODULE", "storage.type.tsasm"],
+		[".WRITE SEGMENT(s.name)", "name", "variable.other.property.tsasm"],
+		[".write bytes [1, 2, 3]", "bytes", "storage.type.tsasm"],
+		[".WRITE BYTE .lobyte(addr)", "lobyte", "support.function.builtin.tsasm"],
+		// .SECTION, .ENDIAN
+		[".SECTION HEADER AT $7FF0", "HEADER", "entity.name.type.section.tsasm"],
+		[".SECTION HEADER AT $7FF0", "AT", "keyword.other.tsasm"],
+		[".SECTION REST", "REST", "entity.name.type.section.tsasm"],
+		[".ENDIAN BIG", "BIG", "constant.language.endian.tsasm"],
+		// the other directives, system variables and functions
+		['.include "omf.linker.asm"', "include", "keyword.control.directive.tsasm"],
+		[".IF .PC > 64 - 6", "IF", "keyword.control.directive.tsasm"],
+		[".IF .PC > 64 - 6", "PC", "variable.language.tsasm"],
+		['.LOG "adding ", s.name', "LOG", "keyword.control.directive.tsasm"],
+		[".FILL 64 - 6 - .PC, $FF", "FILL", "keyword.control.directive.tsasm"],
+		['entry = .symbol("main")', "symbol", "support.function.builtin.tsasm"],
+		// blocks
+		[".macro OMF_SEGMENT seg, segnum, segEntry", "OMF_SEGMENT", "entity.name.function.macro.tsasm"],
+		[".macro OMF_SEGMENT seg, segnum, segEntry", "segEntry", "variable.parameter.tsasm"],
+		[".FOR seg OF .segments_list AS segnum FROM 1", "seg", "variable.parameter.tsasm"],
+		[".FOR seg OF .segments_list AS segnum FROM 1", "OF", "keyword.other.tsasm"],
+		[".FOR seg OF .segments_list AS segnum FROM 1", "segments_list", "variable.language.tsasm"],
+		[".FOR seg OF .segments_list AS segnum FROM 1", "segnum", "variable.parameter.tsasm"],
+	])("%s: '%s' is %s", (source, text, scope) => {
+		expect(scriptScopeOf(source, text)).toBe(scope);
+	});
+
+	it("reads a script's statements in a block, and a block comment over several lines", () => {
+		const source = `/* the code,
+   then the rest */
+.FOR s OF .UNWRITTEN_SEGMENTS
+	.IF s.name != "VECTORS"
+		.WRITE SEGMENT(s.name)
+	.END
+.END`;
+		expect(scriptScopeOf(source, "then the rest")).toBe("comment.block.tsasm");
+		expect(scriptScopeOf(source, "IF")).toBe("keyword.control.directive.tsasm");
+		expect(scriptScopeOf(source, "SEGMENT")).toBe("storage.type.tsasm");
+		expect(scriptScopeOf(source, "END")).toBe("keyword.control.directive.tsasm");
 	});
 });
