@@ -557,6 +557,11 @@ _Now `.REPEAT: 'N' must be defined before it is used here (the count is needed t
 - **#126** — `.option listing.case "<case>"`: how the listing writes the mnemonics, registers and symbols of the instructions: `upper` (default), `lower` or `source` (as written, suffix included). `Sta Screen,x` is listed `STA SCREEN,X`, `sta screen,x` or as written. Also in the project file's `input.options`. _Each option now has its own allowed values. A local label is listed with its prefix (`:LOOP`, was `LOOP`), an anonymous label reference as written (`:-`, was `-1`). An `ns::name` token's raw is now the whole name as written, not only `name`._
 - **#122** — `.pad(value, width [, fill])` to line up the columns of `.log` tables: on the left for a positive width, on the right for a negative one, as printf's `%-12s` (TODO 4.2). _`fill` is one character, space by default; a longer value is kept whole. `.log` separates its values with tabs, now said in REFERENCE.md._
 
+## Documentation (TODO 5)
+
+- **#248** — A macro call's scope (TODO 5.1). CLAUDE.md said a macro has a scope per call, REFERENCE.md didn't. _REFERENCE.md says it: what the body defines, labels, constants and variables, is the call's, so a macro with a label can be called twice and the label isn't seen out of the call; the parameters hide a symbol of the same name; the body reads the symbols around the call, an inner macro the outer one's; an assignment makes a variable of the call, and `.let` assigns in the scope around it. What a body reads before assigning a name is wrong in pass 2: 1.81._
+- **#248** — `_` in hex and decimal numbers (TODO 5.2). Only `0b1010_1010` was shown. _REFERENCE.md says a `_` between digits groups them in any base: `$FF_FF`, `1_000`. Where else it's accepted is 1.82._
+
 ## #30–#77: the code review fixes
 
 - **Lexer/shared:**
