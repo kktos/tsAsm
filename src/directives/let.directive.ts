@@ -45,7 +45,7 @@ export class LetDirective implements IDirective {
 			if (!this.assembler.parser.lexer.isValidIdentifier(part)) throw new Error(`Invalid identifier for symbol name: ${name}.`);
 		});
 
-		const { valueTokens, struct } = readStructType(lineTokens.slice(index + 1), this.assembler.expressionEvaluator, context);
+		const { valueTokens, struct } = readStructType(lineTokens.slice(index + 1), this.assembler.expressionEvaluator, context, parser.peek());
 		const value = this.assembler.expressionEvaluator.evaluate(valueTokens, context);
 		if (struct) checkInstance(value, struct, valueTokens[0] as Token);
 

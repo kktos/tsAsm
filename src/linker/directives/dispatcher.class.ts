@@ -39,10 +39,10 @@ export class Dispatcher {
 		this.register("ERROR", new LogDirective(runtime, "ERR"));
 		this.register("WARNING", new LogDirective(runtime, "WARN"));
 
-		this.register("FILL", new FillDirective(runtime));
-		this.register("ALIGN", new AlignDirective(runtime));
 		// Data follows the script's .ENDIAN, like .WRITE WORD/LONG.
 		const endianness = () => runtime.linker.endianness;
+		this.register("FILL", new FillDirective(runtime, endianness));
+		this.register("ALIGN", new AlignDirective(runtime));
 		this.register("BYTE", new DataDirective(runtime, 1, endianness)); // Define Byte (1 byte)
 		this.register("WORD", new DataDirective(runtime, 2, endianness)); // Define Word (2 bytes)
 		this.register("LONG", new DataDirective(runtime, 4, endianness)); // Define Long (4 bytes)

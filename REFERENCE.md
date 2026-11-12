@@ -399,6 +399,7 @@ Inside a YAML or JSON block, numbers follow that format's syntax: write `0xAA`, 
 .end
 
 player: .res Sprite     ; 12 bytes here: player is a Sprite
+hero: .res Sprite { x: 10, name: "HERO" }   ; its fields' values, 0 elsewhere
 enemy = $0300 as Sprite ; no bytes: a Sprite at $0300
 
     lda player.tile, x  ; player + 2
@@ -412,11 +413,12 @@ enemy = $0300 as Sprite ; no bytes: a Sprite at $0300
 - **The struct** is a constant of its scope, an object of its fields' offsets: `Sprite.tile` is 2, `.has(Sprite, "tile")` is 1, the symbol file writes it as an object. The names are as written: `Sprite.TILE` is `'TILE' is not a field of struct Sprite: its fields are x, y, tile, name.` `.size(Sprite)` is its size, 12: a field can be named `size`.
 - **An instance** is a symbol whose value is an address and which has a struct: `player.tile` is its address and the field's offset, `.size(player)` its struct's size. Elsewhere it's the address, as any symbol.
     - `.res Sprite` reserves the struct's size, filled as any `.res` (`.res Sprite, $FF`), and makes the label on its line an instance.
-    - `= <address> as Sprite`, `.equ` and `.let` too, make one at an address, without bytes: zero page, I/O. The struct is defined before. The value is an address: `p = "ab" as Sprite` is an error. An assignment without `as` makes it no instance again.
+    - `.res Sprite { x: 10, name: "HERO" }` gives fields their values, by name, on the line of the `.res`; the fields not given and the padding take the filler, after the values: `.res Sprite { x: 10 }, $FF`. `.ds` and `.fill` take them too. A `.byte`, `.word` or `.long` field takes a number that fits in it, in the CPU's byte order, as `.db`, `.dw`, `.dl` write it (`{ x: 256 }` is an error), a relocatable address with its fixup, a one-character string its code. A `.res <count>` field takes a string or an array of bytes, the filler after them: `{ name: [1, 2, 3] }`; more bytes than the field's are an error, and so is a number. A name that isn't a field, a field given twice, a `{` after the filler (`.res Sprite, $FF { … }`) or not closed on its line are errors, and so are values for a count that isn't a struct (`.res 4 { x: 1 }`).
+    - `= <address> as Sprite`, `.equ` and `.let` too, make one at an address, without bytes: zero page, I/O. The struct is defined before. The value is an address: `p = "ab" as Sprite` is an error, and so are values, as there are no bytes for them (`p = $80 as Sprite { x: 1 }`). An assignment without `as` makes it no instance again.
     - A macro parameter whose argument is an instance is one: `clear p`, with `sta spr.x` in the body.
     - In a relocatable segment, `player.tile` is relocatable too: the label's offset plus the field's.
 
-Later: arrays of structs (`sprites[2].tile`), nested structs (`player.pos.x`), initial values, `.union`.
+Later: arrays of structs (`sprites[2].tile`), nested structs (`player.pos.x`), `.union`, values in `{ }` over several lines, a field's default value in the struct (`x .byte 10`).
 
 ## Conditional assembly
 
