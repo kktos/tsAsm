@@ -63,7 +63,10 @@ A block comment without its closing `*/` is an error.
 .db $AA, 0xAA     ; hexadecimal
 .db %10101010     ; binary
 .db 0b1010_1010   ; binary, with _ as a digit separator
+.dw $FF_FF, 1_000 ; in hexadecimal and decimal too
 ```
+
+A `_` between digits groups them, in any base: it's ignored, `$FF_FF` is `$FFFF`. A number starts with a digit, `$`, `%`, `0x` or `0b`: `_100` is a symbol's name.
 
 A number can't run into a letter or a digit outside its base: `123abc`, `0b2` or `$12g` is an error.
 
@@ -461,6 +464,20 @@ A loop only generates lines, as if the block were written out once per iteration
 ```
 
 A macro name can only be defined once: defining it again is an error.
+
+Each call has a scope of its own: what the body defines, labels, constants and variables, is the call's. A macro with a label can be called twice, and the label isn't seen out of the call: `jmp loop` after a `wait` is `Undefined symbol 'LOOP'.`, and a symbol of the same name outside keeps its value. The parameters are local to the call too, and hide a symbol of the same name.
+
+```as
+.macro wait
+loop:   dex             ; each call has its own LOOP
+        bne loop
+.end
+
+    wait
+    wait
+```
+
+The body reads the symbols around the call, a macro calling another one included: the inner macro sees the outer one's. An assignment in the body makes a variable of the call, and a variable outside with the same name doesn't change: with `count = 1`, `count` is still 1 after a call whose body says `count = count + 1`. `.let` assigns out of the call, in the scope around it: that's how a macro changes a variable of its caller, `.let count = count + 1`. (A [loop](#loops) has no scope, and a [function](#functions)'s `.let` stays in its call.)
 
 The parameters can also be written in parentheses, and the body in braces:
 

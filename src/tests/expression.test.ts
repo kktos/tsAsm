@@ -144,6 +144,16 @@ describe("ExpressionEvaluator", () => {
 			expect(result).toBe(30);
 		});
 
+		it("should ignore a _ between digits, in any base", () => {
+			const { evaluator, tokenize } = setup();
+			const value = (expr: string) => evaluator.evaluateAsNumber(tokenize(expr), { PC: { value: 0 } });
+			expect(value("$FF_FF")).toBe(0xffff);
+			expect(value("0xAB_CD")).toBe(0xabcd);
+			expect(value("1_000")).toBe(1000);
+			expect(value("%1010_1010")).toBe(0xaa);
+			expect(value("0b1010_1010")).toBe(0xaa);
+		});
+
 		it("should resolve symbols from the symbol table", () => {
 			const { evaluator, tokenize, symbolTable } = setup();
 			symbolTable.defineVariable("TEN", 10, { filename: "test", line: 1, column: 1 });
