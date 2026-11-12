@@ -118,12 +118,13 @@ const EXPRESSION: Record<string, Rule> = {
 	},
 
 	numbers: {
+		// A '_' groups digits: only between two of them, as the lexer reads it.
 		patterns: [
-			{ name: "constant.numeric.hex.tsasm", match: String.raw`\$[0-9A-Fa-f_]+\b` },
-			{ name: "constant.numeric.hex.tsasm", match: String.raw`\b0[xX][0-9A-Fa-f_]+\b` },
-			{ name: "constant.numeric.binary.tsasm", match: String.raw`\b0[bB][01_]+\b` },
-			{ name: "constant.numeric.binary.tsasm", match: String.raw`(?<![A-Za-z0-9_)\]"'])%[01_]+\b` },
-			{ name: "constant.numeric.decimal.tsasm", match: String.raw`\b[0-9][0-9_]*\b` },
+			{ name: "constant.numeric.hex.tsasm", match: String.raw`\$[0-9A-Fa-f]+(?:_[0-9A-Fa-f]+)*\b` },
+			{ name: "constant.numeric.hex.tsasm", match: String.raw`\b0[xX][0-9A-Fa-f]+(?:_[0-9A-Fa-f]+)*\b` },
+			{ name: "constant.numeric.binary.tsasm", match: String.raw`\b0[bB][01]+(?:_[01]+)*\b` },
+			{ name: "constant.numeric.binary.tsasm", match: String.raw`(?<![A-Za-z0-9_)\]"'])%[01]+(?:_[01]+)*\b` },
+			{ name: "constant.numeric.decimal.tsasm", match: String.raw`\b[0-9]+(?:_[0-9]+)*\b` },
 		],
 	},
 };

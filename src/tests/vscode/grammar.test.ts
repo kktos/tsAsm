@@ -114,6 +114,11 @@ describe("VS Code grammar", () => {
 		[".db 170, $AA, 0xAA, %1010, 0b1010_1010", "0b1010_1010", "constant.numeric.binary.tsasm"],
 		[".db count % 10", "%", "keyword.operator.arithmetic.tsasm"],
 		["    lda #%1010", "%1010", "constant.numeric.binary.tsasm"],
+		[".dw 1_000, $F_F, 0xF_F, %1_0, 0b1_0", "1_000", "constant.numeric.decimal.tsasm"],
+		[".dw 1_000, $F_F, 0xF_F, %1_0, 0b1_0", "$F_F", "constant.numeric.hex.tsasm"],
+		[".dw 1_000, $F_F, 0xF_F, %1_0, 0b1_0", "0xF_F", "constant.numeric.hex.tsasm"],
+		[".dw 1_000, $F_F, 0xF_F, %1_0, 0b1_0", "%1_0", "constant.numeric.binary.tsasm"],
+		[".dw 1_000, $F_F, 0xF_F, %1_0, 0b1_0", "0b1_0", "constant.numeric.binary.tsasm"],
 		// `*`: the PC, or a multiplication
 		["    jmp * + 3", "*", "variable.language.pc.tsasm"],
 		[".db count * 2", "*", "keyword.operator.arithmetic.tsasm"],
@@ -155,6 +160,11 @@ describe("VS Code grammar", () => {
 		[".define table AS JSON", "JSON", "support.type.data-processor.tsasm"],
 	])("%s: '%s' is %s", (source, text, scope) => {
 		expect(scopeOf(source, text)).toBe(scope);
+	});
+
+	it.each(["$_FF", "0x_FF", "0b_1", "$FF_", "$F__F", "1000_", "1__000", "%1010_"])("doesn't colour %s as a number: a '_' goes between two digits", (number) => {
+		const scopes = tokenize(`.dw ${number}`).map((token) => token.scope);
+		expect(scopes.filter((scope) => scope?.startsWith("constant.numeric"))).toEqual([]);
 	});
 
 	it("reads a block comment over several lines", () => {

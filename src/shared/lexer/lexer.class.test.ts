@@ -417,6 +417,27 @@ describe("AssemblyLexer", () => {
 		expect(tokens.map((t) => t.value)).toEqual(["1000", "65535", "31", "5", "10", "10", "%", "3", "16", ",", "X"]);
 	});
 
+	test("should read a _ between digits in any base", () => {
+		const tokens = lexer.tokenize("1_0_0_0 $F_F 0xF_F 0b1_0 %1_0");
+		expect(tokens.map((t) => t.value)).toEqual(["1000", "255", "255", "2", "2"]);
+	});
+
+	test.each([
+		["LDA $_FF", "$_FF", 5],
+		["LDA 0x_FF", "0x_FF", 5],
+		["LDA 0b_1", "0b_1", 5],
+		["LDA $FF_", "$FF_", 5],
+		["LDA $F__F", "$F__F", 5],
+		[".DW 1000_", "1000_", 5],
+		[".DW 1__000", "1__000", 5],
+		[".DB %1010_", "%1010_", 5],
+		[".DB 0b1__0", "0b1__0", 5],
+	])("should throw on a _ not between two digits: %s", (source, word, column) => {
+		expect(() => lexer.tokenize(source)).toThrow(
+			expect.objectContaining({ message: `Invalid number '${word}': a '_' goes between two digits.`, location: { line: 1, column } }),
+		);
+	});
+
 	test("should leave the stream being lexed alone when tokenizing another source", () => {
 		lexer.startStream("NOP\nRTS");
 		expect(lexer.ensureBuffered(0)?.value).toBe("NOP");
