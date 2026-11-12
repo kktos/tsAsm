@@ -63,7 +63,10 @@ A block comment without its closing `*/` is an error.
 .db $AA, 0xAA     ; hexadecimal
 .db %10101010     ; binary
 .db 0b1010_1010   ; binary, with _ as a digit separator
+.dw $FF_FF, 1_000 ; in hexadecimal and decimal too
 ```
+
+A `_` between digits groups them, in any base: it's ignored, `$FF_FF` is `$FFFF`. A number starts with a digit, `$`, `%`, `0x` or `0b`: `_100` is a symbol's name.
 
 A number can't run into a letter or a digit outside its base: `123abc`, `0b2` or `$12g` is an error.
 
@@ -104,8 +107,8 @@ Data directives only emit numbers and strings: `.db list` is an error. Index the
 | `=` or `==`, `!=`   | Equality. Works on numbers and on strings.                                                                                                                                                            |
 | `<` `<=` `>` `>=`   | Numeric comparison                                                                                                                                                                                    |
 | `!` `&&` `\|\|`     | Logical NOT, AND, OR. The result is `1` (true) or `0` (false).                                                                                                                                        |
-| `<` `>` (unary)     | Low byte and high byte of a 16-bit value                                                                                                                                                              |
-| `^` (unary)         | Bank byte, bits 16–23 of a 24-bit address: `lda #^table`. Unary where an operand starts, XOR after one: `1 ^ ^table` is `1` XOR the bank byte, as `<` and `>` are also comparisons.                   |
+| `<` `>` (unary)     | Low byte and high byte: bits 0–7 and 8–15 of any value, the bits above dropped (`>$12345` is `$23`), a negative value in two's complement (`>-1` is `$FF`).                                           |
+| `^` (unary)         | Bank byte, bits 16–23 of any value: `lda #^table`, `^$12345678` is `$34`. Unary where an operand starts, XOR after one: `1 ^ ^table` is `1` XOR the bank byte, as `<` and `>` are also comparisons.   |
 | `+` on strings      | Concatenation: `"A" + "B"` is `"AB"`                                                                                                                                                                  |
 
 Precedence follows [ca65](https://cc65.github.io/doc/ca65.html#ss5.5), from the tightest binding to the loosest. Operators on the same line are evaluated left to right.
@@ -461,6 +464,20 @@ A loop only generates lines, as if the block were written out once per iteration
 ```
 
 A macro name can only be defined once: defining it again is an error.
+
+Each call has a scope of its own: what the body defines, labels, constants and variables, is the call's. A macro with a label can be called twice, and the label isn't seen out of the call: `jmp loop` after a `wait` is `Undefined symbol 'LOOP'.`, and a symbol of the same name outside keeps its value. The parameters are local to the call too, and hide a symbol of the same name.
+
+```as
+.macro wait
+loop:   dex             ; each call has its own LOOP
+        bne loop
+.end
+
+    wait
+    wait
+```
+
+The body reads the symbols around the call, a macro calling another one included: the inner macro sees the outer one's. An assignment in the body makes a variable of the call, and a variable outside with the same name doesn't change: with `count = 1`, `count` is still 1 after a call whose body says `count = count + 1`. `.let` assigns out of the call, in the scope around it: that's how a macro changes a variable of its caller, `.let count = count + 1`. (A [loop](#loops) has no scope, and a [function](#functions)'s `.let` stays in its call.)
 
 The parameters can also be written in parentheses, and the body in braces:
 

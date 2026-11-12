@@ -97,6 +97,24 @@ describe("ExpressionEvaluator", () => {
 		});
 	});
 
+	describe("'<' and '>' on any value", () => {
+		// Bits 0-7 and 8-15, whatever the value's width: the bits above are dropped.
+		it.each([
+			["<$12345", 0x45],
+			[">$12345", 0x23],
+			["<$12345678", 0x78],
+			[">$12345678", 0x56],
+			[">$12", 0x00],
+			["<-1", 0xff],
+			[">-1", 0xff],
+			["<-$1234", 0xcc], // two's complement: $FFFFEDCC
+			[">-$1234", 0xed],
+		])("%s = %d", (expression, expected) => {
+			const { evaluator, tokenize } = setup();
+			expect(evaluator.evaluateAsNumber(tokenize(expression as string), { PC: { value: 0 } })).toBe(expected);
+		});
+	});
+
 	describe("'^': bank byte or XOR", () => {
 		// As '<' and '>': unary where an operand starts, binary after one.
 		it.each([
@@ -142,6 +160,16 @@ describe("ExpressionEvaluator", () => {
 			const tokens = tokenize("$0A + %1010 + 10"); // 10 + 10 + 10
 			const result = evaluator.evaluateAsNumber(tokens, { PC: { value: 0 } });
 			expect(result).toBe(30);
+		});
+
+		it("should ignore a _ between digits, in any base", () => {
+			const { evaluator, tokenize } = setup();
+			const value = (expr: string) => evaluator.evaluateAsNumber(tokenize(expr), { PC: { value: 0 } });
+			expect(value("$FF_FF")).toBe(0xffff);
+			expect(value("0xAB_CD")).toBe(0xabcd);
+			expect(value("1_000")).toBe(1000);
+			expect(value("%1010_1010")).toBe(0xaa);
+			expect(value("0b1010_1010")).toBe(0xaa);
 		});
 
 		it("should resolve symbols from the symbol table", () => {

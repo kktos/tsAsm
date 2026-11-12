@@ -58,6 +58,14 @@ In a relocatable segment, the instruction's PC is its offset there: a branch to 
 
 The padding is computed with a bit mask, `(PC + boundary - 1) & ~(boundary - 1)`, and JavaScript's `&` and `~` work on signed 32-bit numbers: from `$80000000`, a boundary gives a wrong address. On RV32I, `.db 1` / `.align $80000000` / `end:` → `Phase error: label 'END' is $80000000 in pass 1 but $1001 in pass 2.`, and the same at `$7FFFFFF0`, where it would pad 15 bytes; `.align $100000000` the same, `END` being `$00` in pass 1. To fix: the padding computed with arithmetic, not bits. Found with 1.78.
 
+### 1.81 A macro call's variable has its pass-1 value in pass 2
+
+A call's variables are its own, but in pass 2 the body reads the value its variable got in pass 1, not the caller's symbol it should read until it assigns the name: `count = 1` / `.macro m` / `count = count + 1` / `.db count` / `.end` / `m` → `03`, where a function's body gives 2 (REFERENCE.md says so for functions); `.db count` before `count = 5` in the body → `05`, not `01`. `count` stays 1 after the call, as it should. Found with 5.1.
+
+### 1.82 Where a `_` can be in a number
+
+`_` groups digits (5.2), and it's accepted anywhere after a number's prefix: `$_FF`, `0x_FF`, `$FF_`, `$F__F`, `1000_` and `1__000` are taken as `$FF` and `1000`, but `0b_1` → `Invalid number '0b_1'.` and `%_1010` → `Binary operator '%' requires two operands.` To decide: only between digits, the rest an error (recommended, as JavaScript does), or anywhere after the prefix. Found with 5.2.
+
 ## 2. Code review, items left
 
 ### 2.1 CPU back-ends
@@ -256,9 +264,14 @@ A constant of `input.symbols` (4.40) is located at the project file without a li
 
 ## 5. Documentation (REFERENCE.md)
 
-- **Macro scope:** labels and variables in a macro body are local to the call. CLAUDE.md says it, REFERENCE doesn't.
-- **`_` separator:** it works in hex and decimal too (`$FF_FF`, `1_000`); only binary is shown.
-- **`<` / `>` on a value over 16 bits:** they give bits 0–7 and 8–15 (`>$12345` is `$23`).
-- **`.proc` labels** can't be reached from outside (`f::loop` → `Undefined symbol`): say it, or add a way.
-- **CPUs:** only the 65C02 is documented. The `.cpu` names and the 6809 and RV32I syntax aren't, and README's `input.cpu` lists `65C02` only.
-- **Segment pad value:** `padValue` in the project file, `pad` in `.segment`. Document both, or unify.
+### 5.4 `.proc` labels
+
+They can't be reached from outside (`f::loop` → `Undefined symbol`): say it, or add a way.
+
+### 5.5 CPUs
+
+Only the 65C02 is documented. The `.cpu` names and the 6809 and RV32I syntax aren't, and README's `input.cpu` lists `65C02` only.
+
+### 5.6 Segment pad value
+
+`padValue` in the project file, `pad` in `.segment`. Document both, or unify.

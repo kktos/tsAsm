@@ -1125,4 +1125,120 @@ m nope`),
 			);
 		});
 	});
+
+	describe("A scope per call", () => {
+		const bytes = (src: string) => {
+			const { assembler } = setup();
+			assembler.assemble(src);
+			return assembler.link();
+		};
+
+		it("gives each call its own labels", () => {
+			const src = `
+				.macro wait
+				loop: dex
+					bne loop
+				.end
+					wait
+					wait
+			`;
+			expect(bytes(src)).toEqual([0xca, 0xd0, 0xfd, 0xca, 0xd0, 0xfd]);
+		});
+
+		it("doesn't show a label out of the call", () => {
+			const src = `
+				.macro wait
+				loop: dex
+					bne loop
+				.end
+					wait
+					jmp loop
+			`;
+			expect(() => bytes(src)).toThrow("Undefined symbol 'LOOP'.");
+		});
+
+		it("doesn't show a variable or a constant out of the call", () => {
+			const variable = `
+				.macro m
+				v = 5
+				.end
+					m
+					.db v
+			`;
+			const constant = `
+				.macro m
+				k .equ 5
+				.end
+					m
+					.db k
+			`;
+			expect(() => bytes(variable)).toThrow("Undefined symbol 'V'.");
+			expect(() => bytes(constant)).toThrow("Undefined symbol 'K'.");
+		});
+
+		it("hides a symbol outside with a label of the same name", () => {
+			const src = `
+				lbl = $20
+				.macro m
+				lbl: jmp lbl
+				.end
+					m
+					.db lbl
+			`;
+			expect(bytes(src)).toEqual([0x4c, 0x00, 0x10, 0x20]);
+		});
+
+		it("hides a symbol outside with a parameter of the same name", () => {
+			const src = `
+				p = 9
+				.macro m p
+					.db p
+				.end
+					m 2
+					.db p
+			`;
+			expect(bytes(src)).toEqual([0x02, 0x09]);
+		});
+
+		it("doesn't change a variable outside with an assignment", () => {
+			const src = `
+				count = 1
+				.macro m
+				count = count + 1
+				.end
+					m
+					m
+					.db count
+			`;
+			expect(bytes(src)).toEqual([0x01]);
+		});
+
+		it("changes the caller's variable with .let", () => {
+			const src = `
+				count = 1
+				.macro m
+				.let count = count + 1
+				.end
+					m
+					m
+					.db count
+			`;
+			expect(bytes(src)).toEqual([0x03]);
+		});
+
+		it("shows the outer macro's symbols to a macro it calls", () => {
+			const src = `
+				.macro inner
+					.db v
+					jmp lbl
+				.end
+				.macro outer
+				v = 9
+				lbl: inner
+				.end
+					outer
+			`;
+			expect(bytes(src)).toEqual([0x09, 0x4c, 0x00, 0x10]);
+		});
+	});
 });
