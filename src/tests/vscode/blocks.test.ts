@@ -141,6 +141,17 @@ describe("VS Code blocks", () => {
 		).toEqual(["define sprites 2:1-5:5", "define table 6:1-8:5", "define t 9:1-9:17", "define o 11:1-11:21", "hex 12:1-14:5", "hex 15:1-15:11"]);
 	});
 
+	it("reads a struct up to its .end or its closing brace, with its name", () => {
+		expect(
+			blocks(`
+.struct Sprite
+	x .byte
+.end
+.struct Point { x .byte }
+`),
+		).toEqual(["struct Sprite 2:1-4:5", "struct Point 5:1-5:26"]);
+	});
+
 	it("runs a block without its end to the end of the file", () => {
 		expect(blocks(".proc p\n\tnop\n")).toEqual(["proc p 1:1-2:5 open"]);
 	});

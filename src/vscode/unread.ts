@@ -13,7 +13,7 @@ import type { Place } from "./places";
 /**
  * The runs of lines (from 1, `end` included) of `text` the assembly didn't read, `read` the lines its statements start
  * on. A block whose directive was read has its `.end`, `}`, `.elseif` and `.else` read too, and a `.define`'s or a
- * `.hex`'s text; a run goes over the comments and blank lines between its code lines, not around them.
+ * `.hex`'s text, and a `.struct`'s fields, which its directive reads; a run goes over the comments and blank lines between its code lines, not around them.
  */
 export function unreadRuns(text: string, read: ReadonlySet<number>, blocks: Block[]): { start: number; end: number }[] {
 	const lines = blankComments(text).split("\n");
@@ -22,7 +22,7 @@ export function unreadRuns(text: string, read: ReadonlySet<number>, blocks: Bloc
 	for (const block of [...blocks].sort((a, b) => a.start.line - b.start.line || a.start.column - b.start.column)) {
 		if (!known.has(block.start.line)) continue;
 		const end = block.closed ? block.end.line : lines.length;
-		if (block.kind === "define" || block.kind === "hex") for (let line = block.start.line; line <= end; line++) known.add(line);
+		if (block.kind === "struct" || block.kind === "define" || block.kind === "hex") for (let line = block.start.line; line <= end; line++) known.add(line);
 		else if (block.closed) known.add(block.end.line);
 		for (const branch of block.branches ?? []) known.add(branch.line);
 	}

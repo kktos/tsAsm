@@ -72,6 +72,23 @@ describe("VS Code code not read", () => {
 		expect(runs(index, "/p/lib.asm")).toEqual(["2"]);
 	});
 
+	it("keeps a struct's fields, in a .end block or in braces", () => {
+		const main = `
+.struct Sprite
+	x .byte
+	; padding
+	.byte
+	tile .word
+.end
+.struct Point {
+	x .byte
+	y .byte
+}
+	lda #Sprite.tile + Point.y
+`;
+		expect(runs(indexOf(main))).toEqual([]);
+	});
+
 	it("covers a run's whole lines, and follows the edits since the assembly", () => {
 		const index = indexOf();
 		expect(commonRuns([index.unreadIn("/p/main.asm")])[0]).toEqual({ start: 6, end: 9, endColumn: 5 });
