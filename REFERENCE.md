@@ -9,6 +9,7 @@ The complete syntax of the tsAsm assembler. For installation and command-line us
 - [Data](#data)
 - [Strings](#strings)
 - [Structured data: `.define`](#structured-data-define)
+- [Structs](#structs)
 - [Conditional assembly](#conditional-assembly)
 - [Loops](#loops)
 - [Macros](#macros)
@@ -384,6 +385,38 @@ Inside a YAML or JSON block, numbers follow that format's syntax: write `0xAA`, 
 
 .define levels from "levels.yml"
 ```
+
+## Structs
+
+`.struct <name>` … `.end` (or `{ }`) defines a type: its fields' offsets, computed from their sizes, one after the other from 0.
+
+```as
+.struct Sprite
+    x     .byte         ; 0
+    y     .byte         ; 1
+    tile  .word         ; 2
+    name  .res 8        ; 4
+.end
+
+player: .res Sprite     ; 12 bytes here: player is a Sprite
+enemy = $0300 as Sprite ; no bytes: a Sprite at $0300
+
+    lda player.tile, x  ; player + 2
+    lda enemy.name      ; $0304
+    lda player          ; its address, as any label
+    ldy #Sprite.tile    ; 2, the offset: for lda (ptr),y
+    .res .size(Sprite) * 4
+```
+
+- **A field** is a name, as written, then its size: `.byte` / `.db` (1), `.word` / `.dw` (2), `.long` / `.dl` (4), or `.res` / `.ds` / `.fill <count>`. The colon is optional, as a label's. A field without a name is padding: `.res 2` alone moves the next offsets. Anything else is an error: `.word 3` (`.word in a struct takes no operand, it is 2 bytes: .res <count> reserves more.`, as `.word 3` in data writes a 3), a value after the count (`.res 2, $FF`), another directive (`.org can't be in a struct: …`), a line without a size, a name twice. A `.res` count is known where the struct is: a symbol defined after it is an error. A field can't be a struct yet: `.res .size(Point)` reserves its bytes.
+- **The struct** is a constant of its scope, an object of its fields' offsets: `Sprite.tile` is 2, `.has(Sprite, "tile")` is 1, the symbol file writes it as an object. The names are as written: `Sprite.TILE` is `'TILE' is not a field of struct Sprite: its fields are x, y, tile, name.` `.size(Sprite)` is its size, 12: a field can be named `size`.
+- **An instance** is a symbol whose value is an address and which has a struct: `player.tile` is its address and the field's offset, `.size(player)` its struct's size. Elsewhere it's the address, as any symbol.
+    - `.res Sprite` reserves the struct's size, filled as any `.res` (`.res Sprite, $FF`), and makes the label on its line an instance.
+    - `= <address> as Sprite`, `.equ` and `.let` too, make one at an address, without bytes: zero page, I/O. The struct is defined before. The value is an address: `p = "ab" as Sprite` is an error. An assignment without `as` makes it no instance again.
+    - A macro parameter whose argument is an instance is one: `clear p`, with `sta spr.x` in the body.
+    - In a relocatable segment, `player.tile` is relocatable too: the label's offset plus the field's.
+
+Later: arrays of structs (`sprites[2].tile`), nested structs (`player.pos.x`), initial values, `.union`.
 
 ## Conditional assembly
 
@@ -813,6 +846,7 @@ A call is the dot, the name and the `(` glued: `.len("AB")`. `.len ("AB")` and `
 | `.len(<array or string>)`                  | Its length                                                                                                                                                                                                                                                                                                                                                               |
 | `.def(<symbol>)`, `.undef(<symbol>)`       | `1` if the symbol, function or macro is defined (`.def`) or not (`.undef`) at this point of the source, else `0`: one defined further down isn't yet. The name is written as is, `.def(X)`, never evaluated; in a macro, `.def(param)` checks the name passed. Any other expression gives the name: `.def("utils::getKey")`, `.def((name))` for the name held by `name`. |
 | `.label(<name>)`                           | The address of the label with that name                                                                                                                                                                                                                                                                                                                                  |
+| `.size(<struct>)`                          | A [struct](#structs)'s size, or an instance's: `.size(Sprite)`, `.size(player)`                                                                                                                                                                                                                                                                                          |
 | `.has(<object>, <key>)`                    | `1` if the object has the field `key`, a string, as written (`.has(cfg, "kind")`), else `0`                                                                                                                                                                                                                                                                              |
 | `.type(<value>)`                           | `"number"`, `"string"`, `"array"` or `"object"`                                                                                                                                                                                                                                                                                                                          |
 | `.hex(<value> [, <digits>])`               | The value as a hexadecimal string, on as many digits as the bytes holding it (2, 4, 6 or 8: `.hex($10000)` is `"$010000"`), or at least `<digits>`: `.hex(10, 4)` is `"$000A"`. A negative value gives its two's complement: `.hex(-1)` is `"$FF"`                                                                                                                       |

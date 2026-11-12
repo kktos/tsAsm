@@ -4,6 +4,7 @@ import { AsmError, type DefinitionSite, type IncludeStack } from "../utils/error
 import { getHex } from "../utils/hex.util";
 import type { SymbolInfo } from "./polyasm.types";
 import { RelocValue } from "./reloc-value.class";
+import type { StructType } from "./struct-type.class";
 import { UserFunction } from "./user-function.class";
 
 // Internal unique key for the global namespace to avoid collisions with user namespaces
@@ -37,6 +38,8 @@ interface PASymbol {
 	definedInPass: number;
 	/** How many values it was given before pass 2, a value set up before assembling included: see `isAmbiguousForwardReference`. */
 	assignments: number;
+	/** The struct it's an instance of, an address: `player.tile` is its value and the field's offset. See `setStruct`. */
+	struct?: StructType;
 }
 
 /** An error about a symbol already defined, with a note pointing at its definition. */
@@ -445,6 +448,22 @@ export class PASymbolTable {
 		if (!symbol) throw new Error(`Unknown symbol "${ns === INTERNAL_GLOBAL ? "global" : ns}::${name}".`);
 
 		scope.set(name, { ...symbol, value, definedInPass: this.pass, assignments: this.countAssignment(symbol) });
+	}
+
+	/**
+	 * Makes the symbol an instance of `struct`, or of none: `player: .res Sprite`, `enemy = $0300 as Sprite`. Each
+	 * definition says it, so an assignment without `as` makes it of none.
+	 */
+	setStruct(symbolName: string, struct: StructType | undefined) {
+		const symbol = this.lookup(symbolName);
+		if (!symbol) throw new Error(`setStruct: Unknown symbol "${symbolName}".`);
+		if (struct) symbol.struct = struct;
+		else delete symbol.struct;
+	}
+
+	/** The struct the symbol is an instance of, if any: see `setStruct`. */
+	structOf(symbolName: string): StructType | undefined {
+		return this.lookup(symbolName)?.struct;
 	}
 
 	lookupSymbolInScope(symbolName: string) {

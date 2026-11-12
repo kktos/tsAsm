@@ -41,6 +41,7 @@ import { ProcDirective } from "./proc.directive";
 import { ReturnDirective } from "./return.directive";
 import { SegmentDirective } from "./segment.directive";
 import { StringDirective } from "./string.directive";
+import { StructDirective } from "./struct.directive";
 
 export class DirectiveHandler {
 	private readonly directiveMap: Map<string, IDirective>;
@@ -59,6 +60,7 @@ export class DirectiveHandler {
 		this.register("MACRO", new MacroDirective(runtime));
 
 		this.register("NAMESPACE", new NamespaceDirective(assembler));
+		this.register("STRUCT", new StructDirective(assembler, runtime.lister));
 
 		const procDirective = new ProcDirective(assembler, runtime.lister);
 		this.register("PROC", procDirective);

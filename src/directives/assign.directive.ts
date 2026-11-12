@@ -1,8 +1,10 @@
 import type { Assembler } from "../assembler/polyasm";
 import type { ILister } from "../helpers/lister.class";
-import type { ScalarToken } from "../shared/lexer/lexer.class";
+import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
+import { AsmError } from "../utils/error.utils";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 import { forwardOrgError } from "./org.directive";
+import { checkInstance, readStructType } from "./struct.directive";
 
 export class AssignDirective implements IDirective {
 	public isBlockDirective = false;
@@ -30,9 +32,10 @@ export class AssignDirective implements IDirective {
 
 		this.assembler.lastGlobalLabel = null;
 
-		const expressionTokens = this.assembler.parser.getInstructionTokens();
+		const { valueTokens, struct } = this.readValue(label, this.assembler.parser.getInstructionTokens(), context);
 
-		const value = this.assembler.expressionEvaluator.evaluate(expressionTokens, context);
+		const value = this.assembler.expressionEvaluator.evaluate(valueTokens, context);
+		if (struct) checkInstance(value, struct, valueTokens[0] as Token);
 
 		this.lister.symbol(label, value);
 
@@ -51,6 +54,15 @@ export class AssignDirective implements IDirective {
 			line: labelToken.line,
 			column: labelToken.column,
 		});
+		this.assembler.symbolTable.setStruct(label, struct);
+	}
+
+	/** The value's tokens, and its struct after `as`: the PC can't have one. */
+	private readValue(label: string, tokens: Token[], context: DirectiveContext) {
+		const typed = readStructType(tokens, this.assembler.expressionEvaluator, context);
+		if (label === "*" && typed.struct)
+			throw AsmError.at("The PC is an address, not an instance of a struct: '* =' takes no 'as'.", tokens[tokens.length - 2] as Token);
+		return typed;
 	}
 
 	public handlePassTwo(directive: ScalarToken, context: DirectiveContext): void {
@@ -58,9 +70,10 @@ export class AssignDirective implements IDirective {
 		const label = this.assembler.lastGlobalLabel;
 		if (!label) throw new Error("Missing label name.");
 
-		const expressionTokens = this.assembler.parser.getInstructionTokens(directive);
+		const { valueTokens, struct } = this.readValue(label, this.assembler.parser.getInstructionTokens(directive), context);
 
-		const value = this.assembler.expressionEvaluator.evaluate(expressionTokens, context);
+		const value = this.assembler.expressionEvaluator.evaluate(valueTokens, context);
+		if (struct) checkInstance(value, struct, valueTokens[0] as Token);
 
 		// If evaluation produced undefined, treat as an error in Pass 2
 		if (value === undefined) throw new Error(`Unresolved assignment for ${label}.`);
@@ -87,6 +100,7 @@ export class AssignDirective implements IDirective {
 				column: labelToken.column,
 			});
 		else this.assembler.symbolTable.assignVariable(label, value);
+		this.assembler.symbolTable.setStruct(label, struct);
 		this.assembler.reportAssignment(labelToken, label);
 	}
 }

@@ -61,6 +61,11 @@ const EXPRESSION: Record<string, Rule> = {
 			{ include: "#numbers" },
 			{ name: "keyword.operator.spread.tsasm", match: String.raw`\.\.\.` },
 			{
+				// `enemy = $0300 as Sprite`: the struct the value is an instance of, at the end of the line
+				match: String.raw`\b((?i:as))[ \t]+(${ID}(?:::${ID})?)(?=[ \t]*(?:$|;|//|/\*))`,
+				captures: { "1": { name: "keyword.other.tsasm" }, "2": { name: "entity.name.type.struct.tsasm" } },
+			},
+			{
 				// A field, right after its operand: `sprites[0].id`, `label.offset`, `.segment.name`
 				match: String.raw`(?<=[A-Za-z0-9_)\]])(\.)(${ID})`,
 				captures: { "1": { name: "punctuation.accessor.tsasm" }, "2": { name: "variable.other.property.tsasm" } },
@@ -278,10 +283,11 @@ export function buildGrammar(cpus: readonly CPUHandler[] = Object.values(handler
 
 			"loop-header": loopHeader(SOURCE_HEAD, WORD_END, OPERANDS_END),
 
-			// `.proc clearScreen`, `.namespace loader`, `.module GAME`
+			// `.proc clearScreen`, `.namespace loader`, `.module GAME`, `.struct Sprite`
 			"named-block": {
 				patterns: [
 					namedDirective("proc|procedure", "entity.name.function.tsasm"),
+					namedDirective("struct", "entity.name.type.struct.tsasm"),
 					namedDirective("namespace", "entity.name.namespace.tsasm"),
 					namedDirective("module", "entity.name.type.module.tsasm"),
 				],

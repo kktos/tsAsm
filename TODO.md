@@ -66,6 +66,10 @@ A call's variables are its own, but in pass 2 the body reads the value its varia
 
 As in a macro call (1.81): the body should read the symbol outside until it assigns the name, but in pass 2 it reads the value its own variable got in pass 1. `count = 1` / `.proc f` / `.db count` / `count = 5` / `.end` → `05`, not `01`. `count` stays 1 after the `.end`, as it should. Found with 5.4.
 
+### 1.84 `.type()` of an object is "unknown"
+
+REFERENCE.md says `.type()` gives `"number"`, `"string"`, `"array"` or `"object"`, but an object gives `"unknown"`: `.define cfg` / `kind: 1` / `.end` / `.log .type(cfg)` → `unknown`, and a struct too. Found with 4.7.
+
 ## 2. Code review, items left
 
 ### 2.1 CPU back-ends
@@ -176,7 +180,7 @@ Follow-ups: a function as the value, with 4.8 (`.function apple2(c) = c | $80`, 
 
 ### 4.7 Smaller ones
 
-- `.struct`, for field offsets computed from the fields' sizes (`x .byte`, `tile .word`, `name .res 8`), read as `Sprite.tile`, with its size (`Sprite.size`). `.define` can only hold offsets written by hand, renumbered when a field changes. Later: instances (`.tag Sprite { x: 10 }`, ca65's `.tag`, 64tass's `.dstruct`), nested structs, `.union`. No `.enum`: `.define Color` with `{ BLACK: 0, RED: 5 }` already gives `Color.RED`, only the auto-numbering is missing;
+- `.struct`, what's left after #253: arrays of structs (`sprites[2].tile`), nested structs (`pos .res Point` in a struct, an error today, and `player.pos.x`), initial values (`.res Sprite { x: 10 }`, as ca65's `.tag`, 64tass's `.dstruct`), `.union`. No `.enum`: `.define Color` with `{ BLACK: 0, RED: 5 }` already gives `Color.RED`, only the auto-numbering is missing;
 - `.continue`, to go to a loop's next iteration (`.break` ends the loop), as 64tass's;
 - a `\0` escape;
 - `.min`, `.max`, `.abs`, `.sin`, `.cos`, `.chr`, `.ord`: system functions to write user functions with (4.8).

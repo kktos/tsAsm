@@ -24,6 +24,7 @@ import { pushFunction } from "./push.function";
 import { rangeFunction } from "./range.function";
 import { roundFunction } from "./round.function";
 import { segmentFunction } from "./segment.function";
+import { sizeFunction } from "./size.function";
 import { splitFunction } from "./split.function";
 import { strFunction } from "./str.function";
 import { symbolFunction } from "./symbol.function";
@@ -145,6 +146,14 @@ export class FunctionDispatcher {
 			functionArg: 1,
 			parameters: ["array", "function"],
 			description: "A new array, of the function's value for each element.",
+		});
+		this.register("SIZE", {
+			handler: sizeFunction,
+			minArgs: 1,
+			maxArgs: 1,
+			nameArgs: 1,
+			parameters: ["struct"],
+			description: "The size of a struct, or of an instance of one.",
 		});
 		this.register("TYPE", {
 			handler: typeFunction,

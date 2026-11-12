@@ -15,6 +15,7 @@ import { isGlued, nestingDelta, tokenText } from "../utils/token.utils";
 import { type EvaluationContext, type EvaluatorHost, PRECEDENCE } from "./expression.types";
 import { DEFAULT_OPTIONS } from "./options";
 import { type ByteShift, notRelocatable, RelocValue, relocatableArgumentMessage, relocatableByte } from "./reloc-value.class";
+import { StructType } from "./struct-type.class";
 import { UserFunction } from "./user-function.class";
 
 const UNARY_TEST_OPERATORS = new Set([")", "]"]);
@@ -75,7 +76,8 @@ export class ExpressionEvaluator {
 		return value instanceof RelocValue ? value : this.asNumber(value);
 	}
 
-	private asNumber(value: SymbolValue) {
+	/** `value` as a number: a one-char string is its char's code, null (not known yet) stays null, anything else is an error. */
+	public asNumber(value: SymbolValue) {
 		const result = charCode(value);
 
 		if (typeof result === "string") throw new Error(notACharMessage(result));
@@ -510,7 +512,8 @@ export class ExpressionEvaluator {
 	private evaluateRPN(rpnTokens: Token[], context: EvaluationContext): SymbolValue {
 		const stack: (SymbolValue | null)[] = [];
 
-		for (const token of rpnTokens) {
+		for (let index = 0; index < rpnTokens.length; index++) {
+			const token = rpnTokens[index] as Token;
 			switch (token.type) {
 				case "NUMBER": {
 					const num = Number.parseFloat(token.value);
@@ -532,6 +535,14 @@ export class ExpressionEvaluator {
 				case "ANONYMOUS_LABEL_REF": {
 					// resolveValue handles all symbol, macro arg, and special value lookups.
 					const value = this.resolveValue(token, context);
+					// `player.tile`, player an instance of a struct: its address and the field's offset.
+					const next = rpnTokens[index + 1];
+					const struct = next?.type === "PROPERTY_ACCESS" ? this.structOf(token, context) : undefined;
+					if (next && struct) {
+						stack.push(this.fieldAddress(token, value, struct, next));
+						index++;
+						break;
+					}
 					stack.push(value);
 					break;
 				}
@@ -613,6 +624,10 @@ export class ExpressionEvaluator {
 						break;
 					}
 					if (typeof obj !== "object" || obj === null) throw new Error("Invalid property access on a non-object value.");
+					if (obj instanceof StructType) {
+						stack.push(this.fieldOffset(obj, token));
+						break;
+					}
 
 					const property = token.value;
 					if (property && property in obj) {
@@ -978,6 +993,33 @@ export class ExpressionEvaluator {
 		if (this.symbolTable.isAmbiguousForwardReference(name))
 			throw AsmError.at(`Variable '${name}' is used before it's assigned, and it's assigned more than once: its value here is ambiguous.`, position);
 		return this.symbolTable.lookupSymbol(name);
+	}
+
+	/** The struct the symbol `token` names is an instance of, if any: a macro parameter's when its argument is a symbol. */
+	private structOf(token: Token, context: EvaluationContext): StructType | undefined {
+		if (token.type !== "IDENTIFIER" && token.type !== "LABEL") return undefined;
+		const argTokens = context.macroArgs?.get(token.value);
+		if (!argTokens) return this.symbolTable.structOf(token.value);
+		const [arg] = argTokens;
+		return argTokens.length === 1 && arg?.type === "IDENTIFIER" ? this.symbolTable.structOf(arg.value) : undefined;
+	}
+
+	/** The offset of the field `access` reads in `struct`, located at the field. */
+	private fieldOffset(struct: StructType, access: Token): number {
+		try {
+			return StructType.offsetOf(struct, access.value as string);
+		} catch (e) {
+			throw AsmError.at((e as Error).message, access);
+		}
+	}
+
+	/** The address of a field of `instance`, the symbol `token`: its address, not known yet in pass 1 (null), and the field's offset. */
+	private fieldAddress(token: Token, instance: SymbolValue | null, struct: StructType, access: Token): SymbolValue | null {
+		const offset = this.fieldOffset(struct, access);
+		if (instance === null) return null;
+		if (typeof instance === "number") return instance + offset;
+		if (instance instanceof RelocValue && instance.byteShift === undefined) return new RelocValue(instance.segment, instance.offset + offset, undefined);
+		throw AsmError.at(`'${token.raw ?? token.value}' is a ${StructType.nameOf(struct)}, but ${instance} isn't an address.`, token);
 	}
 
 	/** An address in the current segment: relocatable in a relocatable segment. */

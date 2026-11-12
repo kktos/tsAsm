@@ -4,6 +4,7 @@ import type { ILister } from "../helpers/lister.class";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
 import { hasNoMoreThanOne } from "../utils/array.utils";
 import type { DirectiveContext, IDirective } from "./directive.interface";
+import { checkInstance, readStructType } from "./struct.directive";
 
 export class LetDirective implements IDirective {
 	public isBlockDirective = false;
@@ -23,7 +24,11 @@ export class LetDirective implements IDirective {
 	}
 
 	private handleLet(directive: ScalarToken, context: DirectiveContext) {
-		const lineTokens = this.assembler.parser.getExpressionTokens(directive);
+		const parser = this.assembler.parser;
+		const lineTokens = parser.getExpressionTokens(directive);
+		// The expression ends before `as`, an identifier after its value: `.let p = $80 as Sprite`.
+		const as = parser.peek();
+		if (as?.type === "IDENTIFIER" && as.value === "AS" && as.line === directive.line) lineTokens.push(...parser.getInstructionTokens(directive));
 		if (!hasNoMoreThanOne<Token>(lineTokens, (token: Token) => token.type === "OPERATOR" && token.value === "="))
 			throw new Error('.LET expression only allows operator "==" to test equality.');
 
@@ -40,8 +45,9 @@ export class LetDirective implements IDirective {
 			if (!this.assembler.parser.lexer.isValidIdentifier(part)) throw new Error(`Invalid identifier for symbol name: ${name}.`);
 		});
 
-		const expressionTokens = lineTokens.slice(index + 1);
-		const value = this.assembler.expressionEvaluator.evaluate(expressionTokens, context);
+		const { valueTokens, struct } = readStructType(lineTokens.slice(index + 1), this.assembler.expressionEvaluator, context);
+		const value = this.assembler.expressionEvaluator.evaluate(valueTokens, context);
+		if (struct) checkInstance(value, struct, valueTokens[0] as Token);
 
 		this.lister.symbol(name, value);
 
@@ -53,6 +59,7 @@ export class LetDirective implements IDirective {
 		if (this.assembler.pass === 1 || (isLocal && !symbolTable.hasSymbolInScope(name)))
 			symbolTable.defineVariable(name, value, { filename: context.filename, line: nameToken.line, column: nameToken.column }, !isLocal);
 		else symbolTable.updateSymbol(name, value, !isLocal);
+		symbolTable.setStruct(name, struct);
 		// A name built by an expression isn't written: only `.let x = 1` is a reference to `x`.
 		if (nameTokens.length === 1 && nameTokens[0]?.type === "IDENTIFIER") this.assembler.reportAssignment(nameTokens[0], name);
 	}

@@ -445,6 +445,8 @@ export class Linker {
 			option: (name) => DEFAULT_OPTIONS[name],
 			warn: (message, position) => logger.warn(errorLocator.warning(message, position)),
 			currentStatement: () => statementToken,
+			// A link script's labels are its own: none of them is a struct's.
+			lineLabel: () => undefined,
 			definitionSite: (position) => errorLocator.definitionSite(position),
 			includeSites: (position) => errorLocator.includeSites(position),
 		};
