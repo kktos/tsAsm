@@ -2,7 +2,7 @@
  * blocks.ts
  *
  * * The blocks of a source, read from its text as the parser reads them: `.macro`, `.proc`, `.function`, `.if`,
- *   `.repeat`, `.for` up to their `.end` or in `{ }`, `.namespace` up to `.end namespace`, the raw blocks of
+ *   `.repeat`, `.for`, `.struct` up to their `.end` or in `{ }`, `.namespace` up to `.end namespace`, the raw blocks of
  *   `.define` and `.hex`, and the `.segment` selections. Their extents, which the assembly doesn't tell.
  * * From the text alone: it works while a file doesn't assemble, and for a file in no project.
  * * Without the vscode module, so it can be tested.
@@ -10,7 +10,7 @@
 
 import { blankComments } from "./links";
 
-export type BlockKind = "macro" | "proc" | "function" | "namespace" | "if" | "loop" | "define" | "hex" | "segment";
+export type BlockKind = "macro" | "proc" | "function" | "namespace" | "if" | "loop" | "struct" | "define" | "hex" | "segment";
 
 /** A line and a column, from 1. */
 export interface Position {
@@ -20,7 +20,7 @@ export interface Position {
 
 export interface Block {
 	kind: BlockKind;
-	/** Its name, as written: a macro's, a proc's, a function's, a namespace's, a segment's, a `.define`'s. */
+	/** Its name, as written: a macro's, a proc's, a function's, a struct's, a namespace's, a segment's, a `.define`'s. */
 	name?: string;
 	/** Where its name is, `nameEnd` after its last char. */
 	nameStart?: Position;
@@ -89,6 +89,7 @@ const BLOCK_KINDS: Record<string, BlockKind> = {
 	IF: "if",
 	FOR: "loop",
 	REPEAT: "loop",
+	STRUCT: "struct",
 };
 
 /** An open block: how it's closed, `.end` or `}`; a namespace by `.end namespace`, `.namespace global` or the file's end. */
@@ -254,7 +255,7 @@ export function scanBlocks(source: string): Block[] {
 		if (!kind) return false;
 		// `.function f(x) = x * 2` is one line.
 		if (kind === "function" && operands.some((token) => token.text.includes("="))) return false;
-		const named = kind === "macro" || kind === "proc" || kind === "function";
+		const named = kind === "macro" || kind === "proc" || kind === "function" || kind === "struct";
 		open.push({ block: block(kind, named ? operands[0] : undefined), closer: braced ? "brace" : "end" });
 		return braced;
 	}
