@@ -104,7 +104,7 @@ describe("Linker Script: .SECTION and .WRITE … AT", () => {
 			linker.useSegment("CODE");
 			linker.writeBytes(0x1000, [1, 2]);
 			// fixed, 1 byte of 3 written: padded with its pad value
-			linker.addSegment("DATA", { start: 0x2000, size: 3, padValue: 0xee });
+			linker.addSegment("DATA", { start: 0x2000, size: 3, pad: 0xee });
 			linker.useSegment("DATA");
 			linker.writeBytes(0x2000, [9]);
 		});

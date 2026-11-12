@@ -97,7 +97,7 @@ export class SegmentDirective implements IDirective {
 			if (keys.end) throw AsmError.at("A relocatable segment has no 'end': give its 'size', or none for a segment that grows.", keys.end);
 
 			const size = params.size ?? 0;
-			this.runtime.linker.addSegment(name, { size, padValue: pad, resizable: size === 0, relocatable: true, attrs, banksize });
+			this.runtime.linker.addSegment(name, { size, pad, resizable: size === 0, relocatable: true, attrs, banksize });
 
 			this.runtime.lister.directive(
 				directive,
@@ -115,7 +115,7 @@ export class SegmentDirective implements IDirective {
 		const size = end - start + 1;
 		if (size < 0) throw new Error(".SEGMENT 'end' address must be greater than or equal to 'start' address.");
 
-		this.runtime.linker.addSegment(name, { start, size, padValue: pad, resizable: size === 0, attrs, banksize });
+		this.runtime.linker.addSegment(name, { start, size, pad, resizable: size === 0, attrs, banksize });
 
 		this.runtime.lister.directive(
 			directive,

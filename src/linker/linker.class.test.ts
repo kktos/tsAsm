@@ -27,10 +27,10 @@ describe("Linker", () => {
 		});
 
 		it("should add a segment with a pad value", () => {
-			linker.addSegment("DATA", { start: 0x200, size: 0x8, padValue: 0xff });
+			linker.addSegment("DATA", { start: 0x200, size: 0x8, pad: 0xff });
 			expect(linker.segments.length).toBe(1);
 			expect(linker.segments[0]?.name).toBe("DATA");
-			expect(linker.segments[0]?.padValue).toBe(0xff);
+			expect(linker.segments[0]?.pad).toBe(0xff);
 			expect(linker.segments[0]?.data.every((v) => v === 0xff)).toBe(true);
 		});
 
@@ -135,7 +135,7 @@ describe("Linker", () => {
 
 		it("should link a single segment", () => {
 			linker.addModule("MAIN");
-			linker.addSegment("CODE", { start: 0x100, size: 4, padValue: 0 });
+			linker.addSegment("CODE", { start: 0x100, size: 4, pad: 0 });
 			linker.useSegment("CODE");
 			linker.writeBytes(0x100, [1]);
 			linker.writeBytes(0x101, [2]);
@@ -182,9 +182,9 @@ describe("Linker", () => {
 			expect(linker.rawBinaryLink()).toEqual([1, 2, 5, 6, 7, 8]);
 		});
 
-		it("should use padValue for unfilled parts of segments", () => {
+		it("should use pad for unfilled parts of segments", () => {
 			linker.addModule("MAIN");
-			linker.addSegment("DATA", { start: 0x100, size: 5, padValue: 0xff });
+			linker.addSegment("DATA", { start: 0x100, size: 5, pad: 0xff });
 			linker.useSegment("DATA");
 			linker.writeBytes(0x100, [0xda]);
 			linker.writeBytes(0x101, [0xdb]);
@@ -802,7 +802,7 @@ describe("Linker", () => {
 				0,
 				Array.from({ length: BIG }, () => 1),
 			);
-			linker.addSegment("GROWING", { start: 0, resizable: true, padValue: 0xff });
+			linker.addSegment("GROWING", { start: 0, resizable: true, pad: 0xff });
 			linker.useSegment("GROWING");
 			linker.writeBytes(
 				2,
@@ -817,7 +817,7 @@ describe("Linker", () => {
 		});
 
 		it("should .WRITE a segment or a module of them", () => {
-			linker.addSegment("BIG", { start: 0, size: BIG, padValue: 4 });
+			linker.addSegment("BIG", { start: 0, size: BIG, pad: 4 });
 			linker.addModule("M");
 			linker.useSegment("BIG");
 			linker.writeBytes(0, [5]);

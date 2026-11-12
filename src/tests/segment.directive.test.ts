@@ -32,7 +32,7 @@ describe("Segments", () => {
 		expect(vectorsSegment).toBeDefined();
 		expect(vectorsSegment?.start).toBe(0xfffa);
 		expect(vectorsSegment?.size).toBe(6);
-		expect(vectorsSegment?.padValue).toBe(0xea);
+		expect(vectorsSegment?.pad).toBe(0xea);
 
 		// Check the content of the vectors segment
 		// .WORD $8000 should be at the start of VECTORS (0xFFFA)
@@ -86,7 +86,7 @@ describe("Segments", () => {
 		expect(seg).toBeDefined();
 		expect(seg?.start).toBe(0xc000);
 		expect(seg?.size).toBe(16);
-		expect(seg?.padValue).toBe(16);
+		expect(seg?.pad).toBe(16);
 		expect(seg?.data.slice(0, 2)).toEqual([0xca, 0xfe]);
 		expect(seg?.data[2]).toBe(16);
 	});

@@ -221,7 +221,7 @@ A label in a relocatable segment stays a [relocatable value](../../REFERENCE.md#
 
 ### Segments and modules
 
-A segment has the fields `name`, `start` (its address, 0 for a relocatable one), `size`, `data` (its bytes), `padValue`, `resizable`, `relocatable`, `emitted` (once written), `banksize` (only when [the segment gives one](../../REFERENCE.md#segments): test it with `.has(seg, "banksize")`), `attrs` and `relocs`. `resizable`, `relocatable` and `emitted` are 1 or 0: `!seg.relocatable`, `.iif(seg.resizable, …)`.
+A segment has the fields `name`, `start` (its address, 0 for a relocatable one), `size`, `data` (its bytes), `pad`, `resizable`, `relocatable`, `emitted` (once written), `banksize` (only when [the segment gives one](../../REFERENCE.md#segments): test it with `.has(seg, "banksize")`), `attrs` and `relocs`. `resizable`, `relocatable` and `emitted` are 1 or 0: `!seg.relocatable`, `.iif(seg.resizable, …)`.
 
 - `attrs`, its [attributes](../../REFERENCE.md#segments): the keys of its definition the assembler doesn't know, in lowercase. `.segment CODE { reloc: true, kind: $1000 }` gives `code.attrs.kind`; reading one the segment doesn't have is an error (`Property 'kind' does not exist on object.`): test it first with `.has(code.attrs, "kind")`.
 - `relocs`, its [fixups](../../REFERENCE.md#segments), an array of `{ offset, size, shift, segment, targetOffset }`: where the bytes of a relocatable value are in the segment, how many, how many bits its address is shifted right (0, 8 or 16), and the segment and offset of the value. The names are read as written: `r.targetOffset`.

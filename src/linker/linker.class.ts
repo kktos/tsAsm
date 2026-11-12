@@ -45,7 +45,7 @@ export interface Segment {
 	/** Whether this segment may grow when writes go past its declared size. Default: false (fixed). */
 	resizable?: boolean;
 	/** Value used to pad the segment to its declared size when linking. Default: 0. */
-	padValue?: number;
+	pad?: number;
 	/** Whether this segment has no address until it's loaded: its `start` is 0. Default: false. */
 	relocatable?: boolean;
 	/** Whether this segment has been emitted to the final image. */
@@ -59,7 +59,7 @@ export interface Segment {
 }
 
 /** What a segment is defined with: any field left out is 0, false or no attributes. */
-export type SegmentParams = Partial<Pick<Segment, "start" | "size" | "padValue" | "resizable" | "relocatable" | "attrs" | "banksize">>;
+export type SegmentParams = Partial<Pick<Segment, "start" | "size" | "pad" | "resizable" | "relocatable" | "attrs" | "banksize">>;
 
 /** A number in a message: `$10000`; a negative one in decimal. */
 const hex = (value: number) => (value < 0 ? String(value) : `$${value.toString(16).toUpperCase()}`);
@@ -130,8 +130,8 @@ export class Linker {
 		return this.segments.find((s) => s.name === name);
 	}
 
-	/** A segment: from `start`, `size` bytes of `padValue`, growing on writes when `resizable`. */
-	public addSegment(name: string, { start = 0, size = 0, padValue = 0, resizable = false, relocatable = false, attrs = {}, banksize }: SegmentParams = {}) {
+	/** A segment: from `start`, `size` bytes of `pad`, growing on writes when `resizable`. */
+	public addSegment(name: string, { start = 0, size = 0, pad = 0, resizable = false, relocatable = false, attrs = {}, banksize }: SegmentParams = {}) {
 		const seg = this.findSegment(name);
 		if (seg) throw new Error(`Segment already defined : ${name}`);
 		if (banksize !== undefined && banksize !== 0 && !(banksize >= 1 && Number.isInteger(Math.log2(banksize))))
@@ -142,9 +142,9 @@ export class Linker {
 			name,
 			start,
 			size,
-			data: size > 0 ? Array.from({ length: size }, () => padValue) : [],
+			data: size > 0 ? Array.from({ length: size }, () => pad) : [],
 			resizable,
-			padValue,
+			pad,
 			relocatable,
 			emitted: false,
 			relocs: [],
@@ -274,7 +274,7 @@ export class Linker {
 
 		if (offset >= active.data.length) {
 			if (!active.resizable) throw new Error(`Internal error: segment '${active.name}' data shorter than declared size and not resizable.`);
-			padTo(active.data, offset, active.padValue ?? 0);
+			padTo(active.data, offset, active.pad ?? 0);
 		}
 
 		// One byte at a time: a spread of `values` passes each as an argument, past V8's limit for a big write.
@@ -314,7 +314,7 @@ export class Linker {
 
 			logger?.log(`- ${s.name} offset: $${getHex(offset)} addr: $${getHex(s.start)} size: $${getHex(s.size)} len: $${getHex(s.data.length)}`);
 
-			const pad = s.padValue ?? 0;
+			const pad = s.pad ?? 0;
 			for (let i = 0; i < s.size; i++) {
 				if (i < s.data.length) out[offset + i] = s.data[i] ?? pad;
 				else out[offset + i] = pad;
@@ -332,13 +332,13 @@ export class Linker {
 		return this.isLittleEndian ? "little" : "big";
 	}
 
-	public setOutputFile(filename: string, fixedSize?: number, padValue?: number, maxSize?: number) {
+	public setOutputFile(filename: string, fixedSize?: number, pad?: number, maxSize?: number) {
 		const [what, size] = fixedSize !== undefined ? ["FIXED", fixedSize] : ["MAX", maxSize];
 		if (size !== undefined && size > this.maxSize) throw new Error(`.OUTPUT ${what} ${hex(size)} is more than the linker's maxSize, ${hex(this.maxSize)}.`);
 		this.finalSegment.name = filename;
 		if (fixedSize !== undefined) {
 			this.finalSegment.size = fixedSize;
-			this.finalSegment.padValue = padValue;
+			this.finalSegment.pad = pad;
 			this.finalSegment.resizable = false;
 		}
 		if (maxSize !== undefined) this.finalSegment.size = maxSize;
@@ -532,7 +532,7 @@ export class Linker {
 			statementToken = undefined;
 
 			const output = this.finalSegment.data;
-			const pad = this.finalSegment.padValue ?? 0;
+			const pad = this.finalSegment.pad ?? 0;
 			// Up to its FIXED size, then up to each section past its end.
 			if (!this.finalSegment.resizable) padTo(output, this.finalSegment.size, pad);
 			for (const section of this.linkerSections) {
@@ -602,7 +602,7 @@ export class Linker {
 /** A segment's bytes: a fixed segment is padded to its size. */
 function segmentBytes(segment: Segment): number[] {
 	const bytes = [...segment.data];
-	if (!segment.resizable) padTo(bytes, segment.size, segment.padValue ?? 0);
+	if (!segment.resizable) padTo(bytes, segment.size, segment.pad ?? 0);
 	return bytes;
 }
 
