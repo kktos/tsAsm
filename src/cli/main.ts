@@ -63,7 +63,7 @@ const logger = new Logger({
 	cached: false,
 });
 
-const options = projectOptions(conf, logger);
+const options = projectOptions(conf, logger, confFilename, cliArgs.symbols);
 options.log = {
 	pass1Enabled: listing?.pass1 === true,
 	pass2Enabled: listing?.pass2 === true,

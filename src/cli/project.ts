@@ -20,8 +20,11 @@ export function projectCpus() {
 	return Object.values(handlers).map((CpuHandlerClass) => new CpuHandlerClass());
 }
 
-/** The assembler's options from the project file's `input`. */
-export function projectOptions(conf: ProjectConf, logger: Logger): AssemblerOptions {
+/**
+ * The assembler's options from the project file's `input`: `projectFile` is how messages name it, where its symbols
+ * are defined. `cliSymbols`, the command line's `-D`, override its symbols, whatever their case.
+ */
+export function projectOptions(conf: ProjectConf, logger: Logger, projectFile: string, cliSymbols: Record<string, unknown> = {}): AssemblerOptions {
 	const options: AssemblerOptions = {
 		logger,
 		cpu: conf.input.cpu || "6502",
@@ -37,5 +40,11 @@ export function projectOptions(conf: ProjectConf, logger: Logger): AssemblerOpti
 	if (conf.input.segments) options.segments = conf.input.segments;
 	if (conf.input.options) options.options = { ...conf.input.options };
 	if (conf.input.linker) options.linker = conf.input.linker;
+	if (conf.input.symbols || Object.keys(cliSymbols).length > 0) {
+		const overridden = new Set(Object.keys(cliSymbols).map((name) => name.toUpperCase()));
+		const confSymbols = Object.entries(conf.input.symbols ?? {}).filter(([name]) => !overridden.has(name.toUpperCase()));
+		options.symbols = { ...Object.fromEntries(confSymbols), ...cliSymbols };
+		options.symbolSource = (name) => (Object.hasOwn(cliSymbols, name) ? "command line" : projectFile);
+	}
 	return options;
 }

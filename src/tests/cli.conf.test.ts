@@ -198,6 +198,23 @@ output:
 		expect(tooBig).toEqual([{ path: "input.linker.maxSize", message: "Must be a whole number from 1 to $1000000 (16 MB)" }]);
 	});
 
+	it("takes the symbols the source starts with, any value: the assembler checks them", () => {
+		const { conf, errors } = readConfFrom(`
+input:
+  source: main.asm
+  symbols:
+    DISK_KB: 800
+    START: $0800
+    NAME: conan
+    LIST: [1, 2]
+`);
+		expect(errors).toBeUndefined();
+		expect(conf.input.symbols).toEqual({ DISK_KB: 800, START: 0x800, NAME: "conan", LIST: [1, 2] });
+
+		const { errors: notAMapping } = readConfFrom(`${confWithCpu("6502")}  symbols: [DISK_KB]\n`);
+		expect(notAMapping).toEqual([{ path: "input.symbols", message: "Expected object" }]);
+	});
+
 	it("reports a cpu of the wrong type instead of crashing", () => {
 		const { errors } = readConfFrom(confWithCpu("true"));
 		expect(errors).toEqual([{ path: "input.cpu", message: "Expected string, got boolean" }]);

@@ -90,6 +90,41 @@ describe("CLI args: .option values", () => {
 	});
 });
 
+describe("CLI args: symbols", () => {
+	it("has no symbol by default", () => {
+		expect(parse("proj.yaml").symbols).toEqual({});
+	});
+
+	it("takes -D <symbol>=<value>, the value read as in the project file", () => {
+		expect(parse("proj.yaml", "-D", "DISK_KB=140", "-D", "START=$0800", "-D", "NAME=conan", "-D", "LIST=[1, 2]", "-D", "ON=true").symbols).toEqual({
+			DISK_KB: 140,
+			START: 0x800,
+			NAME: "conan",
+			LIST: [1, 2],
+			ON: true,
+		});
+	});
+
+	it("keeps an empty value: the assembler says it has none", () => {
+		expect(parse("proj.yaml", "-D", "DISK_KB=").symbols).toEqual({ DISK_KB: undefined });
+	});
+
+	it("stops a -D without a name and a value", () => {
+		expect(parseErrors("proj.yaml", "-D", "DISK_KB")).toEqual(["ERROR: Invalid value for -D: 'DISK_KB'. Expected <symbol>=<value>, e.g. -D DISK_KB=140."]);
+		expect(parseErrors("proj.yaml", "-D", "=140")).toEqual(["ERROR: Invalid value for -D: '=140'. Expected <symbol>=<value>, e.g. -D DISK_KB=140."]);
+	});
+
+	it("stops a symbol given twice, in any case", () => {
+		expect(parseErrors("proj.yaml", "-D", "DISK_KB=140", "-D", "disk_kb=800")).toEqual(["ERROR: The symbol 'disk_kb' is given twice."]);
+	});
+
+	it("stops a value that isn't YAML", () => {
+		expect(parseErrors("proj.yaml", "-D", "LIST=[1")).toEqual([
+			"ERROR: Invalid value for -D LIST: unexpected end of the stream within a flow collection (1:3)",
+		]);
+	});
+});
+
 describe("Option short names", () => {
 	const names = Object.keys(DEFAULT_OPTIONS) as OptionName[];
 

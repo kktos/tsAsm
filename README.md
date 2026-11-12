@@ -30,7 +30,7 @@ This links the command into npm's global bin directory, which is normally in you
 ## Command line
 
 ```shell
-node dist/tsasm <project-file> [--link true|false] [-O <option>=<value>]…
+node dist/tsasm <project-file> [--link true|false] [-O <option>=<value>]… [-D <symbol>=<value>]…
 ```
 
 | Option                       | Description                                                                             |
@@ -39,9 +39,12 @@ node dist/tsasm <project-file> [--link true|false] [-O <option>=<value>]…
 | `-l`, `--link <true\|false>` | Run the final linking stage and write the output file (default: `true`).                |
 | `-O <option>=<value>`        | Set a [`.option`](REFERENCE.md#assembler-settings) value for this run. Can be repeated. |
 | `--<option> <value>`         | The same, also written `--<option>=<value>`.                                            |
+| `-D <symbol>=<value>`        | Define a constant for this run, over the project file's `input.symbols`. Repeatable.    |
 | `-h`, `--help`               | Show the help, with the options, their short names and values.                          |
 
 A `.option` value given on the command line overrides the project file's `input.options`, for one run: `tsasm proj.yaml -O listing.data=expand`, `tsasm proj.yaml --listing.data expand`. A `.option` in the source still applies after it. Each option has a short name: `-O ld=expand`, `--ld expand`.
+
+A symbol given with `-D` replaces the project file's, whatever its case, for one run: `tsasm conan.yaml -D DISK_KB=140`. Its value is read as in the project file, as YAML: `140`, `'$8C'` (quoted for the shell), `conan` (a string), `[1, 2]`. Messages and the symbol file say it's defined on the `command line`.
 
 | Option               | Short name |
 | -------------------- | ---------- |
@@ -110,6 +113,7 @@ This writes `hello.bin` (the machine code), `hello.asm.lst` (the listing) and `h
 | `input.cpu`            | The CPU the source starts with, `6502` by default: `65C02`. `.cpu` can switch to any CPU the CLI has: `6502`, `65C02`, `65816` (or `65C816`), `6809`, `RV32I`.                                                                                                                                                                                                                                                                            |
 | `input.segments`       | List of segments: `name`, `start`, `size`, and optionally `padValue`, `resizable` and `banksize` (see [segments](REFERENCE.md#segments)). A relocatable one has `relocatable: true` (or `reloc: true`), no `start`, and grows without a `size`. Any other key is an [attribute](REFERENCE.md#segments), a number or a string, for the linker script. The first one is selected at the start.                                              |
 | `input.options`        | The [`.option`](REFERENCE.md#assembler-settings) values the source starts with: `local.prefix`, `anon.marker`, `listing.case`, `listing.data`, `repeat.start`, `for.start`, `function.recursion`, e.g. `{ local.prefix: "@" }`. The local ones, `repeat.start` and `for.start`, are also what each included file starts with: see [global and local options](REFERENCE.md#global-and-local-options). The library takes them as `options`. |
+| `input.symbols`        | Constants the source starts with, as `.equ` defines them: `{ DISK_KB: 800 }`. See [project symbols](#project-symbols). The library takes them as `symbols`.                                                                                                                                                                                                                                                                               |
 | `input.linker.maxSize` | The largest output file, in bytes, with or without a linker script: from 1 to `0x1000000` (16 MB), default `0x100000` (1 MB). Without a script, the output runs from the lowest segment to the highest, its gaps filled with zeros: past this size, linking is an error. The library takes it as `linker: { maxSize }`.                                                                                                                   |
 | `output.object.path`   | Output file for the assembled code.                                                                                                                                                                                                                                                                                                                                                                                                       |
 | `output.linker.script` | Linker script to use instead of writing the segments directly (see [linker_script.md](src/linker/linker_script.md)).                                                                                                                                                                                                                                                                                                                      |
@@ -118,6 +122,17 @@ This writes `hello.bin` (the machine code), `hello.asm.lst` (the listing) and `h
 | `output.segments`      | `enabled` and `path` of the segment map file (YAML).                                                                                                                                                                                                                                                                                                                                                                                      |
 
 Paths are relative to the project file. Missing output directories are created.
+
+### Project symbols
+
+`input.symbols` defines constants the source starts with, in the global namespace, as `.equ` does: build settings, such as a disk's size, that would otherwise need a source file of their own. A value is a number (`800`, `$320`, `0x320`), a string, an array or an object; a boolean is 1 or 0. A name is a global symbol's: `gfx::TILES` is an error. The source can't define them again (`Can't redefine constant 'DISK_KB'.`, with a note at the project file), and the linker script reads them with `.symbol()`. `-D` on the command line overrides them.
+
+```yaml
+input:
+    source: src/main.asm
+    symbols:
+        DISK_KB: 800
+```
 
 ### Symbol file
 
@@ -135,7 +150,7 @@ global:
     PRINT: label reloc = CODE+$0012 ;lib.asm:4:1
 ```
 
-A variable has its last value, and the place it was last assigned. A `.proc`'s symbols follow its name, as local labels do: `CLEAR.LOOP`. The symbols of a macro call are left out.
+A constant of the project file's `input.symbols` is located at the project file, without a line (`DISK_KB: const number = $0320 ;conan.yaml`), one given with `-D` at `command line`. A variable has its last value, and the place it was last assigned. A `.proc`'s symbols follow its name, as local labels do: `CLEAR.LOOP`. The symbols of a macro call are left out.
 
 ## Library
 
@@ -173,6 +188,8 @@ The first argument is the CPUs the source can use: one handler, or an array. `.c
 ```ts
 const assembler = new Assembler([new Cpu6502Handler(), new Cpu65C02Handler()], fileHandler, { cpu: "65C02" });
 ```
+
+The constants the source starts with are the `symbols` option, as a project file's `input.symbols`: `{ symbols: { DISK_KB: 800 } }`. `symbolSource(name)` tells where each is defined, for messages and the symbol file (the CLI gives the project file's name, or `command line`); without it, they have no place. A name or a value that can't be a symbol's makes the constructor throw.
 
 A handler gives the width of its address bus, `addressBits` (16 on the 6502, 32 on the RV32I): the PC stays in `0` to `2 ** addressBits - 1`. A handler whose PC doesn't carry into the next bank gives `bankBits`, the PC's width in its bank (16 for the 65816): an instruction whose bytes cross a bank is then an error, data isn't. A handler can give other names for its CPU, `aliases` (`65C816` for the 65816), which `.cpu` and the `cpu` option take as its `cpuType`; a name can't be another CPU's. A handler can bring its own directives (`CPUHandler.directives`, by upper-case name), which run only while it is the current CPU and take no operand; a name can't be a general directive's (the constructor throws). A handler keeping state gets `resetState()`, called at the start of each pass for every CPU given, as the same handlers are used for each pass and each `assemble()`. `resolveAddressingMode` is called once per pass for each instruction, in order, with an `InstructionContext`: `previous`, the instruction right before when nothing came between them (no label, no data, no PC moved), and `site()`, where the instruction is, for a note in a later error. The 65816 follows `clc` / `xce` with it. A `ModeInfo` can give `listing`, a comment the listing writes after the instruction: the 65816's `A16`. A handler can describe its instructions, `describeInstruction(mnemonic)`: each way to write one (`InstructionForm`), its addressing mode, its operands (`$12,X`), its opcode bytes (the 6809's page prefix first; the RV32I's fields instead) and its size, least and most; the VS Code extension shows them in a mnemonic's hover.
 

@@ -101,6 +101,8 @@ const confSchema = {
 					"function.recursion": functionRecursion,
 				},
 			},
+			// Constants the source starts with: names and values are checked by the assembler
+			symbols: { type: "object", optional: true, allowUnknown: true, schema: {} },
 			linker: {
 				type: "object",
 				optional: true,

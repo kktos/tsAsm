@@ -182,6 +182,8 @@ SIZE = WIDTH * HEIGHT
 
 `.equ` defines a constant, and so does a label: it can't be defined again (`Symbol 'HEIGHT' redefined.`), and `=` can't change it (`Can't redefine constant 'HEIGHT'.`).
 
+The project file can define constants too, a build setting such as a disk's size: its `input.symbols` (`DISK_KB: 800`), or `-D DISK_KB=140` on the command line (see the [README](README.md#project-file)). The source starts with them, in the global namespace, in both passes: `.def(DISK_KB)` is 1 from the first line. They are constants as `.equ`'s: defining one again is an error, its note at the project file.
+
 `=` and `.let` assign a variable: it can be assigned again, and a use has the value of the last assignment before it.
 
 ```as
