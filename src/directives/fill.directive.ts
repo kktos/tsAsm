@@ -1,3 +1,5 @@
+import { notRelocatable } from "../assembler/reloc-value.class";
+import { StructType } from "../assembler/struct-type.class";
 import type { SymbolValue } from "../assembler/symbol.class";
 import type { ScalarToken, Token } from "../shared/lexer/lexer.class";
 import { getHex } from "../utils/hex.util";
@@ -22,7 +24,7 @@ export class FillDirective implements IDirective {
 		if (countTokens.length > 0) {
 			let byteCount: number | null;
 			try {
-				byteCount = this.runtime.evaluator.evaluateAsNumber(countTokens, context);
+				byteCount = this.count(directive, countTokens, context);
 			} catch (e) {
 				// Error evaluating in pass one, but we must continue. Assume 0 size.
 				this.runtime.warn(`Could not evaluate the .FILL count: ${e instanceof Error ? e.message : e}`);
@@ -40,7 +42,7 @@ export class FillDirective implements IDirective {
 	public handlePassTwo(directive: ScalarToken, context: DirectiveContext): void {
 		const argTokens = this.runtime.parser.getInstructionTokens(directive);
 		const [countTokens, valueTokens] = this.parseArguments(argTokens);
-		const count = this.runtime.evaluator.evaluateAsNumber(countTokens, context);
+		const count = this.count(directive, countTokens, context);
 		this.assertValidCount(count, directive);
 
 		// No comma, no filler: 0. A comma with nothing after it is `Missing expression.`, as `.db 1,`.
@@ -63,6 +65,18 @@ export class FillDirective implements IDirective {
 				hasText: false,
 			});
 		}
+	}
+
+	/**
+	 * The byte count: a number, or a struct, its size, making the label on the line an instance of it (`player: .res Sprite`).
+	 * Null in pass 1 when it's defined later.
+	 */
+	private count(directive: ScalarToken, countTokens: Token[], context: DirectiveContext): number {
+		const value = this.runtime.evaluator.evaluate(countTokens, context);
+		if (!(value instanceof StructType)) return this.runtime.evaluator.asNumber(notRelocatable(value));
+		const label = this.runtime.lineLabel(directive);
+		if (label) this.runtime.symbolTable.setStruct(label, value);
+		return StructType.sizeOf(value);
 	}
 
 	private assertValidCount(count: number | null, directive: ScalarToken) {

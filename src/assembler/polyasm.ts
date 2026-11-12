@@ -202,6 +202,7 @@ export class Assembler {
 			option: (name) => this.currentOptions[name],
 			warn: (message, position) => this.warn(message, position),
 			currentStatement: () => this.statementToken,
+			lineLabel: (directive) => (this.lastGlobalLabel && this.lastGlobalLabelLine === directive.line ? this.lastGlobalLabel : undefined),
 			definitionSite: (position) => this.errorLocator.definitionSite(position),
 			includeSites: (position) => this.errorLocator.includeSites(position),
 		};
@@ -874,6 +875,7 @@ export class Assembler {
 					}
 
 					this.lastGlobalLabel = token.value;
+					this.lastGlobalLabelLine = token.line;
 					if (!this.parser.isOperator("=") && !this.parser.isDirective("EQU")) {
 						// In functions, the scope is lost between the passes
 						if (this.symbolTable.hasSymbolInScope(token.value)) {
@@ -918,6 +920,7 @@ export class Assembler {
 
 				case "LABEL": {
 					this.lastGlobalLabel = token.value;
+					this.lastGlobalLabelLine = token.line;
 					// TODO : this is not true anymore
 					// In functions, the scope is lost between the passes
 					if (this.symbolTable.hasSymbolInScope(token.value)) {

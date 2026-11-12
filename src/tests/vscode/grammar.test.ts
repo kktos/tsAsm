@@ -147,6 +147,11 @@ describe("VS Code grammar", () => {
 		[".for colour of colours AS idx", "idx", "variable.parameter.tsasm"],
 		[".proc clearScreen", "clearScreen", "entity.name.function.tsasm"],
 		[".namespace loader", "loader", "entity.name.namespace.tsasm"],
+		[".struct Sprite", "Sprite", "entity.name.type.struct.tsasm"],
+		["enemy = $0300 as Sprite", "as", "keyword.other.tsasm"],
+		["enemy = $0300 as Sprite ; the enemy", "Sprite", "entity.name.type.struct.tsasm"],
+		["p .equ $80 AS gfx::Sprite", "gfx::Sprite", "entity.name.type.struct.tsasm"],
+		[".let p = $80 as Sprite", "Sprite", "entity.name.type.struct.tsasm"],
 		[".end namespace", "end", "keyword.control.directive.tsasm"],
 		[".segment BOOT { start: $0800, end: $08FF }", "BOOT", "entity.name.type.segment.tsasm"],
 		[".segment BOOT { start: $0800, end: $08FF }", "start", "variable.other.property.tsasm"],
@@ -162,10 +167,13 @@ describe("VS Code grammar", () => {
 		expect(scopeOf(source, text)).toBe(scope);
 	});
 
-	it.each(["$_FF", "0x_FF", "0b_1", "$FF_", "$F__F", "1000_", "1__000", "%1010_"])("doesn't colour %s as a number: a '_' goes between two digits", (number) => {
-		const scopes = tokenize(`.dw ${number}`).map((token) => token.scope);
-		expect(scopes.filter((scope) => scope?.startsWith("constant.numeric"))).toEqual([]);
-	});
+	it.each(["$_FF", "0x_FF", "0b_1", "$FF_", "$F__F", "1000_", "1__000", "%1010_"])(
+		"doesn't colour %s as a number: a '_' goes between two digits",
+		(number) => {
+			const scopes = tokenize(`.dw ${number}`).map((token) => token.scope);
+			expect(scopes.filter((scope) => scope?.startsWith("constant.numeric"))).toEqual([]);
+		},
+	);
 
 	it("reads a block comment over several lines", () => {
 		expect(scopeOf("/* block comment,\n   lda #1 */\n    nop", "lda #1")).toBe("comment.block.tsasm");

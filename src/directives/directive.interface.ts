@@ -46,6 +46,8 @@ export interface DirectiveRuntime {
 	macroHandler: MacroHandler;
 	/** The value of an `.option` in effect. */
 	option: (name: OptionName) => OptionValue;
+	/** The label defined on the line of `directive`, before it (`player: .res Sprite`): none for a local or anonymous label. */
+	lineLabel: (directive: Token) => string | undefined;
 	/** Reports a warning, located like an error: at `position`, else at the current statement. */
 	warn: (message: string, position?: { line: number | string; column: number }) => void;
 	/** The first token of the statement being assembled: where its errors are located, and where what it defines is. */
