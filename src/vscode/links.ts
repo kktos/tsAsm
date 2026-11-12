@@ -1,7 +1,8 @@
 /**
  * links.ts
  *
- * * The file paths of a source the VS Code extension links to: `.include`, `.incbin` and `.define … from`.
+ * * The file paths of a source the VS Code extension links to: `.include`, `.incbin` and `.define … from`; in a linker
+ *   script, `.include`.
  * * Without the vscode module, so it can be tested.
  */
 
@@ -17,16 +18,17 @@ const STATEMENTS = [
 	new RegExp(String.raw`${HEAD}\.(?:include|incbin)[ \t]+${STRING}${END}`, "gim"),
 	new RegExp(String.raw`${HEAD}\.define[ \t]+[A-Za-z_]\w*(?:[ \t]+as[ \t]+[A-Za-z_]\w*)?[ \t]+from[ \t]+${STRING}${END}`, "gim"),
 ];
+const LINKER_STATEMENTS = [new RegExp(String.raw`${HEAD}\.include[ \t]+${STRING}${END}`, "gim")];
 
 /**
  * The paths written as a string alone: one built by an expression (`"gfx/" + name`) is only known when it's assembled.
  * A path is relative to the file it's in, as the assembler reads it, except in a macro body: there it's relative to
- * the file the macro is called from, which only the assembly knows.
+ * the file the macro is called from, which only the assembly knows. A linker script's comments start with `#`, not `;`.
  */
-export function findFileLinks(source: string): FileLink[] {
-	const text = blankComments(source);
+export function findFileLinks(source: string, { linker = false } = {}): FileLink[] {
+	const text = blankComments(source, linker ? "#" : ";");
 	const links: FileLink[] = [];
-	for (const statement of STATEMENTS) {
+	for (const statement of linker ? LINKER_STATEMENTS : STATEMENTS) {
 		for (const match of text.matchAll(statement)) {
 			const literal = match[1] as string;
 			const start = match.index + match[0].lastIndexOf(literal) + 1;
@@ -36,8 +38,11 @@ export function findFileLinks(source: string): FileLink[] {
 	return links.sort((a, b) => a.start - b.start);
 }
 
-/** The source with its comments made spaces, its line breaks kept: a path in a comment isn't linked, and the offsets stay. */
-export function blankComments(source: string): string {
+/**
+ * The source with its comments made spaces, its line breaks kept: a path in a comment isn't linked, and the offsets stay.
+ * A line comment starts with `commentChar` or `//`.
+ */
+export function blankComments(source: string, commentChar = ";"): string {
 	let text = "";
 	let quote: string | undefined;
 	for (let i = 0; i < source.length; i++) {
@@ -52,7 +57,7 @@ export function blankComments(source: string): string {
 			continue;
 		}
 		if (char === '"' || char === "'") quote = char;
-		else if (char === ";" || source.startsWith("//", i) || source.startsWith("/*", i)) {
+		else if (char === commentChar || source.startsWith("//", i) || source.startsWith("/*", i)) {
 			const block = source.startsWith("/*", i);
 			const end = block ? source.indexOf("*/", i + 2) : source.indexOf("\n", i);
 			const stop = end < 0 ? source.length : block ? end + 2 : end;

@@ -2,7 +2,7 @@
 	"name": "tsasm",
 	"displayName": "tsAsm",
 	"version": "0.1.0",
-	"description": "The tsAsm assembler's language: syntax colouring from the grammar and the assembly, the projects' errors in the Problems panel, the code not assembled faded, go to a definition, hovers, references, completion and signature help, rename, folding and the outline, the listing beside a file, and links to the files a source includes.",
+	"description": "The tsAsm assembler's language: syntax colouring from the grammar and the assembly, the projects' errors in the Problems panel, the code not assembled faded, go to a definition, hovers, references, completion and signature help, rename, folding and the outline, the listing beside a file, and links to the files a source includes; the linker scripts' language, `.linker.asm`.",
 	"categories": [
 		"Programming Languages"
 	],
@@ -48,6 +48,16 @@
 					".asm"
 				],
 				"configuration": "./language-configuration.json"
+			},
+			{
+				"id": "tsasm-linker",
+				"aliases": [
+					"tsAsm linker script"
+				],
+				"extensions": [
+					".linker.asm"
+				],
+				"configuration": "./linker-language-configuration.json"
 			}
 		],
 		"grammars": [
@@ -59,6 +69,11 @@
 					"meta.embedded.block.yaml": "yaml",
 					"meta.embedded.block.json": "json"
 				}
+			},
+			{
+				"language": "tsasm-linker",
+				"scopeName": "source.tsasm.linker",
+				"path": "./dist/tsasm-linker.tmLanguage.json"
 			}
 		],
 		"configuration": {

@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { findFileLinks } from "../../vscode/links";
 
 /** The paths found, each with the source text its link covers. */
-const links = (source: string) => findFileLinks(source).map(({ start, end, path }) => ({ text: source.slice(start, end), path }));
+const links = (source: string, options?: { linker?: boolean }) =>
+	findFileLinks(source, options).map(({ start, end, path }) => ({ text: source.slice(start, end), path }));
 
 describe("VS Code links", () => {
 	it("links the path of .include, .incbin and .define … from", () => {
@@ -61,5 +62,14 @@ exit .Include "b.asm"
 
 	it("doesn't link a directive that isn't a statement's", () => {
 		expect(links(`.log ".include \\"a.asm\\""`)).toEqual([]);
+	});
+
+	it("links a linker script's .include, not a path in its # comments", () => {
+		const source = `
+.include "omf.linker.asm"   # the OMF library
+# .include "old.linker.asm"
+.include "direntry.linker.asm" // the directory's macros
+`;
+		expect(links(source, { linker: true }).map(({ path }) => path)).toEqual(["omf.linker.asm", "direntry.linker.asm"]);
 	});
 });

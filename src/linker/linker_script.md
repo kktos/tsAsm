@@ -9,8 +9,10 @@ output:
     object:
         path: game.bin
     linker:
-        script: rom.ld
+        script: rom.linker.asm
 ```
+
+A script is named `*.linker.asm`, as are the files it includes: the VS Code extension reads them as linker scripts, not as sources. The assembler doesn't look at the name.
 
 Without a script, the segments are written directly to `output.object.path`, each at its address relative to the lowest one. With a script, the script decides, and the file is written once the script has run. The script runs after the assembly, and only when linking is on (`--link true`, the default).
 
@@ -65,7 +67,7 @@ A linker script is written like assembler source: directives start with a dot, a
     ```
 
 - There are no labels and no CPU instructions.
-- **Errors** are reported like the assembler's: `rom.ld:3:16: error: Segment 'NOPE' not found.`, then the script line with a caret under the column. In an included script or a macro body, they say through which `.INCLUDE` or macro call it was reached. Warnings (`.WARNING`) are located the same way.
+- **Errors** are reported like the assembler's: `rom.linker.asm:3:16: error: Segment 'NOPE' not found.`, then the script line with a caret under the column. In an included script or a macro body, they say through which `.INCLUDE` or macro call it was reached. Warnings (`.WARNING`) are located the same way.
 
 ## Output file
 

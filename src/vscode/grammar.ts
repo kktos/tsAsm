@@ -1,8 +1,9 @@
 /**
  * grammar.ts
  *
- * * The TextMate grammar of the VS Code extension (editors/vscode), built when it's bundled: the mnemonics come from
- * * the CPUs, so an instruction is told from a macro call without a list to keep up to date.
+ * * The TextMate grammars of the VS Code extension (editors/vscode), built when it's bundled: the sources', whose
+ *   mnemonics come from the CPUs, so an instruction is told from a macro call without a list to keep up to date, and
+ *   the linker scripts' (`.linker.asm`), with their `#` comments and no labels nor instructions.
  */
 
 import handlers from "../cpu";
@@ -50,6 +51,122 @@ const directiveCaptures = (dot: number): Captures => ({
 	[dot + 1]: { name: "keyword.control.directive.tsasm" },
 });
 const headCaptures = (captures: Captures = {}): Captures => ({ "1": { patterns: [{ include: "#label-definition" }] }, ...captures });
+
+/** What an expression is made of: the same in a source and a linker script, but for the comments each grammar has. */
+const EXPRESSION: Record<string, Rule> = {
+	expression: {
+		patterns: [
+			{ include: "#comments" },
+			{ include: "#strings" },
+			{ include: "#numbers" },
+			{ name: "keyword.operator.spread.tsasm", match: String.raw`\.\.\.` },
+			{
+				// A field, right after its operand: `sprites[0].id`, `label.offset`, `.segment.name`
+				match: String.raw`(?<=[A-Za-z0-9_)\]])(\.)(${ID})`,
+				captures: { "1": { name: "punctuation.accessor.tsasm" }, "2": { name: "variable.other.property.tsasm" } },
+			},
+			{
+				// `.len("AB")`
+				match: String.raw`(\.)(${ID})(?=\()`,
+				captures: { "1": { name: "punctuation.definition.function.tsasm" }, "2": { name: "support.function.builtin.tsasm" } },
+			},
+			{
+				// `.pc`, `.pass`
+				match: String.raw`(\.)(${ID})`,
+				captures: { "1": { name: "punctuation.definition.variable.tsasm" }, "2": { name: "variable.language.tsasm" } },
+			},
+			{
+				match: String.raw`(${ID})(::)`,
+				captures: { "1": { name: "entity.name.namespace.tsasm" }, "2": { name: "punctuation.separator.namespace.tsasm" } },
+			},
+			{ name: "entity.name.function.tsasm", match: String.raw`${ID}(?=\()` },
+			{ name: "variable.other.label.anonymous.tsasm", match: String.raw`:(?:[-+][0-9]+|-+|\++)` },
+			{ name: "variable.other.label.local.tsasm", match: String.raw`[:@]${ID}` },
+			// After an operand, `*` multiplies and `%` is the modulo; elsewhere they're the PC (`jmp * + 3`) and a
+			// binary number. The statement's head takes the spaces after it, so this can't start after a mnemonic.
+			{ name: "keyword.operator.arithmetic.tsasm", match: String.raw`(?<=[A-Za-z0-9_)\]"'])[ \t]*[*%]` },
+			{ name: "variable.language.pc.tsasm", match: String.raw`\*` },
+			{ name: "keyword.operator.immediate.tsasm", match: "#" },
+			{ name: "keyword.operator.tsasm", match: String.raw`<<|>>|<=|>=|==|!=|&&|\|\||[-+/%&|^!<>=]` },
+			{ name: "punctuation.separator.comma.tsasm", match: "," },
+			{ name: "punctuation.section.block.tsasm", match: "[{}]" },
+			{ name: "punctuation.section.parens.tsasm", match: String.raw`[()\[\]]` },
+		],
+	},
+
+	strings: {
+		patterns: [
+			{
+				name: "string.quoted.double.tsasm",
+				begin: '"',
+				end: '"|$',
+				patterns: [{ include: "#escapes" }],
+			},
+			{
+				name: "string.quoted.single.tsasm",
+				begin: "'",
+				end: "'|$",
+				patterns: [{ include: "#escapes" }],
+			},
+		],
+	},
+	escapes: {
+		patterns: [
+			{ name: "constant.character.escape.tsasm", match: String.raw`\\(?:[nrtbf'"\\]|x[0-9A-Fa-f]{2})` },
+			{ name: "invalid.illegal.escape.tsasm", match: String.raw`\\.` },
+		],
+	},
+
+	numbers: {
+		patterns: [
+			{ name: "constant.numeric.hex.tsasm", match: String.raw`\$[0-9A-Fa-f_]+\b` },
+			{ name: "constant.numeric.hex.tsasm", match: String.raw`\b0[xX][0-9A-Fa-f_]+\b` },
+			{ name: "constant.numeric.binary.tsasm", match: String.raw`\b0[bB][01_]+\b` },
+			{ name: "constant.numeric.binary.tsasm", match: String.raw`(?<![A-Za-z0-9_)\]"'])%[01_]+\b` },
+			{ name: "constant.numeric.decimal.tsasm", match: String.raw`\b[0-9][0-9_]*\b` },
+		],
+	},
+};
+
+/** Where a statement starts, its label in group 1, and the captures of that label. */
+type Head = { pattern: string; captures: (captures?: Captures) => Captures };
+const SOURCE_HEAD: Head = { pattern: HEAD, captures: headCaptures };
+
+/** `.macro print str`, `.macro print(str) {`, `.macro struct id, ...fields` */
+function macroHeader(head: Head, operandsEnd: string): Rule {
+	return {
+		begin: String.raw`${head.pattern}(\.)((?i:macro))[ \t]+(${ID})`,
+		beginCaptures: head.captures({ ...directiveCaptures(2), "4": { name: "entity.name.function.macro.tsasm" } }),
+		end: operandsEnd,
+		patterns: [
+			{ name: "keyword.operator.spread.tsasm", match: String.raw`\.\.\.` },
+			{ name: "variable.parameter.tsasm", match: ID },
+			{ name: "punctuation.separator.comma.tsasm", match: "," },
+			{ name: "punctuation.section.parens.tsasm", match: "[()]" },
+		],
+	};
+}
+
+/** `.repeat 3 AS i FROM 0`, `.for colour of colours AS idx` */
+function loopHeader(head: Head, wordEnd: string, operandsEnd: string): Rule {
+	return {
+		begin: String.raw`${head.pattern}(\.)((?i:repeat|for))${wordEnd}`,
+		beginCaptures: head.captures(directiveCaptures(2)),
+		end: operandsEnd,
+		patterns: [
+			{
+				match: String.raw`\G[ \t]+(${ID})(?=[ \t]+(?i:of)\b)`,
+				captures: { "1": { name: "variable.parameter.tsasm" } },
+			},
+			{
+				match: String.raw`\b((?i:as))[ \t]+(${ID})`,
+				captures: { "1": { name: "keyword.other.tsasm" }, "2": { name: "variable.parameter.tsasm" } },
+			},
+			{ name: "keyword.other.tsasm", match: String.raw`\b(?i:of|from)\b` },
+			{ include: "#expression" },
+		],
+	};
+}
 
 /** The grammar, for the CPUs given: the CLI's by default. */
 export function buildGrammar(cpus: readonly CPUHandler[] = Object.values(handlers).map((Handler) => new Handler())): Grammar {
@@ -136,18 +253,7 @@ export function buildGrammar(cpus: readonly CPUHandler[] = Object.values(handler
 				],
 			},
 
-			// `.macro print str`, `.macro print(str) {`, `.macro struct id, ...fields`
-			"macro-header": {
-				begin: String.raw`${HEAD}(\.)((?i:macro))[ \t]+(${ID})`,
-				beginCaptures: headCaptures({ ...directiveCaptures(2), "4": { name: "entity.name.function.macro.tsasm" } }),
-				end: OPERANDS_END,
-				patterns: [
-					{ name: "keyword.operator.spread.tsasm", match: String.raw`\.\.\.` },
-					{ name: "variable.parameter.tsasm", match: ID },
-					{ name: "punctuation.separator.comma.tsasm", match: "," },
-					{ name: "punctuation.section.parens.tsasm", match: "[()]" },
-				],
-			},
+			"macro-header": macroHeader(SOURCE_HEAD, OPERANDS_END),
 
 			// `.function screen(col, row) = $0400 + row*40 + col`, `.fn sq(x) {`
 			"function-header": {
@@ -169,24 +275,7 @@ export function buildGrammar(cpus: readonly CPUHandler[] = Object.values(handler
 				],
 			},
 
-			// `.repeat 3 AS i FROM 0`, `.for colour of colours AS idx`
-			"loop-header": {
-				begin: String.raw`${HEAD}(\.)((?i:repeat|for))${WORD_END}`,
-				beginCaptures: headCaptures(directiveCaptures(2)),
-				end: OPERANDS_END,
-				patterns: [
-					{
-						match: String.raw`\G[ \t]+(${ID})(?=[ \t]+(?i:of)\b)`,
-						captures: { "1": { name: "variable.parameter.tsasm" } },
-					},
-					{
-						match: String.raw`\b((?i:as))[ \t]+(${ID})`,
-						captures: { "1": { name: "keyword.other.tsasm" }, "2": { name: "variable.parameter.tsasm" } },
-					},
-					{ name: "keyword.other.tsasm", match: String.raw`\b(?i:of|from)\b` },
-					{ include: "#expression" },
-				],
-			},
+			"loop-header": loopHeader(SOURCE_HEAD, WORD_END, OPERANDS_END),
 
 			// `.proc clearScreen`, `.namespace loader`, `.module GAME`
 			"named-block": {
@@ -280,78 +369,7 @@ export function buildGrammar(cpus: readonly CPUHandler[] = Object.values(handler
 				patterns: [{ include: "#nested-braces" }],
 			},
 
-			expression: {
-				patterns: [
-					{ include: "#comments" },
-					{ include: "#strings" },
-					{ include: "#numbers" },
-					{ name: "keyword.operator.spread.tsasm", match: String.raw`\.\.\.` },
-					{
-						// A field, right after its operand: `sprites[0].id`, `label.offset`, `.segment.name`
-						match: String.raw`(?<=[A-Za-z0-9_)\]])(\.)(${ID})`,
-						captures: { "1": { name: "punctuation.accessor.tsasm" }, "2": { name: "variable.other.property.tsasm" } },
-					},
-					{
-						// `.len("AB")`
-						match: String.raw`(\.)(${ID})(?=\()`,
-						captures: { "1": { name: "punctuation.definition.function.tsasm" }, "2": { name: "support.function.builtin.tsasm" } },
-					},
-					{
-						// `.pc`, `.pass`
-						match: String.raw`(\.)(${ID})`,
-						captures: { "1": { name: "punctuation.definition.variable.tsasm" }, "2": { name: "variable.language.tsasm" } },
-					},
-					{
-						match: String.raw`(${ID})(::)`,
-						captures: { "1": { name: "entity.name.namespace.tsasm" }, "2": { name: "punctuation.separator.namespace.tsasm" } },
-					},
-					{ name: "entity.name.function.tsasm", match: String.raw`${ID}(?=\()` },
-					{ name: "variable.other.label.anonymous.tsasm", match: String.raw`:(?:[-+][0-9]+|-+|\++)` },
-					{ name: "variable.other.label.local.tsasm", match: String.raw`[:@]${ID}` },
-					// After an operand, `*` multiplies and `%` is the modulo; elsewhere they're the PC (`jmp * + 3`) and a
-					// binary number. The statement's head takes the spaces after it, so this can't start after a mnemonic.
-					{ name: "keyword.operator.arithmetic.tsasm", match: String.raw`(?<=[A-Za-z0-9_)\]"'])[ \t]*[*%]` },
-					{ name: "variable.language.pc.tsasm", match: String.raw`\*` },
-					{ name: "keyword.operator.immediate.tsasm", match: "#" },
-					{ name: "keyword.operator.tsasm", match: String.raw`<<|>>|<=|>=|==|!=|&&|\|\||[-+/%&|^!<>=]` },
-					{ name: "punctuation.separator.comma.tsasm", match: "," },
-					{ name: "punctuation.section.block.tsasm", match: "[{}]" },
-					{ name: "punctuation.section.parens.tsasm", match: String.raw`[()\[\]]` },
-				],
-			},
-
-			strings: {
-				patterns: [
-					{
-						name: "string.quoted.double.tsasm",
-						begin: '"',
-						end: '"|$',
-						patterns: [{ include: "#escapes" }],
-					},
-					{
-						name: "string.quoted.single.tsasm",
-						begin: "'",
-						end: "'|$",
-						patterns: [{ include: "#escapes" }],
-					},
-				],
-			},
-			escapes: {
-				patterns: [
-					{ name: "constant.character.escape.tsasm", match: String.raw`\\(?:[nrtbf'"\\]|x[0-9A-Fa-f]{2})` },
-					{ name: "invalid.illegal.escape.tsasm", match: String.raw`\\.` },
-				],
-			},
-
-			numbers: {
-				patterns: [
-					{ name: "constant.numeric.hex.tsasm", match: String.raw`\$[0-9A-Fa-f_]+\b` },
-					{ name: "constant.numeric.hex.tsasm", match: String.raw`\b0[xX][0-9A-Fa-f_]+\b` },
-					{ name: "constant.numeric.binary.tsasm", match: String.raw`\b0[bB][01_]+\b` },
-					{ name: "constant.numeric.binary.tsasm", match: String.raw`(?<![A-Za-z0-9_)\]"'])%[01_]+\b` },
-					{ name: "constant.numeric.decimal.tsasm", match: String.raw`\b[0-9][0-9_]*\b` },
-				],
-			},
+			...EXPRESSION,
 		},
 	};
 }
@@ -393,5 +411,104 @@ function defineBlock(processor: string, include?: string, language?: string): Ru
 				patterns,
 			},
 		],
+	};
+}
+
+/** A linker script's statement starts as a source's, without a label: the empty group keeps the captures' numbers. */
+const LINKER_HEAD: Head = { pattern: `${SOS}()`, captures: (captures = {}) => captures };
+/** In a linker script, `#` starts a comment, not `;`. A `.WRITE`'s type can be followed by its value in parentheses. */
+const LINKER_WORD_END = String.raw`(?=[ \t]|$|#|//|/\*|[{}(])`;
+const LINKER_OPERANDS_END = String.raw`(?=$|#|//|/\*|[{}])`;
+
+/**
+ * The grammar of the linker scripts, `.linker.asm` (src/linker/linker_script.md): directives, variables and macro
+ * calls, the source's expressions, `#` comments; no labels, no instructions.
+ */
+export function buildLinkerGrammar(): Grammar {
+	return {
+		$schema: "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+		name: "tsAsm linker script",
+		scopeName: "source.tsasm.linker",
+		patterns: [{ include: "#comments" }, { include: "#statements" }, { include: "#expression" }],
+		repository: {
+			comments: {
+				patterns: [
+					{
+						name: "comment.block.tsasm",
+						begin: String.raw`/\*`,
+						end: String.raw`\*/`,
+						beginCaptures: { "0": { name: "punctuation.definition.comment.tsasm" } },
+						endCaptures: { "0": { name: "punctuation.definition.comment.tsasm" } },
+					},
+					{ name: "comment.line.number-sign.tsasm", match: "#.*$" },
+					{ name: "comment.line.double-slash.tsasm", match: "//.*$" },
+				],
+			},
+
+			statements: {
+				patterns: [
+					{ include: "#macro-header" },
+					{ include: "#loop-header" },
+					{ include: "#output" },
+					{ include: "#write" },
+					{ include: "#section" },
+					{ include: "#endian" },
+					{
+						match: String.raw`${LINKER_HEAD.pattern}(\.)(${ID})${LINKER_WORD_END}[ \t]*`,
+						captures: directiveCaptures(2),
+					},
+					{
+						// `romSize = 32 * 1024`
+						match: String.raw`${SOS}(${ID})(?=[ \t]*=(?!=))`,
+						captures: { "1": { name: "variable.other.tsasm" } },
+					},
+					{
+						// Any other word starting a statement calls a macro: `OMF_FILE "main"`
+						match: String.raw`${SOS}(${ID})${LINKER_WORD_END}`,
+						captures: { "1": { name: "entity.name.function.macro.tsasm" } },
+					},
+				],
+			},
+
+			"macro-header": macroHeader(LINKER_HEAD, LINKER_OPERANDS_END),
+			"loop-header": loopHeader(LINKER_HEAD, LINKER_WORD_END, LINKER_OPERANDS_END),
+
+			// `.OUTPUT "game.rom" FIXED 64 PAD $FF`, `.OUTPUT "game.bin" MAX $8000`
+			output: linkerDirective("output", String.raw`\b(?i:fixed|pad|max)\b`),
+
+			// `.WRITE SEGMENT "CODE"`, `.WRITE MODULE(m.name)`, `.WRITE BYTE 0 AT 2`
+			write: {
+				begin: String.raw`${LINKER_HEAD.pattern}(\.)((?i:write))[ \t]+((?i:segment|module|bytes|byte|word|long|string))${LINKER_WORD_END}`,
+				beginCaptures: { ...directiveCaptures(2), "4": { name: "storage.type.tsasm" } },
+				end: LINKER_OPERANDS_END,
+				patterns: [{ name: "keyword.other.tsasm", match: String.raw`\b(?i:at)\b` }, { include: "#expression" }],
+			},
+
+			// `.SECTION HEADER AT $7FF0`
+			section: {
+				begin: String.raw`${LINKER_HEAD.pattern}(\.)((?i:section))[ \t]+(${ID})`,
+				beginCaptures: { ...directiveCaptures(2), "4": { name: "entity.name.type.section.tsasm" } },
+				end: LINKER_OPERANDS_END,
+				patterns: [{ name: "keyword.other.tsasm", match: String.raw`\b(?i:at)\b` }, { include: "#expression" }],
+			},
+
+			// `.ENDIAN BIG`
+			endian: {
+				match: String.raw`${LINKER_HEAD.pattern}(\.)((?i:endian))[ \t]+((?i:big|little))${LINKER_WORD_END}`,
+				captures: { ...directiveCaptures(2), "4": { name: "constant.language.endian.tsasm" } },
+			},
+
+			...EXPRESSION,
+		},
+	};
+}
+
+/** A linker directive whose operands are an expression and the keywords given. */
+function linkerDirective(directive: string, keywords: string): Rule {
+	return {
+		begin: String.raw`${LINKER_HEAD.pattern}(\.)((?i:${directive}))${LINKER_WORD_END}`,
+		beginCaptures: directiveCaptures(2),
+		end: LINKER_OPERANDS_END,
+		patterns: [{ name: "keyword.other.tsasm", match: keywords }, { include: "#expression" }],
 	};
 }
