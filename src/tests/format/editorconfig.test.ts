@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { addFormatKeys, EditorConfigError, editorConfigFor, formatOptionsFor, formatSettings, globPattern, MissingFormatKeysError } from "../../cli/format/editorconfig";
+import {
+	addFormatKeys,
+	EditorConfigError,
+	editorConfigFor,
+	formatOptionsFor,
+	formatSettings,
+	globPattern,
+	MissingFormatKeysError,
+} from "../../cli/format/editorconfig";
 
 /** The properties of `file`, its `.editorconfig` files in `files`, by path. */
 const propertiesOf = (file: string, files: Record<string, string>) =>
@@ -130,7 +138,8 @@ tsasm_indent_blocks = true
 });
 
 describe("adding the missing format keys", () => {
-	const KEYS = "indent_style = tab\ntab_width = 4\ntsasm_opcode_column = 8\ntsasm_operand_column = 16\ntsasm_comment_column = 40\ntsasm_indent_blocks = true\n";
+	const KEYS =
+		"indent_style = tab\ntab_width = 4\ntsasm_opcode_column = 8\ntsasm_operand_column = 16\ntsasm_comment_column = 40\ntsasm_indent_blocks = true\n";
 	const add = (files: string[], configs: Record<string, string>) => addFormatKeys("/repo", files, (path) => configs[path]);
 
 	it("creates the .editorconfig, its section matching the files' extensions", () => {
