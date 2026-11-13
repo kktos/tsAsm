@@ -152,6 +152,33 @@ global:
 
 A constant of the project file's `input.symbols` is located at the project file, without a line (`DISK_KB: const number = $0320 ;conan.yaml`), one given with `-D` at `command line`. A variable has its last value, and the place it was last assigned. A `.proc`'s symbols follow its name, as local labels do: `CLEAR.LOOP`. The symbols of a macro call are left out.
 
+### Formatting
+
+```shell
+node dist/tsasm fmt <project-file> [--check | --init]
+```
+
+Lays out the project's files in columns, as the [VS Code extension](editors/vscode/README.md#formatting) does, with the same code: a label at the line's start, the mnemonic, directive or macro call in the opcode column, its operand in the operand column, a comment ending the line in the comment column, a block's body indented. Only the whitespace between these fields changes.
+
+- **Which files:** the files the project reads statements from: the project is assembled, without linking or writing anything, as the extension does, for its CPU and its macros, those of its includes too. The data a `.define … from` reads and the linker script are left out. A project that doesn't assemble isn't formatted.
+- **The settings:** the files' `.editorconfig` keys, each required, from any section matching the file; there's no default, so the extension and the command line, whatever their versions, lay a file out the same way:
+
+    ```ini
+    [*.{asm,inc}]
+    indent_style = tab           # or space
+    tab_width = 4                # with spaces, indent_size
+    tsasm_opcode_column = 8
+    tsasm_operand_column = 16
+    tsasm_comment_column = 40
+    tsasm_indent_blocks = true
+    ```
+
+    A file that lacks one is an error, naming the keys; a bad value too, at its `.editorconfig`'s line.
+
+- **`--init`** adds the keys the files lack, with the values above, to the `.editorconfig` beside the project file (created if needed): a section at its end, its glob the files' extensions. It refuses when that section would change a file's settings (a later section overrides an earlier one) or a closer `.editorconfig` would hide it: those keys are yours to write.
+- **`--check`** writes nothing: it lists each file not formatted at its first line that would change (`src/main.asm:12: not formatted`), and exits with 1, for CI.
+- A file is written only when it changes, its line endings and its byte order mark kept. A project file named `fmt` is `./fmt`: `tsasm ./fmt`.
+
 ## Library
 
 The package doesn't export the CPU handlers yet, so for now import the TypeScript sources directly:

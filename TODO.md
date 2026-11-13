@@ -243,24 +243,6 @@ Done in #216 for labels, constants, variables, local and anonymous labels, funct
 
 The assembler writes every byte of a segment in memory, in a JavaScript array, before linking: a segment growing by megabytes fails. On a 32-bit CPU, `addi x0, x0, 0` / `.org $12345678` / `addi x0, x0, 0` in a resizable segment pads it up to `$12345678` → `Invalid array length`, a JavaScript error, with no segment or size. `.fill` stops at 1 MB since #239 (1.67), `.align`'s padding since #240 (1.78). An idea, from the object files: a segment keeps what to write (`.fill $100000, 0`, `.org`'s gap, an `.incbin`'s file), as an object file does, and the linker writes the bytes, as it writes the output. Until then, a check on how far `.org` moves a resizable segment could replace the JavaScript error: to decide with this.
 
-### 4.38 Formatting in columns
-
-Done in the VS Code extension in #241: labels, mnemonics, operands and comments in fixed columns, a block's body indented; the settings per project in `.editorconfig` in #243. A linker script, `.linker.asm`, is another language since #247 (4.26): it isn't formatted. What's left:
-
-- **`tsasm fmt`:** the same layout from the CLI, see 4.39.
-
-### 4.39 `tsasm fmt`: formatting from the CLI
-
-The layout of the VS Code extension (4.38) from the command line, for a project without VS Code and for CI: `tsasm fmt` writes the files formatted, `tsasm fmt --check` changes nothing and fails when a file isn't formatted.
-
-- **The same result as the extension, always:** a source saved in VS Code must pass `tsasm fmt --check` in CI. The formatter, its blocks and its `.editorconfig` reader are in `src/cli/format` since #257, shared by the two.
-- **The same settings:** all in `.editorconfig`, each required (`indent_style`, `tab_width` or `indent_size`, the four `tsasm_*` keys), from any section matching the file: the formatter has no defaults, and the extension no `tsasm.format.*` settings any more, since #258. `tsasm fmt` stops on a file that lacks one, naming it. An error in `.editorconfig` is an error of the command, with its file and line.
-- **`--init`:** `tsasm fmt --init <project-file>` adds the missing keys to the `.editorconfig` beside the project file, as the extension's button does (`addFormatKeys`, #258): a section at its end, its glob the extensions of the files the project reads statements from, only the keys they lack, `DEFAULT_FORMAT`'s values; it refuses when that would change a file's settings or a closer `.editorconfig` hides it.
-- **The same words:** `tsasm fmt <project-file>` assembles the project, as the extension does, and formats the files the assembly read statements from (not the data a `.define … from` reads), with the project's CPU and the macros of all its files. A project that doesn't assemble isn't formatted. The project's linker script (`output.linker.script`) is left out.
-- **How it's called:** `tsasm fmt <project-file>`, a subcommand, while `tsasm <project-file>` assembles (a project file named `fmt` needs `./fmt`).
-- **`--check`:** nothing is written; it lists each file not formatted with the first line that would change (`src/main.asm:12: not formatted`), and exits with 1.
-- **To check:** a file's line endings and byte order mark kept, a file not written when nothing changes (its date kept), the exit status when a file can't be read or written.
-
 ### 4.41 A project symbol's line
 
 A constant of `input.symbols` (4.40) is located at the project file without a line: `;conan.yaml` in the `.sym` file, `conan.yaml: note: defined here` for a redefinition, and the VS Code extension's go to definition opens the project file at its first line. js-yaml 5 doesn't give a key's position: the CLI would find the key's line in the text, as the extension's `keyLine` does for the schema's errors (`src/vscode/analysis.ts`), for a block mapping and a flow one (`symbols: { DISK_KB: 800 }`). The `.sym` line then gets its `:line:column` back, which the debugger reads.

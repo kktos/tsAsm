@@ -9,6 +9,7 @@ import { yamlstringify } from "./asm-yaml";
 import colors from "./colors";
 import { listsAnything, readConf } from "./conf";
 import { NodeFileHandler } from "./file";
+import { FMT_HELP, parseFmtArgs, runFmt } from "./fmt";
 import { projectCpus, projectOptions } from "./project";
 import type { ValidationError } from "./schema";
 import { ConsoleErrorSink } from "./sinks/consoleerrorsink.class";
@@ -22,6 +23,20 @@ const printErrorsAndExit = (errors: ValidationError[]) => {
 	for (const error of errors) console.error(colors.red(`${error.path}: ${error.message}`));
 	process.exit(-1);
 };
+
+// `tsasm fmt <project-file>` formats; a project file named `fmt` is `./fmt`.
+if (process.argv[2] === "fmt") {
+	const fmtArgs = parseFmtArgs(process.argv.slice(3));
+	if (fmtArgs === undefined) {
+		console.log(FMT_HELP);
+		process.exit(0);
+	}
+	if (Array.isArray(fmtArgs)) {
+		for (const error of fmtArgs) console.error(colors.red(`ERROR: ${error}`));
+		process.exit(-1);
+	}
+	process.exit(runFmt(fmtArgs, { log: (message) => console.log(message), error: (message) => console.error(colors.red(message)) }));
+}
 
 const cliArgs = parseCliArgs(process.argv.slice(2), name);
 

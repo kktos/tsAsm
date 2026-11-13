@@ -119,6 +119,7 @@ function showHelp(name: string) {
 
 	console.log(`
 Usage: ${name} <project-file> [options]
+       ${name} fmt <project-file> [--check | --init]   Format the project's files: ${name} fmt --help.
 
 Arguments:
   <project-file>         Mandatory project configuration file (e.g., project.yaml).
