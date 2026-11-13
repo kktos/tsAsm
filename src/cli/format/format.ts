@@ -29,7 +29,13 @@ export interface FormatOptions {
 	indentBlocks: boolean;
 }
 
-export const DEFAULT_FORMAT: Omit<FormatOptions, "tabSize" | "insertSpaces"> = {
+/**
+ * The settings `tsasm fmt --init` writes in `.editorconfig`, and the VS Code extension when it adds them: the formatter
+ * itself has no defaults, so the extension and the CLI, built at different times, can't lay a file out differently.
+ */
+export const DEFAULT_FORMAT: FormatOptions = {
+	tabSize: 4,
+	insertSpaces: false,
 	opcodeColumn: 8,
 	operandColumn: 16,
 	commentColumn: 40,

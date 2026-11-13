@@ -6,11 +6,13 @@
  * * The formatter's settings from them: `indent_style`, `tab_width` and `indent_size` as EditorConfig defines them, a
  *   value it doesn't know ignored as it says; the `tsasm_*` keys, which are tsAsm's: a bad value or an unknown key is an
  *   error, not ignored.
+ * * Every setting is required: the formatter has no defaults, so the extension and the CLI can't lay a file out
+ *   differently. `addFormatKeys` writes the missing ones, for `tsasm fmt --init` and the extension.
  * * Without the vscode module: shared by the VS Code extension and the CLI.
  */
 
-import { dirname, join, relative, sep } from "node:path";
-import type { FormatOptions } from "./format";
+import { basename, dirname, extname, join, relative, sep } from "node:path";
+import { DEFAULT_FORMAT, type FormatOptions } from "./format";
 
 /** A property: its value, the `.editorconfig` and the line (from 1) where it's set. */
 export interface Property {
@@ -27,6 +29,16 @@ export class EditorConfigError extends Error {
 		readonly line: number,
 	) {
 		super(message);
+	}
+}
+
+/** Settings no `.editorconfig` gives a file: their keys, in the order `addFormatKeys` writes them. */
+export class MissingFormatKeysError extends Error {
+	constructor(
+		readonly file: string,
+		readonly keys: string[],
+	) {
+		super(`${basename(file)} isn't formatted: no .editorconfig sets ${keys.join(", ")} for it.`);
 	}
 }
 
@@ -209,4 +221,73 @@ export function formatSettings(properties: Map<string, Property>): Partial<Forma
 		}
 	}
 	return settings;
+}
+
+/** The keys of the formatter's settings that `settings` lacks, in the order `addFormatKeys` writes them. */
+function missingKeys(settings: Partial<FormatOptions>): string[] {
+	const keys: string[] = [];
+	if (settings.insertSpaces === undefined) keys.push("indent_style");
+	if (settings.tabSize === undefined) keys.push(settings.insertSpaces ? "indent_size" : "tab_width");
+	for (const [key, option] of Object.entries(COLUMNS)) if (settings[option] === undefined) keys.push(key);
+	if (settings.indentBlocks === undefined) keys.push("tsasm_indent_blocks");
+	return keys;
+}
+
+/**
+ * The formatter's settings for `file` (an absolute path), all from its `.editorconfig` files: throws an
+ * `EditorConfigError` on a bad `tsasm_*` key, a `MissingFormatKeysError` when one isn't set.
+ */
+export function formatOptionsFor(file: string, readFile: ReadFile): FormatOptions {
+	const settings = formatSettings(editorConfigFor(file, readFile));
+	const missing = missingKeys(settings);
+	if (missing.length > 0) throw new MissingFormatKeysError(file, missing);
+	return settings as FormatOptions;
+}
+
+/** The value `addFormatKeys` writes for a key: `DEFAULT_FORMAT`'s. */
+function defaultValue(key: string): string {
+	if (key === "indent_style") return DEFAULT_FORMAT.insertSpaces ? "space" : "tab";
+	if (key === "tab_width" || key === "indent_size") return String(DEFAULT_FORMAT.tabSize);
+	if (key === "tsasm_indent_blocks") return String(DEFAULT_FORMAT.indentBlocks);
+	return String(DEFAULT_FORMAT[COLUMNS[key as keyof typeof COLUMNS]]);
+}
+
+/**
+ * The `.editorconfig` of `dir` with the settings `files` (absolute paths) lack: a section at its end, its glob the
+ * extensions of the files lacking one (`[*.{asm,inc}]`), the keys any of them lacks with `DEFAULT_FORMAT`'s values.
+ * Undefined when no file lacks one. Throws when the section would change a setting a file has (a later section
+ * overrides an earlier one), or a file would still lack one (a closer `.editorconfig` unsetting it, or a `root = true`
+ * one hiding `dir`'s): those are the user's to write.
+ */
+export function addFormatKeys(dir: string, files: string[], readFile: ReadFile): { path: string; text: string } | undefined {
+	const settingsOf = (file: string, read: ReadFile) => formatSettings(editorConfigFor(file, read));
+	const before = new Map(files.map((file) => [file, settingsOf(file, readFile)]));
+	const lacking = files.filter((file) => missingKeys(before.get(file) as Partial<FormatOptions>).length > 0);
+	if (lacking.length === 0) return undefined;
+
+	const keys = [...new Set(lacking.flatMap((file) => missingKeys(before.get(file) as Partial<FormatOptions>)))];
+	const names = [...new Set(lacking.map((file) => extname(file).slice(1) || basename(file)))].sort();
+	const allExtensions = lacking.every((file) => extname(file) !== "");
+	const glob = allExtensions
+		? names.length === 1
+			? `*.${names[0]}`
+			: `*.{${names.join(",")}}`
+		: `{${lacking.map((file) => (extname(file) ? `*${extname(file)}` : basename(file))).join(",")}}`;
+
+	const path = join(dir, ".editorconfig");
+	const current = readFile(path) ?? "";
+	const eol = current.includes("\r\n") ? "\r\n" : "\n";
+	const section = [`[${glob}]`, ...keys.map((key) => `${key} = ${defaultValue(key)}`)].join(eol) + eol;
+	const text = current === "" ? section : `${current}${current.endsWith("\n") ? "" : eol}${eol}${section}`;
+
+	const read: ReadFile = (file) => (file === path ? text : readFile(file));
+	for (const file of files) {
+		const after = settingsOf(file, read);
+		const still = missingKeys(after);
+		if (still.length > 0) throw new Error(`${file}: an .editorconfig closer to it than ${path} keeps ${still.join(", ")} from it: add them there.`);
+		const was = before.get(file) as Partial<FormatOptions>;
+		const changed = (Object.keys(was) as (keyof FormatOptions)[]).filter((option) => was[option] !== after[option]);
+		if (changed.length > 0) throw new Error(`Adding [${glob}] to ${path} would change the settings of ${file}: add the keys by hand.`);
+	}
+	return { path, text };
 }

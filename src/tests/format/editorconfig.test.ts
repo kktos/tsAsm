@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EditorConfigError, editorConfigFor, formatSettings, globPattern } from "../../cli/format/editorconfig";
+import { addFormatKeys, EditorConfigError, editorConfigFor, formatOptionsFor, formatSettings, globPattern, MissingFormatKeysError } from "../../cli/format/editorconfig";
 
 /** The properties of `file`, its `.editorconfig` files in `files`, by path. */
 const propertiesOf = (file: string, files: Record<string, string>) =>
@@ -93,5 +93,72 @@ tsasm_indent_blocks = FALSE
 		);
 		// Only the sections matching the file count.
 		expect(error("[*.md]\ntsasm_opcode_column = abc\n")).toBeUndefined();
+	});
+
+	it("requires every setting: tabs or spaces, their width, the columns, the blocks", () => {
+		const missing = (config: string | undefined, file = "/repo/src/main.asm") => {
+			try {
+				formatOptionsFor(file, (path) => (path === "/repo/.editorconfig" ? config : undefined));
+			} catch (e) {
+				if (e instanceof MissingFormatKeysError) return e.message;
+				throw e;
+			}
+			return undefined;
+		};
+		const all = `
+[*.asm]
+indent_style = tab
+tab_width = 4
+tsasm_opcode_column = 8
+tsasm_operand_column = 16
+tsasm_comment_column = 40
+tsasm_indent_blocks = true
+`;
+		expect(missing(all)).toBeUndefined();
+		expect(missing(undefined)).toBe(
+			"main.asm isn't formatted: no .editorconfig sets indent_style, tab_width, tsasm_opcode_column, tsasm_operand_column, tsasm_comment_column, tsasm_indent_blocks for it.",
+		);
+		// Any section matching the file counts, not only [*.asm]; one that doesn't match doesn't.
+		expect(missing(all.replace("[*.asm]", "[*]"))).toBeUndefined();
+		expect(missing(all.replace("[*.asm]", "[*.{asm,inc}]"), "/repo/src/data.inc")).toBeUndefined();
+		expect(missing(all, "/repo/src/data.inc")).toMatch(/^data\.inc isn't formatted: no \.editorconfig sets indent_style, /);
+		// With spaces, the width is indent_size; an unknown value is no value, as EditorConfig says.
+		expect(missing(all.replace("indent_style = tab\ntab_width = 4", "indent_style = space"))).toMatch(/sets indent_size for it/);
+		expect(missing(all.replace("indent_style = tab", "indent_style = tabs"))).toMatch(/sets indent_style for it/);
+		expect(missing(all.replace("tsasm_indent_blocks = true\n", ""))).toMatch(/sets tsasm_indent_blocks for it/);
+	});
+});
+
+describe("adding the missing format keys", () => {
+	const KEYS = "indent_style = tab\ntab_width = 4\ntsasm_opcode_column = 8\ntsasm_operand_column = 16\ntsasm_comment_column = 40\ntsasm_indent_blocks = true\n";
+	const add = (files: string[], configs: Record<string, string>) => addFormatKeys("/repo", files, (path) => configs[path]);
+
+	it("creates the .editorconfig, its section matching the files' extensions", () => {
+		expect(add(["/repo/src/main.asm"], {})).toEqual({ path: "/repo/.editorconfig", text: `[*.asm]\n${KEYS}` });
+		expect(add(["/repo/src/main.asm", "/repo/src/data.inc", "/repo/src/x.asm"], {})?.text).toBe(`[*.{asm,inc}]\n${KEYS}`);
+		expect(add(["/repo/src/main.asm", "/repo/src/MACROS"], {})?.text).toBe(`[{*.asm,MACROS}]\n${KEYS}`);
+	});
+
+	it("adds only the missing keys, at the end, keeping the file's line endings", () => {
+		const config = "root = true\r\n\r\n[*]\r\nindent_style = space\r\nend_of_line = lf";
+		expect(add(["/repo/main.asm"], { "/repo/.editorconfig": config })?.text).toBe(
+			`${config}\r\n\r\n[*.asm]\r\nindent_size = 4\r\ntsasm_opcode_column = 8\r\ntsasm_operand_column = 16\r\ntsasm_comment_column = 40\r\ntsasm_indent_blocks = true\r\n`,
+		);
+	});
+
+	it("adds nothing when every file has its settings", () => {
+		expect(add(["/repo/main.asm"], { "/repo/.editorconfig": `[*]\n${KEYS}` })).toBeUndefined();
+	});
+
+	it("refuses to change a file's settings, or to add keys a closer .editorconfig hides", () => {
+		// main.asm has tsasm_opcode_column = 12 from [main.asm]: [*.asm], after it, would make it 8.
+		const configs = { "/repo/.editorconfig": `[main.asm]\n${KEYS.replace("= 8", "= 12")}` };
+		expect(() => add(["/repo/main.asm", "/repo/other.asm"], configs)).toThrow(
+			"Adding [*.asm] to /repo/.editorconfig would change the settings of /repo/main.asm: add the keys by hand.",
+		);
+		const hidden = { "/repo/src/.editorconfig": "root = true\n" };
+		expect(() => add(["/repo/src/main.asm"], hidden)).toThrow(
+			"/repo/src/main.asm: an .editorconfig closer to it than /repo/.editorconfig keeps indent_style, tab_width, tsasm_opcode_column, tsasm_operand_column, tsasm_comment_column, tsasm_indent_blocks from it: add them there.",
+		);
 	});
 });

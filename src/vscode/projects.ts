@@ -114,6 +114,13 @@ export class Projects implements vscode.Disposable {
 		return cpu === undefined ? { definitions, namespaces } : { cpu, definitions, namespaces };
 	}
 
+	/** The projects that read statements from `uri`: the project file's path, and the files it reads statements from. */
+	statementFilesOf(uri: vscode.Uri): { project: string; files: string[] }[] {
+		return [...this.analyses].flatMap(([project, { statementFiles }]) =>
+			statementFiles?.has(uri.fsPath) ? [{ project, files: [...statementFiles] }] : [],
+		);
+	}
+
 	/** Every project's definitions, and the namespaces of their source files, from their text as it is now. */
 	workspaceDefinitions(): { definitions: IndexEntry[]; namespaces: { name: string; place: Place }[] } {
 		const files = editorFiles();
