@@ -41,6 +41,8 @@ export interface Analysis {
 	index?: SymbolIndex;
 	/** The source files it read, the project file left out. */
 	sources: Set<string>;
+	/** The files it read statements from, the data a `.define … from` reads left out: the files to format. */
+	statementFiles?: Set<string>;
 	/** The CPU the source starts with, from the project file. */
 	cpu?: string;
 	/** Where the CLI writes the listing, from the project file: what the listing's tab is named. */
@@ -84,6 +86,7 @@ export function analyse(projectPath: string, files: Files): Analysis {
 	// The lines pass 2 read, by the file the assembler names.
 	const read = new Map<string | undefined, Set<number>>();
 	let index: SymbolIndex | undefined;
+	let statementFiles: Set<string> | undefined;
 	let cpu: string | undefined;
 	try {
 		// Located as the source's files are, relative to its directory: the project file's symbols are defined in it.
@@ -101,6 +104,7 @@ export function analyse(projectPath: string, files: Files): Analysis {
 		const path = (file: string | undefined) => (file ? join(handler.basedir, file) : sourcePath);
 		index = buildIndex(references, emissions, listed, path, reader);
 		addUnread(index, read, path, reader, projectPath);
+		statementFiles = new Set([...read.keys()].map(path));
 	} catch (e) {
 		// An error found before the assembly starts, without a line (a segment of the project file), is the project file's.
 		const error = e instanceof AsmError ? e : new AsmError(e instanceof Error ? e.message : String(e));
@@ -110,6 +114,7 @@ export function analyse(projectPath: string, files: Files): Analysis {
 	const sources = new Set(reader.textPaths().filter((path) => path !== projectPath));
 	const analysis: Analysis = { files: reader.paths, diagnostics: report.diagnostics, sources };
 	if (index) analysis.index = index;
+	if (statementFiles) analysis.statementFiles = statementFiles;
 	if (cpu) analysis.cpu = cpu;
 	// As the CLI names it.
 	analysis.listingPath = join(dirname(projectPath), conf.output?.listing?.path ?? `${conf.input.source}.lst`);

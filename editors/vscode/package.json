@@ -89,29 +89,6 @@
 					},
 					"default": [],
 					"markdownDescription": "The project files to assemble, relative to the workspace folder: `\"build/game.yaml\"`, or a list. Left empty, every YAML file with an `input.source` is one."
-				},
-				"tsasm.format.opcodeColumn": {
-					"type": "integer",
-					"default": 8,
-					"minimum": 0,
-					"markdownDescription": "Formatting: the column, from 0, of the mnemonics, directives and macro calls, rounded up to a tab stop with tabs. A block's body is one level further. `tsasm_opcode_column` in `.editorconfig` overrides it."
-				},
-				"tsasm.format.operandColumn": {
-					"type": "integer",
-					"default": 16,
-					"minimum": 0,
-					"markdownDescription": "Formatting: the column, from 0, of the operands, rounded up to a tab stop with tabs. A block's body is one level further. `tsasm_operand_column` in `.editorconfig` overrides it."
-				},
-				"tsasm.format.commentColumn": {
-					"type": "integer",
-					"default": 40,
-					"minimum": 0,
-					"markdownDescription": "Formatting: the column, from 0, of the comments ending a line, rounded up to a tab stop with tabs. A comment alone on its line stays where it is. `tsasm_comment_column` in `.editorconfig` overrides it."
-				},
-				"tsasm.format.indentBlocks": {
-					"type": "boolean",
-					"default": true,
-					"markdownDescription": "Formatting: indent the body of a `.macro`, `.proc`, `.function`, `.if`, `.repeat` or `.for` one level, its labels staying at the line's start. A namespace's body isn't indented. `tsasm_indent_blocks` in `.editorconfig` overrides it."
 				}
 			}
 		},

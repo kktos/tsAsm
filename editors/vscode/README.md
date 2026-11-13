@@ -150,26 +150,25 @@ start:  lda     #$00                    ; load 0
 HEIGHT  =       5
 ```
 
-- **The columns:** a label at the line's start; the mnemonic, directive or macro call in the opcode column, `tsasm.format.opcodeColumn` (8); its operand in `tsasm.format.operandColumn` (16); a comment ending the line in `tsasm.format.commentColumn` (40). Columns count from 0. An assignment is a label and a directive: `HEIGHT = 5` puts `=` in the opcode column.
-- **Tabs or spaces** and the tab width come from `.editorconfig`'s `indent_style`, `tab_width` and `indent_size`, else from the editor. With tabs, a column is rounded up to a tab stop.
-- **Per project, in `.editorconfig`:** the keys `tsasm_opcode_column`, `tsasm_operand_column`, `tsasm_comment_column` and `tsasm_indent_blocks` override the `tsasm.format.*` settings, as `indent_style` overrides the editor's. They're read as EditorConfig reads its own, without its extension: from the file's folder up to an `.editorconfig` with `root = true`, the closest winning, in the sections whose glob matches the file.
+- **The settings are in `.editorconfig`, all of them, and only there:** the extension has neither settings nor defaults for them, so a project's files are laid out the same way whoever formats them, and whatever version of the extension, and of the coming `tsasm fmt` (TODO 4.39), does it. Each is required, from any section whose glob matches the file:
 
     ```ini
-    root = true
-
-    [*]
-    indent_style = tab
-    tab_width = 4
-
-    [*.asm]
-    tsasm_opcode_column = 12
-    tsasm_comment_column = 48
+    [*.{asm,inc}]
+    indent_style = tab           # or space
+    tab_width = 4                # with spaces, indent_size
+    tsasm_opcode_column = 8
+    tsasm_operand_column = 16
+    tsasm_comment_column = 40
+    tsasm_indent_blocks = true
     ```
 
-    A `tsasm_*` key it doesn't know or a bad value (`tsasm_opcode_column = abc`) is an error: the file isn't formatted, and the message opens the `.editorconfig` at its line. A value of EditorConfig's own keys it doesn't know is ignored, as EditorConfig says.
+    They're read as EditorConfig reads its own, without its extension: from the file's folder up to an `.editorconfig` with `root = true`, the closest winning, in the sections whose glob matches the file.
 
+- **A missing key** leaves the file as it is: the message names the keys, and its button adds them, with the values above: a section at the end of the `.editorconfig` beside the project file (beside the workspace folder for a file in no project), its glob the extensions of the files the project reads statements from, only the keys they lack. It refuses when that section would change a file's settings (a later section overriding an earlier one), or a closer `.editorconfig` would hide it: those keys are yours to write. An unsaved file has no `.editorconfig`: it isn't formatted.
+- **A bad value:** a `tsasm_*` key it doesn't know or a bad value (`tsasm_opcode_column = abc`) is an error: the file isn't formatted, and the message opens the `.editorconfig` at its line. A value of EditorConfig's own keys it doesn't know (`indent_style = tabs`) is no value, as EditorConfig says: the key is missing.
+- **The columns:** a label at the line's start; the mnemonic, directive or macro call in the opcode column, `tsasm_opcode_column`; its operand in `tsasm_operand_column`; a comment ending the line in `tsasm_comment_column`. Columns count from 0; with tabs, a column is rounded up to a tab stop. An assignment is a label and a directive: `HEIGHT = 5` puts `=` in the opcode column.
 - **A field past its column** goes to the next tab stop: a long label pushes its mnemonic, never glued to it.
-- **Blocks:** the body of a `.macro`, `.proc`, `.function`, `.if`, `.repeat` or `.for`, in braces or up to its `.end`, is one level further, its `.end`, `}` and `.else` at the block's level, its labels still at the line's start. A namespace's body isn't indented, as it may run to the end of the file. `tsasm.format.indentBlocks` turns it off.
+- **Blocks:** the body of a `.macro`, `.proc`, `.function`, `.if`, `.repeat` or `.for`, in braces or up to its `.end`, is one level further, its `.end`, `}` and `.else` at the block's level, its labels still at the line's start. A namespace's body isn't indented, as it may run to the end of the file. `tsasm_indent_blocks = false` turns it off.
 - **Kept as written:** an operand, its spaces and strings (`lda ( $10 ),y`); a comment alone on its line; a block comment's lines; the raw text of a `.define`, a `.hex` or a `.segment`'s definition; a line starting with `#`, a linker script's comment.
 - **Labels and statements:** the colon after a label is optional, so the first word of a line is a label unless it's a mnemonic of the CPU there (the last `.cpu` above, else the project's), a directive or a macro the last assembly defined. A word it can't tell, a macro of a file in no project, keeps its side: at the line's start a label, else a statement.
 - **Checked:** only the whitespace between the fields changes. The result is lexed: if its tokens aren't the source's, the file is left as it is.
