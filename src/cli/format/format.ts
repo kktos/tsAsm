@@ -12,7 +12,7 @@
  * * Without the vscode module: shared by the VS Code extension and the CLI, so the two lay a source out the same way.
  */
 
-import { AssemblyLexer, type Token } from "../shared/lexer/lexer.class";
+import { AssemblyLexer, type Token } from "../../shared/lexer/lexer.class";
 import { type Block, scanBlocks } from "./blocks";
 import { blankComments } from "./comments";
 

@@ -6,8 +6,8 @@
  * * Without the vscode module, so it can be tested.
  */
 
-import type { Block } from "../format/blocks";
-import { blankComments } from "../format/comments";
+import type { Block } from "../cli/format/blocks";
+import { blankComments } from "../cli/format/comments";
 import type { Place } from "./places";
 
 /**

@@ -14,7 +14,7 @@
  */
 
 import * as vscode from "vscode";
-import { scanBlocks } from "../format/blocks";
+import { scanBlocks } from "../cli/format/blocks";
 import { lineHints } from "./addresses";
 import { type Completion, type CompletionKind, complete, type SourceContext, signatureAt } from "./completion";
 import { foldingRanges } from "./folding";

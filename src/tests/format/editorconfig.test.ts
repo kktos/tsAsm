@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EditorConfigError, editorConfigFor, formatSettings, globPattern } from "../../format/editorconfig";
+import { EditorConfigError, editorConfigFor, formatSettings, globPattern } from "../../cli/format/editorconfig";
 
 /** The properties of `file`, its `.editorconfig` files in `files`, by path. */
 const propertiesOf = (file: string, files: Record<string, string>) =>

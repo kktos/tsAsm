@@ -6,7 +6,7 @@
  * * Without the vscode module, so it can be tested.
  */
 
-import { blankComments } from "../format/comments";
+import { blankComments } from "../cli/format/comments";
 
 /** A path in the source: `start` and `end` are the offsets of its text, between the quotes. */
 export type FileLink = { start: number; end: number; path: string };

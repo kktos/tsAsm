@@ -253,7 +253,7 @@ Done in the VS Code extension in #241: labels, mnemonics, operands and comments 
 
 The layout of the VS Code extension (4.38) from the command line, for a project without VS Code and for CI: `tsasm fmt` writes the files formatted, `tsasm fmt --check` changes nothing and fails when a file isn't formatted.
 
-- **The same result as the extension, always:** a source saved in VS Code must pass `tsasm fmt --check` in CI. The formatter, its blocks and its `.editorconfig` reader are in `src/format` since #257, shared by the two.
+- **The same result as the extension, always:** a source saved in VS Code must pass `tsasm fmt --check` in CI. The formatter, its blocks and its `.editorconfig` reader are in `src/cli/format` since #257, shared by the two.
 - **The same settings:** when an `.editorconfig` applies to a file, it's the only source: a key it doesn't set takes the formatter's default (tabs of 4, the columns at 8 / 16 / 40, blocks indented), never a VS Code setting; the extension uses its `tsasm.format.*` settings and the editor's tabs only for a file no `.editorconfig` applies to. `tsasm fmt` stops on a file no `.editorconfig` applies to. An error in `.editorconfig` is an error of the command, with its file and line.
 - **The same words:** `tsasm fmt <project-file>` assembles the project, as the extension does, and formats the files the assembly read, with the project's CPU and the macros of all its files. A project that doesn't assemble isn't formatted. The project's linker script (`output.linker.script`) is left out.
 - **How it's called:** `tsasm fmt <project-file>`, a subcommand, while `tsasm <project-file>` assembles (a project file named `fmt` needs `./fmt`).

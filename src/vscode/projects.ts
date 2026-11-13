@@ -8,7 +8,7 @@
 
 import { readFileSync } from "node:fs";
 import * as vscode from "vscode";
-import { scanBlocks } from "../format/blocks";
+import { scanBlocks } from "../cli/format/blocks";
 import type { AddressHint } from "./addresses";
 import { type Analysis, analyse, type Diagnostic, type Files, isProjectFile } from "./analysis";
 import type { ListingLine } from "./listing";

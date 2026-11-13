@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type Block, scanBlocks } from "../../format/blocks";
+import { type Block, scanBlocks } from "../../cli/format/blocks";
 
 /** The blocks in short: `kind name line:column-line:column`, `open` when its end wasn't found. */
 const blocks = (source: string) =>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { scanBlocks } from "../../format/blocks";
+import { scanBlocks } from "../../cli/format/blocks";
 import { analyse } from "../../vscode/analysis";
 import { buildOutline, type OutlineNode, workspaceSymbols } from "../../vscode/outline";
 import type { SymbolIndex } from "../../vscode/symbol-index";

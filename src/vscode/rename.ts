@@ -9,8 +9,8 @@
  * * Without the vscode module, so it can be tested.
  */
 
-import { scanBlocks } from "../format/blocks";
-import { blankComments } from "../format/comments";
+import { scanBlocks } from "../cli/format/blocks";
+import { blankComments } from "../cli/format/comments";
 import { analyse, type Files } from "./analysis";
 import type { Place } from "./places";
 import { type IndexEntry, type SymbolIndex, symbolKey } from "./symbol-index";

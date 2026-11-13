@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { scanBlocks } from "../../format/blocks";
+import { scanBlocks } from "../../cli/format/blocks";
 import { foldingRanges } from "../../vscode/folding";
 
 /** The folds of `source` in short: `start-end`, and their kind; `labels` the lines of its global labels. */
