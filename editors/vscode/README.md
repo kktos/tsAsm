@@ -150,7 +150,7 @@ start:  lda     #$00                    ; load 0
 HEIGHT  =       5
 ```
 
-- **The settings are in `.editorconfig`, all of them, and only there:** the extension has neither settings nor defaults for them, so a project's files are laid out the same way whoever formats them, and whatever version of the extension, and of the coming `tsasm fmt` (TODO 4.39), does it. Each is required, from any section whose glob matches the file:
+- **The settings are in `.editorconfig`, all of them, and only there:** the extension has neither settings nor defaults for them, so a project's files are laid out the same way whoever formats them, whatever the versions of the extension and of [`tsasm fmt`](../../README.md#formatting), which CI can run with `--check`. Each is required, from any section whose glob matches the file:
 
     ```ini
     [*.{asm,inc}]
@@ -164,7 +164,7 @@ HEIGHT  =       5
 
     They're read as EditorConfig reads its own, without its extension: from the file's folder up to an `.editorconfig` with `root = true`, the closest winning, in the sections whose glob matches the file.
 
-- **A missing key** leaves the file as it is: the message names the keys, and its button adds them, with the values above: a section at the end of the `.editorconfig` beside the project file (beside the workspace folder for a file in no project), its glob the extensions of the files the project reads statements from, only the keys they lack. It refuses when that section would change a file's settings (a later section overriding an earlier one), or a closer `.editorconfig` would hide it: those keys are yours to write. An unsaved file has no `.editorconfig`: it isn't formatted.
+- **A missing key** leaves the file as it is: the message names the keys, and its button adds them, with the values above, as `tsasm fmt --init` does: a section at the end of the `.editorconfig` beside the project file (beside the workspace folder for a file in no project), its glob the extensions of the files the project reads statements from, only the keys they lack. It refuses when that section would change a file's settings (a later section overriding an earlier one), or a closer `.editorconfig` would hide it: those keys are yours to write. An unsaved file has no `.editorconfig`: it isn't formatted.
 - **A bad value:** a `tsasm_*` key it doesn't know or a bad value (`tsasm_opcode_column = abc`) is an error: the file isn't formatted, and the message opens the `.editorconfig` at its line. A value of EditorConfig's own keys it doesn't know (`indent_style = tabs`) is no value, as EditorConfig says: the key is missing.
 - **The columns:** a label at the line's start; the mnemonic, directive or macro call in the opcode column, `tsasm_opcode_column`; its operand in `tsasm_operand_column`; a comment ending the line in `tsasm_comment_column`. Columns count from 0; with tabs, a column is rounded up to a tab stop. An assignment is a label and a directive: `HEIGHT = 5` puts `=` in the opcode column.
 - **A field past its column** goes to the next tab stop: a long label pushes its mnemonic, never glued to it.
