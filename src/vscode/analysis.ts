@@ -11,11 +11,11 @@ import type { Emission, FileHandler, ListedLine, SymbolReference } from "../asse
 import { yamlparse } from "../cli/asm-yaml";
 import { readConf } from "../cli/conf";
 import { projectCpus, projectOptions } from "../cli/project";
+import { scanBlocks } from "../format/blocks";
 import { Logger } from "../helpers/logger.class";
 import type { LogSink } from "../helpers/logsink.interface";
 import { AsmError, type DefinitionSite, type IncludeSite, type SourceLocation } from "../utils/error.utils";
 import { addressHints } from "./addresses";
-import { scanBlocks } from "./blocks";
 import { nameSpan, type Place, tokenSpan } from "./places";
 import { SymbolIndex } from "./symbol-index";
 import { unreadRuns } from "./unread";

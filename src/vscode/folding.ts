@@ -7,8 +7,8 @@
  * * Without the vscode module, so it can be tested.
  */
 
-import type { Block } from "./blocks";
-import { blankComments } from "./links";
+import type { Block } from "../format/blocks";
+import { blankComments } from "../format/comments";
 
 /** Lines from 1: `start` stays shown, the lines after it up to `end` are hidden. */
 export interface Fold {

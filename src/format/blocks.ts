@@ -5,10 +5,10 @@
  *   `.repeat`, `.for`, `.struct` up to their `.end` or in `{ }`, `.namespace` up to `.end namespace`, the raw blocks of
  *   `.define` and `.hex`, and the `.segment` selections. Their extents, which the assembly doesn't tell.
  * * From the text alone: it works while a file doesn't assemble, and for a file in no project.
- * * Without the vscode module, so it can be tested.
+ * * Without the vscode module: shared by the VS Code extension and the CLI.
  */
 
-import { blankComments } from "./links";
+import { blankComments } from "./comments";
 
 export type BlockKind = "macro" | "proc" | "function" | "namespace" | "if" | "loop" | "struct" | "define" | "hex" | "segment";
 

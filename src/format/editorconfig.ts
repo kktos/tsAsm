@@ -6,7 +6,7 @@
  * * The formatter's settings from them: `indent_style`, `tab_width` and `indent_size` as EditorConfig defines them, a
  *   value it doesn't know ignored as it says; the `tsasm_*` keys, which are tsAsm's: a bad value or an unknown key is an
  *   error, not ignored.
- * * Without the vscode module, so it can be tested.
+ * * Without the vscode module: shared by the VS Code extension and the CLI.
  */
 
 import { dirname, join, relative, sep } from "node:path";

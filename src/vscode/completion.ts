@@ -8,9 +8,9 @@
  * * From the text before the cursor and the last good assembly's index. Without the vscode module, so it can be tested.
  */
 
-import { scanBlocks } from "./blocks";
+import { scanBlocks } from "../format/blocks";
+import { blankComments } from "../format/comments";
 import type { Cpu, Language, SystemFunction } from "./language";
-import { blankComments } from "./links";
 import { type IndexEntry, valueText } from "./symbol-index";
 
 export type CompletionKind =
