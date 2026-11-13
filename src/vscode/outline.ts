@@ -7,7 +7,7 @@
  * * Without the vscode module, so it can be tested.
  */
 
-import type { Block, Position } from "./blocks";
+import type { Block, Position } from "../cli/format/blocks";
 import type { Place } from "./places";
 import { type IndexEntry, valueText } from "./symbol-index";
 

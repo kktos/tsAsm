@@ -6,6 +6,8 @@
  * * Without the vscode module, so it can be tested.
  */
 
+import { blankComments } from "../cli/format/comments";
+
 /** A path in the source: `start` and `end` are the offsets of its text, between the quotes. */
 export type FileLink = { start: number; end: number; path: string };
 
@@ -36,38 +38,6 @@ export function findFileLinks(source: string, { linker = false } = {}): FileLink
 		}
 	}
 	return links.sort((a, b) => a.start - b.start);
-}
-
-/**
- * The source with its comments made spaces, its line breaks kept: a path in a comment isn't linked, and the offsets stay.
- * A line comment starts with `commentChar` or `//`.
- */
-export function blankComments(source: string, commentChar = ";"): string {
-	let text = "";
-	let quote: string | undefined;
-	for (let i = 0; i < source.length; i++) {
-		const char = source[i] as string;
-		if (quote) {
-			if (char === "\\" && source[i + 1] !== "\n") {
-				text += char + (source[++i] ?? "");
-				continue;
-			}
-			if (char === quote || char === "\n") quote = undefined;
-			text += char;
-			continue;
-		}
-		if (char === '"' || char === "'") quote = char;
-		else if (char === commentChar || source.startsWith("//", i) || source.startsWith("/*", i)) {
-			const block = source.startsWith("/*", i);
-			const end = block ? source.indexOf("*/", i + 2) : source.indexOf("\n", i);
-			const stop = end < 0 ? source.length : block ? end + 2 : end;
-			text += source.slice(i, stop).replace(/[^\n]/g, " ");
-			i = stop - 1;
-			continue;
-		}
-		text += char;
-	}
-	return text;
 }
 
 const ESCAPES: Record<string, string> = { n: "\n", r: "\r", t: "\t", b: "\b", f: "\f" };

@@ -10,8 +10,8 @@
 
 import { readFileSync } from "node:fs";
 import * as vscode from "vscode";
-import { EditorConfigError, editorConfigFor, formatSettings } from "./editorconfig";
-import { DEFAULT_FORMAT, type FormatOptions, formatSource, statementTest } from "./format";
+import { EditorConfigError, editorConfigFor, formatSettings } from "../cli/format/editorconfig";
+import { DEFAULT_FORMAT, type FormatOptions, formatSource, statementTest } from "../cli/format/format";
 import { type Language, language } from "./language";
 import type { Projects } from "./projects";
 

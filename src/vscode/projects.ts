@@ -8,9 +8,9 @@
 
 import { readFileSync } from "node:fs";
 import * as vscode from "vscode";
+import { scanBlocks } from "../cli/format/blocks";
 import type { AddressHint } from "./addresses";
 import { type Analysis, analyse, type Diagnostic, type Files, isProjectFile } from "./analysis";
-import { scanBlocks } from "./blocks";
 import type { ListingLine } from "./listing";
 import type { Place } from "./places";
 import { RenameError, type RenameEdit, type RenameSymbol, readText, renameProjects, renameSymbol } from "./rename";

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_FORMAT, type FormatOptions, formatSource, sameTokens, statementTest } from "../../vscode/format";
+import { DEFAULT_FORMAT, type FormatOptions, formatSource, sameTokens, statementTest } from "../../cli/format/format";
 import { language } from "../../vscode/language";
 
 const MNEMONICS = new Set(["LDA", "STA", "LDX", "DEX", "BNE", "BEQ", "RTS", "NOP", "JMP"]);

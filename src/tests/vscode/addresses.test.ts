@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { scanBlocks } from "../../cli/format/blocks";
 import { lineHints } from "../../vscode/addresses";
 import { analyse } from "../../vscode/analysis";
-import { scanBlocks } from "../../vscode/blocks";
 import type { SymbolIndex } from "../../vscode/symbol-index";
 
 const PROJECT = `

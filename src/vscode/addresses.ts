@@ -9,8 +9,8 @@
  */
 
 import { RelocValue } from "../assembler/reloc-value.class";
+import type { Block } from "../cli/format/blocks";
 import { getAddressHex, getHex } from "../utils/hex.util";
-import type { Block } from "./blocks";
 import type { Place } from "./places";
 import type { IndexEntry } from "./symbol-index";
 

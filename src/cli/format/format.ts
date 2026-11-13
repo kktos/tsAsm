@@ -9,13 +9,12 @@
  * * A block's body (`.macro`, `.proc`, `.function`, `.if`, `.repeat`, `.for`) is indented one level, its labels staying at
  *   the line's start; a namespace's isn't, as it may run to the end of the file.
  * * Checked: the result must have the same tokens as the source, else the source is given back as it is.
- * * Without the vscode module, so it can be tested.
+ * * Without the vscode module: shared by the VS Code extension and the CLI, so the two lay a source out the same way.
  */
 
-import { AssemblyLexer, type Token } from "../shared/lexer/lexer.class";
+import { AssemblyLexer, type Token } from "../../shared/lexer/lexer.class";
 import { type Block, scanBlocks } from "./blocks";
-import type { Cpu, Language } from "./language";
-import { blankComments } from "./links";
+import { blankComments } from "./comments";
 
 export interface FormatOptions {
 	/** The width of a tab, and of an indentation level. */
@@ -43,6 +42,12 @@ export const DEFAULT_FORMAT: Omit<FormatOptions, "tabSize" | "insertSpaces"> = {
  * label, else a statement.
  */
 export type IsStatement = (word: string, line: number) => boolean;
+
+/** What `statementTest` needs of a CPU: its names, what `.cpu` takes, and its mnemonics, in upper case. */
+export interface StatementCpu {
+	names: readonly string[];
+	mnemonics: readonly string[];
+}
 
 /** A line's fields: `label`, `opcode` and `operand` as written, `comment` from its `;`, `//` or `/*` to the line's end. */
 interface Fields {
@@ -245,17 +250,17 @@ export function sameTokens(a: string, b: string): boolean {
  * The words starting a statement in `source`, for `formatSource`: on each line the mnemonics of the CPU there (the last
  * `.cpu` above, else `cpu`, the project's; every CPU's for a file in no project), and the `macros`, in upper case.
  */
-export function statementTest(source: string, language: Language, cpu: string | undefined, macros: Iterable<string>): IsStatement {
+export function statementTest(source: string, language: { cpus: readonly StatementCpu[] }, cpu: string | undefined, macros: Iterable<string>): IsStatement {
 	const macroNames = new Set(macros);
 	const find = (name: string) => language.cpus.find(({ names }) => names.includes(name.replace(/^["']|["']$/g, "").toUpperCase()));
-	const sets = new Map<Cpu | undefined, Set<string>>();
-	const mnemonicsOf = (current: Cpu | undefined) => {
+	const sets = new Map<StatementCpu | undefined, Set<string>>();
+	const mnemonicsOf = (current: StatementCpu | undefined) => {
 		let set = sets.get(current);
 		if (!set) sets.set(current, (set = new Set((current ? [current] : language.cpus).flatMap(({ mnemonics }) => mnemonics))));
 		return set;
 	};
 	// The CPU of each line, from 1.
-	const cpus: (Cpu | undefined)[] = [undefined];
+	const cpus: (StatementCpu | undefined)[] = [undefined];
 	let current = cpu === undefined ? undefined : find(cpu);
 	for (const line of blankComments(source).split("\n")) {
 		const match = /(?:^|\s)\.(?:cpu|setcpu|processor)\s+(\S+)/i.exec(line);
