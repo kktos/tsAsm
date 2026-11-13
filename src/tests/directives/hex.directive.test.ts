@@ -1,0 +1,129 @@
+import { describe, expect, it } from "vitest";
+import { Assembler } from "../../assembler/polyasm";
+import type { SegmentDefinition } from "../../assembler/polyasm.types";
+import { MockFileHandler } from "../mockfilehandler.class";
+
+// Minimal fake CPU handler
+const fakeCPU = {
+	cpuType: "FakeCPU",
+	isInstruction: () => false,
+	resolveAddressingMode: () => ({
+		mode: "",
+		opcode: 0,
+		bytes: 0,
+		resolvedAddress: 0,
+	}),
+	encodeInstruction: () => [],
+	endianness: "little" as const,
+	addressBits: 16,
+};
+
+const DEFAULT_SEGMENTS: SegmentDefinition[] = [{ name: "CODE", start: 0x1000, size: 0, resizable: true }];
+
+describe(".HEX Directive", () => {
+	const createAssembler = (segments: SegmentDefinition[] = DEFAULT_SEGMENTS) => {
+		const mockFileHandler = new MockFileHandler();
+		return new Assembler(fakeCPU, mockFileHandler, { segments });
+	};
+	it("should handle .HEX directive with valid inputs", () => {
+		const assembler = createAssembler();
+
+		const source = `
+            .ORG $1000
+            .HEX
+                01 02 03 04 ; four bytes
+                //05060708    ; four more with no spaces
+                05 06 07 08    ; four more with no spaces
+            .END
+
+            .HEX { 09 0A 0B 0C } ; inline hex block
+
+            .DB $FF ; separator byte
+        `;
+
+		assembler.assemble(source);
+		const machineCode = assembler.link();
+		expect(machineCode).toEqual([0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0xff]);
+	});
+
+	it("should throw error for string data", () => {
+		expect(() => createAssembler().assemble(`.HEX { "0A0B" }`)).toThrow(".HEX does not accept strings");
+		expect(() => createAssembler().assemble(`.HEX { '0C 0D' }`)).toThrow(".HEX does not accept strings");
+		expect(() => createAssembler().assemble('.HEX\n  01 "02"\n.END')).toThrow(".HEX does not accept strings");
+	});
+
+	it("should throw error for invalid .HEX number", () => {
+		const assembler = createAssembler();
+
+		const sourceWithOddDigits = `
+            .HEX { 123 }
+        `;
+		expect(() => assembler.assemble(sourceWithOddDigits)).toThrow("Hex data must have an even number of digits.");
+	});
+
+	it("should throw errors for invalid .HEX data", () => {
+		const assembler = createAssembler();
+
+		const sourceWithInvalidChars = `
+            .HEX { 00 GG 11 }
+        `;
+		expect(() => assembler.assemble(sourceWithInvalidChars)).toThrow('Invalid hexadecimal character sequence: "GG"');
+	});
+
+	it("should handle .HEX directive inline", () => {
+		const assembler = createAssembler();
+
+		const source = `
+			.hex 84 80 84 80 84 80 84 80 84 80 88 80 88 80 88 80
+			.hex 88 80 88 80 90 80 90 80 90 80 90 80 90 80 A0 80
+        `;
+
+		assembler.assemble(source);
+		const machineCode = assembler.link();
+		expect(machineCode).toEqual([
+			0x84, 0x80, 0x84, 0x80, 0x84, 0x80, 0x84, 0x80, 0x84, 0x80, 0x88, 0x80, 0x88, 0x80, 0x88, 0x80, 0x88, 0x80, 0x88, 0x80, 0x90, 0x80, 0x90, 0x80,
+			0x90, 0x80, 0x90, 0x80, 0x90, 0x80, 0xa0, 0x80,
+		]);
+	});
+
+	describe("raw data", () => {
+		const assemble = (source: string) => {
+			const assembler = createAssembler();
+			assembler.assemble(source);
+			return assembler.link();
+		};
+
+		it("should read digits that look like numbers as hex bytes", () => {
+			expect(assemble(".hex 0B01 0B10")).toEqual([0x0b, 0x01, 0x0b, 0x10]);
+		});
+
+		it.each([
+			["one line", ".macro m\n .hex 0A 0B\n.end\n m\n m"],
+			["braces", ".macro m\n .hex { 0A 0B }\n.end\n m\n m"],
+			["block", ".macro m\n .hex\n 0A 0B\n .end\n.end\n m\n m"],
+		])("should work inside a macro: %s", (_, source) => {
+			expect(assemble(source)).toEqual([0x0a, 0x0b, 0x0a, 0x0b]);
+		});
+
+		it("should work inside .if and .else", () => {
+			expect(assemble(".if 0\n .hex 0A\n.else\n .hex { 0B }\n.end\n.if 1\n .hex 0C\n.end")).toEqual([0x0b, 0x0c]);
+		});
+
+		it("should ignore comments in the data", () => {
+			expect(assemble(".hex 01 ; one\n.hex { 02 // two\n /* } */ 03 }\n.hex\n 04 ; four\n.end")).toEqual([1, 2, 3, 4]);
+		});
+
+		it("should leave the .hex() function alone inside a block", () => {
+			expect(assemble(".macro m\n .text .hex(10, 4)\n.end\n m")).toEqual([0x24, 0x30, 0x30, 0x30, 0x41]);
+		});
+
+		it("should throw when the } is missing", () => {
+			expect(() => assemble(".hex { 0A\n0B")).toThrow(
+				expect.objectContaining({
+					message: "Missing } for the .HEX block.",
+					location: expect.objectContaining({ line: 1 }),
+				}),
+			);
+		});
+	});
+});

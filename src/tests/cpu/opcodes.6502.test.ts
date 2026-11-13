@@ -1,0 +1,384 @@
+import { describe, expect, it } from "vitest";
+import { Assembler } from "../../assembler/polyasm";
+import { Cpu6502Handler } from "../../cpu/cpu6502.class";
+import { MockFileHandler } from "../mockfilehandler.class";
+
+describe("6502 Opcodes", () => {
+	const assembleAndGetCode = (source: string): number[] => {
+		const cpu = new Cpu6502Handler();
+		const assembler = new Assembler(cpu, new MockFileHandler(), {
+			segments: [{ name: "CODE", start: 0x8000, size: 0, resizable: true }],
+		});
+		const segments = assembler.assemble(source);
+		const codeSegment = segments.find((s) => s.name === "CODE");
+		// Only return the part of the data that has been written to
+		return codeSegment?.data ?? [];
+	};
+
+	it("should assemble ADC instructions", () => {
+		const source = `
+            ADC #$10
+            ADC $20
+            ADC $30,X
+            ADC $1234
+            ADC $1234,X
+            ADC $1234,Y
+            ADC ($40,X)
+            ADC ($50),Y
+        `;
+		const data = assembleAndGetCode(source);
+		expect(data).toEqual([
+			0x69,
+			0x10, // IMMEDIATE
+			0x65,
+			0x20, // ZEROPAGE
+			0x75,
+			0x30, // ZEROPAGE_X
+			0x6d,
+			0x34,
+			0x12, // ABSOLUTE
+			0x7d,
+			0x34,
+			0x12, // ABSOLUTE_X
+			0x79,
+			0x34,
+			0x12, // ABSOLUTE_Y
+			0x61,
+			0x40, // INDIRECT_X
+			0x71,
+			0x50, // INDIRECT_Y
+		]);
+	});
+
+	it("should assemble ASL and ROL instructions with Accumulator addressing", () => {
+		const source = `
+            ASL A
+            ROL A
+        `;
+		const data = assembleAndGetCode(source);
+		expect(data).toEqual([0x0a, 0x2a]);
+	});
+
+	it("should assemble JMP indirect", () => {
+		const source = "JMP ($1234)";
+		const data = assembleAndGetCode(source);
+		expect(data).toEqual([0x6c, 0x34, 0x12]);
+	});
+
+	it("should assemble various implied instructions", () => {
+		const source = `
+            CLC
+            SEC
+            CLI
+            SEI
+            CLD
+            SED
+            CLV
+            TAX
+            TAY
+            TSX
+            TXA
+            TXS
+            TYA
+        `;
+		const data = assembleAndGetCode(source);
+		expect(data).toEqual([0x18, 0x38, 0x58, 0x78, 0xd8, 0xf8, 0xb8, 0xaa, 0xa8, 0xba, 0x8a, 0x9a, 0x98]);
+	});
+
+	it("should assemble branch instructions", () => {
+		const source = `
+            START:
+                BPL START
+                BMI START
+                BVC START
+                BVS START
+                BCC START
+                BCS START
+                BNE START
+                BEQ START
+        `;
+		const data = assembleAndGetCode(source);
+		// Offsets are calculated from the address of the instruction following the branch.
+		// PC for BPL is 0x8000. Next instruction is at 0x8002. Target is 0x8000. Offset is 0x8000 - 0x8002 = -2 = 0xFE
+		// PC for BMI is 0x8002. Next is 0x8004. Target is 0x8000. Offset is 0x8000 - 0x8004 = -4 = 0xFC
+		// ...and so on
+		expect(data).toEqual([
+			0x10,
+			0xfe, // BPL
+			0x30,
+			0xfc, // BMI
+			0x50,
+			0xfa, // BVC
+			0x70,
+			0xf8, // BVS
+			0x90,
+			0xf6, // BCC
+			0xb0,
+			0xf4, // BCS
+			0xd0,
+			0xf2, // BNE
+			0xf0,
+			0xf0, // BEQ
+		]);
+	});
+
+	it("should assemble LDA instructions", () => {
+		const source = `
+            LDA #$10
+            LDA $20
+            LDA $30,X
+            LDA $1234
+            LDA $1234,X
+            LDA $1234,Y
+            LDA ($40,X)
+            LDA ($50),Y
+        `;
+		const data = assembleAndGetCode(source);
+		expect(data).toEqual([
+			0xa9,
+			0x10, // IMMEDIATE
+			0xa5,
+			0x20, // ZEROPAGE
+			0xb5,
+			0x30, // ZEROPAGE_X
+			0xad,
+			0x34,
+			0x12, // ABSOLUTE
+			0xbd,
+			0x34,
+			0x12, // ABSOLUTE_X
+			0xb9,
+			0x34,
+			0x12, // ABSOLUTE_Y
+			0xa1,
+			0x40, // INDIRECT_X
+			0xb1,
+			0x50, // INDIRECT_Y
+		]);
+	});
+
+	it("should assemble STA instructions", () => {
+		const source = `
+            STA $20
+            STA $30,X
+            STA $1234
+            STA $1234,X
+            STA $1234,Y
+            STA ($40,X)
+            STA ($50),Y
+        `;
+		const data = assembleAndGetCode(source);
+		expect(data).toEqual([
+			0x85,
+			0x20, // ZEROPAGE
+			0x95,
+			0x30, // ZEROPAGE_X
+			0x8d,
+			0x34,
+			0x12, // ABSOLUTE
+			0x9d,
+			0x34,
+			0x12, // ABSOLUTE_X
+			0x99,
+			0x34,
+			0x12, // ABSOLUTE_Y
+			0x81,
+			0x40, // INDIRECT_X
+			0x91,
+			0x50, // INDIRECT_Y
+		]);
+	});
+
+	it("should assemble SBC instructions", () => {
+		const source = `
+            SBC #$10
+            SBC $20
+            SBC $30,X
+            SBC $1234
+            SBC $1234,X
+            SBC $1234,Y
+            SBC ($40,X)
+            SBC ($50),Y
+        `;
+		const data = assembleAndGetCode(source);
+		expect(data).toEqual([
+			0xe9,
+			0x10, // IMMEDIATE
+			0xe5,
+			0x20, // ZEROPAGE
+			0xf5,
+			0x30, // ZEROPAGE_X
+			0xed,
+			0x34,
+			0x12, // ABSOLUTE
+			0xfd,
+			0x34,
+			0x12, // ABSOLUTE_X
+			0xf9,
+			0x34,
+			0x12, // ABSOLUTE_Y
+			0xe1,
+			0x40, // INDIRECT_X
+			0xf1,
+			0x50, // INDIRECT_Y
+		]);
+	});
+
+	it("should assemble Hi and Lo byte", () => {
+		const source = `
+			.if $45 > <text
+            	lda #<text
+				pha
+			.end
+
+            lda #>text
+			pha
+			jsr $D000
+			rts
+
+			.org $8010
+			text:
+				.db "ABCDE", 0
+        `;
+		const data = assembleAndGetCode(source);
+		expect(data).toEqual([
+			0xa9, // lda
+			0x10,
+			0x48, // pha
+			0xa9, // lda
+			0x80,
+			0x48, // pha
+			0x20, //
+			0x00,
+			0xd0,
+			0x60, // rts
+			0x00, // align
+			0x00,
+			0x00,
+			0x00,
+			0x00,
+			0x00,
+			0x41, //
+			0x42,
+			0x43,
+			0x44,
+			0x45,
+			0x00,
+		]);
+	});
+
+	it("should assemble the bank byte, '^', and XOR", () => {
+		const data = assembleAndGetCode(`
+			lda #^far
+			ldx #<far ^ $FF
+			far = $123456
+		`);
+		expect(data).toEqual([0xa9, 0x12, 0xa2, 0xa9]);
+	});
+
+	it("should accept a one-char string as an 8-bit value", () => {
+		const source = `
+			lda #"A"
+			ldx #'A'
+			cmp #"A"+1
+			ldy #$80|"H"
+        `;
+		expect(assembleAndGetCode(source)).toEqual([0xa9, 0x41, 0xa2, 0x41, 0xc9, 0x42, 0xa0, 0xc8]);
+	});
+
+	it.each([`lda #"AB"`, `lda #"AB"+1`])("should say a longer string isn't a number: %s", (source) => {
+		expect(() => assembleAndGetCode(source)).toThrow(`Only a one-character string can be used as a number: "AB".`);
+	});
+
+	it("should take an accumulator instruction without operand as its A form", () => {
+		expect(assembleAndGetCode("ASL")).toEqual([0x0a]);
+	});
+
+	it.each([
+		["LDA (2+3)*4", [0xa5, 0x14]],
+		["LDA (2+3)*4,X", [0xb5, 0x14]],
+		["LDA (2+3)*4,Y", [0xb9, 0x14, 0x00]],
+		["LDA (1)+(2)", [0xa5, 0x03]],
+		["LDA (1)+(2),Y", [0xb9, 0x03, 0x00]],
+		["JMP (1)+(2)", [0x4c, 0x03, 0x00]],
+	])("should read an operand whose first ( closes before its end as an expression: %s (TODO 3.10)", (source, expected) => {
+		expect(assembleAndGetCode(source)).toEqual(expected);
+	});
+
+	it.each([
+		["LDA ((2+3)),Y", [0xb1, 0x05]],
+		["LDA (1+(2)),Y", [0xb1, 0x03]],
+		["LDA ((1)+2,X)", [0xa1, 0x03]],
+		["JMP ((1)+(2))", [0x6c, 0x03, 0x00]],
+	])("should read an indirect operand with parentheses inside it: %s", (source, expected) => {
+		expect(assembleAndGetCode(source)).toEqual(expected);
+	});
+
+	it.each(["LDA ($12),X", "LDA ($12,Y)", "LDX ($12),Y", "LDA (3+3)"])("should be an error: %s", (source) => {
+		expect(() => assembleAndGetCode(source)).toThrow("Invalid addressing mode for instruction LD");
+	});
+
+	it.each(["LDA [$12]", "LDA [$12],Y", "LDA [$12],X", "LDA [1,2]", "JMP [$1234]"])(
+		"should take an operand whose first [ closes at its end, or before ,Y or ,X, as a bracket mode the 6502 doesn't have: %s (TODO 3.11)",
+		(source) => {
+			expect(() => assembleAndGetCode(source)).toThrow(`Invalid addressing mode for instruction ${source.slice(0, 3)}`);
+		},
+	);
+
+	it.each([
+		["LDA [1,2][1]", [0xa5, 0x02]],
+		["LDA [$12][0],Y", [0xb9, 0x12, 0x00]],
+	])("should read an operand whose first [ closes before its end as an expression: %s", (source, expected) => {
+		expect(assembleAndGetCode(source)).toEqual(expected);
+	});
+
+	it("should keep an array in an expression an error: LDA [$12]+1", () => {
+		expect(() => assembleAndGetCode("LDA [$12]+1")).toThrow("Binary operator '+' requires two numbers.");
+	});
+
+	describe("operand ranges", () => {
+		it("should accept operands at the limits", () => {
+			const source = `
+				LDA #255
+				LDA #-128
+				LDA $FFFF
+				LDA ($FF),Y
+				LDA ($FF,X)
+				JMP ($FFFF)
+			`;
+			expect(assembleAndGetCode(source)).toEqual([0xa9, 0xff, 0xa9, 0x80, 0xad, 0xff, 0xff, 0xb1, 0xff, 0xa1, 0xff, 0x6c, 0xff, 0xff]);
+		});
+
+		it.each([
+			["LDA #$1FF", "Immediate value 511 doesn't fit in a byte (-128..255)."],
+			["LDA $12345", "Address 74565 is out of range ($0..$FFFF)."],
+			["LDA $12345,X", "Address 74565 is out of range ($0..$FFFF)."],
+			["JMP ($12345)", "Address 74565 is out of range ($0..$FFFF)."],
+			["LDA ($1234),Y", "Zero page address 4660 is out of range ($0..$FF)."],
+			["LDA ($1234,X)", "Zero page address 4660 is out of range ($0..$FF)."],
+		])("should throw on an out-of-range operand: %s", (source, message) => {
+			expect(() => assembleAndGetCode(source)).toThrow(message);
+		});
+	});
+
+	// In pass 1, an operand using a symbol defined later has no value yet: its size is the worst case.
+	describe("operands defined later", () => {
+		it.each([
+			["LDA later\nnext: NOP\nlater = $1234", [0xad, 0x34, 0x12, 0xea]],
+			["LDA later,X\nnext: NOP\nlater = $1234", [0xbd, 0x34, 0x12, 0xea]],
+			["LDA later,Y\nnext: NOP\nlater = $1234", [0xb9, 0x34, 0x12, 0xea]],
+			["LDA (zp),Y\nzp = $10", [0xb1, 0x10]],
+			["LDA #value\nvalue = 5", [0xa9, 0x05]],
+			["BNE done\nNOP\ndone: RTS", [0xd0, 0x01, 0xea, 0x60]],
+		])("should assemble %j", (source, bytes) => {
+			expect(assembleAndGetCode(source)).toEqual(bytes);
+		});
+
+		it.each([["LDA zp\nnext: NOP\nzp = $10"], ["LDA zp,X\nnext: NOP\nzp = $10"]])(
+			"should report a zero page address defined later when code after it moves: %j",
+			(source) => {
+				expect(() => assembleAndGetCode(source)).toThrow("Phase error: label 'NEXT' is $8003 in pass 1 but $8002 in pass 2.");
+			},
+		);
+	});
+});
